@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="AestheticEMR/AestheticEMR.client/AestheticEMR.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="AestheticEMR/AestheticEMR.Core/AestheticEMR.Core.csproj" />
+  <Project Path="AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj" />
+</Solution>
