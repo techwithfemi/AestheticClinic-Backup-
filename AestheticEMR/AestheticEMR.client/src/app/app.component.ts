@@ -4,12 +4,12 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
-import { Component, OnInit, OnDestroy, inject, Renderer2 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, OnInit, OnDestroy, inject, Renderer2, AfterViewInit } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TranslateModule, LangChangeEvent } from '@ngx-translate/core';
 import { ToastaService, ToastaConfig, ToastOptions, ToastData, ToastaModule } from 'ngx-toasta';
-import { NgbCollapseModule, NgbModal, NgbPopover } from '@ng-bootstrap/ng-bootstrap';
+import { NgbCollapseModule, NgbModal, NgbPopover, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { AlertService, AlertDialog, DialogType, AlertCommand, MessageSeverity } from './services/alert.service';
 import { NotificationService } from './services/notification.service';
@@ -23,6 +23,10 @@ import { Alertify } from './models/Alertify';
 import { Permissions } from './models/permission.model';
 import { LoginComponent } from './components/login/login.component';
 import { NotificationsViewerComponent } from './components/controls/notifications-viewer.component';
+import { UserInfoComponent } from './components/controls/user-info.component';
+import { UsersManagementComponent } from './components/controls/users-management.component';
+import { RolesManagementComponent } from './components/controls/roles-management.component';
+import { fadeInOut } from './services/animations';
 
 declare let alertify: Alertify;
 
@@ -30,12 +34,13 @@ declare let alertify: Alertify;
     selector: 'app-root',
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',
+    animations: [fadeInOut],
     imports: [
-        ToastaModule, RouterLink, RouterLinkActive, NgbCollapseModule, NgbPopover, NotificationsViewerComponent,
-        RouterOutlet, TranslateModule
+        ToastaModule, RouterLink, RouterLinkActive, NgbCollapseModule, NgbPopover, NgbNavModule, NotificationsViewerComponent,
+        RouterOutlet, TranslateModule, UserInfoComponent, UsersManagementComponent, RolesManagementComponent
     ]
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private toastaService = inject(ToastaService);
   private toastaConfig = inject(ToastaConfig);
   private accountService = inject(AccountService);
@@ -44,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
   private translationService = inject(AppTranslationService);
+  private route = inject(ActivatedRoute);
   configurations = inject(ConfigurationService);
   router = inject(Router);
   renderer = inject(Renderer2);
@@ -53,6 +59,20 @@ export class AppComponent implements OnInit, OnDestroy {
   isUserLoggedIn = false;
   newNotificationCount = 0;
   appTitle = 'AestheticEMR';
+
+  readonly dashboardTab = 'dashboard';
+  readonly settingsTab = 'settings';
+  readonly profileTab = 'profile';
+  readonly administratorTab = 'administrator';
+  readonly usersTab = 'users';
+  readonly rolesTab = 'roles';
+  readonly administratorRoleName = 'Administrator';
+
+  activeTab = '';
+  activeSettingsTab = '';
+  activeAdminTab = '';
+  showContent = false;
+  fragmentSubscription: Subscription | undefined;
 
   stickyToasties: number[] = [];
 
@@ -93,6 +113,8 @@ export class AppComponent implements OnInit, OnDestroy {
     // Extra sec to display preboot loaded information
     setTimeout(() => this.isAppLoaded = true, 1000);
 
+    this.fragmentSubscription = this.route.fragment.subscribe(fragment => this.setActiveTab(fragment));
+
     setTimeout(() => {
       if (this.isUserLoggedIn) {
         this.alertService.resetStickyMessage();
@@ -117,8 +139,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
       if (this.isUserLoggedIn) {
         this.initNotificationsLoading();
+        queueMicrotask(() => this.syncActiveTabWithUser());
       } else {
         this.unsubscribeNotifications();
+        this.activeTab = '';
       }
 
       setTimeout(() => {
@@ -127,11 +151,20 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }, 500);
     });
+
+    if (this.isUserLoggedIn) {
+      this.syncActiveTabWithUser();
+    }
+  }
+
+  ngAfterViewInit() {
+    setTimeout(() => this.showContent = true);
   }
 
   ngOnDestroy() {
     this.unsubscribeNotifications();
     this.languageChangedSubscription?.unsubscribe();
+    this.fragmentSubscription?.unsubscribe();
   }
 
   private unsubscribeNotifications() {
@@ -311,6 +344,45 @@ export class AppComponent implements OnInit, OnDestroy {
 
   get fullName(): string {
     return this.authService.currentUser?.fullName ?? '';
+  }
+
+  get userRoles(): string[] {
+    const roles = this.authService.currentUser?.roles;
+    if (!roles?.length) {
+      return [];
+    }
+
+    return roles.filter((r): r is string => typeof r === 'string' && r.trim().length > 0);
+  }
+
+  setActiveTab(fragment: string | null) {
+    fragment = fragment?.toLowerCase() ?? this.dashboardTab;
+
+    const validTabs = [this.dashboardTab, ...this.userRoles, this.settingsTab];
+    if (this.isAdministrator) {
+      validTabs.splice(validTabs.length - 1, 0, this.administratorTab); // Insert before Settings
+    }
+
+    if (validTabs.includes(fragment)) {
+      this.activeTab = fragment;
+      if (fragment === this.settingsTab) {
+        this.activeSettingsTab = this.profileTab;
+      } else if (fragment === this.administratorTab) {
+        this.activeAdminTab = this.usersTab;
+      }
+    } else {
+      this.router.navigate([], { fragment: this.dashboardTab });
+    }
+  }
+
+  private syncActiveTabWithUser() {
+    this.activeTab = this.dashboardTab;
+    this.activeSettingsTab = this.profileTab;
+    this.activeAdminTab = this.usersTab;
+  }
+
+  get isAdministrator(): boolean {
+    return this.userRoles.includes(this.administratorRoleName);
   }
 
   get canViewCustomers() {

@@ -110,7 +110,119 @@
   }
 
   <main class="container-xl px-3 px-md-4 px-xxl-5">
-    <router-outlet></router-outlet>
+    @if (isUserLoggedIn) {
+      <div [@fadeInOut]>
+        <div class="d-sm-flex flex-row mb-2">
+          <ul ngbNav #tab="ngbNav" class="nav nav-tabs nav-tabs--vertical nav-tabs--left"
+              [activeId]="activeTab" [orientation]="'vertical'" [animation]="false"
+              (activeIdChange)="showContent = false" (shown)="showContent = true">
+            <li [ngbNavItem]="dashboardTab">
+              <a ngbNavLink routerLink="." [fragment]="dashboardTab">
+                <i class="fa fa-home fa-fw" aria-hidden="true"></i> {{'pageHeader.Dashboard' | translate}}
+              </a>
+              <ng-template ngbNavContent>
+                <h4>{{'pageHeader.Dashboard' | translate}}</h4>
+                <hr class="hr-separator" />
+                @if (showContent) {
+                  <div [@fadeInOut] class="content-container ps-lg-2">
+                    <router-outlet></router-outlet>
+                  </div>
+                }
+              </ng-template>
+            </li>
+            @for (role of userRoles; track role) {
+              <li [ngbNavItem]="role">
+                <a ngbNavLink routerLink="." [fragment]="role">
+                  <i class="fa fa-user-md fa-fw" aria-hidden="true"></i> {{ role }}
+                </a>
+                <ng-template ngbNavContent>
+                  <h4>{{ role }}</h4>
+                  <hr class="hr-separator" />
+                  @if (showContent) {
+                    <div [@fadeInOut] class="content-container ps-lg-2">
+                      <router-outlet></router-outlet>
+                    </div>
+                  }
+                </ng-template>
+              </li>
+            }
+            @if (isAdministrator) {
+              <li [ngbNavItem]="administratorTab">
+                <a ngbNavLink routerLink="." [fragment]="administratorTab">
+                  <i class="fa fa-shield fa-fw" aria-hidden="true"></i> {{'home.Administrator' | translate}}
+                </a>
+                <ng-template ngbNavContent>
+                  <h4>{{'home.Administrator' | translate}}</h4>
+                  <hr class="hr-separator" />
+                  @if (showContent) {
+                    <div [@fadeInOut] class="content-container ps-lg-2">
+                      <div class="d-sm-flex flex-row">
+                        <ul ngbNav #adminNav="ngbNav" class="nav nav-tabs nav-tabs--vertical nav-tabs--left"
+                            [activeId]="activeAdminTab" [orientation]="'vertical'" [animation]="false">
+                          <li [ngbNavItem]="usersTab">
+                            <a ngbNavLink>
+                              <i class="fa fa-users fa-fw" aria-hidden="true"></i> {{'settings.tab.Users' | translate}}
+                            </a>
+                            <ng-template ngbNavContent>
+                              <h5>{{'settings.header.UsersManagements' | translate}}</h5>
+                              <hr class="hr-separator" />
+                              <app-users-management></app-users-management>
+                            </ng-template>
+                          </li>
+                          <li [ngbNavItem]="rolesTab">
+                            <a ngbNavLink>
+                              <i class="fa fa-shield fa-fw" aria-hidden="true"></i> {{'settings.tab.Roles' | translate}}
+                            </a>
+                            <ng-template ngbNavContent>
+                              <h5>{{'settings.header.RolesManagement' | translate}}</h5>
+                              <hr class="hr-separator" />
+                              <app-roles-management></app-roles-management>
+                            </ng-template>
+                          </li>
+                        </ul>
+                        <div [ngbNavOutlet]="adminNav" class="w-100"></div>
+                      </div>
+                    </div>
+                  }
+                </ng-template>
+              </li>
+            }
+            <li [ngbNavItem]="settingsTab">
+              <a ngbNavLink routerLink="." [fragment]="settingsTab">
+                <i class="fa fa-cog fa-fw" aria-hidden="true"></i> {{'pageHeader.Settings' | translate}}
+              </a>
+              <ng-template ngbNavContent>
+                <h4>{{'pageHeader.Settings' | translate}}</h4>
+                <hr class="hr-separator" />
+                @if (showContent) {
+                  <div [@fadeInOut] class="content-container ps-lg-2">
+                    <div class="d-sm-flex flex-row">
+                      <ul ngbNav #settingsNav="ngbNav" class="nav nav-tabs nav-tabs--vertical nav-tabs--left"
+                          [activeId]="activeSettingsTab" [orientation]="'vertical'" [animation]="false">
+                        <li [ngbNavItem]="profileTab">
+                          <a ngbNavLink>
+                            <i class="fa fa-user-circle-o fa-fw" aria-hidden="true"></i> {{'settings.tab.Profile' | translate}}
+                          </a>
+                          <ng-template ngbNavContent>
+                            <h5>{{'settings.header.UserProfile' | translate}}</h5>
+                            <hr class="hr-separator" />
+                            <app-user-info></app-user-info>
+                          </ng-template>
+                        </li>
+                      </ul>
+                      <div [ngbNavOutlet]="settingsNav" class="w-100"></div>
+                    </div>
+                  </div>
+                }
+              </ng-template>
+            </li>
+          </ul>
+          <div [ngbNavOutlet]="tab" class="w-100"></div>
+        </div>
+      </div>
+    } @else {
+      <router-outlet></router-outlet>
+    }
     <div class="footer-height"></div>
   </main>
 

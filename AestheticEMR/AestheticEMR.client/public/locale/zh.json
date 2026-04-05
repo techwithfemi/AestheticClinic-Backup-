@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "暂无显示的小部件。请前往",
     "NoWidgets2": "配置可用的小部件",
-    "StatisticsTitle": "重要信息"
+    "StatisticsTitle": "重要信息",
+    "sidebar": {
+      "Navigation": "导航",
+      "YourRoles": "您的角色",
+      "NoRoles": "未返回此帐户的角色。"
+    }
   },
   "notFound": {
     "404": "404",

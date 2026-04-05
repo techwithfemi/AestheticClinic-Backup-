@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "لم يتم عرض أية أدوات. اذهب إلى",
     "NoWidgets2": "لتكوين الأدوات المتاحة",
-    "StatisticsTitle": "بعض الاشياء الهامة"
+    "StatisticsTitle": "بعض الاشياء الهامة",
+    "sidebar": {
+      "Navigation": "التنقل",
+      "YourRoles": "أدوارك",
+      "NoRoles": "لم يتم إرجاع أدوار لهذا الحساب."
+    }
   },
   "notFound": {
     "404": "404",

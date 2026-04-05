@@ -25,8 +25,8 @@ interface WidgetIndex { element: string, index: number }
   styleUrl: './home.component.scss',
   animations: [fadeInOut],
   imports: [
-    CdkDropList, RouterLink, CdkDrag, CdkDragPlaceholder, StatisticsDemoComponent, NotificationsViewerComponent,
-    TodoDemoComponent, BannerDemoComponent, TranslateModule
+    CdkDropList, RouterLink, CdkDrag, CdkDragPlaceholder, StatisticsDemoComponent,
+    NotificationsViewerComponent, TodoDemoComponent, BannerDemoComponent, TranslateModule
   ]
 })
 export class HomeComponent implements AfterViewInit {

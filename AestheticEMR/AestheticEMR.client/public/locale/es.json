@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "No tienes widgets mostrados. Ve a",
     "NoWidgets2": "para configurar los widgets disponibles",
-    "StatisticsTitle": "Información Importante"
+    "StatisticsTitle": "Información Importante",
+    "sidebar": {
+      "Navigation": "Navegación",
+      "YourRoles": "Sus roles",
+      "NoRoles": "No se devolvieron roles para esta cuenta."
+    }
   },
   "notFound": {
     "404": "404",

@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "You have no widgets displayed. Goto",
     "NoWidgets2": "to configure available widgets",
-    "StatisticsTitle": "Some Important Stuff"
+    "StatisticsTitle": "Some Important Stuff",
+    "sidebar": {
+      "Navigation": "Navigation",
+      "YourRoles": "Your roles",
+      "NoRoles": "No roles were returned for this account."
+    }
   },
   "notFound": {
     "404": "404",

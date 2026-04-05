@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "Keine Elemente zur Anzeige vorhanden. Gehe zu",
     "NoWidgets2": "um die Anzeige zu konfigurieren",
-    "StatisticsTitle": "Irgendwas ganz Wichtiges"
+    "StatisticsTitle": "Irgendwas ganz Wichtiges",
+    "sidebar": {
+      "Navigation": "Navigation",
+      "YourRoles": "Ihre Rollen",
+      "NoRoles": "Für dieses Konto wurden keine Rollen zurückgegeben."
+    }
   },
   "notFound": {
     "404": "404",

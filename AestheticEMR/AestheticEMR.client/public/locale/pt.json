@@ -213,7 +213,12 @@
   "home": {
     "NoWidgets1": "Você não possui widgets a serem mostrados. Ir para",
     "NoWidgets2": "configurar widgets disponíveis",
-    "StatisticsTitle": "Alguma coisa importante"
+    "StatisticsTitle": "Alguma coisa importante",
+    "sidebar": {
+      "Navigation": "Navegação",
+      "YourRoles": "As suas funções",
+      "NoRoles": "Não foram devolvidas funções para esta conta."
+    }
   },
   "notFound": {
     "404": "404",
