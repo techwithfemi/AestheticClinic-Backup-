@@ -1,0 +1,61 @@
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav mode="side" opened class="sidenav" [class.collapsed]="isSidebarCollapsed">
+    <div class="sidebar-header">
+      <img src="assets/images/logo.png" alt="EMR Logo" class="logo">
+      <div class="user-info">
+        <span class="user-name">{{ fullName }}</span>
+        <span class="user-status">Online</span>
+      </div>
+      <button mat-icon-button type="button" class="sidebar-collapse-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <mat-icon>{{ isSidebarCollapsed ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      </button>
+    </div>
+
+    <mat-nav-list>
+      <ng-container *ngFor="let item of menuEntries">
+        <mat-expansion-panel *ngIf="item.item.subItems && item.item.subItems.length > 0" class="mat-elevation-z0">
+          <mat-expansion-panel-header>
+            <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
+            <mat-panel-title class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
+            <a mat-list-item *ngFor="let sub of item.item.subItems"
+               [routerLink]="[item.item.route, sub.path]"
+               routerLinkActive="active-sub-item"
+               title="{{ sub.label }}">
+              <span class="subitem-label">{{ sub.label }}</span>
+            </a>
+          </mat-nav-list>
+        </mat-expansion-panel>
+
+        <ng-container *ngIf="!item.item.subItems || item.item.subItems.length === 0">
+          <a mat-list-item [routerLink]="[item.item.route]"
+             routerLinkActive="active-root-item"
+             title="{{ item.title }}">
+            <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
+            <span class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+          </a>
+        </ng-container>
+      </ng-container>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="main-toolbar">
+      <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span>AestheticEMR - Clinic Management</span>
+      <span class="spacer"></span>
+      <button mat-icon-button type="button"><mat-icon>notifications</mat-icon></button>
+      <button mat-button type="button" (click)="logout()" class="logout-btn">
+        <mat-icon>logout</mat-icon> Log out
+      </button>
+    </mat-toolbar>
+
+    <div class="page-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

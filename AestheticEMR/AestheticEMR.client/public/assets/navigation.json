@@ -1,0 +1,76 @@
+{
+  "Static_Top": {
+    "Dashboard": {
+      "route": "dashboard",
+      "icon": "dashboard",
+      "subItems": []
+    }
+  },
+  "Dynamic_Roles": {
+    "Frontdesk": {
+      "route": "records",
+      "icon": "folder_shared",
+      "subItems": [
+        { "label": "Patient Search", "path": "search" },
+        { "label": "Recent Charts", "path": "recent" }
+      ]
+    },
+    "Laser": {
+      "route": "laser",
+      "icon": "flare",
+      "subItems": [
+        { "label": "Procedure Logs", "path": "logs" },
+        { "label": "Safety Check", "path": "safety" }
+      ]
+    },
+    "Spa": {
+      "route": "spa",
+      "icon": "spa",
+      "subItems": [
+        { "label": "Service Menu", "path": "services" }
+      ]
+    },
+    "Dental": {
+      "route": "dental",
+      "icon": "settings_tooth",
+      "subItems": [
+        { "label": "Odontogram", "path": "chart" },
+        { "label": "Imaging", "path": "xray" }
+      ]
+    },
+    "Aesthetics": {
+      "route": "aesthetics",
+      "icon": "face",
+      "subItems": [
+        { "label": "Consultations", "path": "consults" }
+      ]
+    },
+    "Billing": {
+      "route": "billing",
+      "icon": "payments",
+      "subItems": [
+        { "label": "Invoices", "path": "invoices" },
+        { "label": "Claims", "path": "claims" }
+      ]
+    },
+    "Admin": {
+      "route": "admin",
+      "icon": "admin_panel_settings",
+      "subItems": [
+        { "label": "User Management", "path": "users" },
+        { "label": "Audit Logs", "path": "audit" }
+      ]
+    }
+  },
+  "Settings": {
+    "Settings": {
+      "route": "settings",
+      "icon": "settings",
+      "subItems": [
+        { "label": "My Profile", "path": "profile" },
+        { "label": "Security", "path": "security" },
+        { "label": "Preferences", "path": "prefs" }
+      ]
+    }
+  }
+}

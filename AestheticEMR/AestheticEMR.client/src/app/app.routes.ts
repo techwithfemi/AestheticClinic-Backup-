@@ -1,61 +1,57 @@
-// ---------------------------------------
-// Email: quickapp@ebenmonney.com
-// Templates: www.ebenmonney.com/templates
-// (c) 2024 www.ebenmonney.com/mit-license
-// ---------------------------------------
-
 import { Routes } from '@angular/router';
+import { LoginComponent } from './components/login/login.component';
+import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { AuthGuard } from './services/auth-guard';
 
 export const routes: Routes = [
-  {
-    path: '',
-    loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent),
-    canActivate: [AuthGuard],
-    title: 'Home'
-  },
+  // 1. PUBLIC ROUTE: Login (No Sidebar/Header)
   {
     path: 'login',
-    loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent),
-    title: 'Login'
+    component: LoginComponent,
+    title: 'Login - AestheticEMR'
   },
+
+  // 2. PROTECTED ROUTES: Wrapped in MainLayout
   {
-    path: 'customers',
-    loadComponent: () => import('./components/customers/customers.component').then(m => m.CustomersComponent),
-    canActivate: [AuthGuard],
-    title: 'Customers'
+    path: '',
+    component: MainLayoutComponent,
+    canActivate: [AuthGuard], // Uses the boilerplate's existing AuthGuard
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+
+      // Dashboard
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./components/home/home.component')
+          .then(m => m.HomeComponent)
+      },
+
+      // Feature Routes
+      {
+        path: 'dental',
+        loadChildren: () => import('./features/dental/dental.routes')
+          .then(m => m.dentalRoutes)
+      },
+      {
+        path: 'billing',
+        loadChildren: () => import('./features/billing/billing.routes')
+          .then(m => m.billingRoutes)
+      },
+      {
+        path: 'frontdesk',
+        loadChildren: () => import('./features/frontdesk/frontdesk.routes')
+          .then(m => m.frontdeskRoutes)
+      },
+
+      // Settings & Profile (Replacing the boilerplate settingsTab)
+      {
+        path: 'settings',
+        loadComponent: () => import('./components/settings/settings.component')
+          .then(m => m.SettingsComponent)
+      }
+    ]
   },
-  {
-    path: 'products',
-    loadComponent: () => import('./components/products/products.component').then(m => m.ProductsComponent),
-    canActivate: [AuthGuard],
-    title: 'Products'
-  },
-  {
-    path: 'orders',
-    loadComponent: () => import('./components/orders/orders.component').then(m => m.OrdersComponent),
-    canActivate: [AuthGuard],
-    title: 'Orders'
-  },
-  {
-    path: 'settings',
-    loadComponent: () => import('./components/settings/settings.component').then(m => m.SettingsComponent),
-    canActivate: [AuthGuard],
-    title: 'Settings'
-  },
-  {
-    path: 'about',
-    loadComponent: () => import('./components/about/about.component').then(m => m.AboutComponent),
-    title: 'About Us'
-  },
-  {
-    path: 'home',
-    redirectTo: '/',
-    pathMatch: 'full'
-  },
-  {
-    path: '**',
-    loadComponent: () => import('./components/not-found/not-found.component').then(m => m.NotFoundComponent),
-    title: 'Page Not Found'
-  }
+
+  // 3. FALLBACK: Redirect to login
+  { path: '**', redirectTo: 'login' }
 ];
