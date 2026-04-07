@@ -58,6 +58,7 @@
       "icon": "admin_panel_settings",
       "subItems": [
         { "label": "User Management", "path": "users" },
+        { "label": "Role Management", "path": "roles" },
         { "label": "Audit Logs", "path": "audit" }
       ]
     }

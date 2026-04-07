@@ -1,5 +1,5 @@
-<mat-sidenav-container class="sidenav-container" autosize>
-  <mat-sidenav #sidenav mode="side" opened class="sidenav" [class.collapsed]="isSidebarCollapsed">
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav mode="side" opened class="sidenav" [class.collapsed]="isSidebarCollapsed">
     <div class="sidebar-header">
       <img src="assets/images/logo.png" alt="EMR Logo" class="logo">
       <div class="user-info">
@@ -46,23 +46,12 @@
       <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle sidebar">
         <mat-icon>menu</mat-icon>
       </button>
-      <span class="brand-title">AestheticEMR - Clinic Management</span>
-
+      <span>AestheticEMR - Clinic Management</span>
       <span class="spacer"></span>
-
-      <div class="toolbar-actions">
-        <button mat-icon-button type="button" class="action-icon-btn">
-          <mat-icon>notifications_none</mat-icon>
-          <span class="notification-badge"></span>
-        </button>
-
-        <div class="toolbar-divider"></div>
-
-        <button mat-button type="button" (click)="logout()" class="logout-btn">
-          <mat-icon>logout</mat-icon>
-          <span>Log out</span>
-        </button>
-      </div>
+      <button mat-icon-button type="button"><mat-icon>notifications</mat-icon></button>
+      <button mat-button type="button" (click)="logout()" class="logout-btn">
+        <mat-icon>logout</mat-icon> Log out
+      </button>
     </mat-toolbar>
 
     <div class="page-content">

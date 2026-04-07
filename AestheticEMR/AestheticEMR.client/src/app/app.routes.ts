@@ -42,6 +42,26 @@ export const routes: Routes = [
         loadChildren: () => import('./features/frontdesk/frontdesk.routes')
           .then(m => m.frontdeskRoutes)
       },
+      {
+        path: 'laser',
+        loadChildren: () => import('./features/laser/laser.routes')
+          .then(m => m.laserRoutes)
+      },
+      {
+        path: 'spa',
+        loadChildren: () => import('./features/spa/spa.routes')
+          .then(m => m.spaRoutes)
+      },
+      {
+        path: 'aesthetics',
+        loadChildren: () => import('./features/aesthetics/aesthetics.routes')
+          .then(m => m.aestheticsRoutes)
+      },
+      {
+        path: 'admin',
+        loadChildren: () => import('./features/admin/admin.routes')
+          .then(m => m.adminRoutes)
+      },
 
       // Settings & Profile (Replacing the boilerplate settingsTab)
       {
