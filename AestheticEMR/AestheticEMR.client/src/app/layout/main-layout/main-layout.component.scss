@@ -186,10 +186,60 @@
   background: white;
   color: #2c3e50;
   border-bottom: 1px solid #e0e4e8;
+}
 
-  .logout-btn {
+.toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// Strip default Material state-layer backgrounds from all toolbar buttons
+:host ::ng-deep .main-toolbar {
+  button,
+  .mat-mdc-button-base {
+    border: 0 !important;
+    outline: 0;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  // Icon buttons (menu toggle, notifications)
+  .mat-mdc-icon-button {
+    --mdc-icon-button-state-layer-color: transparent;
+    --mat-icon-button-state-layer-color: transparent;
+    background: transparent !important;
+    color: #546e7a;
+
+    &:hover,
+    &:focus-visible {
+      --mdc-icon-button-state-layer-color: #546e7a;
+      background-color: rgba(84, 110, 122, 0.08) !important;
+    }
+
+    .mat-mdc-button-persistent-ripple,
+    .mat-mdc-button-ripple {
+      border-radius: 50%;
+    }
+  }
+
+  // Text button (Log out)
+  .mat-mdc-button.logout-btn {
+    --mdc-text-button-label-text-color: #2c3e50;
+    --mat-text-button-state-layer-color: transparent;
+    background: transparent !important;
+    color: #2c3e50;
     margin-left: 8px;
-    color: white;
+
+    &:hover,
+    &:focus-visible {
+      --mat-text-button-state-layer-color: #2c3e50;
+      background-color: rgba(44, 62, 80, 0.07) !important;
+    }
+
+    mat-icon {
+      color: #546e7a;
+    }
   }
 }
 
@@ -201,4 +251,78 @@
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 991.98px) {
+  .sidenav {
+    width: 280px;
+    max-width: 85vw;
+    border-right: none;
+  }
+
+  .sidenav.collapsed {
+    width: 280px !important;
+  }
+
+  :host ::ng-deep .sidenav.collapsed .mat-drawer-inner-container,
+  :host ::ng-deep .sidenav.collapsed .mat-drawer-inner-container > div {
+    width: 280px !important;
+  }
+
+  .sidenav.collapsed .logo,
+  .sidenav.collapsed .user-info,
+  .sidenav.collapsed .menu-title,
+  .sidenav.collapsed .sub-nav-list {
+    display: initial;
+  }
+
+  .sidenav.collapsed .mat-list-item,
+  .sidenav.collapsed .mat-expansion-panel-header {
+    justify-content: flex-start !important;
+  }
+
+  .main-toolbar {
+    min-height: 56px;
+    padding: 0 8px;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toolbar-actions {
+    align-items: center;
+    gap: 4px;
+  }
+
+  .toolbar-divider,
+  .action-icon-btn {
+    display: none;
+  }
+
+  .logout-btn {
+    min-width: 40px;
+
+    span {
+      display: none;
+    }
+  }
+
+  .page-content {
+    padding: 16px;
+    min-height: calc(100vh - 56px);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .brand-title {
+    max-width: 180px;
+  }
+
+  .page-content {
+    padding: 12px;
+  }
 }

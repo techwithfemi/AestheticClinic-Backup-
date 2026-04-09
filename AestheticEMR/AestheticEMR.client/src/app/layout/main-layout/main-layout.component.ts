@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
@@ -7,6 +7,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 
 interface NavigationItem {
@@ -20,7 +21,7 @@ interface NavigationItem {
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    MatSidenavModule, MatListModule, MatIconModule, MatToolbarModule, MatExpansionModule
+    MatSidenavModule, MatListModule, MatIconModule, MatToolbarModule, MatExpansionModule, MatButtonModule
   ],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.scss']
@@ -28,6 +29,7 @@ interface NavigationItem {
 export class MainLayoutComponent implements OnInit {
   private authService = inject(AuthService);
   private http = inject(HttpClient);
+  private readonly mobileBreakpoint = 992;
 
   menuEntries: Array<{ title: string; item: NavigationItem }> = [];
 
@@ -36,6 +38,8 @@ export class MainLayoutComponent implements OnInit {
   }
 
   isSidebarCollapsed = false;
+  isMobileViewport = false;
+  isSidenavOpened = true;
 
   get fullName(): string {
     return this.authService.currentUser?.fullName || 'User';
@@ -62,7 +66,24 @@ export class MainLayoutComponent implements OnInit {
     });
   }
 
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportState();
+  }
+
+  private updateViewportState(): void {
+    const width = typeof window !== 'undefined' ? window.innerWidth : this.mobileBreakpoint;
+    this.isMobileViewport = width < this.mobileBreakpoint;
+
+    if (this.isMobileViewport) {
+      this.isSidenavOpened = false;
+      this.isSidebarCollapsed = false;
+    }
+  }
+
   ngOnInit(): void {
+    this.updateViewportState();
+
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
         const top = Object.entries(json.Static_Top || {}).map(([title, item]) => ({ title, item }));
@@ -85,7 +106,18 @@ export class MainLayoutComponent implements OnInit {
   }
 
   toggleSidebar(): void {
+    if (this.isMobileViewport) {
+      this.isSidenavOpened = !this.isSidenavOpened;
+      return;
+    }
+
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+  }
+
+  closeSidenavOnMobile(): void {
+    if (this.isMobileViewport) {
+      this.isSidenavOpened = false;
+    }
   }
 
   logout() {

@@ -1,5 +1,11 @@
 <mat-sidenav-container class="sidenav-container" autosize>
-  <mat-sidenav #sidenav mode="side" opened class="sidenav" [class.collapsed]="isSidebarCollapsed">
+  <mat-sidenav
+    #sidenav
+    class="sidenav"
+    [mode]="isMobileViewport ? 'over' : 'side'"
+    [opened]="isMobileViewport ? isSidenavOpened : true"
+    [fixedInViewport]="isMobileViewport"
+    [class.collapsed]="isSidebarCollapsed && !isMobileViewport">
     <div class="sidebar-header">
       <img src="assets/images/logo.png" alt="EMR Logo" class="logo">
       <div class="user-info">
@@ -20,6 +26,7 @@
             <a mat-list-item *ngFor="let sub of item.item.subItems"
                [routerLink]="[item.item.route, sub.path]"
                routerLinkActive="active-sub-item"
+              (click)="closeSidenavOnMobile()"
                title="{{ sub.label }}">
               <span class="subitem-label">{{ sub.label }}</span>
             </a>
@@ -29,6 +36,7 @@
         <ng-container *ngIf="!item.item.subItems || item.item.subItems.length === 0">
           <a mat-list-item [routerLink]="[item.item.route]"
              routerLinkActive="active-root-item"
+             (click)="closeSidenavOnMobile()"
              title="{{ item.title }}">
             <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
             <span class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
@@ -48,16 +56,12 @@
       <span class="spacer"></span>
 
       <div class="toolbar-actions">
-        <button mat-icon-button type="button" class="action-icon-btn">
+        <button mat-icon-button type="button" class="action-icon-btn" aria-label="Notifications">
           <mat-icon>notifications_none</mat-icon>
-          <span class="notification-badge"></span>
         </button>
 
-        <div class="toolbar-divider"></div>
-
         <button mat-button type="button" (click)="logout()" class="logout-btn">
-          <mat-icon>logout</mat-icon>
-          <span>Log out</span>
+          Log out
         </button>
       </div>
     </mat-toolbar>
