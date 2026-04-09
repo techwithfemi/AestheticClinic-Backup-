@@ -476,6 +476,8 @@ When creating a new entity with full CRUD:
 
 ### Additional Guidelines for the frontEnd:
 
+- when creating a report  component file inside features/reports folder, follow this naming convention (deptName-Compname-report)
+eg 'billing=receipt-report' a report for billing dept/user role
 - Use Bash for scripting and automation tasks (e.g., build scripts, deployment scripts)
 - Use Angular signals for state management
 - Henceforth Use Angular material and material icons for UI consistency

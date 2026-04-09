@@ -36,7 +36,14 @@
     "Orders": "Pedidos",
     "NotFound": "No Encontrado",
     "About": "Acerca de",
-    "Settings": "Configuración"
+    "Settings": "Configuración",
+    "Management": "Management"
+  },
+  "management": {
+    "title": "Management workspace",
+    "subtitle": "Use this area for management-specific tools and shared operational views as they are added.",
+    "reportsTitle": "Shared reports",
+    "reportsNote": "Management members use the existing reports section to review activity across all departments."
   },
   "login": {
     "Login": "Iniciar Sesión",

@@ -36,7 +36,14 @@
     "Orders": "Orders",
     "NotFound": "Not-Found",
     "About": "About",
-    "Settings": "Settings"
+    "Settings": "Settings",
+    "Management": "Management"
+  },
+  "management": {
+    "title": "Management workspace",
+    "subtitle": "Use this area for management-specific tools and shared operational views as they are added.",
+    "reportsTitle": "Shared reports",
+    "reportsNote": "Management members use the existing reports section to review activity across all departments."
   },
   "login": {
     "Login": "Login",

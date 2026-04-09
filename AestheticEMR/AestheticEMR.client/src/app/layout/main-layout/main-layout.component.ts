@@ -41,6 +41,27 @@ export class MainLayoutComponent implements OnInit {
     return this.authService.currentUser?.fullName || 'User';
   }
 
+  private get normalizedRoles(): string[] {
+    return this.userRoles.map(role => role.trim().toLowerCase()).filter(Boolean);
+  }
+
+  private get isManagementUser(): boolean {
+    return this.normalizedRoles.includes('management');
+  }
+
+  private filterReportSubItems(subItems: Array<{ path: string; label: string }>): Array<{ path: string; label: string }> {
+    if (this.isManagementUser) {
+      return subItems;
+    }
+
+    const allowedPrefixes = new Set(this.normalizedRoles);
+
+    return subItems.filter(sub => {
+      const reportPrefix = (sub.path || '').split('-')[0].toLowerCase();
+      return reportPrefix.length > 0 && allowedPrefixes.has(reportPrefix);
+    });
+  }
+
   ngOnInit(): void {
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
@@ -48,7 +69,15 @@ export class MainLayoutComponent implements OnInit {
         const dynamic = Object.entries(json.Dynamic_Roles || {})
           .filter(([roleName]) => this.userRoles.includes(roleName))
           .map(([title, item]) => ({ title, item }));
-        const reports = Object.entries(json.Reports || {}).map(([title, item]) => ({ title, item }));
+        const reports = Object.entries(json.Reports || {})
+          .map(([title, item]) => ({
+            title,
+            item: {
+              ...item,
+              subItems: this.filterReportSubItems(item.subItems || [])
+            }
+          }))
+          .filter(entry => (entry.item.subItems?.length || 0) > 0);
         const bottom = Object.entries(json.Settings || {}).map(([title, item]) => ({ title, item }));
 
         this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];

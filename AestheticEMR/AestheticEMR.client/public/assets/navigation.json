@@ -53,6 +53,11 @@
         { "label": "Claims", "path": "claims" }
       ]
     },
+    "Management": {
+      "route": "management",
+      "icon": "manage_accounts",
+      "subItems": []
+    },
     "Admin": {
       "route": "admin",
       "icon": "admin_panel_settings",

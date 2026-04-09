@@ -36,7 +36,14 @@
     "Orders": "订单",
     "NotFound": "未找到",
     "About": "关于",
-    "Settings": "设置"
+    "Settings": "设置",
+    "Management": "Management"
+  },
+  "management": {
+    "title": "Management workspace",
+    "subtitle": "Use this area for management-specific tools and shared operational views as they are added.",
+    "reportsTitle": "Shared reports",
+    "reportsNote": "Management members use the existing reports section to review activity across all departments."
   },
   "login": {
     "Login": "登录",

@@ -53,6 +53,11 @@ export const routes: Routes = [
           .then(m => m.spaRoutes)
       },
       {
+        path: 'management',
+        loadChildren: () => import('./features/management/management.routes')
+          .then(m => m.managementRoutes)
+      },
+      {
         path: 'aesthetics',
         loadChildren: () => import('./features/aesthetics/aesthetics.routes')
           .then(m => m.aestheticsRoutes)
