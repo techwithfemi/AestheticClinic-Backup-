@@ -63,6 +63,35 @@
       ]
     }
   },
+  "Reports": {
+    "Reports": {
+      "route": "reports",
+      "icon": "analytics",
+      "subItems": [
+        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report" },
+        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report" },
+        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report" },
+        { "label": "Laser Sessions Report", "path": "laser-sessions-report" },
+        { "label": "Laser Safety Report", "path": "laser-safety-report" },
+        { "label": "Laser Utilization Report", "path": "laser-utilization-report" },
+        { "label": "Spa Services Report", "path": "spa-services-report" },
+        { "label": "Spa Therapists Report", "path": "spa-therapists-report" },
+        { "label": "Spa Packages Report", "path": "spa-packages-report" },
+        { "label": "Dental Treatments Report", "path": "dental-treatments-report" },
+        { "label": "Dental Imaging Report", "path": "dental-imaging-report" },
+        { "label": "Dental Cases Report", "path": "dental-cases-report" },
+        { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report" },
+        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report" },
+        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report" },
+        { "label": "Billing Receipt Report", "path": "billing-receipt-report" },
+        { "label": "Billing Claims Report", "path": "billing-claims-report" },
+        { "label": "Billing Revenue Report", "path": "billing-revenue-report" },
+        { "label": "Admin Users Report", "path": "admin-users-report" },
+        { "label": "Admin Audit Report", "path": "admin-audit-report" },
+        { "label": "Admin Compliance Report", "path": "admin-compliance-report" }
+      ]
+    }
+  },
   "Settings": {
     "Settings": {
       "route": "settings",

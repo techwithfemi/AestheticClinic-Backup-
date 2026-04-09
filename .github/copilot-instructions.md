@@ -18,6 +18,7 @@ Reference UserAccountController, UserRoleController, and UserVMs.cs for real imp
 QuickApp is a **hardened foundation** that solves the hard problems so AI can focus on features:
 
 ### ✅ Already Solved (Don't Let AI Recreate)
+
 - **Authentication**: OpenIddict/OAuth2 with JWT tokens
 - **Authorization**: Role and permission-based policies
 - **Error Handling**: Centralized patterns
@@ -28,6 +29,7 @@ QuickApp is a **hardened foundation** that solves the hard problems so AI can fo
 - **Service Layer**: EndpointBase with automatic token refresh
 
 ### 🎯 What AI Should Build
+
 - **New Entities**: Following BaseEntity pattern
 - **New Features**: Following existing CRUD patterns
 - **UI Components**: Following Angular component structure
@@ -57,11 +59,13 @@ QuickApp.Server/
 ### Entity Models
 
 **ALL entities MUST inherit from `BaseEntity`** which provides:
+
 - `Id` (int)
 - `CreatedBy`, `UpdatedBy` (string?, max 40 chars)
 - `CreatedDate`, `UpdatedDate` (DateTime)
 
 **Entity Rules:**
+
 1. ✅ **MUST inherit from `BaseEntity`**
 2. ✅ **Use `required` keyword** for non-nullable reference types
 3. ✅ **Use `string?` for optional string properties**
@@ -77,6 +81,7 @@ QuickApp.Server/
 **Validation**: Use **DataAnnotations** for ViewModel validation. See `UserVMs.cs` for examples. FluentValidation is available but DataAnnotations is preferred.
 
 **ViewModel Rules:**
+
 1. ✅ **Use `VM` suffix** (e.g., `UserVM`, `RoleVM`)
 2. ✅ **Use DataAnnotations** (`[Required]`, `[StringLength]`, `[EmailAddress]`, etc.)
 3. ✅ **Flatten navigation properties** when needed (e.g., `CategoryName` instead of `Category.Name`)
@@ -92,6 +97,7 @@ QuickApp.Server/
 **Implementation Location**: `QuickApp.Core/Services/{Domain}/`
 
 **Service Rules:**
+
 1. ✅ **Primary constructors are preferred** (C# 12), but traditional constructors are acceptable
 2. ✅ **Inject `ApplicationDbContext`** directly, not repository pattern
 3. ✅ **Use `Include()` for eager loading** navigation properties
@@ -103,6 +109,7 @@ QuickApp.Server/
 9. ❌ **DO NOT add authorization logic** - that belongs in controllers
 
 **Service Registration** (in `Program.cs`):
+
 ```csharp
 builder.Services.AddScoped<IProductService, ProductService>();
 ```
@@ -110,12 +117,14 @@ builder.Services.AddScoped<IProductService, ProductService>();
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
+
 - `_mapper` (IMapper)
 - `_logger` (ILogger)
 - `GetCurrentUserId()` method
 - `AddModelError()` methods
 
 **Controller Rules:**
+
 1. ✅ **MUST inherit from `BaseApiController`**
 2. ✅ **Use `[Route("api/[controller]")]`** attribute (or custom route like `[Route("api/account")]`)
 3. ✅ **Use `[ApiController]`** attribute (inherited from BaseApiController)
@@ -130,6 +139,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 12. ❌ **DO NOT return entities directly** - always map to ViewModels
 
 **Reference Implementations:**
+
 - `UserAccountController.cs` - Shows authorization patterns (inline `AuthorizeAsync()` checks and policy-based `[Authorize]`)
 - `UserRoleController.cs` - Shows CRUD patterns with authorization
 
@@ -138,6 +148,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute):
+
 ```csharp
 [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
@@ -145,6 +156,7 @@ public async Task<IActionResult> GetUsers() { ... }
 ```
 
 2. **Inline authorization checks** (for resource-based authorization):
+
 ```csharp
 [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
@@ -157,6 +169,7 @@ public async Task<IActionResult> GetUserById(string id)
 ```
 
 **Authorization Rules:**
+
 1. ✅ **All endpoints must be protected** - no exceptions
 2. ✅ **Use policy constants** from `AuthPolicies` class
 3. ✅ **Use inline checks** for resource-based authorization
@@ -172,6 +185,7 @@ public async Task<IActionResult> GetUserById(string id)
 **Location**: `QuickApp.Server/Configuration/MappingProfile.cs`
 
 **Mapping Rules:**
+
 1. ✅ **Add mappings for all new entities** to their ViewModels
 2. ✅ **Use `ReverseMap()`** when bidirectional mapping is needed
 3. ✅ **Use `ForMember()`** to customize property mappings
@@ -181,6 +195,7 @@ public async Task<IActionResult> GetUserById(string id)
 ### Error Handling
 
 **Error Handling Pattern:**
+
 ```csharp
 [HttpDelete("{id}")]
 public async Task<IActionResult> Delete(int id)
@@ -190,7 +205,7 @@ public async Task<IActionResult> Delete(int id)
         var item = _service.GetById(id);
         if (item == null)
             return NotFound(id);
-        
+
         await _service.DeleteAsync(id);
         return NoContent();
     }
@@ -204,6 +219,7 @@ public async Task<IActionResult> Delete(int id)
 ```
 
 **Error Handling Rules:**
+
 1. ✅ **Use custom exceptions** for domain-specific errors
 2. ✅ **Log errors** using `_logger.LogError()`
 3. ✅ **Return appropriate HTTP status codes**
@@ -227,6 +243,7 @@ quickapp.client/src/app/
 ### Components
 
 **Component Rules:**
+
 1. ✅ **Use standalone components** - no NgModules
 2. ✅ **Use `inject()` function** for dependency injection (not constructor injection)
 3. ✅ **Implement `OnInit`** for initialization logic
@@ -245,11 +262,13 @@ quickapp.client/src/app/
 ### Services
 
 **ALL API services MUST extend `EndpointBase`** which provides:
+
 - Automatic token refresh on 401 errors
 - Request headers with Bearer token
 - Error handling with retry logic
 
 **Service Rules:**
+
 1. ✅ **MUST extend `EndpointBase`**
 2. ✅ **Use `@Injectable({ providedIn: 'root' })`**
 3. ✅ **Use `inject()` function** for dependencies
@@ -264,6 +283,7 @@ quickapp.client/src/app/
 ### Models
 
 **Model Rules:**
+
 1. ✅ **Use TypeScript interfaces** (not classes for data models)
 2. ✅ **Use `?` for optional properties**
 3. ✅ **Match ViewModel structure** from backend
@@ -274,13 +294,15 @@ quickapp.client/src/app/
 ### Routing
 
 **Routing Rules:**
+
 1. ✅ **Use lazy loading** with `loadComponent`
 2. ✅ **Use `AuthGuard`** for protected routes
 3. ✅ **Set `title`** for each route
-4. ✅ **Use `path: '**'`** for 404 route (must be last)
+4. ✅ **Use `path: '**'`\*\* for 404 route (must be last)
 5. ❌ **DO NOT use eager loading** - always lazy load feature components
 
 **Example:**
+
 ```typescript
 {
   path: 'products',
@@ -298,12 +320,14 @@ quickapp.client/src/app/
 **Files**: `en.json`, `fr.json`, `de.json`, `es.json`, `pt.json`, `zh.json`, `ko.json`, `ar.json`
 
 **Usage in Templates:**
+
 ```html
 <h4>{{ 'Products' | translate }}</h4>
 <p>{{ 'Description' | translate }}</p>
 ```
 
 **Translation Rules:**
+
 1. ✅ **Add keys to `en.json` first** (primary language)
 2. ✅ **Add same keys to all other locale files** (can use English as placeholder)
 3. ✅ **Use nested structure** for organization (e.g., `pageHeader.Products`, `mainMenu.Customers`)
@@ -313,11 +337,12 @@ quickapp.client/src/app/
 ### Error Handling
 
 **Error Handling Pattern:**
+
 ```typescript
 loadData(): void {
   this.alertService.startLoadingMessage();
   this.loadingIndicator = true;
-  
+
   this.endpoint.getItemsEndpoint<Item[]>()
     .subscribe({
       next: items => {
@@ -340,6 +365,7 @@ loadData(): void {
 ```
 
 **Error Handling Rules:**
+
 1. ✅ **Use `AlertService.startLoadingMessage()`** before async operations
 2. ✅ **Use `AlertService.stopLoadingMessage()`** after operations complete
 3. ✅ **Use `AlertService.showStickyMessage()`** for errors
@@ -353,6 +379,7 @@ loadData(): void {
 When implementing new features, reference these real implementations:
 
 ### Backend
+
 - **UserAccountController.cs** - Authorization patterns (inline checks, policies), CRUD operations
 - **UserRoleController.cs** - CRUD patterns with authorization
 - **UserVMs.cs** - ViewModel validation with DataAnnotations
@@ -360,6 +387,7 @@ When implementing new features, reference these real implementations:
 - **CustomerService.cs** - Service implementation with primary constructor
 
 ### Frontend
+
 - Reference existing components in `quickapp.client/src/app/components/`
 - Reference endpoint services in `quickapp.client/src/app/services/`
 
@@ -368,6 +396,7 @@ When implementing new features, reference these real implementations:
 ## Naming Conventions
 
 ### Backend
+
 - **Entities**: PascalCase, singular (e.g., `Product`, `Customer`)
 - **ViewModels**: PascalCase with `VM` suffix (e.g., `ProductVM`, `UserVM`)
 - **Services**: PascalCase with `Service` suffix (e.g., `ProductService`)
@@ -375,6 +404,7 @@ When implementing new features, reference these real implementations:
 - **Files**: Match class name (e.g., `Product.cs`, `ProductVM.cs`)
 
 ### Frontend
+
 - **Components**: PascalCase with `Component` suffix (e.g., `ProductsComponent`)
 - **Services**: PascalCase with `Service` or `Endpoint` suffix (e.g., `ProductEndpoint`)
 - **Models**: PascalCase interface (e.g., `Product`)
@@ -387,6 +417,7 @@ When implementing new features, reference these real implementations:
 When creating a new entity with full CRUD:
 
 **Backend:**
+
 - [ ] Create entity in `QuickApp.Core/Models/{Domain}/{EntityName}.cs` inheriting `BaseEntity`
 - [ ] Create ViewModel in `QuickApp.Server/ViewModels/{Domain}/{EntityName}VM.cs` with DataAnnotations validation
 - [ ] Create interface in `QuickApp.Core/Services/{Domain}/Interfaces/I{EntityName}Service.cs`
@@ -399,6 +430,7 @@ When creating a new entity with full CRUD:
 - [ ] Create migration: `dotnet ef migrations add Add{EntityName}`
 
 **Frontend:**
+
 - [ ] Create model interface in `models/{feature}.model.ts`
 - [ ] Create endpoint service in `services/{feature}-endpoint.service.ts` extending `EndpointBase`
 - [ ] Create component in `components/{feature}/{feature}.component.ts`
@@ -418,6 +450,7 @@ When creating a new entity with full CRUD:
 ## Critical Rules
 
 ### ❌ Never Do This
+
 - Don't create new authentication mechanisms
 - Don't bypass BaseApiController
 - Don't access DbContext from controllers
@@ -429,6 +462,7 @@ When creating a new entity with full CRUD:
 - Don't hardcode UI strings (use translations)
 
 ### ✅ Always Do This
+
 - Inherit from BaseEntity for entities
 - Inherit from BaseApiController for controllers
 - Extend EndpointBase for API services
@@ -440,7 +474,12 @@ When creating a new entity with full CRUD:
 - Add translation keys for new UI text
 - Follow naming conventions exactly
 
+### Additional Guidelines for the frontEnd:
+
+- Use Bash for scripting and automation tasks (e.g., build scripts, deployment scripts)
+- Use Angular signals for state management
+- Henceforth Use Angular material and material icons for UI consistency
+
 ---
 
 **Remember**: QuickApp provides the foundation. AI fills in features following established patterns. Reference real implementations (UserAccountController, UserRoleController, UserVMs) for concrete examples.
-

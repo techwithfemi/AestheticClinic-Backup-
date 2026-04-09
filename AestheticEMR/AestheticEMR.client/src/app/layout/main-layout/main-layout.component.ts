@@ -42,15 +42,16 @@ export class MainLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
+    this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
         const top = Object.entries(json.Static_Top || {}).map(([title, item]) => ({ title, item }));
         const dynamic = Object.entries(json.Dynamic_Roles || {})
           .filter(([roleName]) => this.userRoles.includes(roleName))
           .map(([title, item]) => ({ title, item }));
+        const reports = Object.entries(json.Reports || {}).map(([title, item]) => ({ title, item }));
         const bottom = Object.entries(json.Settings || {}).map(([title, item]) => ({ title, item }));
 
-        this.menuEntries = [...top, ...dynamic, ...bottom];
+        this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];
       });
   }
 

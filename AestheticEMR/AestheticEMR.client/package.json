@@ -55,6 +55,7 @@
     "chart.js": "^4.5.1",
     "font-awesome": "^4.7.0",
     "jest-editor-support": "*",
+    "material-design-icons-iconfont": "^6.7.0",
     "ng2-charts": "^8.0.0",
     "ngx-toasta": "^4.0.0",
     "run-script-os": "*",

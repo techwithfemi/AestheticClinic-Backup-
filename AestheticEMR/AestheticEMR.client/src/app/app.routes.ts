@@ -62,6 +62,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/admin/admin.routes')
           .then(m => m.adminRoutes)
       },
+      {
+        path: 'reports',
+        loadChildren: () => import('./features/reports/reports.routes')
+          .then(m => m.reportsRoutes)
+      },
 
       // Settings & Profile (Replacing the boilerplate settingsTab)
       {
