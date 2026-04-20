@@ -83,6 +83,33 @@
       "ApiChangedTo": "A API da Web de destino foi alterada para: {{API}}"
     }
   },
+  "retainerships": {
+    "Company Information": "Company Information",
+    "Add Company": "Add Company",
+    "Edit Company": "Edit Company",
+    "Company ID": "Company ID",
+    "Code": "Code",
+    "Name": "Name",
+    "Contact": "Contact",
+    "Phone": "Phone",
+    "Email": "Email",
+    "Active": "Active",
+    "Actions": "Actions",
+    "Company Name": "Company Name",
+    "Contact Person": "Contact Person",
+    "Client Type": "Client Type",
+    "Address": "Address",
+    "Professional Fee": "Professional Fee",
+    "Registration Amount": "Registration Amount",
+    "Yes": "Yes",
+    "No": "No",
+    "Create": "Create",
+    "Update": "Update",
+    "Cancel": "Cancel",
+    "No companies found": "No companies found",
+    "Loading...": "Loading...",
+    "Inactive": "Inactive"
+  },
   "authCallback": {
     "LinkAccount": "Vincular conta {{provider}}",
     "ExistingAccountFound": "Encontramos uma conta com este endereço de e-mail. Entre com sua senha existente para vincular à sua conta {{provider}}.",

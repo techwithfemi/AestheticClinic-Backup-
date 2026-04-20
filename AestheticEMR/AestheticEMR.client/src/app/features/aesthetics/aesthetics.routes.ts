@@ -10,5 +10,10 @@ export const aestheticsRoutes: Routes = [
     path: 'consults',
     loadComponent: () => import('./consults/consults.component')
       .then(m => m.ConsultsComponent)
+  },
+  {
+    path: 'laser',
+    loadChildren: () => import('../laser/laser.routes')
+      .then(m => m.laserRoutes)
   }
 ];

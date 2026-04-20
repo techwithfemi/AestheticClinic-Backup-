@@ -8,6 +8,9 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Account;
+using AestheticEMR.Core.Services.Aesthetics;
+using AestheticEMR.Core.Services.Legacy;
+using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Core.Services.Shop;
 using AestheticEMR.Server.Authorization;
 using AestheticEMR.Server.Authorization.Requirements;
@@ -39,6 +42,22 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, b => b.MigrationsAssembly(migrationsAssembly));
     options.UseOpenIddict();
 });
+
+
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//{
+//    options.UseSqlServer(
+//        builder.Configuration.GetConnectionString("DefaultConnection"),
+//        b => b.MigrationsAssembly("AestheticEMR.Core")); // Add this line!
+//        options.UseOpenIddict();
+//});
+
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseSqlServer(
+//        builder.Configuration.GetConnectionString("DefaultConnection"),
+//        b => b.MigrationsAssembly("AestheticEMR.Core") // Add this line!
+//    ));
+
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -184,7 +203,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);//builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 // Configurations
 builder.Services.Configure<AppSettings>(builder.Configuration);
@@ -195,6 +214,9 @@ builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrdersService, OrdersService>();
+builder.Services.AddScoped<IAestheticService, AestheticService>();
+builder.Services.AddScoped<IHRetainershipService, HRetainershipService>();
+builder.Services.AddScoped<IHPatientService, HPatientService>();
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();

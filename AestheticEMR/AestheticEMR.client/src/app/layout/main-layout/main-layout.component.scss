@@ -99,24 +99,47 @@
 }
 
 .sub-nav-list {
-  padding-left: 40px;
+  padding-left: 0;
   padding-top: 0;
   padding-bottom: 0;
-  margin-top: -4px;
+  margin-top: 0;
 
   a.mat-list-item {
-    min-height: 24px !important;
-    height: auto !important;
-    padding: 0 8px 0 36px !important;
-    font-size: 11px;
+    min-height: 26px !important;
+    height: 26px !important;
+    padding: 0 8px 0 68px !important;
+    font-size: 10px;
     font-weight: 400 !important;
-    line-height: 1.4;
-    margin-bottom: 2px;
+    line-height: 1.2;
+    margin-bottom: 0 !important;
+    border-radius: 4px;
+  }
+
+  a.mat-list-item .mdc-list-item__content {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .subitem-icon {
+    width: 12px;
+    min-width: 12px;
+    height: 12px;
+    font-size: 12px;
+    line-height: 12px;
+    color: #78909c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0;
   }
 
   .subitem-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400 !important;
+    line-height: 1;
   }
 }
 
@@ -166,6 +189,31 @@
     display: flex !important;
     align-items: center !important;
     gap: 8px;
+    direction: ltr;
+  }
+
+  // Keep icon and label order stable even when the document direction is RTL.
+  a.mat-list-item .mdc-list-item__content,
+  .mat-expansion-panel-header .mat-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .mat-expansion-panel-header .mat-expansion-indicator {
+    margin-left: auto;
+  }
+
+  .menu-icon {
+    order: 0;
+  }
+
+  .menu-title,
+  .mat-panel-title {
+    order: 1;
+    margin: 0;
   }
 
   .mat-mdc-list-item {

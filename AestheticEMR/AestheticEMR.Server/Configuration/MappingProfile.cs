@@ -5,9 +5,13 @@
 // ---------------------------------------
 
 using AestheticEMR.Core.Models.Account;
+using AestheticEMR.Core.Models.Aesthetic;
+using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Server.ViewModels.Account;
+using AestheticEMR.Server.ViewModels.Aesthetic;
+using AestheticEMR.Server.ViewModels.Legacy;
 using AestheticEMR.Server.ViewModels.Shop;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
@@ -59,6 +63,24 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<Order, OrderVM>()
                 .ReverseMap();
+
+            CreateMap<AestheticPatient, AestheticPatientVM>()
+                .ReverseMap();
+
+            CreateMap<AestheticConsultation, AestheticConsultationVM>()
+                .ReverseMap();
+
+            CreateMap<AestheticPhoto, AestheticPhotoVM>()
+                .ForMember(d => d.Url, map => map.MapFrom(s => s.FilePath))
+                .ReverseMap()
+                .ForMember(d => d.FilePath, map => map.MapFrom(s => s.Url));
+
+            CreateMap<HRetainership, HRetainershipVM>()
+                .ReverseMap();
+
+            CreateMap<HPatient, HPatientVM>()
+                .ReverseMap()
+                .ForMember(d => d.Pno, map => map.Ignore());
         }
     }
 }

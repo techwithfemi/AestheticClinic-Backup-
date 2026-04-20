@@ -83,6 +83,33 @@
       "ApiChangedTo": "تم تغيير واجهة برمجة تطبيقات الويب المستهدفة إلى: {{API}}"
     }
   },
+  "retainerships": {
+    "Company Information": "Company Information",
+    "Add Company": "Add Company",
+    "Edit Company": "Edit Company",
+    "Company ID": "Company ID",
+    "Code": "Code",
+    "Name": "Name",
+    "Contact": "Contact",
+    "Phone": "Phone",
+    "Email": "Email",
+    "Active": "Active",
+    "Actions": "Actions",
+    "Company Name": "Company Name",
+    "Contact Person": "Contact Person",
+    "Client Type": "Client Type",
+    "Address": "Address",
+    "Professional Fee": "Professional Fee",
+    "Registration Amount": "Registration Amount",
+    "Yes": "Yes",
+    "No": "No",
+    "Create": "Create",
+    "Update": "Update",
+    "Cancel": "Cancel",
+    "No companies found": "No companies found",
+    "Loading...": "Loading...",
+    "Inactive": "Inactive"
+  },
   "authCallback": {
     "LinkAccount": "ربط حساب {{provider}}",
     "ExistingAccountFound": "لقد وجدنا حسابًا بعنوان البريد الإلكتروني هذا. تسجيل الدخول باستخدام كلمة المرور الحالية الخاصة بك لربط مع حسابك {{provider}}.",

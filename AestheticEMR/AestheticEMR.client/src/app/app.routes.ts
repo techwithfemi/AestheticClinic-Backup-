@@ -44,8 +44,8 @@ export const routes: Routes = [
       },
       {
         path: 'laser',
-        loadChildren: () => import('./features/laser/laser.routes')
-          .then(m => m.laserRoutes)
+        redirectTo: 'aesthetics/laser',
+        pathMatch: 'full'
       },
       {
         path: 'spa',

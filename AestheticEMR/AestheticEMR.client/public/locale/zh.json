@@ -83,6 +83,33 @@
       "ApiChangedTo": "目标Web API已更改为：{{API}}"
     }
   },
+  "retainerships": {
+    "Company Information": "Company Information",
+    "Add Company": "Add Company",
+    "Edit Company": "Edit Company",
+    "Company ID": "Company ID",
+    "Code": "Code",
+    "Name": "Name",
+    "Contact": "Contact",
+    "Phone": "Phone",
+    "Email": "Email",
+    "Active": "Active",
+    "Actions": "Actions",
+    "Company Name": "Company Name",
+    "Contact Person": "Contact Person",
+    "Client Type": "Client Type",
+    "Address": "Address",
+    "Professional Fee": "Professional Fee",
+    "Registration Amount": "Registration Amount",
+    "Yes": "Yes",
+    "No": "No",
+    "Create": "Create",
+    "Update": "Update",
+    "Cancel": "Cancel",
+    "No companies found": "No companies found",
+    "Loading...": "Loading...",
+    "Inactive": "Inactive"
+  },
   "authCallback": {
     "LinkAccount": "关联{{provider}}账号",
     "ExistingAccountFound": "我们找到了一个使用此邮箱地址的账号。请使用现有密码登录以关联您的{{provider}}账号。",

@@ -475,7 +475,11 @@ When creating a new entity with full CRUD:
 - Follow naming conventions exactly
 
 ### Additional Guidelines for the frontEnd:
-
+- for consistency, do not mix styling frameworks in a component (use only one)
+- for data entry forms, use angular reactive forms with angular material (not bootstrap or font awesome)
+- The Angular app must be responsive and mobile-friendly, using Angular Material's responsive layout features.
+- Use bash commans instead of powershell or command prompt
+- prefer angular signals over rxjs or observables
 - when creating a report  component file inside features/reports folder, follow this naming convention (deptName-Compname-report)
 eg 'billing=receipt-report' a report for billing dept/user role
 - Use Bash for scripting and automation tasks (e.g., build scripts, deployment scripts)

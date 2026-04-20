@@ -37,7 +37,8 @@
     "NotFound": "Not-Found",
     "About": "About",
     "Settings": "Settings",
-    "Management": "Management"
+    "Management": "Management",
+    "Company Information": "Company Information"
   },
   "management": {
     "title": "Management workspace",
@@ -82,6 +83,33 @@
       "ApiChanged": "API Changed!",
       "ApiChangedTo": "The target Web API has been changed to: {{API}}"
     }
+  },
+  "retainerships": {
+    "Company Information": "Company Information",
+    "Add Company": "Add Company",
+    "Edit Company": "Edit Company",
+    "Company ID": "Company ID",
+    "Code": "Code",
+    "Name": "Name",
+    "Contact": "Contact",
+    "Phone": "Phone",
+    "Email": "Email",
+    "Active": "Active",
+    "Actions": "Actions",
+    "Company Name": "Company Name",
+    "Contact Person": "Contact Person",
+    "Client Type": "Client Type",
+    "Address": "Address",
+    "Professional Fee": "Professional Fee",
+    "Registration Amount": "Registration Amount",
+    "Yes": "Yes",
+    "No": "No",
+    "Create": "Create",
+    "Update": "Update",
+    "Cancel": "Cancel",
+    "No companies found": "No companies found",
+    "Loading...": "Loading...",
+    "Inactive": "Inactive"
   },
   "authCallback": {
     "LinkAccount": "Link {{provider}} account",

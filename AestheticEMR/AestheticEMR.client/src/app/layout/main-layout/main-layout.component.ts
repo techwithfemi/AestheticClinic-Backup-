@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 interface NavigationItem {
   route?: string;
   icon?: string;
-  subItems?: Array<{ path: string; label: string }>;
+  subItems?: Array<{ path: string; label: string; icon?: string }>;
 }
 
 @Component({
@@ -53,6 +53,16 @@ export class MainLayoutComponent implements OnInit {
     return this.normalizedRoles.includes('management');
   }
 
+  private canAccessDynamicSection(sectionName: string): boolean {
+    const normalizedSection = sectionName.trim().toLowerCase();
+
+    if (normalizedSection === 'aesthetics') {
+      return this.normalizedRoles.includes('aesthetics') || this.normalizedRoles.includes('laser');
+    }
+
+    return this.normalizedRoles.includes(normalizedSection);
+  }
+
   private filterReportSubItems(subItems: Array<{ path: string; label: string }>): Array<{ path: string; label: string }> {
     if (this.isManagementUser) {
       return subItems;
@@ -88,7 +98,7 @@ export class MainLayoutComponent implements OnInit {
       .subscribe(json => {
         const top = Object.entries(json.Static_Top || {}).map(([title, item]) => ({ title, item }));
         const dynamic = Object.entries(json.Dynamic_Roles || {})
-          .filter(([roleName]) => this.userRoles.includes(roleName))
+          .filter(([roleName]) => this.canAccessDynamicSection(roleName))
           .map(([title, item]) => ({ title, item }));
         const reports = Object.entries(json.Reports || {})
           .map(([title, item]) => ({
