@@ -5,7 +5,7 @@
 // ---------------------------------------
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace AestheticEMR.Server.Authorization
@@ -25,10 +25,7 @@ namespace AestheticEMR.Server.Authorization
             {
                 operation.Responses.Add("401", new OpenApiResponse { Description = "Unauthorized" });
 
-                var oAuthScheme = new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "oauth2" }
-                };
+                var oAuthScheme = new OpenApiSecuritySchemeReference("oauth2", new OpenApiDocument(), string.Empty);
 
                 operation.Security =
                 [

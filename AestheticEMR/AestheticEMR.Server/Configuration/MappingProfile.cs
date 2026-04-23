@@ -78,6 +78,10 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HRetainership, HRetainershipVM>()
                 .ReverseMap();
 
+            CreateMap<HRecord, AttendanceVM>()
+                .ReverseMap()
+                .ForMember(d => d.ConsultId, map => map.Ignore());
+
             CreateMap<HPatient, HPatientVM>()
                 .ReverseMap()
                 .ForMember(d => d.Pno, map => map.Ignore());

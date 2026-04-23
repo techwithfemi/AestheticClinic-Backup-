@@ -21,7 +21,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using OpenIddict.Validation.AspNetCore;
 using Quartz;
 using System.Reflection;
@@ -57,7 +57,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //        builder.Configuration.GetConnectionString("DefaultConnection"),
 //        b => b.MigrationsAssembly("AestheticEMR.Core") // Add this line!
 //    ));
-
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -217,6 +216,7 @@ builder.Services.AddScoped<IOrdersService, OrdersService>();
 builder.Services.AddScoped<IAestheticService, AestheticService>();
 builder.Services.AddScoped<IHRetainershipService, HRetainershipService>();
 builder.Services.AddScoped<IHPatientService, HPatientService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();

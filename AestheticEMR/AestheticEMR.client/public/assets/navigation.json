@@ -12,6 +12,7 @@
       "icon": "folder_shared",
       "subItems": [
         { "label": "Patients Information", "path": "patients", "icon": "badge" },
+        { "label": "Attendance", "path": "attendance", "icon": "checklist" },
         { "label": "Patient Search", "path": "search", "icon": "search" },
         { "label": "Recent Charts", "path": "recent", "icon": "history" },
         { "label": "Company Information", "path": "companies", "icon": "business" }

@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 import { Component, inject, OnInit } from '@angular/core';
+import { TemplateRef } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -118,7 +119,7 @@ export class RetainershipsComponent implements OnInit {
       });
   }
 
-  openCreateModal(content: any): void {
+  openCreateModal(content: TemplateRef<unknown>): void {
     this.isEditing = false;
     this.currentRetainership = null;
     this.retainershipForm.reset({
@@ -134,7 +135,7 @@ export class RetainershipsComponent implements OnInit {
     this.modalRef = this.modalService.open(content, { size: 'lg' });
   }
 
-  openEditModal(content: any, retainership: HRetainership): void {
+  openEditModal(content: TemplateRef<unknown>, retainership: HRetainership): void {
     this.isEditing = true;
     this.currentRetainership = retainership;
     this.retainershipForm.patchValue(retainership);
@@ -245,10 +246,15 @@ export class RetainershipsComponent implements OnInit {
     this.currentPage = 1;
   }
 
-  private getErrorMessage(error: any): string {
+  private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       return error.error?.message || error.message;
     }
-    return error.message || 'Unknown error';
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return 'Unknown error';
   }
 }

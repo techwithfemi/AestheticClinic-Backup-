@@ -43,6 +43,8 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<HConsultingItem> HConsultingItems { get; set; }
         public DbSet<HDental> HDentals { get; set; }
         public DbSet<HDentalTreat> HDentalTreats { get; set; }
+        public DbSet<ClinicType> ClinicTypes { get; set; }
+        public DbSet<HClinicPurpose> HClinicPurposes { get; set; }
 
         public DbSet<HPatient> HPatients { get; set; }
         public DbSet<HRecord> HRecords { get; set; }
@@ -469,6 +471,65 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.TTime)
                     .HasColumnType(dateTimeSql)
                     .HasColumnName("tTime");
+            });
+
+            builder.Entity<ClinicType>(entity =>
+            {
+                entity.HasKey(e => e.ClinicId);
+
+                entity.ToTable("ClinicTypes");
+
+                entity.Property(e => e.ClinicId)
+                    .HasMaxLength(50)
+                    .HasColumnName("ClinicID");
+                entity.Property(e => e.Apologies)
+                    .HasMaxLength(500)
+                    .IsUnicode(false);
+                entity.Property(e => e.ClinicDays)
+                    .HasMaxLength(250)
+                    .HasColumnName("clinicDays");
+                entity.Property(e => e.ClinicName).HasMaxLength(100);
+                entity.Property(e => e.ClinicPeriod)
+                    .HasMaxLength(500)
+                    .IsUnicode(false);
+                entity.Property(e => e.Code).HasMaxLength(50);
+                entity.Property(e => e.Designation)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+                entity.Property(e => e.EmpId)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("EmpID");
+                entity.Property(e => e.IdValCode)
+                    .HasMaxLength(3)
+                    .IsUnicode(false)
+                    .HasColumnName("IDValCode");
+                entity.Property(e => e.PhoneNo)
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+                entity.Property(e => e.PixName)
+                    .HasMaxLength(100)
+                    .IsUnicode(false);
+                entity.Property(e => e.RctCode).HasMaxLength(2);
+                entity.Property(e => e.Remarks)
+                    .HasMaxLength(500)
+                    .IsUnicode(false);
+                entity.Property(e => e.Sno)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnName("SNO");
+                entity.Property(e => e.Type).HasMaxLength(3);
+            });
+
+            builder.Entity<HClinicPurpose>(entity =>
+            {
+                entity
+                    .HasNoKey()
+                    .ToTable("hClinicPurpose");
+
+                entity.Property(e => e.Purpose).HasMaxLength(50);
+                entity.Property(e => e.Sno)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnName("SNo");
             });
 
             builder.Entity<HPatient>(entity =>

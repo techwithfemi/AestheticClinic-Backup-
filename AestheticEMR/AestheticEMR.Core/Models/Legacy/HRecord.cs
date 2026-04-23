@@ -5,41 +5,41 @@ namespace AestheticEMR.Core.Models.Legacy;
 
 public partial class HRecord
 {
-    public int RecId { get; set; }
+    public int RecId { get; set; } //identity
 
     public DateTime RecDate { get; set; }
 
-    public string ConsultId { get; set; } = null!;
+    public string ConsultId { get; set; } = null!; //primary key
 
-    public string PNo { get; set; } = null!;
+    public string PNo { get; set; } = null!; //foreign key to patient table 
 
-    public string? ClientCat { get; set; }
+    public string? ClientCat { get; set; } // clientCatID from patient table
 
     public string? Remarks { get; set; }
 
-    public string? EmpId { get; set; }
+    public string? EmpId { get; set; } // empid of username that created the record
 
     public string ClinicType { get; set; } = null!;
 
     public DateTime? NextApptDate { get; set; }
 
-    public DateTime? Htime { get; set; }
+    public DateTime? Htime { get; set; }  // time of record creation
 
-    public bool? AttendedTo { get; set; }
+    public bool? AttendedTo { get; set; }=false;
 
-    public string? Referal { get; set; }
+    public string? Referal { get; set; }= "NO";
 
-    public string? DocAssigned { get; set; }
+    public string? DocAssigned { get; set; } // empid of doctor assigned to patient for this record
 
     public bool? AttendedToByDoc { get; set; }
 
     public byte? PatVal { get; set; }
 
-    public bool? Suppres { get; set; }
+    public bool? Suppres { get; set; }= false;
 
-    public string? Mth { get; set; }
+    public string? Mth { get; set; } // padded month of record creation eg 03
 
-    public string? Yr { get; set; }
+    public string? Yr { get; set; } // padded year of record creation eg 2024
 
     public DateOnly? ExitDate { get; set; }
 
@@ -47,7 +47,7 @@ public partial class HRecord
 
     public string? Diagnosis { get; set; }
 
-    public string? Coyname { get; set; }
+    public string? Coyname { get; set; } // retainID from company table
 
     public bool? AttendedToByNurse { get; set; }
 

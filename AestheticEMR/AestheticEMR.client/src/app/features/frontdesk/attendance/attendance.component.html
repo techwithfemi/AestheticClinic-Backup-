@@ -1,0 +1,183 @@
+<div [@fadeInOut] class="attendance-page">
+  <div class="page-header">
+    <div>
+      <h2>Patient Attendance</h2>
+      <p class="text-muted mb-0">Manage frontdesk attendance records and today's waiting list.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline-secondary" (click)="refresh()">Refresh</button>
+      <button type="button" class="btn btn-primary" (click)="openCreate(attendanceDialog)">Add Attendance</button>
+    </div>
+  </div>
+
+  <div class="toolbar card card-body">
+    <div class="toolbar-grid">
+      <input
+        type="text"
+        class="form-control"
+        [(ngModel)]="searchText"
+        (input)="onSearch()"
+        placeholder="Search by patient, clinic, or company" />
+
+      <div class="form-check show-all-toggle">
+        <input id="showAll" type="checkbox" class="form-check-input" [(ngModel)]="showAll" (change)="onShowAllChanged()" />
+        <label class="form-check-label" for="showAll">Show all</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Patient</th>
+          <th>Company</th>
+          <th>Clinic</th>
+          <th>Status</th>
+          <th class="actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let attendance of pagedAttendances">
+          <td>{{ attendance.recDate | date: 'mediumDate' }}</td>
+          <td>
+            <div class="table-title">{{ getPatientNameByNo(attendance.pNo) }}</div>
+            <small class="text-muted">{{ attendance.pNo }}</small>
+          </td>
+          <td>{{ getRetainershipNameById(attendance.coyname) || 'N/A' }}</td>
+          <td>{{ attendance.clinicType }}</td>
+          <td>
+            <span class="badge text-bg-light border">{{ attendance.attndStatus || 'NORMAL' }}</span>
+          </td>
+          <td class="actions">
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="openEdit(attendanceDialog, attendance)">Edit</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="deleteAttendance(attendance)">Delete</button>
+          </td>
+        </tr>
+        <tr *ngIf="!loadingIndicator && filteredAttendances.length === 0">
+          <td colspan="6" class="text-center text-muted py-4">No attendance records found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="filteredAttendances.length > 0">
+    <small class="text-muted">
+      Showing {{ (currentPage - 1) * pageSize + 1 }}-
+      {{ (currentPage * pageSize) < filteredAttendances.length ? (currentPage * pageSize) : filteredAttendances.length }} of {{ filteredAttendances.length }}
+    </small>
+    <div class="btn-group" role="group" aria-label="Attendance pagination">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">Previous</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Page {{ currentPage }} / {{ totalPages }}</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">Next</button>
+    </div>
+  </div>
+</div>
+
+<ng-template #attendanceDialog let-modal>
+  <div class="modal-header">
+    <h5 class="modal-title">{{ isEditing ? 'Edit Attendance' : 'New Attendance' }}</h5>
+    <button type="button" class="btn-close" (click)="cancelForm()"></button>
+  </div>
+
+  <div class="modal-body">
+    <form [formGroup]="attendanceForm" (ngSubmit)="saveAttendance()" class="attendance-form">
+      <input type="hidden" formControlName="consultId" />
+
+      <div class="grid">
+        <div class="grid-span-2">
+          <label>Search Patient</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="patientSearchText"
+            [ngModelOptions]="{ standalone: true }"
+            (input)="onPatientSearchChange()"
+            placeholder="Search by patient no, name, phone, or company" />
+        </div>
+
+        <div class="grid-span-2">
+          <label>Patient Name *</label>
+          <select class="form-control" formControlName="pNo" (change)="onPatientChanged()">
+            <option value="">-- Select Patient --</option>
+            <option *ngFor="let patient of filteredPatients()" [value]="patient.pno">
+              {{ getPatientLabel(patient) }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>Clinic / Referral / Appt *</label>
+          <select class="form-control" formControlName="clinicType">
+            <option value="">-- Select Clinic --</option>
+            <option *ngFor="let clinicType of clinicTypeOptions" [value]="clinicType">{{ clinicType }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Company Name</label>
+          <select class="form-control" formControlName="coyname" (change)="onCoynameChanged()">
+            <option value="">-- Select Company --</option>
+            <option *ngFor="let retainership of retainerships" [value]="retainership.retainId">
+              {{ getRetainershipLabel(retainership) }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>Billing Category</label>
+          <select class="form-control" formControlName="clientCat">
+            <option value="">-- Select Billing Category --</option>
+            <option *ngFor="let billingCategory of billingCategoryOptions" [value]="billingCategory">{{ billingCategory }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Attendance Status</label>
+          <select class="form-control" formControlName="attndStatus">
+            <option *ngFor="let option of attendanceStatusOptions" [value]="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Date *</label>
+          <input type="date" class="form-control" formControlName="recDate" />
+        </div>
+      </div>
+
+      <div class="patient-summary" *ngIf="selectedPatient() as patient">
+        <div>
+          <span class="summary-label">Patient No</span>
+          <span>{{ patient.pno }}</span>
+        </div>
+        <div>
+          <span class="summary-label">Card No</span>
+          <span>{{ patient.oldPno || 'N/A' }}</span>
+        </div>
+        <div>
+          <span class="summary-label">Policy Type</span>
+          <span>{{ patient.policyType || 'N/A' }}</span>
+        </div>
+        <div>
+          <span class="summary-label">Occupation</span>
+          <span>{{ patient.occupation || 'N/A' }}</span>
+        </div>
+        <div>
+          <span class="summary-label">Phone</span>
+          <span>{{ patient.pPhoneNo || 'N/A' }}</span>
+        </div>
+        <div>
+          <span class="summary-label">Email</span>
+          <span>{{ patient.email || 'N/A' }}</span>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+    <button type="button" class="btn btn-success" (click)="saveAttendance()" [disabled]="loadingIndicator">Save</button>
+  </div>
+</ng-template>

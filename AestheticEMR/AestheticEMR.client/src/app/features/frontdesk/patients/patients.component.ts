@@ -205,7 +205,8 @@ export class PatientsComponent implements OnInit {
       return;
     }
 
-    const { pno: _omit, ...createPayload } = raw;
+    const { pno, ...createPayload } = raw as HPatient;
+    void pno;
     this.patientEndpoint.getNewHPatientEndpoint<HPatient>(createPayload as HPatient)
       .subscribe({
         next: created => {
