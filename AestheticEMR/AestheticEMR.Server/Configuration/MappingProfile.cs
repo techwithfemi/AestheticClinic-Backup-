@@ -72,6 +72,8 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<AestheticPhoto, AestheticPhotoVM>()
                 .ForMember(d => d.Url, map => map.MapFrom(s => s.FilePath))
+                .ForMember(d => d.ThumbnailUrl, map => map.MapFrom(s => s.FilePath))
+                .ForMember(d => d.CreatedDate, map => map.MapFrom(s => s.CreatedDate))
                 .ReverseMap()
                 .ForMember(d => d.FilePath, map => map.MapFrom(s => s.Url));
 
@@ -81,6 +83,17 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HRecord, AttendanceVM>()
                 .ReverseMap()
                 .ForMember(d => d.ConsultId, map => map.Ignore());
+
+            CreateMap<hAppointment, AppointmentVM>()
+                .ForMember(d => d.Id, map => map.MapFrom(s => s.ID))
+                .ForMember(d => d.Pno, map => map.MapFrom(s => s.pno))
+                .ForMember(d => d.ClinicType, map => map.MapFrom(s => s.clinicType))
+                .ForMember(d => d.Remarks, map => map.MapFrom(s => s.remarks))
+                .ReverseMap()
+                .ForMember(d => d.ID, map => map.MapFrom(s => s.Id))
+                .ForMember(d => d.pno, map => map.MapFrom(s => s.Pno))
+                .ForMember(d => d.clinicType, map => map.MapFrom(s => s.ClinicType))
+                .ForMember(d => d.remarks, map => map.MapFrom(s => s.Remarks));
 
             CreateMap<HPatient, HPatientVM>()
                 .ReverseMap()

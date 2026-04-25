@@ -271,8 +271,23 @@
         </label>
         @if (isEditMode) {
           <div [class.col-lg-9]="isViewOnly()" [class.col-lg-10]="!isViewOnly()">
-            <input type="text" attr.id="fullName-{{uniqueId}}" name="fullName" placeholder="Enter full name"
-                   class="form-control" [(ngModel)]="userEdit.fullName" />
+            <ng-select
+              attr.id="fullName-{{uniqueId}}"
+              name="fullName"
+              [items]="employees"
+              bindValue="empID"
+              bindLabel="empName"
+              [placeholder]="'Select Employee (Full Name)'"
+              [(ngModel)]="selectedEmpID"
+              (change)="onEmployeeSelected($event)"
+              class="form-control">
+              <ng-template ng-label-tmp let-item="item">
+                {{ item.empName }} [{{ item.empID }}]
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                {{ item.empName }} [{{ item.empID }}]
+              </ng-template>
+            </ng-select>
           </div>
         }
         @else {

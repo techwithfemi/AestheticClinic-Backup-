@@ -4,6 +4,7 @@ using AestheticEMR.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AestheticEMR.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260424042425_AddLegacyBillingSupportTables")]
+    partial class AddLegacyBillingSupportTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3097,19 +3100,36 @@ namespace AestheticEMR.Server.Migrations
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.hAppointment", b =>
                 {
-                    b.Property<long>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ID"));
-
                     b.Property<DateTime?>("ApptDate")
                         .HasColumnType("datetime");
 
                     b.Property<DateTime?>("ApptTime")
                         .HasColumnType("datetime");
 
+                    b.Property<bool?>("AttendedToByRec")
+                        .HasColumnType("bit");
+
                     b.Property<string>("EmpID")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<long>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ID"));
+
+                    b.Property<string>("RetainCode")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<bool?>("attendedTo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("clientCat")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)");
@@ -3118,6 +3138,16 @@ namespace AestheticEMR.Server.Migrations
                         .HasMaxLength(100)
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("conID")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("consultID")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime?>("entryDate")
                         .HasColumnType("datetime");
@@ -3136,7 +3166,10 @@ namespace AestheticEMR.Server.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(1000)");
 
-                    b.HasKey("ID");
+                    b.Property<bool?>("suppres")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false, "DF__happointm__suppr__7172C0B5");
 
                     b.HasIndex(new[] { "ApptDate" }, "idx_ApptDate");
 

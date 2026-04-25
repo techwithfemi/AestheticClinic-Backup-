@@ -7,6 +7,7 @@ export interface AestheticPhoto {
   consultationId: number;
   fileName?: string;
   url: string;
+  thumbnailUrl?: string;
   type?: string;
   caption?: string;
   createdDate?: string;

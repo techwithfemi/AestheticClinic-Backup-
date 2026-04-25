@@ -66,6 +66,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
             .OrderByDescending(c => c.ConsultationDate)
             .ToList();
 
+        public IEnumerable<AestheticConsultation> GetConsultationsByProcedure(string procedureType) => dbContext.AestheticConsultations
+            .Include(c => c.Photos)
+            .Include(c => c.Patient)
+            .AsSingleQuery()
+            .Where(c => c.ProcedureType.ToLower() == procedureType.ToLower())
+            .OrderByDescending(c => c.ConsultationDate)
+            .ToList();
+
         public IEnumerable<AestheticConsultation> GetLaserSessions() => dbContext.AestheticConsultations
             .Include(c => c.Patient)
             .Include(c => c.Photos)
@@ -83,11 +91,66 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return consultation;
         }
 
+        public AestheticConsultation UpdateConsultation(AestheticConsultation consultation)
+        {
+            var existing = dbContext.AestheticConsultations.Find(consultation.Id);
+            if (existing == null)
+                throw new KeyNotFoundException($"Consultation not found: {consultation.Id}");
+
+            existing.PatientId = consultation.PatientId;
+            existing.ConsultationDate = consultation.ConsultationDate;
+            existing.ProcedureType = consultation.ProcedureType;
+            existing.Provider = consultation.Provider;
+            existing.ConsentGiven = consultation.ConsentGiven;
+            existing.InformationAccepted = consultation.InformationAccepted;
+            existing.ProcedureDescription = consultation.ProcedureDescription;
+            existing.RisksAndComplications = consultation.RisksAndComplications;
+            existing.PostTreatmentInstructions = consultation.PostTreatmentInstructions;
+            existing.SkinAssessment = consultation.SkinAssessment;
+            existing.TreatmentPlan = consultation.TreatmentPlan;
+            existing.CurrentMedications = consultation.CurrentMedications;
+            existing.Allergies = consultation.Allergies;
+            existing.DeviceSettings = consultation.DeviceSettings;
+            existing.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.SaveChanges();
+            return existing;
+        }
+
+        public void DeleteConsultation(int consultationId)
+        {
+            var consultation = dbContext.AestheticConsultations
+                .Include(c => c.Photos)
+                .FirstOrDefault(c => c.Id == consultationId);
+
+            if (consultation == null)
+                throw new KeyNotFoundException($"Consultation not found: {consultationId}");
+
+            if (consultation.Photos.Count > 0)
+                dbContext.AestheticPhotos.RemoveRange(consultation.Photos);
+
+            dbContext.AestheticConsultations.Remove(consultation);
+            dbContext.SaveChanges();
+        }
+
         public AestheticConsultation? GetConsultationById(int consultationId) => dbContext.AestheticConsultations
             .Include(c => c.Photos)
             .Include(c => c.Patient)
             .AsSingleQuery()
             .FirstOrDefault(c => c.Id == consultationId);
+
+        public IEnumerable<AestheticPhoto> GetPhotos() => dbContext.AestheticPhotos
+            .Include(p => p.Consultation)
+            .ThenInclude(c => c.Patient)
+            .AsSingleQuery()
+            .OrderByDescending(photo => photo.CreatedDate)
+            .ToList();
+
+        public AestheticPhoto? GetPhotoById(int photoId) => dbContext.AestheticPhotos
+            .Include(p => p.Consultation)
+            .ThenInclude(c => c.Patient)
+            .AsSingleQuery()
+            .FirstOrDefault(p => p.Id == photoId);
 
         public IEnumerable<AestheticPhoto> GetPhotosForConsultation(int consultationId) => dbContext.AestheticPhotos
             .Where(photo => photo.ConsultationId == consultationId)
@@ -101,6 +164,32 @@ namespace AestheticEMR.Core.Services.Aesthetics
             dbContext.AestheticPhotos.Add(photo);
             dbContext.SaveChanges();
             return photo;
+        }
+
+        public AestheticPhoto UpdatePhoto(AestheticPhoto photo)
+        {
+            var existing = dbContext.AestheticPhotos.Find(photo.Id);
+            if (existing == null)
+                throw new KeyNotFoundException($"Photo not found: {photo.Id}");
+
+            existing.ConsultationId = photo.ConsultationId;
+            existing.FileName = photo.FileName;
+            existing.FilePath = photo.FilePath;
+            existing.Type = photo.Type;
+            existing.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.SaveChanges();
+            return existing;
+        }
+
+        public void DeletePhoto(int photoId)
+        {
+            var photo = dbContext.AestheticPhotos.Find(photoId);
+            if (photo == null)
+                throw new KeyNotFoundException($"Photo not found: {photoId}");
+
+            dbContext.AestheticPhotos.Remove(photo);
+            dbContext.SaveChanges();
         }
     }
 }

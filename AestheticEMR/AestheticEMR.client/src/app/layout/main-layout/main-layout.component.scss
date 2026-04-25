@@ -3,20 +3,20 @@
 }
 
 .sidenav {
-  width: 260px;
+  width: 240px;
   background-color: #ffffff;
   border-right: 1px solid #e0e4e8;
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: 16px;
   text-align: center;
   border-bottom: 1px solid #f0f0f0;
   position: relative;
 
   .logo {
     height: 40px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .user-name {
@@ -38,17 +38,18 @@
   }
 }
 
+/* ── Collapsed sidebar ── */
 .sidenav.collapsed {
-  width: 72px !important;
+  width: 64px !important;
 }
 
 :host ::ng-deep .sidenav.collapsed .mat-drawer-inner-container,
 :host ::ng-deep .sidenav.collapsed .mat-drawer-inner-container > div {
-  width: 72px !important;
+  width: 64px !important;
 }
 
 .sidenav.collapsed .sidebar-header {
-  padding: 12px 0;
+  padding: 10px 0;
 }
 
 .sidenav.collapsed .logo,
@@ -56,180 +57,202 @@
   display: none;
 }
 
-.sidenav.collapsed .mat-list-item {
-  justify-content: center !important;
-}
-
-.sidenav.collapsed .mat-expansion-panel-header {
-  justify-content: center !important;
-}
-
 .sidenav.collapsed .menu-title,
 .sidenav.collapsed .sub-nav-list {
   display: none;
 }
 
-.menu-title {
-  font-size: 13px;
-  color: #2c3e50;
-  font-weight: 500;
-  margin-left: 0;
+/* ── Nav list root ── */
+:host ::ng-deep mat-nav-list {
+  padding: 8px 0 !important;
 }
 
-.menu-icon {
-  color: #546e7a;
-  margin-right: 10px;
-  margin-left: 0;
-  min-width: 24px;
-  width: 24px;
-  font-size: 20px;
-  display: inline-flex;
-  justify-content: center;
-}
+/* ── Parent nav items (plain links, no subitems) ── */
+:host ::ng-deep a.mat-mdc-list-item {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  margin: 1px 8px !important;
+  border-radius: 6px;
 
-.active-root-item,
-.active-sub-item {
-  background-color: #f0f4ff !important;
-  color: #1a73e8 !important;
-  border-left: 4px solid #1a73e8;
-
-  mat-icon {
-    color: #1a73e8;
-  }
-}
-
-.sub-nav-list {
-  padding-left: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  margin-top: 0;
-
-  a.mat-list-item {
-    min-height: 26px !important;
-    height: 26px !important;
-    padding: 0 8px 0 68px !important;
-    font-size: 10px;
-    font-weight: 400 !important;
-    line-height: 1.2;
-    margin-bottom: 0 !important;
-    border-radius: 4px;
+  /* MDC slot layout — icon slot + primary-text slot sit side by side */
+  &.mat-mdc-list-item {
+    --mdc-list-list-item-container-height: 40px;
   }
 
-  a.mat-list-item .mdc-list-item__content {
+  /* Icon placed via matListItemIcon */
+  .mat-mdc-list-item-icon,
+  .mdc-list-item__start {
+    width: 20px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    font-size: 20px !important;
+    line-height: 20px !important;
+    margin-right: 12px !important;
+    margin-left: 0 !important;
+    color: #546e7a;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 6px;
-    width: 100%;
+    justify-content: center !important;
+    flex-shrink: 0;
   }
 
-  .subitem-icon {
-    width: 12px;
-    min-width: 12px;
-    height: 12px;
-    font-size: 12px;
-    line-height: 12px;
-    color: #78909c;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0;
-  }
-
-  .subitem-label {
-    font-size: 10px;
-    font-weight: 400 !important;
-    line-height: 1;
+  /* Label placed via matListItemTitle */
+  .mdc-list-item__primary-text {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #2c3e50 !important;
+    line-height: 1 !important;
   }
 }
 
-:host ::ng-deep {
-  mat-nav-list {
-    padding: 0 !important;
+/* ── Expansion panel (parent with subitems) ── */
+:host ::ng-deep mat-expansion-panel {
+  margin: 1px 8px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 6px !important;
 
-    mat-list-item,
-    a.mat-list-item {
-      min-height: 32px !important;
-      height: 32px !important;
-      font-size: 13px;
-      padding: 0 8px 0 10px !important;
-      margin-bottom: 2px !important;
-      align-items: center;
+  mat-expansion-panel-header {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    border-radius: 6px !important;
+    background: transparent;
+
+    /* flex row: icon | title | chevron */
+    .mat-content {
       display: flex !important;
-      justify-content: flex-start !important;
-      gap: 8px;
-      border-radius: 6px;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 12px;
+      overflow: visible;
     }
 
-    mat-expansion-panel {
-      margin: 0 !important;
-      box-shadow: none !important;
-      background: transparent;
-
-      mat-expansion-panel-header {
-        height: 34px !important;
-        min-height: 34px !important;
-        padding: 0 8px !important;
-        font-size: 13px;
-        margin-bottom: 2px !important;
-        align-items: center;
-        display: flex !important;
-        justify-content: flex-start !important;
-        gap: 8px;
-      }
-
-      .mat-expansion-panel-body {
-        padding: 0 !important;
-      }
+    .mat-expansion-indicator {
+      margin-left: auto;
     }
   }
 
-  mat-expansion-panel-header,
-  a.mat-list-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px;
-    direction: ltr;
-  }
-
-  // Keep icon and label order stable even when the document direction is RTL.
-  a.mat-list-item .mdc-list-item__content,
-  .mat-expansion-panel-header .mat-content {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .mat-expansion-panel-header .mat-expansion-indicator {
-    margin-left: auto;
-  }
-
-  .menu-icon {
-    order: 0;
-  }
-
-  .menu-title,
-  .mat-panel-title {
-    order: 1;
-    margin: 0;
-  }
-
-  .mat-mdc-list-item {
-    --mdc-list-list-item-container-height: 32px;
-  }
-
-  .mat-mdc-list-item__content {
-    padding-left: 0 !important;
-  }
-
-  .mat-mdc-list-item__section {
-    min-width: 24px;
-    width: 24px;
+  .mat-expansion-panel-body {
+    padding: 0 !important;
   }
 }
 
+/* ── Shared icon styling ── */
+.menu-icon {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  font-size: 20px !important;
+  line-height: 20px !important;
+  color: #546e7a;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── mat-panel-title holds both icon and label ── */
+mat-panel-title.menu-title {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c3e50;
+  margin: 0 !important;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: visible !important;
+  flex: 1 1 auto;
+}
+
+/* ── Shared label styling ── */
+.menu-title,
+mat-panel-title.menu-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c3e50;
+  margin: 0 !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ── Active states ── */
+:host ::ng-deep {
+  a.mat-mdc-list-item.active-root-item {
+    background-color: #e8f0fe !important;
+    border-left: 3px solid #1a73e8;
+
+    .mat-mdc-list-item-icon,
+    .mdc-list-item__start,
+    .menu-icon { color: #1a73e8 !important; }
+
+    .mdc-list-item__primary-text,
+    .menu-title { color: #1a73e8 !important; font-weight: 600 !important; }
+  }
+
+  a.mat-mdc-list-item.active-sub-item {
+    background-color: #e8f0fe !important;
+    .subitem-icon { color: #1a73e8; }
+    .subitem-label { color: #1a73e8; font-weight: 600; }
+  }
+}
+
+/* ── Sub-nav list ── */
+.sub-nav-list {
+  padding: 2px 0 4px 0 !important;
+}
+
+:host ::ng-deep .sub-nav-list {
+  padding: 2px 0 4px 0 !important;
+
+  a.mat-mdc-list-item {
+    padding: 0 12px 0 44px !important;
+    margin: 0 8px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    border-radius: 4px;
+
+    /* Pierce MDC content wrapper so icon + label sit in a flex row */
+    .mdc-list-item__content {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 0 !important;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+.subitem-icon {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  font-size: 16px !important;
+  line-height: 16px !important;
+  color: #78909c;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.subitem-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: #455a64;
+  line-height: 16px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ── Toolbar ── */
 .main-toolbar {
   background: white;
   color: #2c3e50;
@@ -242,7 +265,6 @@
   gap: 6px;
 }
 
-// Strip default Material state-layer backgrounds from all toolbar buttons
 :host ::ng-deep .main-toolbar {
   button,
   .mat-mdc-button-base {
@@ -252,7 +274,6 @@
     background: transparent !important;
   }
 
-  // Icon buttons (menu toggle, notifications)
   .mat-mdc-icon-button {
     --mdc-icon-button-state-layer-color: transparent;
     --mat-icon-button-state-layer-color: transparent;
@@ -261,7 +282,6 @@
 
     &:hover,
     &:focus-visible {
-      --mdc-icon-button-state-layer-color: #546e7a;
       background-color: rgba(84, 110, 122, 0.08) !important;
     }
 
@@ -271,7 +291,6 @@
     }
   }
 
-  // Text button (Log out)
   .mat-mdc-button.logout-btn {
     --mdc-text-button-label-text-color: #2c3e50;
     --mat-text-button-state-layer-color: transparent;
@@ -281,7 +300,6 @@
 
     &:hover,
     &:focus-visible {
-      --mat-text-button-state-layer-color: #2c3e50;
       background-color: rgba(44, 62, 80, 0.07) !important;
     }
 
@@ -295,10 +313,17 @@
   flex: 1 1 auto;
 }
 
+.brand-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
 .page-content {
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
+  box-sizing: border-box;
 }
 
 @media (max-width: 991.98px) {

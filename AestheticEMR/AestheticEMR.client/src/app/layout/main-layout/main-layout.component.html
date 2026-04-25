@@ -18,8 +18,10 @@
       <ng-container *ngFor="let item of menuEntries">
         <mat-expansion-panel *ngIf="item.item.subItems && item.item.subItems.length > 0" class="mat-elevation-z0">
           <mat-expansion-panel-header>
-            <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
-            <mat-panel-title class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</mat-panel-title>
+            <mat-panel-title class="menu-title">
+              <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
+              <span *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+            </mat-panel-title>
           </mat-expansion-panel-header>
 
           <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
@@ -39,8 +41,8 @@
              routerLinkActive="active-root-item"
              (click)="closeSidenavOnMobile()"
              title="{{ item.title }}">
-            <mat-icon class="menu-icon">{{ item.item.icon }}</mat-icon>
-            <span class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+            <mat-icon matListItemIcon class="menu-icon">{{ item.item.icon }}</mat-icon>
+            <span matListItemTitle class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
           </a>
         </ng-container>
       </ng-container>

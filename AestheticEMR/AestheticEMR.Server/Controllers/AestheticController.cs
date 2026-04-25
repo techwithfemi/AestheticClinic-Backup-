@@ -19,11 +19,18 @@ namespace AestheticEMR.Server.Controllers
     public class AestheticController : BaseApiController
     {
         private readonly IAestheticService _aestheticService;
+        private readonly IWebHostEnvironment _environment;
+        private const string UploadFolder = "uploads/aesthetic";
 
-        public AestheticController(ILogger<AestheticController> logger, IMapper mapper, IAestheticService aestheticService)
+        public AestheticController(
+            ILogger<AestheticController> logger,
+            IMapper mapper,
+            IAestheticService aestheticService,
+            IWebHostEnvironment environment)
             : base(logger, mapper)
         {
             _aestheticService = aestheticService;
+            _environment = environment;
         }
 
         [HttpGet("patients")]
@@ -101,7 +108,7 @@ namespace AestheticEMR.Server.Controllers
         public IActionResult GetConsultationPhotos(int consultationId)
         {
             var photos = _aestheticService.GetPhotosForConsultation(consultationId);
-            return Ok(_mapper.Map<IEnumerable<AestheticPhotoVM>>(photos));
+            return Ok(photos.Select(ToPhotoViewModel));
         }
 
         [HttpPost("consultations/{consultationId}/photos")]
@@ -115,7 +122,271 @@ namespace AestheticEMR.Server.Controllers
 
             var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
             var created = _aestheticService.AddPhoto(photo);
-            return CreatedAtAction(nameof(GetConsultationPhotos), new { consultationId = consultationId }, _mapper.Map<AestheticPhotoVM>(created));
+            return CreatedAtAction(nameof(GetConsultationPhotos), new { consultationId }, ToPhotoViewModel(created));
+        }
+
+        [HttpGet("consultations/botox")]
+        [ProducesResponseType(typeof(IEnumerable<AestheticConsultationVM>), StatusCodes.Status200OK)]
+        public IActionResult GetBotoxConsultations()
+        {
+            var consultations = _aestheticService.GetConsultationsByProcedure("Botox");
+            return Ok(_mapper.Map<IEnumerable<AestheticConsultationVM>>(consultations));
+        }
+
+        [HttpPost("consultations/botox")]
+        [ProducesResponseType(typeof(AestheticConsultationVM), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult CreateBotoxConsultation([FromBody] AestheticConsultationVM consultationVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            consultationVM.ProcedureType = "Botox";
+            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            var created = _aestheticService.AddConsultation(consultation);
+            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+        }
+
+        [HttpPut("consultations/{consultationId}")]
+        [ProducesResponseType(typeof(AestheticConsultationVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdateConsultation(int consultationId, [FromBody] AestheticConsultationVM consultationVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (consultationId != consultationVM.Id)
+                return BadRequest("Consultation id mismatch");
+
+            var existing = _aestheticService.GetConsultationById(consultationId);
+            if (existing == null)
+                return NotFound(consultationId);
+
+            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            var updated = _aestheticService.UpdateConsultation(consultation);
+            return Ok(_mapper.Map<AestheticConsultationVM>(updated));
+        }
+
+        [HttpDelete("consultations/{consultationId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult DeleteConsultation(int consultationId)
+        {
+            var existing = _aestheticService.GetConsultationById(consultationId);
+            if (existing == null)
+                return NotFound(consultationId);
+
+            foreach (var photo in existing.Photos)
+            {
+                DeletePhysicalFile(photo.FilePath);
+            }
+
+            _aestheticService.DeleteConsultation(consultationId);
+            return NoContent();
+        }
+
+        [HttpGet("photos")]
+        [ProducesResponseType(typeof(IEnumerable<AestheticPhotoVM>), StatusCodes.Status200OK)]
+        public IActionResult GetPhotos()
+        {
+            var photos = _aestheticService.GetPhotos();
+            return Ok(photos.Select(ToPhotoViewModel));
+        }
+
+        [HttpPost("photos")]
+        [ProducesResponseType(typeof(AestheticPhotoVM), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult CreatePhoto([FromBody] AestheticPhotoVM photoVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+            var created = _aestheticService.AddPhoto(photo);
+            return CreatedAtAction(nameof(GetPhotos), new { id = created.Id }, ToPhotoViewModel(created));
+        }
+
+        [HttpPost("photos/upload")]
+        [ProducesResponseType(typeof(AestheticPhotoVM), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult UploadPhoto([FromForm] AestheticPhotoUploadVM uploadVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!IsSupportedImage(uploadVM.File))
+                return BadRequest("Only non-empty image files are allowed.");
+
+            var consultation = _aestheticService.GetConsultationById(uploadVM.ConsultationId);
+            if (consultation == null)
+                return NotFound(uploadVM.ConsultationId);
+
+            var savedPath = SaveUploadedFile(uploadVM.File);
+            var photoVM = new AestheticPhotoVM
+            {
+                ConsultationId = uploadVM.ConsultationId,
+                FileName = uploadVM.File.FileName,
+                Type = uploadVM.Type,
+                Url = savedPath
+            };
+
+            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+            var created = _aestheticService.AddPhoto(photo);
+            return CreatedAtAction(nameof(GetPhotos), new { id = created.Id }, ToPhotoViewModel(created));
+        }
+
+        [HttpPut("photos/{photoId}")]
+        [ProducesResponseType(typeof(AestheticPhotoVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdatePhoto(int photoId, [FromBody] AestheticPhotoVM photoVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (photoId != photoVM.Id)
+                return BadRequest("Photo id mismatch");
+
+            var existing = _aestheticService.GetPhotoById(photoId);
+            if (existing == null)
+                return NotFound(photoId);
+
+            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+            var updated = _aestheticService.UpdatePhoto(photo);
+            return Ok(ToPhotoViewModel(updated));
+        }
+
+        [HttpPut("photos/{photoId}/upload")]
+        [ProducesResponseType(typeof(AestheticPhotoVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdatePhotoUpload(int photoId, [FromForm] AestheticPhotoUploadVM uploadVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!IsSupportedImage(uploadVM.File))
+                return BadRequest("Only non-empty image files are allowed.");
+
+            var existing = _aestheticService.GetPhotoById(photoId);
+            if (existing == null)
+                return NotFound(photoId);
+
+            var consultation = _aestheticService.GetConsultationById(uploadVM.ConsultationId);
+            if (consultation == null)
+                return NotFound(uploadVM.ConsultationId);
+
+            var savedPath = SaveUploadedFile(uploadVM.File);
+            DeletePhysicalFile(existing.FilePath);
+
+            var photoVM = new AestheticPhotoVM
+            {
+                Id = photoId,
+                ConsultationId = uploadVM.ConsultationId,
+                FileName = uploadVM.File.FileName,
+                Type = uploadVM.Type,
+                Url = savedPath
+            };
+
+            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+            var updated = _aestheticService.UpdatePhoto(photo);
+            return Ok(ToPhotoViewModel(updated));
+        }
+
+        [HttpDelete("photos/{photoId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult DeletePhoto(int photoId)
+        {
+            var existing = _aestheticService.GetPhotoById(photoId);
+            if (existing == null)
+                return NotFound(photoId);
+
+            DeletePhysicalFile(existing.FilePath);
+            _aestheticService.DeletePhoto(photoId);
+            return NoContent();
+        }
+
+        private AestheticPhotoVM ToPhotoViewModel(Core.Models.Aesthetic.AestheticPhoto photo)
+        {
+            var vm = _mapper.Map<AestheticPhotoVM>(photo);
+            vm.Url = BuildPublicUrl(vm.Url);
+            vm.ThumbnailUrl = BuildPublicUrl(vm.ThumbnailUrl ?? vm.Url);
+            return vm;
+        }
+
+        private string BuildPublicUrl(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+                return string.Empty;
+
+            if (Uri.TryCreate(relativePath, UriKind.Absolute, out _))
+                return relativePath;
+
+            return $"{Request.Scheme}://{Request.Host}{relativePath}";
+        }
+
+        private string SaveUploadedFile(IFormFile file)
+        {
+            var uploadsRoot = EnsureUploadFolder();
+            var extension = Path.GetExtension(file.FileName);
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var fullPath = Path.Combine(uploadsRoot, fileName);
+
+            using var stream = new FileStream(fullPath, FileMode.Create);
+            file.CopyTo(stream);
+
+            return $"/{UploadFolder.Replace("\\", "/")}/{fileName}";
+        }
+
+        private static bool IsSupportedImage(IFormFile file)
+        {
+            if (file.Length <= 0)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowed = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" };
+            return allowed.Contains(extension);
+        }
+
+        private void DeletePhysicalFile(string? filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                return;
+
+            var webRoot = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRoot))
+                return;
+
+            var pathValue = filePath;
+            if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
+            {
+                pathValue = uri.LocalPath;
+            }
+
+            var relativePath = pathValue.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+            var fullPath = Path.Combine(webRoot, relativePath);
+            if (System.IO.File.Exists(fullPath))
+            {
+                System.IO.File.Delete(fullPath);
+            }
+        }
+
+        private string EnsureUploadFolder()
+        {
+            var webRoot = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRoot))
+            {
+                webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            }
+
+            var directoryPath = Path.Combine(webRoot, UploadFolder.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(directoryPath);
+            return directoryPath;
         }
     }
 }

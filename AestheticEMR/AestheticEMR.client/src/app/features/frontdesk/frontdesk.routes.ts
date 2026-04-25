@@ -19,6 +19,12 @@ export const frontdeskRoutes: Routes = [
     title: 'Patient Attendance'
   },
   {
+    path: 'appointments',
+    loadComponent: () => import('./appointment/appointment.component')
+      .then(m => m.AppointmentComponent),
+    title: 'Appointments'
+  },
+  {
     path: 'companies',
     loadComponent: () => import('../../components/retainerships/retainerships.component')
       .then(m => m.RetainershipsComponent),

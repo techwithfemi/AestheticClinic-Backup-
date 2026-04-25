@@ -15,10 +15,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
         AestheticPatient AddPatient(AestheticPatient patient);
         AestheticPatient UpdatePatient(AestheticPatient patient);
         IEnumerable<AestheticConsultation> GetConsultationsForPatient(int patientId);
+        IEnumerable<AestheticConsultation> GetConsultationsByProcedure(string procedureType);
         IEnumerable<AestheticConsultation> GetLaserSessions();
         AestheticConsultation AddConsultation(AestheticConsultation consultation);
+        AestheticConsultation UpdateConsultation(AestheticConsultation consultation);
+        void DeleteConsultation(int consultationId);
         AestheticConsultation? GetConsultationById(int consultationId);
+        IEnumerable<AestheticPhoto> GetPhotos();
+        AestheticPhoto? GetPhotoById(int photoId);
         IEnumerable<AestheticPhoto> GetPhotosForConsultation(int consultationId);
         AestheticPhoto AddPhoto(AestheticPhoto photo);
+        AestheticPhoto UpdatePhoto(AestheticPhoto photo);
+        void DeletePhoto(int photoId);
     }
 }

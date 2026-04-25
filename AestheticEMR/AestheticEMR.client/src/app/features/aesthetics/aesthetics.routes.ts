@@ -3,17 +3,25 @@ import { Routes } from '@angular/router';
 export const aestheticsRoutes: Routes = [
   {
     path: '',
-    redirectTo: 'consults',
+    redirectTo: 'botox',
     pathMatch: 'full'
   },
   {
-    path: 'consults',
-    loadComponent: () => import('./consults/consults.component')
-      .then(m => m.ConsultsComponent)
+    path: 'botox',
+    loadComponent: () => import('./botox/botox.component')
+      .then(m => m.BotoxComponent),
+    title: 'Botox Treatments'
   },
   {
     path: 'laser',
     loadChildren: () => import('../laser/laser.routes')
-      .then(m => m.laserRoutes)
+      .then(m => m.laserRoutes),
+    title: 'Laser Treatments'
+  },
+  {
+    path: 'photos',
+    loadComponent: () => import('./photos/photos.component')
+      .then(m => m.PhotosComponent),
+    title: 'Before & After Photos'
   }
 ];

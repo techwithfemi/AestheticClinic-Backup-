@@ -20,6 +20,8 @@ import { Permissions } from '../../models/permission.model';
 import { NgClass } from '@angular/common';
 import { AutofocusDirective } from '../../directives/autofocus.directive';
 import { EqualValidator } from '../../directives/equal-validator.directive';
+import { AppointmentEndpoint } from '../../services/appointment-endpoint.service';
+import { VwEmpName } from '../../models/legacy/vw-emp-name.model';
 
 @Component({
   selector: 'app-user-info',
@@ -33,6 +35,7 @@ import { EqualValidator } from '../../directives/equal-validator.directive';
 export class UserInfoComponent implements OnInit {
   private alertService = inject(AlertService);
   private accountService = inject(AccountService);
+  private appointmentEndpoint = inject(AppointmentEndpoint);
 
   public isEditMode = false;
   public isNewUser = false;
@@ -44,6 +47,8 @@ export class UserInfoComponent implements OnInit {
   public user = new User();
   public userEdit = new UserEdit();
   public allRoles: Role[] = [];
+  public employees: VwEmpName[] = [];
+  public selectedEmpID: string | null = null;
 
   public formResetToggle = true;
 
@@ -54,7 +59,7 @@ export class UserInfoComponent implements OnInit {
   readonly isViewOnly = input(false);
   @Input() isGeneralEditor = false;
 
-  // Outupt to broadcast this instance so it can be accessible from within ng-bootstrap modal template
+  // OutPut to broadcast this instance so it can be accessible from within ng-bootstrap modal template
   readonly afterOnInit = output<UserInfoComponent>();
 
   readonly form = viewChild<NgForm>('f');
@@ -74,6 +79,8 @@ export class UserInfoComponent implements OnInit {
   readonly roles = viewChild<NgModel>('roles');
 
   ngOnInit() {
+    this.loadEmployees();
+
     if (!this.isGeneralEditor) {
       this.loadCurrentUserData();
     }
@@ -116,6 +123,32 @@ export class UserInfoComponent implements OnInit {
 
   getRoleByName(name: string) {
     return this.allRoles.find((r) => r.name === name);
+  }
+
+  loadEmployees() {
+    this.appointmentEndpoint.getAppointmentEmployeesEndpoint<VwEmpName[]>()
+      .subscribe({
+        next: employees => {
+          this.employees = employees;
+          this.syncSelectedEmployee();
+        },
+        error: () => {
+          this.employees = [];
+        }
+      });
+  }
+
+  onEmployeeSelected(emp: VwEmpName | null) {
+    this.userEdit.fullName = emp?.empName ?? '';
+  }
+
+  private syncSelectedEmployee() {
+    if (this.userEdit.fullName) {
+      const match = this.employees.find(e => e.empName === this.userEdit.fullName);
+      this.selectedEmpID = match?.empID ?? null;
+    } else {
+      this.selectedEmpID = null;
+    }
   }
 
   showErrorAlert(caption: string, message: string) {
@@ -330,6 +363,7 @@ export class UserInfoComponent implements OnInit {
 
   resetForm(replace = false) {
     this.isChangePassword = false;
+    this.selectedEmpID = null;
 
     if (!replace) {
       this.form()?.reset();
@@ -350,6 +384,7 @@ export class UserInfoComponent implements OnInit {
     this.user = this.userEdit = new UserEdit();
     this.userEdit.isEnabled = true;
     this.userEdit.roles = [];
+    this.selectedEmpID = null;
     this.edit();
 
     return this.userEdit;
@@ -365,6 +400,7 @@ export class UserInfoComponent implements OnInit {
       this.userEdit = new UserEdit();
       Object.assign(this.user, user);
       Object.assign(this.userEdit, user);
+      this.syncSelectedEmployee();
       this.edit();
 
       return this.userEdit;

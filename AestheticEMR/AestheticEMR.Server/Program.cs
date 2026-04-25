@@ -217,6 +217,7 @@ builder.Services.AddScoped<IAestheticService, AestheticService>();
 builder.Services.AddScoped<IHRetainershipService, HRetainershipService>();
 builder.Services.AddScoped<IHPatientService, HPatientService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();
@@ -243,6 +244,7 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
+app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
 {
