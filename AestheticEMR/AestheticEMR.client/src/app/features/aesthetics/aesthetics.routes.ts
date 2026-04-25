@@ -14,8 +14,8 @@ export const aestheticsRoutes: Routes = [
   },
   {
     path: 'laser',
-    loadChildren: () => import('../laser/laser.routes')
-      .then(m => m.laserRoutes),
+    loadComponent: () => import('./laser/laser.component')
+      .then(m => m.LaserComponent),
     title: 'Laser Treatments'
   },
   {

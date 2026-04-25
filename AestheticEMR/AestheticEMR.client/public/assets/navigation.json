@@ -38,9 +38,6 @@
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Consultations", "path": "consults", "icon": "forum" },
-        { "label": "Laser Procedure Logs", "path": "laser/logs", "icon": "description" },
-        { "label": "Laser Safety Check", "path": "laser/safety", "icon": "health_and_safety" },
         { "label": "Botox Treatments", "path": "botox", "icon": "medical_services" },
         { "label": "Laser Treatments", "path": "laser", "icon": "flare" },
         { "label": "Before & After Photos", "path": "photos", "icon": "photo_library" }
