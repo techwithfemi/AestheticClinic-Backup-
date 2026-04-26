@@ -36,6 +36,7 @@ export interface AestheticConsultation {
 
 export interface AestheticPatient {
   id: number;
+  pno?: string; // Patient number from legacy system
   firstName: string;
   lastName: string;
   email?: string;

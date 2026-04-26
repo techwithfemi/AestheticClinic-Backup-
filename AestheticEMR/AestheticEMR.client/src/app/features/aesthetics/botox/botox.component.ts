@@ -1,159 +1,149 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
+import { Attendance } from '../../../models/legacy/attendance.model';
+import { BotoxDialogComponent } from './botox-dialog.component';
 
 @Component({
   selector: 'app-botox',
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatButtonModule,
-    MatSelectModule,
-    MatSlideToggleModule,
     MatTableModule,
     MatIconModule
   ],
   template: `
     <div class="botox-page">
-      <mat-card class="form-card">
-        <h2>Botox Treatments</h2>
-        <form [formGroup]="form" class="form-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Patient</mat-label>
-            <mat-select formControlName="patientId">
-              <mat-option *ngFor="let patient of patients()" [value]="patient.id">
-                {{ patient.firstName }} {{ patient.lastName }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Treatment Date</mat-label>
-            <input matInput type="date" formControlName="consultationDate" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Provider</mat-label>
-            <input matInput formControlName="provider" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Treatment Plan</mat-label>
-            <textarea matInput rows="3" formControlName="treatmentPlan"></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Injection Notes</mat-label>
-            <textarea matInput rows="3" formControlName="procedureDescription"></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Adverse Events / Risks</mat-label>
-            <textarea matInput rows="3" formControlName="risksAndComplications"></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Follow-up Notes</mat-label>
-            <textarea matInput rows="3" formControlName="postTreatmentInstructions"></textarea>
-          </mat-form-field>
-
-          <mat-slide-toggle formControlName="consentGiven">Consent Given</mat-slide-toggle>
-          <mat-slide-toggle formControlName="informationAccepted">Information Accepted</mat-slide-toggle>
-        </form>
-
-        <div class="actions">
-          <button mat-raised-button color="primary" (click)="save()" [disabled]="loadingIndicator">
-            {{ editing() ? 'Update' : 'Add' }} Botox Session
-          </button>
-          <button mat-stroked-button type="button" (click)="resetForm()">Clear</button>
+      <div class="page-header">
+        <div>
+          <h2>Botox Treatments</h2>
+          <p class="subtitle">Track plans, injection units, follow-up outcomes and adverse events.</p>
         </div>
-      </mat-card>
+        <button mat-raised-button color="primary" (click)="openAddDialog()">
+          <mat-icon>add</mat-icon>
+          Add Botox Session
+        </button>
+      </div>
+
+      <div class="search-section">
+        <input
+          type="text"
+          class="search-input"
+          [(ngModel)]="searchText"
+          (input)="onSearch()"
+          placeholder="Search by patient name or PNO..." />
+      </div>
 
       <mat-card>
-        <h3>Botox Session History</h3>
-        <table mat-table [dataSource]="consultations()" class="data-table">
-          <ng-container matColumnDef="patient">
-            <th mat-header-cell *matHeaderCellDef>Patient</th>
-            <td mat-cell *matCellDef="let row">{{ resolvePatientName(row) }}</td>
-          </ng-container>
+        @if (filteredConsultations().length === 0 && !loadingIndicator) {
+          <p class="empty-state">No Botox sessions recorded yet.</p>
+        }
 
-          <ng-container matColumnDef="date">
-            <th mat-header-cell *matHeaderCellDef>Date</th>
-            <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'mediumDate' }}</td>
-          </ng-container>
+        @if (filteredConsultations().length > 0) {
+          <table mat-table [dataSource]="filteredConsultations()" class="data-table">
 
-          <ng-container matColumnDef="provider">
-            <th mat-header-cell *matHeaderCellDef>Provider</th>
-            <td mat-cell *matCellDef="let row">{{ row.provider || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="patient">
+              <th mat-header-cell *matHeaderCellDef>Patient (PNO)</th>
+              <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row) }}</td>
+            </ng-container>
 
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let row">
-              <button mat-icon-button type="button" (click)="edit(row)" aria-label="Edit">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button type="button" (click)="remove(row.id)" aria-label="Delete">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'mediumDate' }}</td>
+            </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
+            <ng-container matColumnDef="provider">
+              <th mat-header-cell *matHeaderCellDef>Provider</th>
+              <td mat-cell *matCellDef="let row">{{ row.provider || '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="plan">
+              <th mat-header-cell *matHeaderCellDef>Treatment Plan</th>
+              <td mat-cell *matCellDef="let row" class="plan-cell">{{ row.treatmentPlan || '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="consent">
+              <th mat-header-cell *matHeaderCellDef>Consent</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-icon [class]="row.consentGiven ? 'icon-ok' : 'icon-warn'">
+                  {{ row.consentGiven ? 'check_circle' : 'cancel' }}
+                </mat-icon>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        }
       </mat-card>
     </div>
   `,
   styles: [`
-    .botox-page { padding: 20px; display: grid; gap: 16px; }
-    .form-card h2 { margin-bottom: 16px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .full-width { grid-column: 1 / -1; }
-    .actions { display: flex; gap: 10px; margin-top: 10px; }
+    .botox-page { padding: 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
+    .search-section { margin-bottom: 16px; }
+    .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
     .data-table { width: 100%; }
-    @media (max-width: 992px) { .form-grid { grid-template-columns: 1fr; } }
+    .plan-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-state { color: #888; padding: 32px; text-align: center; }
+    .icon-ok { color: #2e7d32; }
+    .icon-warn { color: #c62828; }
   `]
 })
 export class BotoxComponent {
   private readonly endpoint = inject(AestheticEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly alertService = inject(AlertService);
-  private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
-  readonly editingId = signal<number | null>(null);
-  readonly editing = computed(() => this.editingId() !== null);
-  readonly displayedColumns = ['patient', 'date', 'provider', 'actions'];
+  readonly attendance = signal<Attendance[]>([]);
+  readonly searchText = signal<string>('');
+  readonly displayedColumns = ['patient', 'date', 'provider', 'plan', 'consent', 'actions'];
 
-  readonly form = this.fb.nonNullable.group({
-    id: [0],
-    patientId: [0, Validators.min(1)],
-    consultationDate: ['', Validators.required],
-    provider: [''],
-    treatmentPlan: [''],
-    procedureDescription: [''],
-    risksAndComplications: [''],
-    postTreatmentInstructions: [''],
-    consentGiven: [true],
-    informationAccepted: [true]
+  readonly filteredConsultations = computed(() => {
+    const search = this.searchText().toLowerCase();
+    if (!search) return this.consultations();
+
+    return this.consultations().filter(c => {
+      const label = this.resolvePatientLabel(c).toLowerCase();
+      return label.includes(search);
+    });
+  });
+
+  readonly todayAttendancePatients = computed(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return this.attendance()
+      .filter(a => a.recDate?.startsWith(today) && a.clinicType?.toLowerCase() === 'aesthetics')
+      .map(a => a.pNo);
   });
 
   constructor() {
@@ -164,92 +154,82 @@ export class BotoxComponent {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Loading Botox sessions...');
 
-    this.endpoint.getPatientsEndpoint<AestheticPatient[]>().subscribe({
-      next: patients => {
-        this.patients.set(patients);
-
-        this.endpoint.getBotoxConsultationsEndpoint<AestheticConsultation[]>().subscribe({
-          next: consultations => {
-            this.consultations.set(consultations);
-            this.loadingIndicator = false;
-            this.alertService.stopLoadingMessage();
-          },
-          error: error => {
-            this.loadingIndicator = false;
-            this.alertService.stopLoadingMessage();
-            this.alertService.showStickyMessage('Load error', 'Unable to load Botox sessions.', MessageSeverity.error, error);
-          }
-        });
-      },
-      error: error => {
-        this.loadingIndicator = false;
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage('Load error', 'Unable to load patients.', MessageSeverity.error, error);
-      }
+    Promise.all([
+      this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
+      this.endpoint.getBotoxConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
+      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise()
+    ]).then(([patients, consultations, attendance]) => {
+      this.patients.set(patients || []);
+      this.consultations.set(consultations || []);
+      this.attendance.set(attendance || []);
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+    }).catch(error => {
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+      this.alertService.showStickyMessage('Load error', 'Unable to load Botox sessions.', MessageSeverity.error, error);
     });
   }
 
-  save(): void {
-    this.form.markAllAsTouched();
-    if (this.form.invalid) {
-      this.alertService.showStickyMessage('Validation error', 'Patient and treatment date are required.', MessageSeverity.warn);
-      return;
-    }
+  openAddDialog(): void {
+    const dialogRef = this.dialog.open(BotoxDialogComponent, {
+      data: { isEdit: false, patients: this.getTodayAttendancePatients() },
+      width: '480px',
+      disableClose: true
+    });
 
-    const value = this.form.getRawValue();
-    const consultation: AestheticConsultation = {
-      id: value.id,
-      patientId: value.patientId,
-      consultationDate: value.consultationDate,
-      procedureType: 'Botox',
-      provider: value.provider,
-      treatmentPlan: value.treatmentPlan,
-      procedureDescription: value.procedureDescription,
-      risksAndComplications: value.risksAndComplications,
-      postTreatmentInstructions: value.postTreatmentInstructions,
-      consentGiven: value.consentGiven,
-      informationAccepted: value.informationAccepted
-    };
+    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+      if (!result) return;
 
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage(this.editing() ? 'Updating Botox session...' : 'Saving Botox session...');
+      this.loadingIndicator = true;
+      this.alertService.startLoadingMessage('Saving Botox session...');
 
-    const request = this.editing()
-      ? this.endpoint.updateConsultationEndpoint<AestheticConsultation>(value.id, consultation)
-      : this.endpoint.createBotoxConsultationEndpoint<AestheticConsultation>(consultation);
-
-    request.subscribe({
-      next: () => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.resetForm();
-        this.load();
-      },
-      error: error => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Save error', 'Unable to save Botox session.', MessageSeverity.error, error);
-      }
+      this.endpoint.createBotoxConsultationEndpoint<AestheticConsultation>(result).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.load();
+          this.alertService.showMessage('Success', 'Botox session saved.', MessageSeverity.success);
+        },
+        error: (error: unknown) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Save error', 'Unable to save Botox session.', MessageSeverity.error, error);
+        }
+      });
     });
   }
 
-  edit(row: AestheticConsultation): void {
-    this.editingId.set(row.id);
-    this.form.patchValue({
-      id: row.id,
-      patientId: row.patientId,
-      consultationDate: row.consultationDate ? row.consultationDate.slice(0, 10) : '',
-      provider: row.provider ?? '',
-      treatmentPlan: row.treatmentPlan ?? '',
-      procedureDescription: row.procedureDescription ?? '',
-      risksAndComplications: row.risksAndComplications ?? '',
-      postTreatmentInstructions: row.postTreatmentInstructions ?? '',
-      consentGiven: row.consentGiven ?? true,
-      informationAccepted: row.informationAccepted ?? true
+  openEditDialog(consultation: AestheticConsultation): void {
+    const dialogRef = this.dialog.open(BotoxDialogComponent, {
+      data: { isEdit: true, consultation, patients: this.getTodayAttendancePatients() },
+      width: '480px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+      if (!result) return;
+
+      this.loadingIndicator = true;
+      this.alertService.startLoadingMessage('Updating Botox session...');
+
+      this.endpoint.updateConsultationEndpoint<AestheticConsultation>(result.id, result).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.load();
+          this.alertService.showMessage('Success', 'Botox session updated.', MessageSeverity.success);
+        },
+        error: (error: unknown) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Update error', 'Unable to update Botox session.', MessageSeverity.error, error);
+        }
+      });
     });
   }
 
-  remove(id: number): void {
+  delete(id: number): void {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Deleting Botox session...');
 
@@ -257,10 +237,10 @@ export class BotoxComponent {
       next: () => {
         this.alertService.stopLoadingMessage();
         this.loadingIndicator = false;
-        this.resetForm();
         this.load();
+        this.alertService.showMessage('Success', 'Botox session deleted.', MessageSeverity.success);
       },
-      error: error => {
+      error: (error: unknown) => {
         this.alertService.stopLoadingMessage();
         this.loadingIndicator = false;
         this.alertService.showStickyMessage('Delete error', 'Unable to delete Botox session.', MessageSeverity.error, error);
@@ -268,28 +248,22 @@ export class BotoxComponent {
     });
   }
 
-  resetForm(): void {
-    this.editingId.set(null);
-    this.form.reset({
-      id: 0,
-      patientId: 0,
-      consultationDate: '',
-      provider: '',
-      treatmentPlan: '',
-      procedureDescription: '',
-      risksAndComplications: '',
-      postTreatmentInstructions: '',
-      consentGiven: true,
-      informationAccepted: true
-    });
+  onSearch(): void {
+    // Search is handled by computed filteredConsultations
   }
 
-  resolvePatientName(row: AestheticConsultation): string {
+  resolvePatientLabel(row: AestheticConsultation): string {
     if (row.patientName?.trim()) {
-      return row.patientName;
+      const patient = this.patients().find(x => x.id === row.patientId);
+      return `${row.patientName} [${patient?.pno || 'N/A'}]`;
     }
 
-    const patient = this.patients().find(p => p.id === row.patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : `Patient #${row.patientId}`;
+    const p = this.patients().find(x => x.id === row.patientId);
+    return p ? `${p.firstName} ${p.lastName} [${p.pno || 'N/A'}]` : `Patient #${row.patientId}`;
+  }
+
+  private getTodayAttendancePatients(): AestheticPatient[] {
+    const todayPNOs = this.todayAttendancePatients();
+    return this.patients().filter(p => todayPNOs.includes(p.pno || ''));
   }
 }

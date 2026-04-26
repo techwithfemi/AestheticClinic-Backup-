@@ -1,144 +1,63 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
+import { Attendance } from '../../../models/legacy/attendance.model';
+import { LaserDialogComponent } from './laser-dialog.component';
 
 @Component({
   selector: 'app-laser',
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatButtonModule,
-    MatSelectModule,
-    MatSlideToggleModule,
     MatTableModule,
-    MatIconModule,
-    MatChipsModule
+    MatIconModule
   ],
   template: `
     <div class="laser-page">
-
-      <mat-card class="form-card">
-        <h2>Laser Treatments</h2>
-        <p class="subtitle">Record laser sessions including device settings, skin assessment, session progress and safety checks.</p>
-
-        <form [formGroup]="form" class="form-grid">
-
-          <!-- Patient & Session Info -->
-          <mat-form-field appearance="outline">
-            <mat-label>Patient</mat-label>
-            <mat-select formControlName="patientId" required>
-              @for (p of patients(); track p.id) {
-                <mat-option [value]="p.id">{{ p.firstName }} {{ p.lastName }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Session Date</mat-label>
-            <input matInput type="date" formControlName="consultationDate" required />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Provider / Operator</mat-label>
-            <input matInput formControlName="provider" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Skin Type (Fitzpatrick I–VI)</mat-label>
-            <mat-select formControlName="skinAssessment">
-              <mat-option value="Type I">Type I – Very fair, always burns</mat-option>
-              <mat-option value="Type II">Type II – Fair, usually burns</mat-option>
-              <mat-option value="Type III">Type III – Medium, sometimes burns</mat-option>
-              <mat-option value="Type IV">Type IV – Olive, rarely burns</mat-option>
-              <mat-option value="Type V">Type V – Brown, very rarely burns</mat-option>
-              <mat-option value="Type VI">Type VI – Dark, never burns</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <!-- Device & Settings -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Device & Settings (wavelength, fluence, pulse width, spot size)</mat-label>
-            <textarea matInput rows="2" formControlName="deviceSettings"
-              placeholder="e.g. Nd:YAG 1064nm | Fluence 18 J/cm² | Pulse 10ms | Spot 18mm"></textarea>
-          </mat-form-field>
-
-          <!-- Treatment Plan -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Treatment Plan &amp; Target Area</mat-label>
-            <textarea matInput rows="2" formControlName="treatmentPlan"
-              placeholder="e.g. Full-face rejuvenation, 6-session package, session 2/6"></textarea>
-          </mat-form-field>
-
-          <!-- Session Notes -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Session Notes / Observations</mat-label>
-            <textarea matInput rows="2" formControlName="procedureDescription"></textarea>
-          </mat-form-field>
-
-          <!-- Post-treatment -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Post-Treatment Instructions</mat-label>
-            <textarea matInput rows="2" formControlName="postTreatmentInstructions"></textarea>
-          </mat-form-field>
-
-          <!-- Contraindications / Risks -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Contraindications &amp; Adverse Events</mat-label>
-            <textarea matInput rows="2" formControlName="risksAndComplications"
-              placeholder="Document any immediate reactions, contraindications checked..."></textarea>
-          </mat-form-field>
-
-          <!-- Consent toggles -->
-          <div class="toggles">
-            <mat-slide-toggle formControlName="consentGiven" color="primary">Consent Obtained</mat-slide-toggle>
-            <mat-slide-toggle formControlName="informationAccepted" color="primary">Patient Information Accepted</mat-slide-toggle>
-          </div>
-
-        </form>
-
-        <div class="actions">
-          <button mat-raised-button color="primary" (click)="save()" [disabled]="loadingIndicator">
-            <mat-icon>save</mat-icon>
-            {{ editing() ? 'Update Session' : 'Record Session' }}
-          </button>
-          <button mat-stroked-button type="button" (click)="resetForm()">
-            <mat-icon>clear</mat-icon>
-            Clear
-          </button>
+      <div class="page-header">
+        <div>
+          <h2>Laser Treatments</h2>
+          <p class="subtitle">Record laser sessions including device settings, skin assessment, session progress and safety checks.</p>
         </div>
-      </mat-card>
+        <button mat-raised-button color="primary" (click)="openAddDialog()">
+          <mat-icon>add</mat-icon>
+          Add Laser Session
+        </button>
+      </div>
 
-      <!-- Session History -->
+      <div class="search-section">
+        <input
+          type="text"
+          class="search-input"
+          [(ngModel)]="searchText"
+          (input)="onSearch()"
+          placeholder="Search by patient name or PNO..." />
+      </div>
+
       <mat-card>
-        <h3>Laser Session History</h3>
-
-        @if (consultations().length === 0 && !loadingIndicator) {
+        @if (filteredConsultations().length === 0 && !loadingIndicator) {
           <p class="empty-state">No laser sessions recorded yet.</p>
         }
 
-        @if (consultations().length > 0) {
-          <table mat-table [dataSource]="consultations()" class="data-table">
+        @if (filteredConsultations().length > 0) {
+          <table mat-table [dataSource]="filteredConsultations()" class="data-table">
 
             <ng-container matColumnDef="patient">
-              <th mat-header-cell *matHeaderCellDef>Patient</th>
-              <td mat-cell *matCellDef="let row">{{ resolvePatientName(row) }}</td>
+              <th mat-header-cell *matHeaderCellDef>Patient (PNO)</th>
+              <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row) }}</td>
             </ng-container>
 
             <ng-container matColumnDef="date">
@@ -173,10 +92,10 @@ import { AestheticConsultation, AestheticPatient } from '../../../models/aesthet
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
-                <button mat-icon-button type="button" (click)="edit(row)" aria-label="Edit session">
+                <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button type="button" (click)="remove(row.id)" aria-label="Delete session">
+                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
@@ -187,49 +106,49 @@ import { AestheticConsultation, AestheticPatient } from '../../../models/aesthet
           </table>
         }
       </mat-card>
-
     </div>
   `,
   styles: [`
-    .laser-page { padding: 20px; display: grid; gap: 16px; }
-    .subtitle { color: #666; margin: 0 0 16px; font-size: 0.9rem; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .full-width { grid-column: 1 / -1; }
-    .toggles { grid-column: 1 / -1; display: flex; gap: 24px; flex-wrap: wrap; padding: 4px 0; }
-    .actions { display: flex; gap: 12px; margin-top: 12px; }
+    .laser-page { padding: 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
+    .search-section { margin-bottom: 16px; }
+    .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
     .data-table { width: 100%; }
-    .device-cell { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .empty-state { color: #888; padding: 16px 0; }
+    .device-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-state { color: #888; padding: 32px; text-align: center; }
     .icon-ok { color: #2e7d32; }
     .icon-warn { color: #c62828; }
-    @media (max-width: 992px) { .form-grid { grid-template-columns: 1fr; } }
   `]
 })
 export class LaserComponent {
   private readonly endpoint = inject(AestheticEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly alertService = inject(AlertService);
-  private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
-  readonly editingId = signal<number | null>(null);
-  readonly editing = computed(() => this.editingId() !== null);
+  readonly attendance = signal<Attendance[]>([]);
+  readonly searchText = signal<string>('');
   readonly displayedColumns = ['patient', 'date', 'provider', 'skin', 'device', 'consent', 'actions'];
 
-  readonly form = this.fb.nonNullable.group({
-    id: [0],
-    patientId: [0, Validators.min(1)],
-    consultationDate: ['', Validators.required],
-    provider: [''],
-    skinAssessment: [''],
-    deviceSettings: [''],
-    treatmentPlan: [''],
-    procedureDescription: [''],
-    postTreatmentInstructions: [''],
-    risksAndComplications: [''],
-    consentGiven: [true],
-    informationAccepted: [true]
+  readonly filteredConsultations = computed(() => {
+    const search = this.searchText().toLowerCase();
+    if (!search) return this.consultations();
+
+    return this.consultations().filter(c => {
+      const label = this.resolvePatientLabel(c).toLowerCase();
+      return label.includes(search);
+    });
+  });
+
+  readonly todayAttendancePatients = computed(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return this.attendance()
+      .filter(a => a.recDate?.startsWith(today) && a.clinicType?.toLowerCase() === 'aesthetics')
+      .map(a => a.pNo);
   });
 
   constructor() {
@@ -240,96 +159,82 @@ export class LaserComponent {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Loading laser sessions...');
 
-    this.endpoint.getPatientsEndpoint<AestheticPatient[]>().subscribe({
-      next: patients => {
-        this.patients.set(patients);
-
-        this.endpoint.getLaserConsultationsEndpoint<AestheticConsultation[]>().subscribe({
-          next: consultations => {
-            this.consultations.set(consultations);
-            this.loadingIndicator = false;
-            this.alertService.stopLoadingMessage();
-          },
-          error: (error: unknown) => {
-            this.loadingIndicator = false;
-            this.alertService.stopLoadingMessage();
-            this.alertService.showStickyMessage('Load error', 'Unable to load laser sessions.', MessageSeverity.error, error);
-          }
-        });
-      },
-      error: (error: unknown) => {
-        this.loadingIndicator = false;
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage('Load error', 'Unable to load patients.', MessageSeverity.error, error);
-      }
+    Promise.all([
+      this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
+      this.endpoint.getLaserConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
+      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise()
+    ]).then(([patients, consultations, attendance]) => {
+      this.patients.set(patients || []);
+      this.consultations.set(consultations || []);
+      this.attendance.set(attendance || []);
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+    }).catch(error => {
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+      this.alertService.showStickyMessage('Load error', 'Unable to load laser sessions.', MessageSeverity.error, error);
     });
   }
 
-  save(): void {
-    this.form.markAllAsTouched();
-    if (this.form.invalid) {
-      this.alertService.showStickyMessage('Validation error', 'Patient and session date are required.', MessageSeverity.warn);
-      return;
-    }
+  openAddDialog(): void {
+    const dialogRef = this.dialog.open(LaserDialogComponent, {
+      data: { isEdit: false, patients: this.getTodayAttendancePatients() },
+      width: '520px',
+      disableClose: true
+    });
 
-    const value = this.form.getRawValue();
-    const consultation: AestheticConsultation = {
-      id: value.id,
-      patientId: value.patientId,
-      consultationDate: value.consultationDate,
-      procedureType: 'Laser',
-      provider: value.provider,
-      skinAssessment: value.skinAssessment,
-      deviceSettings: value.deviceSettings,
-      treatmentPlan: value.treatmentPlan,
-      procedureDescription: value.procedureDescription,
-      postTreatmentInstructions: value.postTreatmentInstructions,
-      risksAndComplications: value.risksAndComplications,
-      consentGiven: value.consentGiven,
-      informationAccepted: value.informationAccepted
-    };
+    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+      if (!result) return;
 
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage(this.editing() ? 'Updating session...' : 'Recording session...');
+      this.loadingIndicator = true;
+      this.alertService.startLoadingMessage('Saving laser session...');
 
-    const request = this.editing()
-      ? this.endpoint.updateConsultationEndpoint<AestheticConsultation>(value.id, consultation)
-      : this.endpoint.createLaserConsultationEndpoint<AestheticConsultation>(consultation);
-
-    request.subscribe({
-      next: () => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.resetForm();
-        this.load();
-      },
-      error: (error: unknown) => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Save error', 'Unable to save laser session.', MessageSeverity.error, error);
-      }
+      this.endpoint.createLaserConsultationEndpoint<AestheticConsultation>(result).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.load();
+          this.alertService.showMessage('Success', 'Laser session saved.', MessageSeverity.success);
+        },
+        error: (error: unknown) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Save error', 'Unable to save laser session.', MessageSeverity.error, error);
+        }
+      });
     });
   }
 
-  edit(row: AestheticConsultation): void {
-    this.editingId.set(row.id);
-    this.form.patchValue({
-      id: row.id,
-      patientId: row.patientId,
-      consultationDate: row.consultationDate ? row.consultationDate.slice(0, 10) : '',
-      provider: row.provider ?? '',
-      skinAssessment: row.skinAssessment ?? '',
-      deviceSettings: row.deviceSettings ?? '',
-      treatmentPlan: row.treatmentPlan ?? '',
-      procedureDescription: row.procedureDescription ?? '',
-      postTreatmentInstructions: row.postTreatmentInstructions ?? '',
-      risksAndComplications: row.risksAndComplications ?? '',
-      consentGiven: row.consentGiven ?? true,
-      informationAccepted: row.informationAccepted ?? true
+  openEditDialog(consultation: AestheticConsultation): void {
+    const dialogRef = this.dialog.open(LaserDialogComponent, {
+      data: { isEdit: true, consultation, patients: this.getTodayAttendancePatients() },
+      width: '520px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+      if (!result) return;
+
+      this.loadingIndicator = true;
+      this.alertService.startLoadingMessage('Updating laser session...');
+
+      this.endpoint.updateConsultationEndpoint<AestheticConsultation>(result.id, result).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.load();
+          this.alertService.showMessage('Success', 'Laser session updated.', MessageSeverity.success);
+        },
+        error: (error: unknown) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Update error', 'Unable to update laser session.', MessageSeverity.error, error);
+        }
+      });
     });
   }
 
-  remove(id: number): void {
+  delete(id: number): void {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Deleting laser session...');
 
@@ -337,8 +242,8 @@ export class LaserComponent {
       next: () => {
         this.alertService.stopLoadingMessage();
         this.loadingIndicator = false;
-        this.resetForm();
         this.load();
+        this.alertService.showMessage('Success', 'Laser session deleted.', MessageSeverity.success);
       },
       error: (error: unknown) => {
         this.alertService.stopLoadingMessage();
@@ -348,30 +253,22 @@ export class LaserComponent {
     });
   }
 
-  resetForm(): void {
-    this.editingId.set(null);
-    this.form.reset({
-      id: 0,
-      patientId: 0,
-      consultationDate: '',
-      provider: '',
-      skinAssessment: '',
-      deviceSettings: '',
-      treatmentPlan: '',
-      procedureDescription: '',
-      postTreatmentInstructions: '',
-      risksAndComplications: '',
-      consentGiven: true,
-      informationAccepted: true
-    });
+  onSearch(): void {
+    // Search is handled by computed filteredConsultations
   }
 
-  resolvePatientName(row: AestheticConsultation): string {
+  resolvePatientLabel(row: AestheticConsultation): string {
     if (row.patientName?.trim()) {
-      return row.patientName;
+      const patient = this.patients().find(x => x.id === row.patientId);
+      return `${row.patientName} [${patient?.pno || 'N/A'}]`;
     }
 
     const p = this.patients().find(x => x.id === row.patientId);
-    return p ? `${p.firstName} ${p.lastName}` : `Patient #${row.patientId}`;
+    return p ? `${p.firstName} ${p.lastName} [${p.pno || 'N/A'}]` : `Patient #${row.patientId}`;
+  }
+
+  private getTodayAttendancePatients(): AestheticPatient[] {
+    const todayPNOs = this.todayAttendancePatients();
+    return this.patients().filter(p => todayPNOs.includes(p.pno || ''));
   }
 }

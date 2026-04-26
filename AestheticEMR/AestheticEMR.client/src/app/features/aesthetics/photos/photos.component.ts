@@ -1,21 +1,30 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { AestheticConsultation, AestheticPatient, AestheticPhoto } from '../../../models/aesthetic.model';
+import { Attendance } from '../../../models/legacy/attendance.model';
+import { PhotosDialogComponent } from './photos-dialog.component';
 
 interface ConsultationOption {
   id: number;
   label: string;
+}
+
+interface PhotoDialogResult {
+  id: number;
+  consultationId: number;
+  fileName: string;
+  type: string;
+  file?: File;
 }
 
 @Component({
@@ -23,142 +32,114 @@ interface ConsultationOption {
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatButtonModule,
-    MatSelectModule,
     MatTableModule,
     MatIconModule
   ],
   template: `
     <div class="photos-page">
-      <mat-card class="form-card">
-        <h2>Before & After Photo Management</h2>
-
-        <form [formGroup]="form" class="form-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Consultation</mat-label>
-            <mat-select formControlName="consultationId">
-              @for (option of consultationOptions(); track option.id) {
-                <mat-option [value]="option.id">{{ option.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Type</mat-label>
-            <mat-select formControlName="type">
-              <mat-option value="Before">Before</mat-option>
-              <mat-option value="After">After</mat-option>
-              <mat-option value="Progress">Progress</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>File Name</mat-label>
-            <input matInput formControlName="fileName" />
-          </mat-form-field>
-
-          <div class="file-control">
-            <button mat-stroked-button type="button" (click)="fileInput.click()">
-              {{ editing() ? 'Replace Image' : 'Choose Image' }}
-            </button>
-            <input #fileInput type="file" accept="image/*" (change)="onFilePicked($event)" hidden />
-            <span class="file-name">{{ selectedFileName() || 'No file selected' }}</span>
-          </div>
-
-          @if (previewSource()) {
-            <div class="preview-pane">
-              <img [src]="previewSource()!" alt="Selected preview" />
-            </div>
-          }
-        </form>
-
-        <div class="actions">
-          <button mat-raised-button color="primary" (click)="save()" [disabled]="loadingIndicator">
-            {{ editing() ? 'Update' : 'Add' }} Photo
-          </button>
-          <button mat-stroked-button type="button" (click)="resetForm()">Clear</button>
+      <div class="page-header">
+        <div>
+          <h2>Before & After Photos</h2>
+          <p class="subtitle">Upload, manage, and view before and after treatment photos for patient consultations.</p>
         </div>
-      </mat-card>
+        <button mat-raised-button color="primary" (click)="openAddDialog()">
+          <mat-icon>add</mat-icon>
+          Add Photo
+        </button>
+      </div>
+
+      <div class="search-section">
+        <input
+          type="text"
+          class="search-input"
+          [(ngModel)]="searchText"
+          (input)="onSearch()"
+          placeholder="Search by patient name, PNO, or consultation..." />
+      </div>
 
       <mat-card>
-        <h3>Photo Library</h3>
-        <table mat-table [dataSource]="photos()" class="data-table">
-          <ng-container matColumnDef="thumbnail">
-            <th mat-header-cell *matHeaderCellDef>Preview</th>
-            <td mat-cell *matCellDef="let row">
-              <button class="thumb-btn" type="button" (click)="openFullImage(row)" [attr.aria-label]="'Open full image ' + (row.fileName || '')">
-                <img class="thumb" [src]="row.thumbnailUrl || row.url" [alt]="row.fileName || 'Photo'" />
-              </button>
-            </td>
-          </ng-container>
+        @if (filteredPhotos().length === 0 && !loadingIndicator) {
+          <p class="empty-state">No photos uploaded yet.</p>
+        }
 
-          <ng-container matColumnDef="consultation">
-            <th mat-header-cell *matHeaderCellDef>Consultation</th>
-            <td mat-cell *matCellDef="let row">{{ resolveConsultationLabel(row.consultationId) }}</td>
-          </ng-container>
+        @if (filteredPhotos().length > 0) {
+          <table mat-table [dataSource]="filteredPhotos()" class="data-table">
 
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>Type</th>
-            <td mat-cell *matCellDef="let row">{{ row.type || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="thumbnail">
+              <th mat-header-cell *matHeaderCellDef>Preview</th>
+              <td mat-cell *matCellDef="let row">
+                <button class="thumb-btn" type="button" (click)="openFullImage(row)" [attr.aria-label]="'View full image'">
+                  <img class="thumb" [src]="row.thumbnailUrl || row.url" [alt]="row.fileName || 'Photo'" />
+                </button>
+              </td>
+            </ng-container>
 
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>File Name</th>
-            <td mat-cell *matCellDef="let row">{{ row.fileName || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="consultation">
+              <th mat-header-cell *matHeaderCellDef>Patient (PNO)</th>
+              <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row.consultationId) }}</td>
+            </ng-container>
 
-          <ng-container matColumnDef="created">
-            <th mat-header-cell *matHeaderCellDef>Uploaded</th>
-            <td mat-cell *matCellDef="let row">{{ row.createdDate | date:'medium' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.type || '—' }}</td>
+            </ng-container>
 
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let row">
-              <button mat-icon-button type="button" (click)="openFullImage(row)" aria-label="View full image">
-                <mat-icon>visibility</mat-icon>
-              </button>
-              <button mat-icon-button type="button" (click)="edit(row)" aria-label="Edit">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button type="button" (click)="remove(row.id)" aria-label="Delete">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>File Name</th>
+              <td mat-cell *matCellDef="let row">{{ row.fileName || '—' }}</td>
+            </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
+            <ng-container matColumnDef="created">
+              <th mat-header-cell *matHeaderCellDef>Uploaded</th>
+              <td mat-cell *matCellDef="let row">{{ row.createdDate | date:'short' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button type="button" (click)="openFullImage(row)" title="View full image">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        }
       </mat-card>
 
+      <!-- Full Image Overlay -->
       @if (isFullImageOpen()) {
-        <div class="full-image-overlay" (click)="closeFullImage()" (keydown.escape)="closeFullImage()" tabindex="0">
-          <div class="full-image-dialog" (click)="$event.stopPropagation()">
+        <div class="full-image-overlay" (click)="closeFullImage()" tabindex="0" (keydown.escape)="closeFullImage()">
+          <div class="full-image-dialog" (click)="$event.stopPropagation()" role="dialog" tabindex="0">
             <div class="full-image-header">
               <span class="full-image-title">{{ fullImageName() || 'Photo Preview' }}</span>
-              <button mat-icon-button type="button" (click)="closeFullImage()" aria-label="Close full image preview">
+              <button mat-icon-button type="button" (click)="closeFullImage()" aria-label="Close">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
-            <img class="full-image" [src]="fullImageUrl()!" [alt]="fullImageName() || 'Photo preview'" />
+            <img class="full-image" [src]="fullImageUrl()!" [alt]="fullImageName() || 'Photo'" />
           </div>
         </div>
       }
     </div>
   `,
   styles: [`
-    .photos-page { padding: 20px; display: grid; gap: 16px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .file-control { display: flex; align-items: center; gap: 10px; min-height: 56px; }
-    .file-name { font-size: 0.85rem; color: #555; }
-    .preview-pane { grid-column: 1 / -1; display: flex; justify-content: flex-start; }
-    .preview-pane img { width: 180px; height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e5e5; }
-    .actions { display: flex; gap: 10px; margin-top: 10px; }
+    .photos-page { padding: 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
+    .search-section { margin-bottom: 16px; }
+    .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
     .data-table { width: 100%; }
     .thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e2e2; }
     .thumb-btn { padding: 0; background: none; border: none; cursor: pointer; display: inline-flex; border-radius: 6px; }
@@ -168,35 +149,57 @@ interface ConsultationOption {
     .full-image-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #eee; }
     .full-image-title { font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .full-image { width: 100%; height: auto; max-height: calc(92vh - 56px); object-fit: contain; background: #111; }
-    @media (max-width: 992px) { .form-grid { grid-template-columns: 1fr; } }
+    .empty-state { color: #888; padding: 32px; text-align: center; }
+    @media (max-width: 992px) { .photos-page { padding: 12px; } }
   `]
 })
 export class PhotosComponent {
   private readonly endpoint = inject(AestheticEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly alertService = inject(AlertService);
-  private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   loadingIndicator = false;
+  readonly patients = signal<AestheticPatient[]>([]);
+  readonly consultations = signal<AestheticConsultation[]>([]);
   readonly photos = signal<AestheticPhoto[]>([]);
-  readonly consultationOptions = signal<ConsultationOption[]>([]);
-  readonly editingId = signal<number | null>(null);
-  readonly editing = computed(() => this.editingId() !== null);
+  readonly attendance = signal<Attendance[]>([]);
+  readonly searchText = signal<string>('');
   readonly displayedColumns = ['thumbnail', 'consultation', 'type', 'name', 'created', 'actions'];
 
-  readonly selectedFile = signal<File | null>(null);
-  readonly selectedFileName = signal<string>('');
-  readonly selectedPreviewUrl = signal<string | null>(null);
-  readonly currentPhotoUrl = signal<string | null>(null);
-  readonly previewSource = computed(() => this.selectedPreviewUrl() || this.currentPhotoUrl());
+  readonly consultationOptions = computed(() => {
+    return this.patients()
+      .flatMap(patient =>
+        (patient.consultations || []).map((consultation: AestheticConsultation) => ({
+          id: consultation.id,
+          label: `${patient.firstName} ${patient.lastName} [${patient.pno || 'N/A'}] - ${consultation.procedureType || 'Aesthetics'} (${this.formatDate(consultation.consultationDate)})`
+        }))
+      )
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  readonly filteredPhotos = computed(() => {
+    const search = this.searchText().toLowerCase();
+    if (!search) return this.photos();
+
+    return this.photos().filter(photo => {
+      const consultation = this.resolvePatientLabel(photo.consultationId).toLowerCase();
+      const type = (photo.type || '').toLowerCase();
+      const name = (photo.fileName || '').toLowerCase();
+
+      return consultation.includes(search) || type.includes(search) || name.includes(search);
+    });
+  });
+
   readonly fullImageUrl = signal<string | null>(null);
   readonly fullImageName = signal<string>('');
   readonly isFullImageOpen = computed(() => !!this.fullImageUrl());
 
-  readonly form = this.fb.nonNullable.group({
-    id: [0],
-    consultationId: [0, Validators.min(1)],
-    fileName: ['', Validators.required],
-    type: ['Before']
+  readonly todayAttendancePatients = computed(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return this.attendance()
+      .filter(a => a.recDate?.startsWith(today) && a.clinicType?.toLowerCase() === 'aesthetics')
+      .map(a => a.pNo);
   });
 
   constructor() {
@@ -205,125 +208,123 @@ export class PhotosComponent {
 
   load(): void {
     this.loadingIndicator = true;
-    this.alertService.startLoadingMessage('Loading photos...');
+    this.alertService.startLoadingMessage('Loading photos and consultations...');
 
-    this.endpoint.getPatientsEndpoint<AestheticPatient[]>().subscribe({
-      next: patients => {
-        this.consultationOptions.set(this.buildConsultationOptions(patients));
+    Promise.all([
+      this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
+      this.endpoint.getPhotosEndpoint<AestheticPhoto[]>().toPromise(),
+      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise()
+    ]).then(([patients, photos, attendance]) => {
+      this.patients.set(patients || []);
+      this.photos.set(photos || []);
+      this.attendance.set(attendance || []);
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+    }).catch(error => {
+      this.loadingIndicator = false;
+      this.alertService.stopLoadingMessage();
+      this.alertService.showStickyMessage('Load error', 'Unable to load consultations.', MessageSeverity.error, error);
+    });
+  }
 
-        this.endpoint.getPhotosEndpoint<AestheticPhoto[]>().subscribe({
-          next: photos => {
-            this.photos.set(photos);
-            this.loadingIndicator = false;
+  openAddDialog(): void {
+    const dialogRef = this.dialog.open(PhotosDialogComponent, {
+      data: { isEdit: false, consultationOptions: this.consultationOptions(), replaceMode: false },
+      width: '420px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: PhotoDialogResult | undefined) => {
+      if (!result || !result.file) return;
+
+      const formData = new FormData();
+      formData.append('consultationId', String(result.consultationId));
+      formData.append('type', result.type ?? 'Before');
+      formData.append('file', result.file, result.fileName);
+
+      this.loadingIndicator = true;
+      this.alertService.startLoadingMessage('Uploading photo...');
+
+      this.endpoint.uploadPhotoEndpoint<AestheticPhoto>(formData).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.load();
+          this.alertService.showMessage('Success', 'Photo uploaded.', MessageSeverity.success);
+        },
+        error: (error: unknown) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Upload error', 'Unable to upload photo.', MessageSeverity.error, error);
+        }
+      });
+    });
+  }
+
+  openEditDialog(photo: AestheticPhoto): void {
+    const dialogRef = this.dialog.open(PhotosDialogComponent, {
+      data: { isEdit: true, photo, consultationOptions: this.consultationOptions(), replaceMode: false },
+      width: '420px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe((result: PhotoDialogResult | undefined) => {
+      if (!result) return;
+
+      if (result.file) {
+        const formData = new FormData();
+        formData.append('consultationId', String(result.consultationId));
+        formData.append('type', result.type ?? 'Before');
+        formData.append('file', result.file, result.fileName);
+
+        this.loadingIndicator = true;
+        this.alertService.startLoadingMessage('Updating photo...');
+
+        this.endpoint.updatePhotoUploadEndpoint<AestheticPhoto>(photo.id, formData).subscribe({
+          next: () => {
             this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.load();
+            this.alertService.showMessage('Success', 'Photo updated.', MessageSeverity.success);
           },
-          error: error => {
-            this.loadingIndicator = false;
+          error: (error: unknown) => {
             this.alertService.stopLoadingMessage();
-            this.alertService.showStickyMessage('Load error', 'Unable to load photo library.', MessageSeverity.error, error);
+            this.loadingIndicator = false;
+            this.alertService.showStickyMessage('Update error', 'Unable to update photo.', MessageSeverity.error, error);
           }
         });
-      },
-      error: error => {
-        this.loadingIndicator = false;
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage('Load error', 'Unable to load consultation options.', MessageSeverity.error, error);
+      } else {
+        const payload: AestheticPhoto = {
+          id: photo.id,
+          consultationId: result.consultationId,
+          fileName: result.fileName,
+          type: result.type,
+          url: photo.url,
+          thumbnailUrl: photo.thumbnailUrl,
+          createdDate: photo.createdDate
+        };
+
+        this.loadingIndicator = true;
+        this.alertService.startLoadingMessage('Updating photo...');
+
+        this.endpoint.updatePhotoEndpoint<AestheticPhoto>(photo.id, payload).subscribe({
+          next: () => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.load();
+            this.alertService.showMessage('Success', 'Photo updated.', MessageSeverity.success);
+          },
+          error: (error: unknown) => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.alertService.showStickyMessage('Update error', 'Unable to update photo.', MessageSeverity.error, error);
+          }
+        });
       }
     });
   }
 
-  onFilePicked(event: Event): void {
-    const element = event.target as HTMLInputElement;
-    const file = element.files?.[0] ?? null;
-
-    this.clearObjectPreview();
-    this.selectedFile.set(file);
-    this.selectedFileName.set(file?.name ?? '');
-
-    if (file) {
-      if (!this.form.controls.fileName.value?.trim()) {
-        this.form.controls.fileName.setValue(file.name);
-      }
-
-      this.selectedPreviewUrl.set(URL.createObjectURL(file));
-    }
-
-    element.value = '';
-  }
-
-  save(): void {
-    this.form.markAllAsTouched();
-    if (this.form.invalid) {
-      this.alertService.showStickyMessage('Validation error', 'Consultation and file name are required.', MessageSeverity.warn);
-      return;
-    }
-
-    if (!this.editing() && !this.selectedFile()) {
-      this.alertService.showStickyMessage('Validation error', 'Please choose an image file before saving.', MessageSeverity.warn);
-      return;
-    }
-
-    const value = this.form.getRawValue();
-    const existing = this.photos().find(x => x.id === value.id);
-
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage(this.editing() ? 'Updating photo...' : 'Saving photo...');
-
-    if (this.selectedFile()) {
-      const formData = new FormData();
-      formData.append('consultationId', String(value.consultationId));
-      formData.append('type', value.type ?? 'Before');
-      formData.append('file', this.selectedFile() as Blob, this.form.controls.fileName.value || this.selectedFile()!.name);
-
-      const request = this.editing()
-        ? this.endpoint.updatePhotoUploadEndpoint<AestheticPhoto>(value.id, formData)
-        : this.endpoint.uploadPhotoEndpoint<AestheticPhoto>(formData);
-
-      request.subscribe({
-        next: () => this.onSaveSuccess(),
-        error: error => this.onSaveError(error)
-      });
-
-      return;
-    }
-
-    if (!existing) {
-      this.onSaveError(new Error('Photo not found for update.'));
-      return;
-    }
-
-    const payload: AestheticPhoto = {
-      id: value.id,
-      consultationId: value.consultationId,
-      fileName: value.fileName,
-      type: value.type,
-      url: existing.url,
-      thumbnailUrl: existing.thumbnailUrl,
-      createdDate: existing.createdDate
-    };
-
-    this.endpoint.updatePhotoEndpoint<AestheticPhoto>(value.id, payload).subscribe({
-      next: () => this.onSaveSuccess(),
-      error: error => this.onSaveError(error)
-    });
-  }
-
-  edit(row: AestheticPhoto): void {
-    this.editingId.set(row.id);
-    this.currentPhotoUrl.set(row.url);
-    this.clearObjectPreview();
-    this.selectedFile.set(null);
-    this.selectedFileName.set('');
-
-    this.form.patchValue({
-      id: row.id,
-      consultationId: row.consultationId,
-      fileName: row.fileName ?? '',
-      type: row.type ?? 'Before'
-    });
-  }
-
-  remove(id: number): void {
+  delete(id: number): void {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Deleting photo...');
 
@@ -331,8 +332,8 @@ export class PhotosComponent {
       next: () => {
         this.alertService.stopLoadingMessage();
         this.loadingIndicator = false;
-        this.resetForm();
         this.load();
+        this.alertService.showMessage('Success', 'Photo deleted.', MessageSeverity.success);
       },
       error: (error: unknown) => {
         this.alertService.stopLoadingMessage();
@@ -342,28 +343,9 @@ export class PhotosComponent {
     });
   }
 
-  resetForm(): void {
-    this.editingId.set(null);
-    this.selectedFile.set(null);
-    this.selectedFileName.set('');
-    this.currentPhotoUrl.set(null);
-    this.clearObjectPreview();
-
-    this.form.reset({
-      id: 0,
-      consultationId: 0,
-      fileName: '',
-      type: 'Before'
-    });
-  }
-
-  resolveConsultationLabel(consultationId: number): string {
-    return this.consultationOptions().find(x => x.id === consultationId)?.label ?? `Consultation #${consultationId}`;
-  }
-
   openFullImage(row: AestheticPhoto): void {
     this.fullImageUrl.set(row.url);
-    this.fullImageName.set(row.fileName || 'Photo Preview');
+    this.fullImageName.set(row.fileName || 'Photo');
   }
 
   closeFullImage(): void {
@@ -371,44 +353,16 @@ export class PhotosComponent {
     this.fullImageName.set('');
   }
 
-  private buildConsultationOptions(patients: AestheticPatient[]): ConsultationOption[] {
-    return patients
-      .flatMap(patient =>
-        (patient.consultations || []).map((consultation: AestheticConsultation) => ({
-          id: consultation.id,
-          label: `${patient.firstName} ${patient.lastName} - ${consultation.procedureType || 'Aesthetics'} (${this.formatDate(consultation.consultationDate)})`
-        }))
-      )
-      .sort((a, b) => a.label.localeCompare(b.label));
+  onSearch(): void {
+    // Search is handled by computed filteredPhotos
+  }
+
+  resolvePatientLabel(consultationId: number): string {
+    return this.consultationOptions().find(x => x.id === consultationId)?.label ?? `Consultation #${consultationId}`;
   }
 
   private formatDate(value?: string): string {
-    if (!value) {
-      return 'No date';
-    }
-
+    if (!value) return 'No date';
     return value.slice(0, 10);
-  }
-
-  private onSaveSuccess(): void {
-    this.alertService.stopLoadingMessage();
-    this.loadingIndicator = false;
-    this.resetForm();
-    this.load();
-  }
-
-  private onSaveError(error: unknown): void {
-    this.alertService.stopLoadingMessage();
-    this.loadingIndicator = false;
-    this.alertService.showStickyMessage('Save error', 'Unable to save photo.', MessageSeverity.error, error);
-  }
-
-  private clearObjectPreview(): void {
-    const current = this.selectedPreviewUrl();
-    if (current) {
-      URL.revokeObjectURL(current);
-    }
-
-    this.selectedPreviewUrl.set(null);
   }
 }

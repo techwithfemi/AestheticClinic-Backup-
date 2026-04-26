@@ -18,6 +18,7 @@ using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.Services.Email;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
@@ -29,6 +30,7 @@ using System.Security.Cryptography.X509Certificates;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
+var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
 
 /************* ADD SERVICES *************/
 
@@ -36,6 +38,13 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
                 throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -56,7 +65,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //    options.UseSqlServer(
 //        builder.Configuration.GetConnectionString("DefaultConnection"),
 //        b => b.MigrationsAssembly("AestheticEMR.Core") // Add this line!
-//    ));
+//    )));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -242,6 +251,8 @@ var app = builder.Build();
 
 /************* CONFIGURE REQUEST PIPELINE *************/
 
+app.UseForwardedHeaders();
+
 app.UseDefaultFiles();
 app.MapStaticAssets();
 app.UseStaticFiles();
@@ -265,7 +276,10 @@ else
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+if (enableHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors(builder => builder
     .AllowAnyOrigin()
