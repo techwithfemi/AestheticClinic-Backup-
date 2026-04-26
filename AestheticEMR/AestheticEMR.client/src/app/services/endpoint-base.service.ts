@@ -11,6 +11,7 @@ import { mergeMap, switchMap, catchError } from 'rxjs/operators';
 
 import { AuthService } from './auth.service';
 import { User } from '../models/user.model';
+import { AlertService, MessageSeverity } from './alert.service';
 
 interface ServerError {
   status: number;
@@ -24,9 +25,11 @@ interface ServerError {
 @Injectable()
 export class EndpointBase {
   private authService = inject(AuthService);
+  private alertService = inject(AlertService);
 
   private taskPauser: Subject<boolean> | null = null;
   private isRefreshingLogin = false;
+  private hasShownSessionExpiredMessage = false;
 
   protected get requestHeaders(): { headers: HttpHeaders | Record<string, string | string[]> } {
     const headers = new HttpHeaders({
@@ -65,6 +68,7 @@ export class EndpointBase {
       return from(this.authService.refreshLogin()).pipe(
         mergeMap(() => {
           this.isRefreshingLogin = false;
+          this.hasShownSessionExpiredMessage = false;
           this.resumeTasks(true);
 
           return continuation();
@@ -72,6 +76,7 @@ export class EndpointBase {
         catchError(refreshLoginError => {
           this.isRefreshingLogin = false;
           this.resumeTasks(false);
+          this.notifySessionExpired();
           this.authService.reLogin();
 
           if (refreshLoginError.status === 401 || (refreshLoginError.error && refreshLoginError.error.error === 'invalid_grant')) {
@@ -83,12 +88,23 @@ export class EndpointBase {
     }
 
     if (error.error && error.error.error === 'invalid_grant') {
+      this.notifySessionExpired(error.error.error_description);
       this.authService.reLogin();
 
       return throwError(() => (error.error && error.error.error_description) ? `session expired (${error.error.error_description})` : 'session expired');
     } else {
       return throwError(() => error);
     }
+  }
+
+  private notifySessionExpired(reason?: string): void {
+    if (this.hasShownSessionExpiredMessage) {
+      return;
+    }
+
+    this.hasShownSessionExpiredMessage = true;
+    const detail = reason ? `Your session expired (${reason}). Please login again.` : 'Your session expired. Please login again.';
+    this.alertService.showStickyMessage('Session Expired', detail, MessageSeverity.warn);
   }
 
   private pauseTask<T>(continuation: () => Observable<T>) {

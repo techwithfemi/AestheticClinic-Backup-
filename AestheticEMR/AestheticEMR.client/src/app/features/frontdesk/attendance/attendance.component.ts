@@ -45,7 +45,7 @@ export class AttendanceComponent implements OnInit {
   showAll = false;
   readonly pageSize = 10;
   currentPage = 1;
-  readonly attendanceStatusOptions = ['NORMAL', 'FOLLOW UP', 'EMERGENCY'];
+  readonly attendanceStatusOptions = ['(CONSULTATION)', 'FOLLOW-UP', 'REVIEW', 'EMERGENCY'];
   readonly billingCategoryOptions = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
 
   private readonly selectedPatientNo = signal('');

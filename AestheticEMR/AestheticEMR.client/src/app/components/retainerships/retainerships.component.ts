@@ -97,13 +97,15 @@ export class RetainershipsComponent implements OnInit {
     this.alertService.startLoadingMessage();
     this.loadingIndicator = true;
 
-    this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>()
+    this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[] | { $values?: unknown[]; items?: unknown[]; data?: unknown[] }>()
       .subscribe({
-        next: retainerships => {
+        next: response => {
           this.alertService.stopLoadingMessage();
           this.loadingIndicator = false;
-          this.retainerships = retainerships;
-          this.retainershipsCache = [...retainerships];
+          this.searchText = '';
+          this.retainerships = this.extractRetainerships(response)
+            .sort((a, b) => (a.retainName ?? '').localeCompare(b.retainName ?? ''));
+          this.retainershipsCache = [...this.retainerships];
           this.onSearch();
         },
         error: error => {
@@ -244,6 +246,87 @@ export class RetainershipsComponent implements OnInit {
     );
 
     this.currentPage = 1;
+  }
+
+  private extractRetainerships(
+    response: HRetainership[] | { $values?: unknown[]; items?: unknown[]; data?: unknown[] } | null | undefined
+  ): HRetainership[] {
+    const items = this.extractArrayItems(response);
+    return items.map(item => this.normalizeRetainership(item));
+  }
+
+  private extractArrayItems(response: unknown): unknown[] {
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (!response || typeof response !== 'object') {
+      return [];
+    }
+
+    const source = response as { [key: string]: unknown };
+
+    if (Array.isArray(source['$values'])) {
+      return source['$values'] as unknown[];
+    }
+
+    if (Array.isArray(source['items'])) {
+      return source['items'] as unknown[];
+    }
+
+    if (Array.isArray(source['data'])) {
+      return source['data'] as unknown[];
+    }
+
+    if (Array.isArray(source['value'])) {
+      return source['value'] as unknown[];
+    }
+
+    for (const value of Object.values(source)) {
+      if (Array.isArray(value)) {
+        return value;
+      }
+
+      if (value && typeof value === 'object') {
+        const nested = value as { [key: string]: unknown };
+        if (Array.isArray(nested['$values'])) {
+          return nested['$values'] as unknown[];
+        }
+      }
+    }
+
+    return [];
+  }
+
+  private normalizeRetainership(item: unknown): HRetainership {
+    const source = item as Partial<HRetainership> & { [key: string]: unknown };
+
+    const getString = (camelKey: keyof HRetainership, pascalKey: string): string | undefined => {
+      const camelValue = source[camelKey as string];
+      if (typeof camelValue === 'string') {
+        return camelValue;
+      }
+
+      const pascalValue = source[pascalKey];
+      if (typeof pascalValue === 'string') {
+        return pascalValue;
+      }
+
+      return undefined;
+    };
+
+    return {
+      retainId: getString('retainId', 'RetainId') ?? '',
+      retainCode: getString('retainCode', 'RetainCode') ?? '',
+      retainName: getString('retainName', 'RetainName') ?? '',
+      clientCatId: getString('clientCatId', 'ClientCatId'),
+      clientType: getString('clientType', 'ClientType'),
+      address: getString('address', 'Address'),
+      phoneNo: getString('phoneNo', 'PhoneNo'),
+      email: getString('email', 'Email'),
+      contact: getString('contact', 'Contact'),
+      active: getString('active', 'Active')
+    };
   }
 
   private getErrorMessage(error: unknown): string {

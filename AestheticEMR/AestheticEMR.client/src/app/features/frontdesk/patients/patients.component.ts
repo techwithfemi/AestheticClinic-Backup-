@@ -36,7 +36,7 @@ export class PatientsComponent implements OnInit {
   showForm = false;
   currentPatient: HPatient | null = null;
 
-  readonly clientCategories = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
+  readonly patientCategoryOptions = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
   readonly maritalStatuses = ['SINGLE', 'MARRIED'];
   readonly sexOptions = ['MALE', 'FEMALE'];
   readonly pageSize = 10;
@@ -62,7 +62,6 @@ export class PatientsComponent implements OnInit {
     kinAddress: ['', Validators.maxLength(1000)],
     relationToKin: ['', Validators.maxLength(100)],
     pCatId: ['', Validators.maxLength(100)],
-    coyType: ['', Validators.maxLength(100)],
     coyName: ['', Validators.maxLength(7)],
     clientCatId: ['', Validators.maxLength(100)],
     cardType: ['', Validators.maxLength(100)],
@@ -109,10 +108,11 @@ export class PatientsComponent implements OnInit {
   }
 
   loadCompanies(): void {
-    this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>()
+    this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[] | { $values?: unknown[]; items?: unknown[]; data?: unknown[] }>()
       .subscribe({
-        next: companies => {
-          this.companies = companies;
+        next: response => {
+          this.companies = this.extractCompanies(response)
+            .sort((a, b) => (a.retainName ?? '').localeCompare(b.retainName ?? ''));
         },
         error: () => {
           this.companies = [];
@@ -151,6 +151,10 @@ export class PatientsComponent implements OnInit {
     this.showForm = true;
     this.companySearchText = '';
     this.patientForm.reset();
+
+    if (!this.companies.length) {
+      this.loadCompanies();
+    }
   }
 
   openEdit(patient: HPatient): void {
@@ -159,6 +163,10 @@ export class PatientsComponent implements OnInit {
     this.showForm = true;
     this.companySearchText = '';
     this.patientForm.patchValue(patient);
+
+    if (!this.companies.length) {
+      this.loadCompanies();
+    }
   }
 
   cancelForm(): void {
@@ -272,6 +280,53 @@ export class PatientsComponent implements OnInit {
     );
 
     this.currentPage = 1;
+  }
+
+  private extractCompanies(
+    response: HRetainership[] | { $values?: unknown[]; items?: unknown[]; data?: unknown[] } | null | undefined
+  ): HRetainership[] {
+    const items = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.$values)
+        ? response.$values
+        : Array.isArray(response?.items)
+          ? response.items
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+    return items.map(item => this.normalizeRetainership(item));
+  }
+
+  private normalizeRetainership(item: unknown): HRetainership {
+    const source = item as Partial<HRetainership> & { [key: string]: unknown };
+
+    const getString = (camelKey: keyof HRetainership, pascalKey: string): string | undefined => {
+      const camelValue = source[camelKey as string];
+      if (typeof camelValue === 'string') {
+        return camelValue;
+      }
+
+      const pascalValue = source[pascalKey];
+      if (typeof pascalValue === 'string') {
+        return pascalValue;
+      }
+
+      return undefined;
+    };
+
+    return {
+      retainId: getString('retainId', 'RetainId') ?? '',
+      retainCode: getString('retainCode', 'RetainCode') ?? '',
+      retainName: getString('retainName', 'RetainName') ?? '',
+      clientCatId: getString('clientCatId', 'ClientCatId'),
+      clientType: getString('clientType', 'ClientType'),
+      address: getString('address', 'Address'),
+      phoneNo: getString('phoneNo', 'PhoneNo'),
+      email: getString('email', 'Email'),
+      contact: getString('contact', 'Contact'),
+      active: getString('active', 'Active')
+    };
   }
 
   private getErrorMessage(error: unknown): string {

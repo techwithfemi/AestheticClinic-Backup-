@@ -48,14 +48,14 @@
             </select>
           </div>
           <div>
-            <label>Client Category</label>
+            <label>Patient Category</label>
             <select class="form-control" formControlName="clientCatId">
-              <option value="">-- Select Client Category --</option>
-              <option *ngFor="let item of clientCategories" [value]="item">{{ item }}</option>
+              <option value="">-- Select Patient Category --</option>
+              <option *ngFor="let item of patientCategoryOptions" [value]="item">{{ item }}</option>
             </select>
           </div>
           <div>
-            <label>Company</label>
+            <label>Company Name</label>
             <input
               type="text"
               class="form-control company-search"
@@ -64,18 +64,14 @@
               placeholder="Search company..." />
 
             <select class="form-control" formControlName="coyName">
-              <option value="">-- Select Company --</option>
+              <option value="">-- Select Company Name --</option>
               <option *ngFor="let company of filteredCompanies" [value]="company.retainId">
                 {{ company.retainName }} [{{ company.retainId }}]
               </option>
             </select>
           </div>
           <div>
-            <label>Company Type</label>
-            <input type="text" class="form-control" formControlName="coyType" />
-          </div>
-          <div>
-            <label>Employee No</label>
+            <label>HMO No</label>
             <input type="text" class="form-control" formControlName="empNo" />
           </div>
           <div>
