@@ -122,7 +122,7 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating attendance record {Id}", id);
-            AddModelError("Unable to update attendance record");
+            AddModelError(ex.GetBaseException().Message);
             return BadRequest(ModelState);
         }
     }
@@ -142,6 +142,12 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
 
             await attendanceService.DeleteAsync(id);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Delete blocked for attendance record {Id}", id);
+            AddModelError(ex.Message);
+            return BadRequest(ModelState);
         }
         catch (Exception ex)
         {

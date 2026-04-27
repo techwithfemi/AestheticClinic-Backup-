@@ -61,6 +61,10 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
     this.loadClinicTypes();
     this.loadData();
 
+    this.appointmentForm.controls.pno.valueChanges.subscribe(() => {
+      this.onPatientChanged();
+    });
+
     const action = this.route.snapshot.queryParamMap.get('action');
     if (action === 'create') {
       this.pendingCreatePatientNo = this.route.snapshot.queryParamMap.get('pNo');
@@ -74,11 +78,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
 
     setTimeout(() => {
       this.openCreate(this.appointmentDialog as TemplateRef<unknown>);
-
-      const patientNo = (this.pendingCreatePatientNo ?? '').trim();
-      if (patientNo) {
-        this.appointmentForm.patchValue({ pno: patientNo }, { emitEvent: false });
-      }
+      this.applyPreselectedPatient(this.pendingCreatePatientNo);
 
       this.pendingCreatePatientNo = null;
       void this.router.navigate([], {
@@ -101,18 +101,28 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
 
   get filteredPatients(): HPatient[] {
     const term = this.patientSearchText.trim().toLowerCase();
+    const selectedPno = this.appointmentForm.controls.pno.value ?? '';
 
-    if (!term) {
-      return this.patients;
+    const matches = !term
+      ? [...this.patients]
+      : this.patients.filter(patient =>
+        (patient.pno ?? '').toLowerCase().includes(term)
+        || (patient.pSurName ?? '').toLowerCase().includes(term)
+        || (patient.pFirstname ?? '').toLowerCase().includes(term)
+        || (patient.coyName ?? '').toLowerCase().includes(term)
+        || (patient.pPhoneNo ?? '').toLowerCase().includes(term)
+      );
+
+    if (!selectedPno) {
+      return matches;
     }
 
-    return this.patients.filter(patient =>
-      (patient.pno ?? '').toLowerCase().includes(term)
-      || (patient.pSurName ?? '').toLowerCase().includes(term)
-      || (patient.pFirstname ?? '').toLowerCase().includes(term)
-      || (patient.coyName ?? '').toLowerCase().includes(term)
-      || (patient.pPhoneNo ?? '').toLowerCase().includes(term)
-    );
+    const selected = this.patients.find(patient => patient.pno === selectedPno);
+    if (!selected || matches.some(patient => patient.pno === selectedPno)) {
+      return matches;
+    }
+
+    return [selected, ...matches];
   }
 
   get shouldAutoExpandPatientList(): boolean {
@@ -140,6 +150,10 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
       .subscribe({
         next: patients => {
           this.patients = [...patients].sort((a, b) => this.getPatientName(a).localeCompare(this.getPatientName(b)));
+          const selectedNo = this.appointmentForm.controls.pno.value ?? '';
+          if (selectedNo) {
+            this.applyPreselectedPatient(selectedNo);
+          }
         },
         error: () => {
           this.patients = [];
@@ -203,7 +217,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
       empID: ''
     });
 
-    this.modalRef = this.modalService.open(content, { size: 'lg' });
+    this.modalRef = this.modalService.open(content, { size: 'md', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
   openEdit(content: TemplateRef<unknown>, appointment: Appointment): void {
@@ -221,7 +235,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
       empID: appointment.empID ?? ''
     });
 
-    this.modalRef = this.modalService.open(content, { size: 'lg' });
+    this.modalRef = this.modalService.open(content, { size: 'md', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
   cancelForm(): void {
@@ -370,6 +384,24 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
 
     this.filteredAppointments = records;
     this.currentPage = 1;
+  }
+
+  private applyPreselectedPatient(pNo?: string | null): void {
+    const patientNo = (pNo ?? '').trim();
+    if (!patientNo) {
+      return;
+    }
+
+    this.appointmentForm.patchValue({ pno: patientNo });
+
+    const patient = this.patients.find(item => item.pno === patientNo);
+    if (patient) {
+      this.patientSearchText = this.getPatientLabel(patient);
+    } else {
+      this.patientSearchText = patientNo;
+    }
+
+    queueMicrotask(() => this.onPatientChanged());
   }
 
   private mapFormToAppointment(raw: Record<string, unknown>): Appointment {

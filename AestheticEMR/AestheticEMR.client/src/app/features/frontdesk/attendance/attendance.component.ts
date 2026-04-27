@@ -1,4 +1,4 @@
-﻿import { AfterViewInit, Component, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -64,18 +64,28 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
 
   readonly filteredPatients = computed(() => {
     const term = this.patientSearch().trim().toLowerCase();
+    const selectedPno = this.selectedPatientNo();
 
-    if (!term) {
-      return this.patients;
+    const matches = !term
+      ? [...this.patients]
+      : this.patients.filter(patient =>
+        (patient.pno ?? '').toLowerCase().includes(term)
+        || (patient.pSurName ?? '').toLowerCase().includes(term)
+        || (patient.pFirstname ?? '').toLowerCase().includes(term)
+        || (patient.coyName ?? '').toLowerCase().includes(term)
+        || (patient.pPhoneNo ?? '').toLowerCase().includes(term)
+      );
+
+    if (!selectedPno) {
+      return matches;
     }
 
-    return this.patients.filter(patient =>
-      (patient.pno ?? '').toLowerCase().includes(term)
-      || (patient.pSurName ?? '').toLowerCase().includes(term)
-      || (patient.pFirstname ?? '').toLowerCase().includes(term)
-      || (patient.coyName ?? '').toLowerCase().includes(term)
-      || (patient.pPhoneNo ?? '').toLowerCase().includes(term)
-    );
+    const selected = this.patients.find(patient => patient.pno === selectedPno);
+    if (!selected || matches.some(patient => patient.pno === selectedPno)) {
+      return matches;
+    }
+
+    return [selected, ...matches];
   });
 
   attendanceForm = this.fb.group({
@@ -94,6 +104,10 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     this.loadClinicTypes();
     this.loadData();
 
+    this.attendanceForm.controls.pNo.valueChanges.subscribe(() => {
+      this.onPatientChanged();
+    });
+
     const action = this.route.snapshot.queryParamMap.get('action');
     if (action === 'create') {
       this.pendingCreatePatientNo = this.route.snapshot.queryParamMap.get('pNo');
@@ -107,12 +121,7 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
 
     setTimeout(() => {
       this.openCreate(this.attendanceDialog as TemplateRef<unknown>);
-
-      const patientNo = (this.pendingCreatePatientNo ?? '').trim();
-      if (patientNo) {
-        this.attendanceForm.patchValue({ pNo: patientNo }, { emitEvent: false });
-        this.syncSelectedPatient();
-      }
+      this.applyPreselectedPatient(this.pendingCreatePatientNo);
 
       this.pendingCreatePatientNo = null;
       void this.router.navigate([], {
@@ -152,6 +161,10 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
         next: patients => {
           this.patients = [...patients].sort((a, b) => this.getPatientName(a).localeCompare(this.getPatientName(b)));
           this.syncSelectedPatient();
+          const selectedNo = this.attendanceForm.controls.pNo.value ?? '';
+          if (selectedNo) {
+            this.applyPreselectedPatient(selectedNo);
+          }
         },
         error: () => {
           this.patients = [];
@@ -226,7 +239,7 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
       attndStatus: 'NORMAL'
     });
 
-    this.modalRef = this.modalService.open(content, { size: 'xl', scrollable: true });
+    this.modalRef = this.modalService.open(content, { size: 'lg', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
   openEdit(content: TemplateRef<unknown>, attendance: Attendance): void {
@@ -247,7 +260,8 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     });
 
     this.syncSelectedPatient();
-    this.modalRef = this.modalService.open(content, { size: 'xl', scrollable: true });
+    this.applyPreselectedPatient(attendance.pNo ?? '');
+    this.modalRef = this.modalService.open(content, { size: 'lg', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
   cancelForm(): void {
@@ -456,6 +470,28 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     }, { emitEvent: false });
   }
 
+  private applyPreselectedPatient(pNo?: string | null): void {
+    const patientNo = (pNo ?? '').trim();
+    if (!patientNo) {
+      return;
+    }
+
+    this.attendanceForm.patchValue({ pNo: patientNo });
+    this.selectedPatientNo.set(patientNo);
+
+    const patient = this.patients.find(item => item.pno === patientNo);
+    if (patient) {
+      const label = this.getPatientLabel(patient);
+      this.patientSearchText = label;
+      this.patientSearch.set(label);
+    } else {
+      this.patientSearchText = patientNo;
+      this.patientSearch.set(patientNo);
+    }
+
+    queueMicrotask(() => this.onPatientChanged());
+  }
+
   private mapFormToAttendance(raw: Record<string, unknown>): Attendance {
     return {
       consultId: this.normalizeText(raw['consultId']),
@@ -512,7 +548,21 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
 
   private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
-      return error.error?.message || error.message;
+      const payload = error.error as { message?: string; [key: string]: unknown } | undefined;
+      const directMessage = payload?.message;
+      if (directMessage) {
+        return directMessage;
+      }
+
+      if (payload && typeof payload === 'object') {
+        for (const value of Object.values(payload)) {
+          if (Array.isArray(value) && value.length && typeof value[0] === 'string') {
+            return value[0];
+          }
+        }
+      }
+
+      return error.message;
     }
 
     if (error instanceof Error) {

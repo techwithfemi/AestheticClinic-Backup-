@@ -24,10 +24,24 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
 
     public async Task<HRecord> CreateAsync(HRecord record)
     {
-        record.ConsultId = await GenerateConsultIdAsync();
         await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
+        var existingForDay = await GetExistingAttendanceForPatientDayAsync(record.PNo, record.RecDate);
+        if (existingForDay is not null)
+        {
+            existingForDay.ClinicType = record.ClinicType;
+            existingForDay.AttndStatus = record.AttndStatus;
+            existingForDay.ClientCat = record.ClientCat;
+            existingForDay.Coyname = record.Coyname;
+            existingForDay.HmoRef = record.HmoRef;
+            existingForDay.RecDate = record.RecDate;
+
+            await context.SaveChangesAsync();
+            return existingForDay;
+        }
+
+        record.ConsultId = await GenerateConsultIdAsync();
         context.HRecords.Add(record);
         await context.SaveChangesAsync();
         return record;
@@ -38,7 +52,6 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
         await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
-        context.HRecords.Update(record);
         await context.SaveChangesAsync();
         return record;
     }
@@ -49,6 +62,17 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
         if (record is null)
         {
             return;
+        }
+
+        var hasConsulting = await context.HConsultings.AnyAsync(x => x.ConsultId == consultId);
+        var hasDental = await context.HDentals.AnyAsync(x => x.ConsultId == consultId);
+        var hasDentalTreat = await context.HDentalTreats.AnyAsync(x => x.ConsultId == consultId);
+        var hasBilling = await context.Billings.AnyAsync(x => x.billNO == consultId);
+        var hasBillAccum = await context.BillAccums.AnyAsync(x => x.consultID == consultId);
+
+        if (hasConsulting || hasDental || hasDentalTreat || hasBilling || hasBillAccum)
+        {
+            throw new InvalidOperationException("This attendance is referenced by operational/billing records and cannot be deleted.");
         }
 
         context.HRecords.Remove(record);
@@ -64,6 +88,29 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
             .Distinct()
             .OrderBy(x => x)
             .ToListAsync();
+    }
+
+    private async Task EnsureSingleAttendancePerPatientPerDayAsync(string pNo, DateTime recDate, string? currentConsultId)
+    {
+        var targetDate = recDate.Date;
+
+        var duplicateExists = await context.HRecords
+            .AnyAsync(x => x.PNo == pNo
+                           && x.RecDate.Date == targetDate
+                           && (currentConsultId == null || x.ConsultId != currentConsultId));
+
+        if (duplicateExists)
+        {
+            throw new InvalidOperationException("Only one attendance can be taken per patient per day.");
+        }
+    }
+
+    private async Task<HRecord?> GetExistingAttendanceForPatientDayAsync(string pNo, DateTime recDate)
+    {
+        var targetDate = recDate.Date;
+
+        return await context.HRecords.FirstOrDefaultAsync(x =>
+            x.PNo == pNo && x.RecDate.Date == targetDate);
     }
 
     private async Task PopulatePatientDetailsAsync(HRecord record)

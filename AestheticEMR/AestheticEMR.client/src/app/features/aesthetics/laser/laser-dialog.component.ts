@@ -1,4 +1,4 @@
-import { Component, Inject, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -9,7 +9,21 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
+import { AestheticConsultation } from '../../../models/aesthetic.model';
+
+export interface LaserPatientOption {
+  patientId: number;
+  consultId: string;
+  pNo: string;
+  firstName: string;
+  lastName: string;
+  label: string;
+}
+
+export interface LaserDialogResult {
+  consultation: AestheticConsultation;
+  selectedPatient: LaserPatientOption;
+}
 
 @Component({
   selector: 'app-laser-dialog',
@@ -38,9 +52,9 @@ import { AestheticConsultation, AestheticPatient } from '../../../models/aesthet
         <form [formGroup]="form">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Patient</mat-label>
-            <mat-select formControlName="patientId" required>
-              @for (p of data.patients; track p.id) {
-                <mat-option [value]="p.id">{{ p.firstName }} {{ p.lastName }} [{{ p.pno || 'N/A' }}]</mat-option>
+            <mat-select formControlName="patientKey" required>
+              @for (p of data.patientOptions; track p.label) {
+                <mat-option [value]="p.label">{{ p.label }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -104,18 +118,18 @@ import { AestheticConsultation, AestheticPatient } from '../../../models/aesthet
 
       <mat-dialog-actions align="end">
         <button mat-button (click)="dialogRef.close()">Cancel</button>
-        <button mat-raised-button color="primary" (click)="save()">Save</button>
+        <button mat-raised-button color="primary" (click)="save()" [disabled]="form.invalid">Save</button>
       </mat-dialog-actions>
     </div>
   `,
   styles: [`
-    .dialog-content { width: 520px; box-sizing: border-box; padding: 16px; }
+    .dialog-content { width: 500px; box-sizing: border-box; padding: 16px; }
     .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .dialog-header h2 { margin: 0; flex: 1; font-size: 1.2rem; }
     .close-btn { position: relative; right: 0; top: 0; min-width: auto; }
     .full-width { width: 100%; margin-bottom: 12px; box-sizing: border-box; }
     .toggles { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
-    mat-dialog-content { max-height: 65vh; overflow-y: auto; padding: 0; margin: 0; }
+    mat-dialog-content { max-height: 65vh; overflow-y: auto; padding: 0; margin: 0; overflow-x: hidden; }
     mat-form-field { display: block; width: 100%; }
     mat-form-field ::ng-deep .mat-mdc-form-field-infix { padding: 8px 0; }
   `]
@@ -126,7 +140,7 @@ export class LaserDialogComponent {
 
   form = this.fb.nonNullable.group({
     id: [0],
-    patientId: [0, Validators.min(1)],
+    patientKey: ['', Validators.required],
     consultationDate: ['', Validators.required],
     provider: [''],
     skinAssessment: [''],
@@ -139,14 +153,16 @@ export class LaserDialogComponent {
     informationAccepted: [true]
   });
 
-  private _data = inject<{ isEdit: boolean; consultation?: AestheticConsultation; patients: AestheticPatient[] }>(MAT_DIALOG_DATA);
+  private _data = inject<{ isEdit: boolean; consultation?: AestheticConsultation; patientOptions: LaserPatientOption[] }>(MAT_DIALOG_DATA);
   get data() { return this._data; }
 
   constructor() {
     if (this.data.isEdit && this.data.consultation) {
+      const selectedOption = this.data.patientOptions.find(x => x.patientId === this.data.consultation!.patientId);
+
       this.form.patchValue({
         id: this.data.consultation.id,
-        patientId: this.data.consultation.patientId,
+        patientKey: selectedOption?.label ?? '',
         consultationDate: this.data.consultation.consultationDate ? this.data.consultation.consultationDate.slice(0, 10) : '',
         provider: this.data.consultation.provider ?? '',
         skinAssessment: this.data.consultation.skinAssessment ?? '',
@@ -167,9 +183,14 @@ export class LaserDialogComponent {
     }
 
     const value = this.form.getRawValue();
+    const selectedPatient = this.data.patientOptions.find(x => x.label === value.patientKey);
+    if (!selectedPatient) {
+      return;
+    }
+
     const consultation: AestheticConsultation = {
       id: value.id,
-      patientId: value.patientId,
+      patientId: selectedPatient.patientId,
       consultationDate: value.consultationDate,
       procedureType: 'Laser',
       provider: value.provider,
@@ -183,6 +204,6 @@ export class LaserDialogComponent {
       informationAccepted: value.informationAccepted
     };
 
-    this.dialogRef.close(consultation);
+    this.dialogRef.close({ consultation, selectedPatient } as LaserDialogResult);
   }
 }

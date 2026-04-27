@@ -185,9 +185,18 @@ namespace AestheticEMR.Server.Controllers
             if (existing == null)
                 return NotFound(consultationId);
 
-            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-            var updated = _aestheticService.UpdateConsultation(consultation);
-            return Ok(_mapper.Map<AestheticConsultationVM>(updated));
+            try
+            {
+                var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                var updated = _aestheticService.UpdateConsultation(consultation);
+                return Ok(_mapper.Map<AestheticConsultationVM>(updated));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating consultation {ConsultationId}", consultationId);
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpDelete("consultations/{consultationId}")]
@@ -199,13 +208,28 @@ namespace AestheticEMR.Server.Controllers
             if (existing == null)
                 return NotFound(consultationId);
 
-            foreach (var photo in existing.Photos)
+            try
             {
-                DeletePhysicalFile(photo.FilePath);
-            }
+                foreach (var photo in existing.Photos)
+                {
+                    DeletePhysicalFile(photo.FilePath);
+                }
 
-            _aestheticService.DeleteConsultation(consultationId);
-            return NoContent();
+                _aestheticService.DeleteConsultation(consultationId);
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Delete blocked for consultation {ConsultationId}", consultationId);
+                AddModelError(ex.Message);
+                return BadRequest(ModelState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting consultation {ConsultationId}", consultationId);
+                AddModelError("Unable to delete consultation");
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpGet("photos")]

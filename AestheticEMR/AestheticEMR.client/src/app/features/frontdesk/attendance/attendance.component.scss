@@ -34,7 +34,7 @@
 
 .attendance-form .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
 }
 
@@ -88,6 +88,21 @@
 
 .actions {
   white-space: nowrap;
+}
+
+.icon-btn {
+  padding: 0.2rem 0.35rem;
+  margin-right: 0.25rem;
+}
+
+.action-icon {
+  font-size: 16px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.modal-body {
+  overflow-x: hidden;
 }
 
 @media (max-width: 767.98px) {

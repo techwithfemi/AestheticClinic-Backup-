@@ -7,12 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
+import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
-import { BotoxDialogComponent } from './botox-dialog.component';
+import { HPatient } from '../../../models/legacy/h-patient.model';
+import { BotoxDialogComponent, BotoxDialogResult, BotoxPatientOption } from './botox-dialog.component';
 
 @Component({
   selector: 'app-botox',
@@ -119,11 +121,13 @@ import { BotoxDialogComponent } from './botox-dialog.component';
 export class BotoxComponent {
   private readonly endpoint = inject(AestheticEndpoint);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
+  private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly dialog = inject(MatDialog);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
+  readonly legacyPatients = signal<HPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
   readonly attendance = signal<Attendance[]>([]);
   readonly searchText = signal<string>('');
@@ -139,11 +143,28 @@ export class BotoxComponent {
     });
   });
 
-  readonly todayAttendancePatients = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return this.attendance()
-      .filter(a => a.recDate?.startsWith(today) && a.clinicType?.toLowerCase() === 'aesthetics')
-      .map(a => a.pNo);
+  readonly todayClinicAttendance = computed(() => {
+    const todays = this.attendance().filter(a => this.isToday(a.recDate));
+
+    const clinicMatched = todays.filter(a => {
+      const clinic = (a.clinicType ?? '').toLowerCase();
+      const purpose = (a.attndStatus ?? '').toLowerCase();
+      return clinic.includes('botox')
+        || clinic.includes('aesthetic')
+        || purpose.includes('botox');
+    });
+
+    const source = clinicMatched.length > 0 ? clinicMatched : todays;
+
+    const unique = new Map<string, Attendance>();
+    for (const item of source) {
+      const key = `${item.consultId ?? ''}|${item.pNo ?? ''}`;
+      if (!unique.has(key)) {
+        unique.set(key, item);
+      }
+    }
+
+    return Array.from(unique.values());
   });
 
   constructor() {
@@ -157,11 +178,13 @@ export class BotoxComponent {
     Promise.all([
       this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
       this.endpoint.getBotoxConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
-      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise()
-    ]).then(([patients, consultations, attendance]) => {
+      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
+      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
+    ]).then(([patients, consultations, attendance, legacyPatients]) => {
       this.patients.set(patients || []);
       this.consultations.set(consultations || []);
       this.attendance.set(attendance || []);
+      this.legacyPatients.set(legacyPatients || []);
       this.loadingIndicator = false;
       this.alertService.stopLoadingMessage();
     }).catch(error => {
@@ -172,84 +195,73 @@ export class BotoxComponent {
   }
 
   openAddDialog(): void {
+    const patientOptions = this.getTodayAttendancePatientOptions();
+    if (patientOptions.length === 0) {
+      this.alertService.showStickyMessage('No attendance found', 'No attendance records found for today.', MessageSeverity.warn);
+      return;
+    }
+
     const dialogRef = this.dialog.open(BotoxDialogComponent, {
-      data: { isEdit: false, patients: this.getTodayAttendancePatients() },
-      width: '480px',
+      data: { isEdit: false, patientOptions },
+      width: '460px',
       disableClose: true
     });
 
-    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+    dialogRef.afterClosed().subscribe((result: BotoxDialogResult | undefined) => {
       if (!result) return;
-
-      this.loadingIndicator = true;
-      this.alertService.startLoadingMessage('Saving Botox session...');
-
-      this.endpoint.createBotoxConsultationEndpoint<AestheticConsultation>(result).subscribe({
-        next: () => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.load();
-          this.alertService.showMessage('Success', 'Botox session saved.', MessageSeverity.success);
-        },
-        error: (error: unknown) => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.alertService.showStickyMessage('Save error', 'Unable to save Botox session.', MessageSeverity.error, error);
-        }
-      });
+      void this.saveConsultation(result);
     });
   }
 
   openEditDialog(consultation: AestheticConsultation): void {
+    const options = this.getTodayAttendancePatientOptions();
+    const existingPatient = this.patients().find(x => x.id === consultation.patientId);
+    if (existingPatient && !options.some(x => x.patientId === existingPatient.id)) {
+      options.unshift({
+        patientId: existingPatient.id,
+        consultId: '',
+        pNo: existingPatient.pno ?? '',
+        firstName: existingPatient.firstName,
+        lastName: existingPatient.lastName,
+        label: `${existingPatient.firstName} ${existingPatient.lastName} [${existingPatient.pno || 'N/A'}]`
+      });
+    }
+
     const dialogRef = this.dialog.open(BotoxDialogComponent, {
-      data: { isEdit: true, consultation, patients: this.getTodayAttendancePatients() },
-      width: '480px',
+      data: { isEdit: true, consultation, patientOptions: options },
+      width: '460px',
       disableClose: true
     });
 
-    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+    dialogRef.afterClosed().subscribe((result: BotoxDialogResult | undefined) => {
       if (!result) return;
-
-      this.loadingIndicator = true;
-      this.alertService.startLoadingMessage('Updating Botox session...');
-
-      this.endpoint.updateConsultationEndpoint<AestheticConsultation>(result.id, result).subscribe({
-        next: () => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.load();
-          this.alertService.showMessage('Success', 'Botox session updated.', MessageSeverity.success);
-        },
-        error: (error: unknown) => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.alertService.showStickyMessage('Update error', 'Unable to update Botox session.', MessageSeverity.error, error);
-        }
-      });
+      void this.saveConsultation(result);
     });
   }
 
   delete(id: number): void {
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage('Deleting Botox session...');
+    this.alertService.showDialog('Are you sure you want to delete this Botox session?', DialogType.confirm,
+      () => {
+        this.loadingIndicator = true;
+        this.alertService.startLoadingMessage('Deleting Botox session...');
 
-    this.endpoint.deleteConsultationEndpoint<void>(id).subscribe({
-      next: () => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.load();
-        this.alertService.showMessage('Success', 'Botox session deleted.', MessageSeverity.success);
-      },
-      error: (error: unknown) => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Delete error', 'Unable to delete Botox session.', MessageSeverity.error, error);
-      }
-    });
+        this.endpoint.deleteConsultationEndpoint<void>(id).subscribe({
+          next: () => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.load();
+            this.alertService.showMessage('Success', 'Botox session deleted.', MessageSeverity.success);
+          },
+          error: (error: unknown) => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.alertService.showStickyMessage('Delete error', this.getErrorMessage(error), MessageSeverity.error, error);
+          }
+        });
+      });
   }
 
   onSearch(): void {
-    // Search is handled by computed filteredConsultations
   }
 
   resolvePatientLabel(row: AestheticConsultation): string {
@@ -262,8 +274,89 @@ export class BotoxComponent {
     return p ? `${p.firstName} ${p.lastName} [${p.pno || 'N/A'}]` : `Patient #${row.patientId}`;
   }
 
-  private getTodayAttendancePatients(): AestheticPatient[] {
-    const todayPNOs = this.todayAttendancePatients();
-    return this.patients().filter(p => todayPNOs.includes(p.pno || ''));
+  private async saveConsultation(result: BotoxDialogResult): Promise<void> {
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage(result.consultation.id ? 'Updating Botox session...' : 'Saving Botox session...');
+
+    try {
+      const consultation = { ...result.consultation };
+      let patientId = result.selectedPatient.patientId;
+
+      if (!patientId) {
+        const createdPatient = await this.endpoint.createPatientEndpoint<AestheticPatient>({
+          firstName: result.selectedPatient.firstName,
+          lastName: result.selectedPatient.lastName,
+          notes: result.selectedPatient.pNo ? `Legacy PNO: ${result.selectedPatient.pNo}` : ''
+        }).toPromise();
+
+        patientId = createdPatient?.id ?? 0;
+      }
+
+      if (!patientId) {
+        throw new Error('Unable to resolve patient for Botox session.');
+      }
+
+      consultation.patientId = patientId;
+
+      if (consultation.id) {
+        await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
+        this.alertService.showMessage('Success', 'Botox session updated.', MessageSeverity.success);
+      } else {
+        await this.endpoint.createBotoxConsultationEndpoint<AestheticConsultation>(consultation).toPromise();
+        this.alertService.showMessage('Success', 'Botox session saved.', MessageSeverity.success);
+      }
+
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.load();
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Save error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
+  }
+
+  private getTodayAttendancePatientOptions(): BotoxPatientOption[] {
+    return this.todayClinicAttendance().map(item => {
+      const pNo = item.pNo ?? '';
+      const legacy = this.legacyPatients().find(x => x.pno === pNo);
+      const firstName = legacy?.pFirstname?.trim() || 'Unknown';
+      const lastName = legacy?.pSurName?.trim() || 'Patient';
+
+      const matchedAesthetic = this.patients().find(x =>
+        x.firstName.trim().toLowerCase() === firstName.toLowerCase()
+        && x.lastName.trim().toLowerCase() === lastName.toLowerCase());
+
+      return {
+        patientId: matchedAesthetic?.id ?? 0,
+        consultId: item.consultId ?? '',
+        pNo,
+        firstName,
+        lastName,
+        label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private isToday(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
+  }
+
+  private getErrorMessage(error: unknown): string {
+    const message = (error as { error?: { message?: string }; message?: string })?.error?.message
+      || (error as { message?: string })?.message;
+    return message || 'Operation failed.';
   }
 }

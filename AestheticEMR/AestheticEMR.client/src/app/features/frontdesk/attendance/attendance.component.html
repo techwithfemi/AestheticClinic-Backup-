@@ -51,8 +51,12 @@
             <span class="badge text-bg-light border">{{ attendance.attndStatus || 'NORMAL' }}</span>
           </td>
           <td class="actions">
-            <button type="button" class="btn btn-sm btn-outline-primary" (click)="openEdit(attendanceDialog, attendance)">Edit</button>
-            <button type="button" class="btn btn-sm btn-outline-danger" (click)="deleteAttendance(attendance)">Delete</button>
+            <button type="button" class="btn btn-sm btn-outline-primary icon-btn" (click)="openEdit(attendanceDialog, attendance)" title="Edit" aria-label="Edit attendance">
+              <span class="material-icons action-icon" aria-hidden="true">edit</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger icon-btn" (click)="deleteAttendance(attendance)" title="Delete" aria-label="Delete attendance">
+              <span class="material-icons action-icon" aria-hidden="true">delete</span>
+            </button>
           </td>
         </tr>
         <tr *ngIf="!loadingIndicator && filteredAttendances.length === 0">
@@ -89,7 +93,7 @@
         <div class="grid-span-2">
           <label>Search Patient</label>
           <input
-            type="text"
+            type="search"
             class="form-control"
             [(ngModel)]="patientSearchText"
             [ngModelOptions]="{ standalone: true }"
@@ -108,10 +112,17 @@
         </div>
 
         <div>
-          <label>Clinic / Referral / Appt *</label>
+          <label>Clinic *</label>
           <select class="form-control" formControlName="clinicType">
             <option value="">-- Select Clinic --</option>
             <option *ngFor="let clinicType of clinicTypeOptions" [value]="clinicType">{{ clinicType }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Purpose</label>
+          <select class="form-control" formControlName="attndStatus">
+            <option *ngFor="let option of attendanceStatusOptions" [value]="option">{{ option }}</option>
           </select>
         </div>
 
@@ -134,23 +145,12 @@
         </div>
 
         <div>
-          <label>Purpose</label>
-          <select class="form-control" formControlName="attndStatus">
-            <option *ngFor="let option of attendanceStatusOptions" [value]="option">{{ option }}</option>
-          </select>
-        </div>
-
-        <div>
           <label>Date *</label>
           <input type="date" class="form-control" formControlName="recDate" />
         </div>
       </div>
 
       <div class="patient-summary" *ngIf="selectedPatient() as patient">
-        <div>
-          <span class="summary-label">Patient No</span>
-          <span>{{ patient.pno }}</span>
-        </div>
         <div>
           <span class="summary-label">Card No</span>
           <span>{{ patient.oldPno || 'N/A' }}</span>

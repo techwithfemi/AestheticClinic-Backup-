@@ -7,12 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
+import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
-import { LaserDialogComponent } from './laser-dialog.component';
+import { HPatient } from '../../../models/legacy/h-patient.model';
+import { LaserDialogComponent, LaserDialogResult, LaserPatientOption } from './laser-dialog.component';
 
 @Component({
   selector: 'app-laser',
@@ -124,11 +126,13 @@ import { LaserDialogComponent } from './laser-dialog.component';
 export class LaserComponent {
   private readonly endpoint = inject(AestheticEndpoint);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
+  private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly dialog = inject(MatDialog);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
+  readonly legacyPatients = signal<HPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
   readonly attendance = signal<Attendance[]>([]);
   readonly searchText = signal<string>('');
@@ -144,11 +148,11 @@ export class LaserComponent {
     });
   });
 
-  readonly todayAttendancePatients = computed(() => {
+  readonly todayClinicAttendance = computed(() => {
     const today = new Date().toISOString().split('T')[0];
-    return this.attendance()
-      .filter(a => a.recDate?.startsWith(today) && a.clinicType?.toLowerCase() === 'aesthetics')
-      .map(a => a.pNo);
+    return this.attendance().filter(a =>
+      a.recDate?.startsWith(today)
+      && (a.clinicType ?? '').toLowerCase().includes('laser'));
   });
 
   constructor() {
@@ -162,11 +166,13 @@ export class LaserComponent {
     Promise.all([
       this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
       this.endpoint.getLaserConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
-      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise()
-    ]).then(([patients, consultations, attendance]) => {
+      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
+      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
+    ]).then(([patients, consultations, attendance, legacyPatients]) => {
       this.patients.set(patients || []);
       this.consultations.set(consultations || []);
       this.attendance.set(attendance || []);
+      this.legacyPatients.set(legacyPatients || []);
       this.loadingIndicator = false;
       this.alertService.stopLoadingMessage();
     }).catch(error => {
@@ -178,83 +184,66 @@ export class LaserComponent {
 
   openAddDialog(): void {
     const dialogRef = this.dialog.open(LaserDialogComponent, {
-      data: { isEdit: false, patients: this.getTodayAttendancePatients() },
-      width: '520px',
+      data: { isEdit: false, patientOptions: this.getTodayAttendancePatientOptions() },
+      width: '500px',
       disableClose: true
     });
 
-    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+    dialogRef.afterClosed().subscribe((result: LaserDialogResult | undefined) => {
       if (!result) return;
-
-      this.loadingIndicator = true;
-      this.alertService.startLoadingMessage('Saving laser session...');
-
-      this.endpoint.createLaserConsultationEndpoint<AestheticConsultation>(result).subscribe({
-        next: () => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.load();
-          this.alertService.showMessage('Success', 'Laser session saved.', MessageSeverity.success);
-        },
-        error: (error: unknown) => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.alertService.showStickyMessage('Save error', 'Unable to save laser session.', MessageSeverity.error, error);
-        }
-      });
+      void this.saveConsultation(result);
     });
   }
 
   openEditDialog(consultation: AestheticConsultation): void {
+    const options = this.getTodayAttendancePatientOptions();
+    const existingPatient = this.patients().find(x => x.id === consultation.patientId);
+    if (existingPatient && !options.some(x => x.patientId === existingPatient.id)) {
+      options.unshift({
+        patientId: existingPatient.id,
+        consultId: '',
+        pNo: existingPatient.pno ?? '',
+        firstName: existingPatient.firstName,
+        lastName: existingPatient.lastName,
+        label: `${existingPatient.lastName} ${existingPatient.firstName} [${existingPatient.pno || 'N/A'}]`
+      });
+    }
+
     const dialogRef = this.dialog.open(LaserDialogComponent, {
-      data: { isEdit: true, consultation, patients: this.getTodayAttendancePatients() },
-      width: '520px',
+      data: { isEdit: true, consultation, patientOptions: options },
+      width: '500px',
       disableClose: true
     });
 
-    dialogRef.afterClosed().subscribe((result: AestheticConsultation | undefined) => {
+    dialogRef.afterClosed().subscribe((result: LaserDialogResult | undefined) => {
       if (!result) return;
-
-      this.loadingIndicator = true;
-      this.alertService.startLoadingMessage('Updating laser session...');
-
-      this.endpoint.updateConsultationEndpoint<AestheticConsultation>(result.id, result).subscribe({
-        next: () => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.load();
-          this.alertService.showMessage('Success', 'Laser session updated.', MessageSeverity.success);
-        },
-        error: (error: unknown) => {
-          this.alertService.stopLoadingMessage();
-          this.loadingIndicator = false;
-          this.alertService.showStickyMessage('Update error', 'Unable to update laser session.', MessageSeverity.error, error);
-        }
-      });
+      void this.saveConsultation(result);
     });
   }
 
   delete(id: number): void {
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage('Deleting laser session...');
+    this.alertService.showDialog('Are you sure you want to delete this laser session?', DialogType.confirm,
+      () => {
+        this.loadingIndicator = true;
+        this.alertService.startLoadingMessage('Deleting laser session...');
 
-    this.endpoint.deleteConsultationEndpoint<void>(id).subscribe({
-      next: () => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.load();
-        this.alertService.showMessage('Success', 'Laser session deleted.', MessageSeverity.success);
-      },
-      error: (error: unknown) => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Delete error', 'Unable to delete laser session.', MessageSeverity.error, error);
-      }
-    });
+        this.endpoint.deleteConsultationEndpoint<void>(id).subscribe({
+          next: () => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.load();
+            this.alertService.showMessage('Success', 'Laser session deleted.', MessageSeverity.success);
+          },
+          error: (error: unknown) => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.alertService.showStickyMessage('Delete error', this.getErrorMessage(error), MessageSeverity.error, error);
+          }
+        });
+      });
   }
 
   onSearch(): void {
-    // Search is handled by computed filteredConsultations
   }
 
   resolvePatientLabel(row: AestheticConsultation): string {
@@ -267,8 +256,73 @@ export class LaserComponent {
     return p ? `${p.firstName} ${p.lastName} [${p.pno || 'N/A'}]` : `Patient #${row.patientId}`;
   }
 
-  private getTodayAttendancePatients(): AestheticPatient[] {
-    const todayPNOs = this.todayAttendancePatients();
-    return this.patients().filter(p => todayPNOs.includes(p.pno || ''));
+  private async saveConsultation(result: LaserDialogResult): Promise<void> {
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage(result.consultation.id ? 'Updating laser session...' : 'Saving laser session...');
+
+    try {
+      const consultation = { ...result.consultation };
+      let patientId = result.selectedPatient.patientId;
+
+      if (!patientId) {
+        const createdPatient = await this.endpoint.createPatientEndpoint<AestheticPatient>({
+          firstName: result.selectedPatient.firstName,
+          lastName: result.selectedPatient.lastName,
+          notes: result.selectedPatient.pNo ? `Legacy PNO: ${result.selectedPatient.pNo}` : ''
+        }).toPromise();
+
+        patientId = createdPatient?.id ?? 0;
+      }
+
+      if (!patientId) {
+        throw new Error('Unable to resolve patient for Laser session.');
+      }
+
+      consultation.patientId = patientId;
+
+      if (consultation.id) {
+        await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
+        this.alertService.showMessage('Success', 'Laser session updated.', MessageSeverity.success);
+      } else {
+        await this.endpoint.createLaserConsultationEndpoint<AestheticConsultation>(consultation).toPromise();
+        this.alertService.showMessage('Success', 'Laser session saved.', MessageSeverity.success);
+      }
+
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.load();
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Save error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
+  }
+
+  private getTodayAttendancePatientOptions(): LaserPatientOption[] {
+    return this.todayClinicAttendance().map(item => {
+      const pNo = item.pNo ?? '';
+      const legacy = this.legacyPatients().find(x => x.pno === pNo);
+      const firstName = legacy?.pFirstname?.trim() || 'Unknown';
+      const lastName = legacy?.pSurName?.trim() || 'Patient';
+
+      const matchedAesthetic = this.patients().find(x =>
+        x.firstName.trim().toLowerCase() === firstName.toLowerCase()
+        && x.lastName.trim().toLowerCase() === lastName.toLowerCase());
+
+      return {
+        patientId: matchedAesthetic?.id ?? 0,
+        consultId: item.consultId ?? '',
+        pNo,
+        firstName,
+        lastName,
+        label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
+      };
+    });
+  }
+
+  private getErrorMessage(error: unknown): string {
+    const message = (error as { error?: { message?: string }; message?: string })?.error?.message
+      || (error as { message?: string })?.message;
+    return message || 'Operation failed.';
   }
 }

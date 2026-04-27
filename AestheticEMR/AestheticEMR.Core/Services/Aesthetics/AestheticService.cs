@@ -121,10 +121,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
         {
             var consultation = dbContext.AestheticConsultations
                 .Include(c => c.Photos)
+                .Include(c => c.Patient)
                 .FirstOrDefault(c => c.Id == consultationId);
 
             if (consultation == null)
                 throw new KeyNotFoundException($"Consultation not found: {consultationId}");
+
+            var consultId = ResolveLegacyConsultId(consultation);
+            if (!string.IsNullOrWhiteSpace(consultId) && IsConsultIdReferenced(consultId))
+            {
+                throw new InvalidOperationException("Cannot delete this Botox record because its consult ID is referenced by operational/billing records.");
+            }
 
             if (consultation.Photos.Count > 0)
                 dbContext.AestheticPhotos.RemoveRange(consultation.Photos);
@@ -190,6 +197,36 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
             dbContext.AestheticPhotos.Remove(photo);
             dbContext.SaveChanges();
+        }
+
+        private string? ResolveLegacyConsultId(AestheticConsultation consultation)
+        {
+            var pNo = dbContext.HPatients
+                .Where(x => x.PSurName == consultation.Patient.LastName && x.PFirstname == consultation.Patient.FirstName)
+                .Select(x => x.Pno)
+                .FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(pNo))
+            {
+                return null;
+            }
+
+            var consultId = dbContext.HRecords
+                .Where(x => x.PNo == pNo && x.RecDate.Date == consultation.ConsultationDate.Date)
+                .OrderByDescending(x => x.EntryTime)
+                .Select(x => x.ConsultId)
+                .FirstOrDefault();
+
+            return string.IsNullOrWhiteSpace(consultId) ? null : consultId;
+        }
+
+        private bool IsConsultIdReferenced(string consultId)
+        {
+            return dbContext.HConsultings.Any(x => x.ConsultId == consultId)
+                   || dbContext.HDentals.Any(x => x.ConsultId == consultId)
+                   || dbContext.HDentalTreats.Any(x => x.ConsultId == consultId)
+                   || dbContext.Billings.Any(x => x.billNO == consultId)
+                   || dbContext.BillAccums.Any(x => x.consultID == consultId);
         }
     }
 }
