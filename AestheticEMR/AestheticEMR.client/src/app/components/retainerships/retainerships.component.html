@@ -56,11 +56,11 @@
                 <td>
                   <button type="button" class="btn btn-sm btn-outline-primary me-2"
                           (click)="openEditModal(editModal, retainership)">
-                    <i class="fa fa-edit"></i>
+                    <span class="material-icons action-icon" aria-hidden="true">edit</span>
                   </button>
                   <button type="button" class="btn btn-sm btn-outline-danger"
                           (click)="deleteRetainership(retainership)">
-                    <i class="fa fa-trash"></i>
+                    <span class="material-icons action-icon" aria-hidden="true">delete</span>
                   </button>
                 </td>
               </tr>
@@ -117,12 +117,6 @@
               <input type="text" class="form-control" id="retainId" formControlName="retainId" readonly>
             </div>
           </div>
-          <div class="col-md-6">
-            <div class="mb-3">
-              <label for="retainCode" class="form-label">{{ 'Code' | translate }}</label>
-              <input type="text" class="form-control" id="retainCode" formControlName="retainCode" readonly>
-            </div>
-          </div>
         </div>
       }
 
@@ -131,7 +125,7 @@
         <input type="text" class="form-control" id="retainName" formControlName="retainName"
                [class.is-invalid]="retainershipForm.get('retainName')?.invalid && retainershipForm.get('retainName')?.touched">
         <div class="invalid-feedback">
-          Company name is required and must be less than 100 characters.
+          Company name is required and must be less than 255 characters.
         </div>
       </div>
 
@@ -231,16 +225,6 @@
             </div>
           </div>
         </div>
-        <div class="col-md-6">
-          <div class="mb-3">
-            <label for="editRetainCode" class="form-label">{{ 'Code' | translate }} *</label>
-            <input type="text" class="form-control" id="editRetainCode" formControlName="retainCode"
-                   [class.is-invalid]="retainershipForm.get('retainCode')?.invalid && retainershipForm.get('retainCode')?.touched">
-            <div class="invalid-feedback">
-              Code is required and must be less than 50 characters.
-            </div>
-          </div>
-        </div>
       </div>
 
       <div class="mb-3">
@@ -248,7 +232,7 @@
         <input type="text" class="form-control" id="editRetainName" formControlName="retainName"
                [class.is-invalid]="retainershipForm.get('retainName')?.invalid && retainershipForm.get('retainName')?.touched">
         <div class="invalid-feedback">
-          Company name is required and must be less than 100 characters.
+          Company name is required and must be less than 255 characters.
         </div>
       </div>
 

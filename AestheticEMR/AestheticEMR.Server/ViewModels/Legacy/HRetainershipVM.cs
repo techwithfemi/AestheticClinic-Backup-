@@ -6,13 +6,13 @@ namespace AestheticEMR.Server.ViewModels.Legacy;
 public class HRetainershipVM
 {
     [StringLength(50)]
-    public string RetainId { get; set; } = null!;
+    public string? RetainId { get; set; }
 
     [StringLength(50)]
-    public string RetainCode { get; set; } = null!;
+    public string? RetainCode { get; set; }
 
     [Required]
-    [StringLength(100)]
+    [StringLength(255)]
     public string RetainName { get; set; } = null!;
 
     [StringLength(50)]
@@ -25,11 +25,9 @@ public class HRetainershipVM
     public string? Address { get; set; }
 
     [StringLength(30)]
-    [Phone]
     public string? PhoneNo { get; set; }
 
     [StringLength(100)]
-    [EmailAddress]
     public string? Email { get; set; }
 
     [StringLength(100)]
@@ -47,10 +45,10 @@ public class HRetainershipVM
     [StringLength(50)]
     public string? DebtType { get; set; }
 
-    [StringLength(1)]
+    [StringLength(50)]
     public string? Active { get; set; }
 
-    [StringLength(1)]
+    [StringLength(50)]
     public string? UseTariff { get; set; }
 
     [Range(0, 100)]

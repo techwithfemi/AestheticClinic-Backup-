@@ -41,7 +41,6 @@ public class HPatientVM
     public string? PPhoneNo { get; set; }
 
     [StringLength(500)]
-    [EmailAddress]
     public string? Email { get; set; }
 
     [StringLength(100)]

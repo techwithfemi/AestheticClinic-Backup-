@@ -1,7 +1,8 @@
-import { Component, OnInit, TemplateRef, inject } from '@angular/core';
+import { AfterViewInit, Component, OnInit, TemplateRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
@@ -19,12 +20,16 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
   animations: [fadeInOut],
   imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule]
 })
-export class AppointmentComponent implements OnInit {
+export class AppointmentComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly alertService = inject(AlertService);
   private readonly appointmentEndpoint = inject(AppointmentEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly modalService = inject(NgbModal);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  @ViewChild('appointmentDialog') private appointmentDialog?: TemplateRef<unknown>;
 
   appointments: Appointment[] = [];
   appointmentsCache: Appointment[] = [];
@@ -39,6 +44,7 @@ export class AppointmentComponent implements OnInit {
   patientSearchText = '';
   readonly pageSize = 10;
   currentPage = 1;
+  private pendingCreatePatientNo: string | null = null;
 
   appointmentForm = this.fb.group({
     id: [0],
@@ -54,6 +60,34 @@ export class AppointmentComponent implements OnInit {
     this.loadPatients();
     this.loadClinicTypes();
     this.loadData();
+
+    const action = this.route.snapshot.queryParamMap.get('action');
+    if (action === 'create') {
+      this.pendingCreatePatientNo = this.route.snapshot.queryParamMap.get('pNo');
+    }
+  }
+
+  ngAfterViewInit(): void {
+    if (this.pendingCreatePatientNo === null || !this.appointmentDialog) {
+      return;
+    }
+
+    setTimeout(() => {
+      this.openCreate(this.appointmentDialog as TemplateRef<unknown>);
+
+      const patientNo = (this.pendingCreatePatientNo ?? '').trim();
+      if (patientNo) {
+        this.appointmentForm.patchValue({ pno: patientNo }, { emitEvent: false });
+      }
+
+      this.pendingCreatePatientNo = null;
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { action: null, pNo: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    });
   }
 
   get totalPages(): number {

@@ -54,6 +54,12 @@ public class HRetainershipService : IHRetainershipService
         var retainership = await GetByIdAsync(retainId);
         if (retainership != null)
         {
+            var isReferencedByPatients = await _context.HPatients.AnyAsync(p => p.CoyName == retainId);
+            if (isReferencedByPatients)
+            {
+                throw new InvalidOperationException("This company is referenced by patients and cannot be deleted.");
+            }
+
             _context.HRetainerships.Remove(retainership);
             await _context.SaveChangesAsync();
         }

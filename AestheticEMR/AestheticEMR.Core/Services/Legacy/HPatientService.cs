@@ -23,6 +23,7 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
     public async Task<HPatient> CreateAsync(HPatient patient)
     {
         patient.Pno = await GeneratePnoAsync();
+        patient.CardType = string.IsNullOrWhiteSpace(patient.CardType) ? "single" : patient.CardType;
         context.HPatients.Add(patient);
         await context.SaveChangesAsync();
         return patient;
@@ -30,7 +31,7 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
 
     public async Task<HPatient> UpdateAsync(HPatient patient)
     {
-        context.HPatients.Update(patient);
+        patient.CardType = string.IsNullOrWhiteSpace(patient.CardType) ? "single" : patient.CardType;
         await context.SaveChangesAsync();
         return patient;
     }
@@ -39,6 +40,12 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
     {
         var patient = await GetByIdAsync(pno);
         if (patient is null) return;
+
+        var hasAttendance = await context.HRecords.AnyAsync(r => r.PNo == pno);
+        if (hasAttendance)
+        {
+            throw new InvalidOperationException("This patient is referenced by attendance records and cannot be deleted.");
+        }
 
         context.HPatients.Remove(patient);
         await context.SaveChangesAsync();

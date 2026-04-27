@@ -1,9 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -24,17 +26,18 @@ export class PatientsComponent implements OnInit {
   private readonly alertService = inject(AlertService);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
+  private readonly router = inject(Router);
+  private readonly modalService = inject(NgbModal);
 
   patients: HPatient[] = [];
   patientsCache: HPatient[] = [];
   filteredPatients: HPatient[] = [];
   companies: HRetainership[] = [];
-  companySearchText = '';
   searchText = '';
   loadingIndicator = false;
   isEditing = false;
-  showForm = false;
   currentPatient: HPatient | null = null;
+  modalRef: NgbModalRef | null = null;
 
   readonly patientCategoryOptions = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
   readonly maritalStatuses = ['SINGLE', 'MARRIED'];
@@ -56,7 +59,7 @@ export class PatientsComponent implements OnInit {
     homeAddress: ['', Validators.maxLength(1100)],
     officeAddress: ['', Validators.maxLength(1000)],
     pPhoneNo: ['', Validators.maxLength(100)],
-    email: ['', [Validators.email, Validators.maxLength(500)]],
+    email: ['', Validators.maxLength(500)],
     empNo: ['', Validators.maxLength(100)],
     nextofKin: ['', Validators.maxLength(500)],
     kinAddress: ['', Validators.maxLength(1000)],
@@ -64,10 +67,9 @@ export class PatientsComponent implements OnInit {
     pCatId: ['', Validators.maxLength(100)],
     coyName: ['', Validators.maxLength(7)],
     clientCatId: ['', Validators.maxLength(100)],
-    cardType: ['', Validators.maxLength(100)],
     policyType: ['', Validators.maxLength(100)],
     nokphone: ['', Validators.maxLength(100)],
-    regDate: [''],
+    regDate: [this.getTodayInputValue()],
     userName: ['', Validators.maxLength(100)]
   });
 
@@ -77,17 +79,7 @@ export class PatientsComponent implements OnInit {
   }
 
   get filteredCompanies(): HRetainership[] {
-    const term = this.companySearchText.trim().toLowerCase();
-
-    if (!term) {
-      return this.companies;
-    }
-
-    return this.companies.filter(c =>
-      (c.retainName ?? '').toLowerCase().includes(term)
-      || (c.retainId ?? '').toLowerCase().includes(term)
-      || (c.retainCode ?? '').toLowerCase().includes(term)
-    );
+    return this.companies;
   }
 
   get totalPages(): number {
@@ -145,35 +137,43 @@ export class PatientsComponent implements OnInit {
       });
   }
 
-  openCreate(): void {
+  openCreate(content: TemplateRef<unknown>): void {
     this.isEditing = false;
     this.currentPatient = null;
-    this.showForm = true;
-    this.companySearchText = '';
-    this.patientForm.reset();
+    this.patientForm.reset({
+      regDate: this.getTodayInputValue()
+    });
 
     if (!this.companies.length) {
       this.loadCompanies();
     }
+
+    this.modalRef = this.modalService.open(content, { size: 'xl', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
-  openEdit(patient: HPatient): void {
+  openEdit(content: TemplateRef<unknown>, patient: HPatient): void {
     this.isEditing = true;
     this.currentPatient = patient;
-    this.showForm = true;
-    this.companySearchText = '';
-    this.patientForm.patchValue(patient);
+    this.patientForm.patchValue({
+      ...patient,
+      dob: this.toDateInputValue(patient.dob),
+      regDate: this.toDateInputValue(patient.regDate) || this.getTodayInputValue()
+    });
 
     if (!this.companies.length) {
       this.loadCompanies();
     }
+
+    this.modalRef = this.modalService.open(content, { size: 'xl', scrollable: true, backdrop: 'static', keyboard: false });
   }
 
   cancelForm(): void {
-    this.showForm = false;
     this.currentPatient = null;
-    this.companySearchText = '';
-    this.patientForm.reset();
+    this.patientForm.reset({
+      regDate: this.getTodayInputValue()
+    });
+    this.modalRef?.close();
+    this.modalRef = null;
   }
 
   savePatient(): void {
@@ -251,9 +251,13 @@ export class PatientsComponent implements OnInit {
             },
             error: error => {
               this.alertService.stopLoadingMessage();
+              const message = this.getErrorMessage(error);
               this.alertService.showStickyMessage(
                 'Delete Error',
-                `Unable to delete patient.\r\nError: "${this.getErrorMessage(error)}"`,    MessageSeverity.error,
+                message.includes('attendance records')
+                  ? 'Cannot delete this patient because related attendance records exist.'
+                  : `Unable to delete patient.\r\nError: "${message}"`,
+                MessageSeverity.error,
                 error
               );
             }
@@ -280,6 +284,26 @@ export class PatientsComponent implements OnInit {
     );
 
     this.currentPage = 1;
+  }
+
+  openAttendanceForPatient(patient: HPatient): void {
+    if (!patient.pno) {
+      return;
+    }
+
+    void this.router.navigate(['/frontdesk/attendance'], {
+      queryParams: { action: 'create', pNo: patient.pno }
+    });
+  }
+
+  openAppointmentForPatient(patient: HPatient): void {
+    if (!patient.pno) {
+      return;
+    }
+
+    void this.router.navigate(['/frontdesk/appointments'], {
+      queryParams: { action: 'create', pNo: patient.pno }
+    });
   }
 
   private extractCompanies(
@@ -329,11 +353,45 @@ export class PatientsComponent implements OnInit {
     };
   }
 
+  private toDateInputValue(value?: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
-      return error.error?.message || error.message;
+      const payload = error.error as { message?: string; [key: string]: unknown } | undefined;
+      const directMessage = payload?.message;
+      if (directMessage) {
+        return directMessage;
+      }
+
+      if (payload && typeof payload === 'object') {
+        for (const value of Object.values(payload)) {
+          if (Array.isArray(value) && value.length && typeof value[0] === 'string') {
+            return value[0];
+          }
+        }
+      }
+
+      return error.message;
     }
 
     return (error as Error)?.message || 'Unknown error';
+  }
+
+  private getTodayInputValue(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }

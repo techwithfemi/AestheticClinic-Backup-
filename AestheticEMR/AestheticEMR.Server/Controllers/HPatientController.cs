@@ -104,7 +104,7 @@ public class HPatientController(ILogger<HPatientController> logger, IMapper mapp
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating patient {Id}", id);
-            AddModelError("Unable to update patient");
+            AddModelError(ex.GetBaseException().Message);
             return BadRequest(ModelState);
         }
     }
@@ -124,6 +124,12 @@ public class HPatientController(ILogger<HPatientController> logger, IMapper mapp
 
             await patientService.DeleteAsync(id);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Delete blocked for patient {Id}", id);
+            AddModelError(ex.Message);
+            return BadRequest(ModelState);
         }
         catch (Exception ex)
         {

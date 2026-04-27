@@ -1,7 +1,8 @@
-import { Component, OnInit, TemplateRef, computed, inject, signal } from '@angular/core';
+﻿import { AfterViewInit, Component, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
@@ -21,13 +22,15 @@ import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint
   animations: [fadeInOut],
   imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule]
 })
-export class AttendanceComponent implements OnInit {
+export class AttendanceComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly alertService = inject(AlertService);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
   private readonly modalService = inject(NgbModal);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   attendances: Attendance[] = [];
   attendancesCache: Attendance[] = [];
@@ -39,12 +42,15 @@ export class AttendanceComponent implements OnInit {
   isEditing = false;
   showForm = false;
   currentAttendance: Attendance | null = null;
+  @ViewChild('attendanceDialog') private attendanceDialog?: TemplateRef<unknown>;
+
   modalRef: NgbModalRef | null = null;
   searchText = '';
   patientSearchText = '';
   showAll = false;
   readonly pageSize = 10;
   currentPage = 1;
+  private pendingCreatePatientNo: string | null = null;
   readonly attendanceStatusOptions = ['(CONSULTATION)', 'FOLLOW-UP', 'REVIEW', 'EMERGENCY'];
   readonly billingCategoryOptions = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
 
@@ -87,6 +93,35 @@ export class AttendanceComponent implements OnInit {
     this.loadRetainerships();
     this.loadClinicTypes();
     this.loadData();
+
+    const action = this.route.snapshot.queryParamMap.get('action');
+    if (action === 'create') {
+      this.pendingCreatePatientNo = this.route.snapshot.queryParamMap.get('pNo');
+    }
+  }
+
+  ngAfterViewInit(): void {
+    if (this.pendingCreatePatientNo === null || !this.attendanceDialog) {
+      return;
+    }
+
+    setTimeout(() => {
+      this.openCreate(this.attendanceDialog as TemplateRef<unknown>);
+
+      const patientNo = (this.pendingCreatePatientNo ?? '').trim();
+      if (patientNo) {
+        this.attendanceForm.patchValue({ pNo: patientNo }, { emitEvent: false });
+        this.syncSelectedPatient();
+      }
+
+      this.pendingCreatePatientNo = null;
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { action: null, pNo: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    });
   }
 
   get totalPages(): number {
@@ -487,3 +522,4 @@ export class AttendanceComponent implements OnInit {
     return 'Unknown error';
   }
 }
+

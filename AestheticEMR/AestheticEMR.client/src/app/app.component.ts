@@ -4,7 +4,7 @@ import { ToastaModule, ToastaConfig, ToastaService, ToastOptions } from 'ngx-toa
 import { Subscription } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { AppTranslationService } from './services/app-translation.service';
-import { AlertService, AlertCommand, MessageSeverity } from './services/alert.service';
+import { AlertService, AlertCommand, AlertDialog, DialogType, MessageSeverity } from './services/alert.service';
 
 @Component({
     selector: 'app-root',
@@ -22,12 +22,14 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly translationService = inject(AppTranslationService);
   private messageSubscription?: Subscription;
+  private dialogSubscription?: Subscription;
 
   constructor() {
     // Keep global toast configurations here
     this.toastaConfig.theme = 'bootstrap';
     this.toastaConfig.position = 'top-right';
     this.toastaConfig.limit = 5;
+    this.toastaConfig.timeout = 5000;
   }
 
   ngOnInit() {
@@ -38,6 +40,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.messageSubscription = this.alertService.getMessageEvent()
       .subscribe(command => this.handleAlertCommand(command));
 
+    // Reactivate global dialog handling (confirm/prompt/alert)
+    this.dialogSubscription = this.alertService.getDialogEvent()
+      .subscribe(dialog => this.handleAlertDialog(dialog));
+
     // Check if user session is still valid on refresh
     if (this.authService.isLoggedIn) {
       console.log('User session restored');
@@ -46,6 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.messageSubscription?.unsubscribe();
+    this.dialogSubscription?.unsubscribe();
   }
 
   private handleAlertCommand(command: AlertCommand): void {
@@ -62,7 +69,7 @@ export class AppComponent implements OnInit, OnDestroy {
       title: command.message.summary,
       msg: command.message.detail,
       showClose: true,
-      timeout: command.operation === 'add_sticky' ? 0 : this.toastaConfig.timeout,
+      timeout: 5000,
       onRemove: command.onRemove
     };
 
@@ -86,5 +93,41 @@ export class AppComponent implements OnInit, OnDestroy {
         this.toastaService.default(options);
         break;
     }
+  }
+
+  private handleAlertDialog(dialog: AlertDialog): void {
+    const message = this.normalizeDialogMessage(dialog.message);
+
+    switch (dialog.type) {
+      case DialogType.confirm: {
+        const confirmed = window.confirm(message);
+        if (confirmed) {
+          dialog.okCallback?.();
+        } else {
+          dialog.cancelCallback?.();
+        }
+        break;
+      }
+      case DialogType.prompt: {
+        const value = window.prompt(message, dialog.defaultValue ?? '');
+        if (value !== null) {
+          dialog.okCallback?.(value);
+        } else {
+          dialog.cancelCallback?.();
+        }
+        break;
+      }
+      default:
+        window.alert(message);
+        dialog.okCallback?.();
+        break;
+    }
+  }
+
+  private normalizeDialogMessage(message: string): string {
+    return message
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .trim();
   }
 }

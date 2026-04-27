@@ -125,6 +125,12 @@ namespace AestheticEMR.Server.Controllers
                 await _retainershipService.DeleteAsync(id);
                 return NoContent();
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Delete blocked for retainership {Id}", id);
+                AddModelError(ex.Message);
+                return BadRequest(ModelState);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting retainership {Id}", id);

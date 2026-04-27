@@ -69,12 +69,12 @@ export class RetainershipsComponent implements OnInit {
     this.retainershipForm = this.fb.group({
       retainId: [''], // Not required for creation - auto-generated
       retainCode: [''], // Not required for creation - auto-generated
-      retainName: ['', [Validators.required, Validators.maxLength(100)]],
+      retainName: ['', [Validators.required, Validators.maxLength(255)]],
       clientCatId: ['', Validators.maxLength(50)],
       clientType: ['', Validators.maxLength(50)],
       address: ['', Validators.maxLength(200)],
       phoneNo: ['', [Validators.maxLength(30)]],
-      email: ['', [Validators.email, Validators.maxLength(100)]],
+      email: ['', [Validators.maxLength(100)]],
       contact: ['', Validators.maxLength(100)],
       profFee: [0, [Validators.min(0)]],
       debt: [0, [Validators.min(0)]],
@@ -134,14 +134,14 @@ export class RetainershipsComponent implements OnInit {
       cardRenewAmount: 0,
       retainDate: new Date().toISOString().split('T')[0]
     });
-    this.modalRef = this.modalService.open(content, { size: 'lg' });
+    this.modalRef = this.modalService.open(content, { size: 'lg', backdrop: 'static', keyboard: false });
   }
 
   openEditModal(content: TemplateRef<unknown>, retainership: HRetainership): void {
     this.isEditing = true;
     this.currentRetainership = retainership;
     this.retainershipForm.patchValue(retainership);
-    this.modalRef = this.modalService.open(content, { size: 'lg' });
+    this.modalRef = this.modalService.open(content, { size: 'lg', backdrop: 'static', keyboard: false });
   }
 
   saveRetainership(): void {
@@ -150,12 +150,19 @@ export class RetainershipsComponent implements OnInit {
       return;
     }
 
-    const formValue = this.retainershipForm.value;
+    const formValue = this.retainershipForm.getRawValue() as HRetainership;
     this.alertService.startLoadingMessage();
 
     if (this.isEditing && this.currentRetainership) {
+      const payload: HRetainership = {
+        ...this.currentRetainership,
+        ...formValue,
+        retainId: this.currentRetainership.retainId,
+        retainCode: this.currentRetainership.retainCode
+      };
+
       this.retainershipEndpoint.getUpdateHRetainershipEndpoint<HRetainership>(
-        this.currentRetainership.retainId, formValue
+        this.currentRetainership.retainId, payload
       ).subscribe({
         next: updated => {
           this.alertService.stopLoadingMessage();
@@ -166,6 +173,7 @@ export class RetainershipsComponent implements OnInit {
             this.onSearch();
           }
           this.modalRef?.close();
+          this.modalRef = null;
           this.alertService.showMessage('Success', 'Retainership updated successfully.', MessageSeverity.success);
         },
         error: error => {
@@ -187,6 +195,7 @@ export class RetainershipsComponent implements OnInit {
             this.retainershipsCache = [...this.retainerships];
             this.onSearch();
             this.modalRef?.close();
+            this.modalRef = null;
             this.alertService.showMessage('Success', 'Retainership created successfully.', MessageSeverity.success);
           },
           error: error => {
@@ -217,9 +226,12 @@ export class RetainershipsComponent implements OnInit {
             },
             error: error => {
               this.alertService.stopLoadingMessage();
+              const message = this.getErrorMessage(error);
               this.alertService.showStickyMessage(
                 'Delete Error',
-                `Unable to delete retainership.\r\nError: "${this.getErrorMessage(error)}"`,
+                message.includes('referenced by patients')
+                  ? 'Cannot delete this company because it is referenced in patients records.'
+                  : `Unable to delete retainership.\r\nError: "${message}"`,
                 MessageSeverity.error,
                 error
               );
