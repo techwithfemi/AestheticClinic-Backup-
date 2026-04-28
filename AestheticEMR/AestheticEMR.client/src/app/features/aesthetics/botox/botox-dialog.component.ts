@@ -67,11 +67,6 @@ export interface BotoxDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Provider</mat-label>
-            <input matInput formControlName="provider" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Treatment Plan</mat-label>
             <textarea matInput rows="3" formControlName="treatmentPlan"></textarea>
           </mat-form-field>
@@ -128,7 +123,6 @@ export class BotoxDialogComponent {
     id: [0],
     patientKey: ['', Validators.required],
     consultationDate: ['', Validators.required],
-    provider: [''],
     treatmentPlan: [''],
     procedureDescription: [''],
     risksAndComplications: [''],
@@ -145,7 +139,6 @@ export class BotoxDialogComponent {
         id: this.data.consultation.id,
         patientKey: selectedOption?.label ?? '',
         consultationDate: this.data.consultation.consultationDate ? this.data.consultation.consultationDate.slice(0, 10) : '',
-        provider: this.data.consultation.provider ?? '',
         treatmentPlan: this.data.consultation.treatmentPlan ?? '',
         procedureDescription: this.data.consultation.procedureDescription ?? '',
         risksAndComplications: this.data.consultation.risksAndComplications ?? '',
@@ -172,7 +165,6 @@ export class BotoxDialogComponent {
       patientId: selectedPatient.patientId,
       consultationDate: value.consultationDate,
       procedureType: 'Botox',
-      provider: value.provider,
       treatmentPlan: value.treatmentPlan,
       procedureDescription: value.procedureDescription,
       risksAndComplications: value.risksAndComplications,

@@ -91,6 +91,7 @@ namespace AestheticEMR.Server.Controllers
                 return BadRequest(ModelState);
 
             var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            consultation.Provider = GetCurrentUserId();
             var created = _aestheticService.AddConsultation(consultation);
             return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
         }
@@ -143,6 +144,7 @@ namespace AestheticEMR.Server.Controllers
 
             consultationVM.ProcedureType = "Botox";
             var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            consultation.Provider = GetCurrentUserId();
             var created = _aestheticService.AddConsultation(consultation);
             return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
         }
@@ -165,6 +167,7 @@ namespace AestheticEMR.Server.Controllers
 
             consultationVM.ProcedureType = "Laser";
             var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            consultation.Provider = GetCurrentUserId();
             var created = _aestheticService.AddConsultation(consultation);
             return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
         }
@@ -188,6 +191,7 @@ namespace AestheticEMR.Server.Controllers
             try
             {
                 var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                consultation.Provider = GetCurrentUserId();
                 var updated = _aestheticService.UpdateConsultation(consultation);
                 return Ok(_mapper.Map<AestheticConsultationVM>(updated));
             }

@@ -65,11 +65,6 @@ export interface LaserDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Provider / Operator</mat-label>
-            <input matInput formControlName="provider" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Skin Type (Fitzpatrick I–VI)</mat-label>
             <mat-select formControlName="skinAssessment">
               <mat-option value="Type I">Type I – Very fair, always burns</mat-option>
@@ -142,7 +137,6 @@ export class LaserDialogComponent {
     id: [0],
     patientKey: ['', Validators.required],
     consultationDate: ['', Validators.required],
-    provider: [''],
     skinAssessment: [''],
     deviceSettings: [''],
     treatmentPlan: [''],
@@ -164,7 +158,6 @@ export class LaserDialogComponent {
         id: this.data.consultation.id,
         patientKey: selectedOption?.label ?? '',
         consultationDate: this.data.consultation.consultationDate ? this.data.consultation.consultationDate.slice(0, 10) : '',
-        provider: this.data.consultation.provider ?? '',
         skinAssessment: this.data.consultation.skinAssessment ?? '',
         deviceSettings: this.data.consultation.deviceSettings ?? '',
         treatmentPlan: this.data.consultation.treatmentPlan ?? '',
@@ -193,7 +186,6 @@ export class LaserDialogComponent {
       patientId: selectedPatient.patientId,
       consultationDate: value.consultationDate,
       procedureType: 'Laser',
-      provider: value.provider,
       skinAssessment: value.skinAssessment,
       deviceSettings: value.deviceSettings,
       treatmentPlan: value.treatmentPlan,
