@@ -4,6 +4,7 @@ using AestheticEMR.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AestheticEMR.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260428215206_AddDentalImaging")]
+    partial class AddDentalImaging
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1911,13 +1914,6 @@ namespace AestheticEMR.Server.Migrations
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.HDentalTreat", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("ID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
                     b.Property<string>("ARem")
                         .HasMaxLength(2000)
                         .IsUnicode(false)
@@ -2155,6 +2151,13 @@ namespace AestheticEMR.Server.Migrations
                         .HasColumnType("nvarchar(1)")
                         .HasColumnName("DType");
 
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("ID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
                     b.Property<string>("Pno")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2169,8 +2172,6 @@ namespace AestheticEMR.Server.Migrations
                     b.Property<DateTime>("TTime")
                         .HasColumnType("datetime")
                         .HasColumnName("tTime");
-
-                    b.HasKey("Id");
 
                     b.ToTable("hDentalTreat", (string)null);
                 });

@@ -6,11 +6,13 @@
 
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Models.Aesthetic;
+using AestheticEMR.Core.Models.Dental;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Server.ViewModels.Account;
 using AestheticEMR.Server.ViewModels.Aesthetic;
+using AestheticEMR.Server.ViewModels.Dental;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AestheticEMR.Server.ViewModels.Shop;
 using AutoMapper;
@@ -98,6 +100,15 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HPatient, HPatientVM>()
                 .ReverseMap()
                 .ForMember(d => d.Pno, map => map.Ignore());
+
+            CreateMap<HDentalTreat, DentalChartVM>()
+                .ForMember(d => d.PatientName, map => map.Ignore())
+                .ReverseMap()
+                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+
+            CreateMap<DentalImaging, DentalImagingVM>()
+                .ReverseMap()
+                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
         }
     }
 }

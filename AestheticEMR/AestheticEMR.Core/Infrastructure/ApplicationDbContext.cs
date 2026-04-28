@@ -7,6 +7,7 @@
 using AestheticEMR.Core.Models;
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Models.Aesthetic;
+using AestheticEMR.Core.Models.Dental;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Account;
@@ -70,6 +71,7 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<AestheticPatient> AestheticPatients { get; set; }
         public DbSet<AestheticConsultation> AestheticConsultations { get; set; }
         public DbSet<AestheticPhoto> AestheticPhotos { get; set; }
+        public DbSet<DentalImaging> DentalImagings { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -403,9 +405,13 @@ namespace AestheticEMR.Core.Infrastructure
             builder.Entity<HDentalTreat>(entity =>
             {
                 entity
-                    .HasNoKey()
+                    .HasKey(e => e.Id);
+                entity
                     .ToTable("hDentalTreat");
 
+                entity.Property(e => e.Id)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnName("ID");
                 entity.Property(e => e.ARem)
                     .HasMaxLength(2000)
                     .IsUnicode(false)
@@ -476,9 +482,6 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.Dtype)
                     .HasMaxLength(1)
                     .HasColumnName("DType");
-                entity.Property(e => e.Id)
-                    .ValueGeneratedOnAdd()
-                    .HasColumnName("ID");
                 entity.Property(e => e.Pno)
                     .HasMaxLength(50)
                     .IsUnicode(false)
@@ -1735,6 +1738,22 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

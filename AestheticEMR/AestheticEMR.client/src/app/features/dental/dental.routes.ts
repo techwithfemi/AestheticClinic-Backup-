@@ -9,11 +9,13 @@ export const dentalRoutes: Routes = [
   {
     path: 'chart',
     loadComponent: () => import('./odontogram/odontogram.component')
-      .then(m => m.OdontogramComponent)
+      .then(m => m.OdontogramComponent),
+    title: 'Odontogram'
   },
   {
     path: 'xray',
     loadComponent: () => import('./imaging/imaging.component')
-      .then(m => m.ImagingComponent)
+      .then(m => m.ImagingComponent),
+    title: 'Dental Imaging'
   }
 ];

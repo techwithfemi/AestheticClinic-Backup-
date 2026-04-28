@@ -96,9 +96,12 @@ export class MainLayoutComponent implements OnInit {
 
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
-        const top = Object.entries(json.Static_Top || {}).map(([title, item]) => ({ title, item }));
+        const top = Object.entries(json.Static_Top || {})
+          .filter(([, item]) => (item.subItems?.length || 0) > 0)
+          .map(([title, item]) => ({ title, item }));
         const dynamic = Object.entries(json.Dynamic_Roles || {})
           .filter(([roleName]) => this.canAccessDynamicSection(roleName))
+          .filter(([, item]) => (item.subItems?.length || 0) > 0)
           .map(([title, item]) => ({ title, item }));
         const reports = Object.entries(json.Reports || {})
           .map(([title, item]) => ({
@@ -109,7 +112,9 @@ export class MainLayoutComponent implements OnInit {
             }
           }))
           .filter(entry => (entry.item.subItems?.length || 0) > 0);
-        const bottom = Object.entries(json.Settings || {}).map(([title, item]) => ({ title, item }));
+        const bottom = Object.entries(json.Settings || {})
+          .filter(([, item]) => (item.subItems?.length || 0) > 0)
+          .map(([title, item]) => ({ title, item }));
 
         this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];
       });
