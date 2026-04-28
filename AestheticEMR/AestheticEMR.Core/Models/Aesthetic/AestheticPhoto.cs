@@ -15,5 +15,7 @@ namespace AestheticEMR.Core.Models.Aesthetic
         public required string FileName { get; set; }
         public required string FilePath { get; set; }
         public string? Type { get; set; }
+        public string? ConsultId { get; set; }
+        public string? PNo { get; set; }
     }
 }

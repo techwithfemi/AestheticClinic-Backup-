@@ -276,6 +276,7 @@ namespace AestheticEMR.Server.Controllers
             var photoVM = new AestheticPhotoVM
             {
                 ConsultationId = uploadVM.ConsultationId,
+                PNo = consultation.Patient?.Pno,
                 FileName = uploadVM.File.FileName,
                 Type = uploadVM.Type,
                 Url = savedPath
@@ -334,6 +335,7 @@ namespace AestheticEMR.Server.Controllers
             {
                 Id = photoId,
                 ConsultationId = uploadVM.ConsultationId,
+                PNo = consultation.Patient?.Pno,
                 FileName = uploadVM.File.FileName,
                 Type = uploadVM.Type,
                 Url = savedPath

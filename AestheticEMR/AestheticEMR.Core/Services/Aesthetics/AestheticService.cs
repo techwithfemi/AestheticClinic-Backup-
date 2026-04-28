@@ -103,6 +103,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.Provider = consultation.Provider;
             existing.ConsentGiven = consultation.ConsentGiven;
             existing.InformationAccepted = consultation.InformationAccepted;
+            existing.ConsentDate = consultation.ConsentDate;
+            existing.ConsentNotes = consultation.ConsentNotes;
             existing.ProcedureDescription = consultation.ProcedureDescription;
             existing.RisksAndComplications = consultation.RisksAndComplications;
             existing.PostTreatmentInstructions = consultation.PostTreatmentInstructions;
@@ -111,6 +113,27 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.CurrentMedications = consultation.CurrentMedications;
             existing.Allergies = consultation.Allergies;
             existing.DeviceSettings = consultation.DeviceSettings;
+
+            existing.AreaTreated = consultation.AreaTreated;
+
+            existing.DeviceUsed = consultation.DeviceUsed;
+            existing.Wavelength = consultation.Wavelength;
+            existing.SpotSize = consultation.SpotSize;
+            existing.Fluence = consultation.Fluence;
+            existing.PulseDuration = consultation.PulseDuration;
+            existing.CoolingMethod = consultation.CoolingMethod;
+            existing.NumberOfShots = consultation.NumberOfShots;
+            existing.SkinReaction = consultation.SkinReaction;
+            existing.NextSessionDate = consultation.NextSessionDate;
+
+            existing.Indication = consultation.Indication;
+            existing.BrandUsed = consultation.BrandUsed;
+            existing.Dilution = consultation.Dilution;
+            existing.UnitsUsed = consultation.UnitsUsed;
+            existing.InjectionMapping = consultation.InjectionMapping;
+            existing.LotNumber = consultation.LotNumber;
+            existing.FollowUpReview = consultation.FollowUpReview;
+
             existing.UpdatedDate = DateTime.UtcNow;
 
             dbContext.SaveChanges();
@@ -166,6 +189,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
         public AestheticPhoto AddPhoto(AestheticPhoto photo)
         {
+            var consultation = dbContext.AestheticConsultations
+                .Include(c => c.Patient)
+                .FirstOrDefault(c => c.Id == photo.ConsultationId);
+
+            photo.ConsultId = string.IsNullOrWhiteSpace(photo.ConsultId)
+                ? ResolveLegacyConsultId(consultation)
+                : photo.ConsultId;
+            photo.PNo = string.IsNullOrWhiteSpace(photo.PNo)
+                ? consultation?.Patient?.Pno
+                : photo.PNo;
+
             photo.CreatedDate = DateTime.UtcNow;
             photo.UpdatedDate = DateTime.UtcNow;
             dbContext.AestheticPhotos.Add(photo);
@@ -179,7 +213,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (existing == null)
                 throw new KeyNotFoundException($"Photo not found: {photo.Id}");
 
+            var consultation = dbContext.AestheticConsultations
+                .Include(c => c.Patient)
+                .FirstOrDefault(c => c.Id == photo.ConsultationId);
+
             existing.ConsultationId = photo.ConsultationId;
+            existing.ConsultId = string.IsNullOrWhiteSpace(photo.ConsultId)
+                ? ResolveLegacyConsultId(consultation)
+                : photo.ConsultId;
+            existing.PNo = string.IsNullOrWhiteSpace(photo.PNo)
+                ? consultation?.Patient?.Pno
+                : photo.PNo;
             existing.FileName = photo.FileName;
             existing.FilePath = photo.FilePath;
             existing.Type = photo.Type;
@@ -199,12 +243,22 @@ namespace AestheticEMR.Core.Services.Aesthetics
             dbContext.SaveChanges();
         }
 
-        private string? ResolveLegacyConsultId(AestheticConsultation consultation)
+        private string? ResolveLegacyConsultId(AestheticConsultation? consultation)
         {
-            var pNo = dbContext.HPatients
-                .Where(x => x.PSurName == consultation.Patient.LastName && x.PFirstname == consultation.Patient.FirstName)
-                .Select(x => x.Pno)
-                .FirstOrDefault();
+            if (consultation == null)
+            {
+                return null;
+            }
+
+            var pNo = consultation.Patient?.Pno;
+
+            if (string.IsNullOrWhiteSpace(pNo))
+            {
+                pNo = dbContext.HPatients
+                    .Where(x => x.PSurName == consultation.Patient.LastName && x.PFirstname == consultation.Patient.FirstName)
+                    .Select(x => x.Pno)
+                    .FirstOrDefault();
+            }
 
             if (string.IsNullOrWhiteSpace(pNo))
             {

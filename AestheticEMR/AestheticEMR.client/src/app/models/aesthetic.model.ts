@@ -5,6 +5,8 @@
 export interface AestheticPhoto {
   id: number;
   consultationId: number;
+  consultId?: string;
+  pNo?: string;
   fileName?: string;
   url: string;
   thumbnailUrl?: string;
@@ -23,6 +25,8 @@ export interface AestheticConsultation {
   provider?: string;
   consentGiven?: boolean;
   informationAccepted?: boolean;
+  consentDate?: string;
+  consentNotes?: string;
   procedureDescription?: string;
   risksAndComplications?: string;
   postTreatmentInstructions?: string;
@@ -31,6 +35,27 @@ export interface AestheticConsultation {
   currentMedications?: string;
   allergies?: string;
   deviceSettings?: string;
+
+  areaTreated?: string;
+
+  deviceUsed?: string;
+  wavelength?: string;
+  spotSize?: string;
+  fluence?: string;
+  pulseDuration?: string;
+  coolingMethod?: string;
+  numberOfShots?: number;
+  skinReaction?: string;
+  nextSessionDate?: string;
+
+  indication?: string;
+  brandUsed?: string;
+  dilution?: string;
+  unitsUsed?: number;
+  injectionMapping?: string;
+  lotNumber?: string;
+  followUpReview?: string;
+
   photos?: AestheticPhoto[];
 }
 

@@ -293,6 +293,7 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
   }
 
   onCoynameChanged(): void {
+    return;
   }
 
   onSearch(): void {
@@ -437,11 +438,11 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     const term = this.searchText.trim().toLowerCase();
     let records = [...this.attendancesCache];
 
-    if (!this.showAll) {
-      records = records.filter(record => this.isToday(record.recDate));
-    }
-
-    if (term) {
+    if (!term) {
+      if (!this.showAll) {
+        records = records.filter(record => this.isToday(record.recDate));
+      }
+    } else {
       records = records.filter(record =>
         (record.pNo ?? '').toLowerCase().includes(term)
         || this.getPatientNameByNo(record.pNo).toLowerCase().includes(term)

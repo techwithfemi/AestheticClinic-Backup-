@@ -47,9 +47,14 @@ interface PhotoDialogData {
       <mat-dialog-content>
         <form [formGroup]="form">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Consultation</mat-label>
+            <mat-label>Search Patient / Consult ID</mat-label>
+            <input matInput [value]="searchText" (input)="onSearchChange($event)" placeholder="Type patient or consult ID" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Patient [ConsultId]</mat-label>
             <mat-select formControlName="consultationId" required>
-              @for (option of data.consultationOptions; track option.id) {
+              @for (option of filteredConsultationOptions; track option.id) {
                 <mat-option [value]="option.id">{{ option.label }}</mat-option>
               }
             </mat-select>
@@ -60,7 +65,6 @@ interface PhotoDialogData {
             <mat-select formControlName="type">
               <mat-option value="Before">Before</mat-option>
               <mat-option value="After">After</mat-option>
-              <mat-option value="Progress">Progress</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -119,6 +123,16 @@ export class PhotosDialogComponent {
   selectedFile: File | null = null;
   selectedFileName = '';
   previewUrl: string | null = null;
+  searchText = '';
+
+  get filteredConsultationOptions(): ConsultationOption[] {
+    const term = this.searchText.trim().toLowerCase();
+    if (!term) {
+      return this.data.consultationOptions;
+    }
+
+    return this.data.consultationOptions.filter(option => option.label.toLowerCase().includes(term));
+  }
 
   form = this.fb.nonNullable.group({
     id: [0],
@@ -159,6 +173,14 @@ export class PhotosDialogComponent {
     }
 
     element.value = '';
+  }
+
+  onSearchChange(event: Event): void {
+    this.searchText = (event.target as HTMLInputElement).value ?? '';
+    const matches = this.filteredConsultationOptions;
+    if (matches.length === 1) {
+      this.form.controls.consultationId.setValue(matches[0].id);
+    }
   }
 
   save(): void {

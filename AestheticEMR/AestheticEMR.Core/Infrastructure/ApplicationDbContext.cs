@@ -1,4 +1,4 @@
-﻿// ---------------------------------------
+// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -1617,6 +1617,7 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Pno).HasMaxLength(50).IsUnicode(false);
                 entity.Property(e => e.Email).HasMaxLength(100);
                 entity.Property(e => e.PhoneNumber).HasMaxLength(30).IsUnicode(false);
                 entity.Property(e => e.SkinType).HasMaxLength(50);
@@ -1633,8 +1634,31 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.ToTable("AestheticConsultations");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ProcedureType).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.Provider).HasMaxLength(100).IsUnicode(false);
                 entity.Property(e => e.TreatmentPlan).HasMaxLength(200).IsUnicode(false);
                 entity.Property(e => e.ProcedureDescription).HasMaxLength(4000).IsUnicode(false);
+                entity.Property(e => e.RisksAndComplications).HasMaxLength(4000).IsUnicode(false);
+                entity.Property(e => e.PostTreatmentInstructions).HasMaxLength(4000).IsUnicode(false);
+                entity.Property(e => e.DeviceSettings).HasMaxLength(1000).IsUnicode(false);
+                entity.Property(e => e.AreaTreated).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.ConsentNotes).HasMaxLength(2000).IsUnicode(false);
+
+                entity.Property(e => e.DeviceUsed).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.Wavelength).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.SpotSize).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.Fluence).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.PulseDuration).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.CoolingMethod).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.SkinReaction).HasMaxLength(500).IsUnicode(false);
+
+                entity.Property(e => e.Indication).HasMaxLength(500).IsUnicode(false);
+                entity.Property(e => e.BrandUsed).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.Dilution).HasMaxLength(200).IsUnicode(false);
+                entity.Property(e => e.UnitsUsed).HasColumnType("decimal(18, 2)");
+                entity.Property(e => e.InjectionMapping).HasMaxLength(2000).IsUnicode(false);
+                entity.Property(e => e.LotNumber).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.FollowUpReview).HasMaxLength(2000).IsUnicode(false);
+
                 entity.Property(e => e.ConsentGiven).HasDefaultValue(false);
                 entity.Property(e => e.ConsultationDate).HasColumnType(dateTimeSql);
 
@@ -1651,6 +1675,8 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.FilePath).HasMaxLength(4000).IsUnicode(false);
                 entity.Property(e => e.FileName).HasMaxLength(200).IsUnicode(false);
                 entity.Property(e => e.Type).HasMaxLength(100).IsUnicode(false);
+                entity.Property(e => e.ConsultId).HasMaxLength(50).IsUnicode(false);
+                entity.Property(e => e.PNo).HasMaxLength(50).IsUnicode(false);
             });
         }
 
@@ -1709,3 +1735,13 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
+
+
+
+
+
+
+
+

@@ -14,11 +14,6 @@ import { AestheticConsultation, AestheticPatient, AestheticPhoto } from '../../.
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { PhotosDialogComponent } from './photos-dialog.component';
 
-interface ConsultationOption {
-  id: number;
-  label: string;
-}
-
 interface PhotoDialogResult {
   id: number;
   consultationId: number;
@@ -121,7 +116,7 @@ interface PhotoDialogResult {
       <!-- Full Image Overlay -->
       @if (isFullImageOpen()) {
         <div class="full-image-overlay" (click)="closeFullImage()" tabindex="0" (keydown.escape)="closeFullImage()">
-          <div class="full-image-dialog" (click)="$event.stopPropagation()" role="dialog" tabindex="0">
+          <div class="full-image-dialog" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" tabindex="0">
             <div class="full-image-header">
               <span class="full-image-title">{{ fullImageName() || 'Photo Preview' }}</span>
               <button mat-icon-button type="button" (click)="closeFullImage()" aria-label="Close">
@@ -172,17 +167,24 @@ export class PhotosComponent {
       .flatMap(patient =>
         (patient.consultations || []).map((consultation: AestheticConsultation) => ({
           id: consultation.id,
-          label: `${patient.firstName} ${patient.lastName} [${patient.pno || 'N/A'}] - ${consultation.procedureType || 'Aesthetics'} (${this.formatDate(consultation.consultationDate)})`
+          label: `${patient.firstName} ${patient.lastName} [${String(consultation.id).padStart(4, '0')}]`
         }))
       )
       .sort((a, b) => a.label.localeCompare(b.label));
   });
 
   readonly filteredPhotos = computed(() => {
-    const search = this.searchText().toLowerCase();
-    if (!search) return this.photos();
+    const search = this.searchText().trim().toLowerCase();
 
-    return this.photos().filter(photo => {
+    const base = search
+      ? this.photos()
+      : this.photos().filter(photo => this.isToday(photo.createdDate));
+
+    if (!search) {
+      return base;
+    }
+
+    return base.filter(photo => {
       const consultation = this.resolvePatientLabel(photo.consultationId).toLowerCase();
       const type = (photo.type || '').toLowerCase();
       const name = (photo.fileName || '').toLowerCase();
@@ -294,9 +296,14 @@ export class PhotosComponent {
           }
         });
       } else {
+        const selectedConsultation = this.findConsultation(result.consultationId);
+        const selectedPatient = this.findPatientByConsultation(result.consultationId);
+
         const payload: AestheticPhoto = {
           id: photo.id,
           consultationId: result.consultationId,
+          consultId: selectedConsultation ? String(selectedConsultation.id) : photo.consultId,
+          pNo: selectedPatient?.pno ?? photo.pNo,
           fileName: result.fileName,
           type: result.type,
           url: photo.url,
@@ -364,5 +371,36 @@ export class PhotosComponent {
   private formatDate(value?: string): string {
     if (!value) return 'No date';
     return value.slice(0, 10);
+  }
+
+  private findConsultation(consultationId: number): AestheticConsultation | undefined {
+    for (const patient of this.patients()) {
+      const match = (patient.consultations || []).find(c => c.id === consultationId);
+      if (match) {
+        return match;
+      }
+    }
+
+    return undefined;
+  }
+
+  private findPatientByConsultation(consultationId: number): AestheticPatient | undefined {
+    return this.patients().find(patient => (patient.consultations || []).some(c => c.id === consultationId));
+  }
+
+  private isToday(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
   }
 }

@@ -1,13 +1,15 @@
-import { Component, inject } from '@angular/core';
+import { Component, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 import { AestheticConsultation } from '../../../models/aesthetic.model';
 
@@ -37,7 +39,9 @@ export interface LaserDialogResult {
     MatButtonModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatIconModule
+    MatIconModule,
+    MatDatepickerModule,
+    MatNativeDateModule
   ],
   template: `
     <div class="dialog-content">
@@ -51,9 +55,14 @@ export interface LaserDialogResult {
       <mat-dialog-content>
         <form [formGroup]="form">
           <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Search Patient</mat-label>
+            <input matInput [value]="patientSearchText" (input)="onPatientSearchChange($event)" placeholder="Type patient name / PNO" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Patient</mat-label>
-            <mat-select formControlName="patientKey" required>
-              @for (p of data.patientOptions; track p.label) {
+            <mat-select #patientSelect formControlName="patientKey" required>
+              @for (p of filteredPatientOptions; track p.label) {
                 <mat-option [value]="p.label">{{ p.label }}</mat-option>
               }
             </mat-select>
@@ -61,7 +70,9 @@ export interface LaserDialogResult {
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Session Date</mat-label>
-            <input matInput type="date" formControlName="consultationDate" required />
+            <input matInput [matDatepicker]="consultDatePicker" formControlName="consultationDate" required />
+            <mat-datepicker-toggle matIconSuffix [for]="consultDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #consultDatePicker></mat-datepicker>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -104,6 +115,70 @@ export interface LaserDialogResult {
               placeholder="Document any immediate reactions, contraindications checked..."></textarea>
           </mat-form-field>
 
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Area Treated</mat-label>
+            <input matInput formControlName="areaTreated" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Device Used</mat-label>
+            <input matInput formControlName="deviceUsed" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Wavelength</mat-label>
+            <input matInput formControlName="wavelength" placeholder="e.g. 1064nm" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Spot Size</mat-label>
+            <input matInput formControlName="spotSize" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Fluence</mat-label>
+            <input matInput formControlName="fluence" placeholder="e.g. 18 J/cm²" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Pulse Duration</mat-label>
+            <input matInput formControlName="pulseDuration" placeholder="e.g. 10ms" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Cooling Method</mat-label>
+            <input matInput formControlName="coolingMethod" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Number of Shots</mat-label>
+            <input matInput type="number" min="0" formControlName="numberOfShots" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Skin Reaction</mat-label>
+            <textarea matInput rows="2" formControlName="skinReaction"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Next Session Date</mat-label>
+            <input matInput [matDatepicker]="nextSessionDatePicker" formControlName="nextSessionDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="nextSessionDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #nextSessionDatePicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Consent Date</mat-label>
+            <input matInput [matDatepicker]="consentDatePicker" formControlName="consentDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="consentDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #consentDatePicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Consent Notes</mat-label>
+            <textarea matInput rows="2" formControlName="consentNotes"></textarea>
+          </mat-form-field>
+
           <div class="toggles">
             <mat-slide-toggle formControlName="consentGiven" color="primary">Consent Obtained</mat-slide-toggle>
             <mat-slide-toggle formControlName="informationAccepted" color="primary">Patient Information Accepted</mat-slide-toggle>
@@ -133,16 +208,45 @@ export class LaserDialogComponent {
   private fb = inject(FormBuilder);
   dialogRef = inject(MatDialogRef<LaserDialogComponent>);
 
+  @ViewChild('patientSelect') patientSelect?: MatSelect;
+
+  patientSearchText = '';
+
+  get filteredPatientOptions(): LaserPatientOption[] {
+    const term = this.patientSearchText.trim().toLowerCase();
+    if (!term) {
+      return this.data.patientOptions;
+    }
+
+    return this.data.patientOptions.filter(p =>
+      p.label.toLowerCase().includes(term)
+      || p.firstName.toLowerCase().includes(term)
+      || p.lastName.toLowerCase().includes(term)
+      || p.pNo.toLowerCase().includes(term));
+  }
+
   form = this.fb.nonNullable.group({
     id: [0],
     patientKey: ['', Validators.required],
-    consultationDate: ['', Validators.required],
+    consultationDate: [new Date(), Validators.required],
+    areaTreated: [''],
+    deviceUsed: [''],
+    wavelength: [''],
+    spotSize: [''],
+    fluence: [''],
+    pulseDuration: [''],
+    coolingMethod: [''],
+    numberOfShots: [0],
+    skinReaction: [''],
+    nextSessionDate: [new Date()],
     skinAssessment: [''],
     deviceSettings: [''],
     treatmentPlan: [''],
     procedureDescription: [''],
     postTreatmentInstructions: [''],
     risksAndComplications: [''],
+    consentDate: [new Date()],
+    consentNotes: [''],
     consentGiven: [true],
     informationAccepted: [true]
   });
@@ -157,16 +261,44 @@ export class LaserDialogComponent {
       this.form.patchValue({
         id: this.data.consultation.id,
         patientKey: selectedOption?.label ?? '',
-        consultationDate: this.data.consultation.consultationDate ? this.data.consultation.consultationDate.slice(0, 10) : '',
+        consultationDate: this.toDate(this.data.consultation.consultationDate) ?? new Date(),
+        areaTreated: this.data.consultation.areaTreated ?? '',
+        deviceUsed: this.data.consultation.deviceUsed ?? '',
+        wavelength: this.data.consultation.wavelength ?? '',
+        spotSize: this.data.consultation.spotSize ?? '',
+        fluence: this.data.consultation.fluence ?? '',
+        pulseDuration: this.data.consultation.pulseDuration ?? '',
+        coolingMethod: this.data.consultation.coolingMethod ?? '',
+        numberOfShots: this.data.consultation.numberOfShots ?? 0,
+        skinReaction: this.data.consultation.skinReaction ?? '',
+        nextSessionDate: this.toDate(this.data.consultation.nextSessionDate) ?? new Date(),
         skinAssessment: this.data.consultation.skinAssessment ?? '',
         deviceSettings: this.data.consultation.deviceSettings ?? '',
         treatmentPlan: this.data.consultation.treatmentPlan ?? '',
         procedureDescription: this.data.consultation.procedureDescription ?? '',
         postTreatmentInstructions: this.data.consultation.postTreatmentInstructions ?? '',
         risksAndComplications: this.data.consultation.risksAndComplications ?? '',
+        consentDate: this.toDate(this.data.consultation.consentDate) ?? new Date(),
+        consentNotes: this.data.consultation.consentNotes ?? '',
         consentGiven: this.data.consultation.consentGiven ?? true,
         informationAccepted: this.data.consultation.informationAccepted ?? true
       });
+
+      this.patientSearchText = selectedOption?.label ?? '';
+    }
+  }
+
+  onPatientSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value ?? '';
+    this.patientSearchText = value;
+
+    const matches = this.filteredPatientOptions;
+    if (matches.length === 1) {
+      this.form.controls.patientKey.setValue(matches[0].label);
+    }
+
+    if (matches.length > 0) {
+      queueMicrotask(() => this.patientSelect?.open());
     }
   }
 
@@ -184,18 +316,52 @@ export class LaserDialogComponent {
     const consultation: AestheticConsultation = {
       id: value.id,
       patientId: selectedPatient.patientId,
-      consultationDate: value.consultationDate,
+      consultationDate: this.toIsoDate(value.consultationDate) ?? this.toIsoDate(new Date()) ?? '',
       procedureType: 'Laser',
+      areaTreated: value.areaTreated,
+      deviceUsed: value.deviceUsed,
+      wavelength: value.wavelength,
+      spotSize: value.spotSize,
+      fluence: value.fluence,
+      pulseDuration: value.pulseDuration,
+      coolingMethod: value.coolingMethod,
+      numberOfShots: value.numberOfShots,
+      skinReaction: value.skinReaction,
+      nextSessionDate: this.toIsoDate(value.nextSessionDate),
       skinAssessment: value.skinAssessment,
       deviceSettings: value.deviceSettings,
       treatmentPlan: value.treatmentPlan,
       procedureDescription: value.procedureDescription,
       postTreatmentInstructions: value.postTreatmentInstructions,
       risksAndComplications: value.risksAndComplications,
+      consentDate: this.toIsoDate(value.consentDate),
+      consentNotes: value.consentNotes,
       consentGiven: value.consentGiven,
       informationAccepted: value.informationAccepted
     };
 
     this.dialogRef.close({ consultation, selectedPatient } as LaserDialogResult);
+  }
+
+  private toDate(value?: string): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private toIsoDate(value: unknown): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const date = value instanceof Date ? value : new Date(String(value));
+    if (Number.isNaN(date.getTime())) {
+      return undefined;
+    }
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 }

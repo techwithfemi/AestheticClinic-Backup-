@@ -41,6 +41,8 @@ public class AttendanceVM
     [StringLength(50)]
     public string? AttndStatus { get; set; }
 
+    public bool? AttendedTo { get; set; }
+
     public bool? AttendedToByImmume { get; set; }
 
     [StringLength(100)]

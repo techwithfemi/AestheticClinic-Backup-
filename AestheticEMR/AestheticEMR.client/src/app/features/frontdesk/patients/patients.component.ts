@@ -269,7 +269,7 @@ export class PatientsComponent implements OnInit {
     const term = this.searchText.trim().toLowerCase();
 
     if (!term) {
-      this.filteredPatients = [...this.patientsCache];
+      this.filteredPatients = this.patientsCache.filter(x => this.isToday(x.regDate));
       this.currentPage = 1;
       return;
     }
@@ -323,7 +323,7 @@ export class PatientsComponent implements OnInit {
   }
 
   private normalizeRetainership(item: unknown): HRetainership {
-    const source = item as Partial<HRetainership> & { [key: string]: unknown };
+    const source = item as Partial<HRetainership> & Record<string, unknown>;
 
     const getString = (camelKey: keyof HRetainership, pascalKey: string): string | undefined => {
       const camelValue = source[camelKey as string];
@@ -393,5 +393,21 @@ export class PatientsComponent implements OnInit {
 
   private getTodayInputValue(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  private isToday(value?: string | null): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
   }
 }

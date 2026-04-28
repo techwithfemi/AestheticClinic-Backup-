@@ -64,7 +64,7 @@ import { LaserDialogComponent, LaserDialogResult, LaserPatientOption } from './l
 
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef>Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'mediumDate' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'dd-MMM-yyyy' }}</td>
             </ng-container>
 
             <ng-container matColumnDef="provider">
@@ -82,13 +82,19 @@ import { LaserDialogComponent, LaserDialogResult, LaserPatientOption } from './l
               <td mat-cell *matCellDef="let row" class="device-cell">{{ row.deviceSettings || '—' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="consent">
-              <th mat-header-cell *matHeaderCellDef>Consent</th>
+            <ng-container matColumnDef="consentStatus">
+              <th mat-header-cell *matHeaderCellDef>Consent Status</th>
               <td mat-cell *matCellDef="let row">
                 <mat-icon [class]="row.consentGiven ? 'icon-ok' : 'icon-warn'">
                   {{ row.consentGiven ? 'check_circle' : 'cancel' }}
                 </mat-icon>
+                <span class="consent-text">{{ row.consentGiven ? 'Given' : 'Not given' }}</span>
               </td>
+            </ng-container>
+
+            <ng-container matColumnDef="consentDate">
+              <th mat-header-cell *matHeaderCellDef>Consent Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.consentDate ? (row.consentDate | date:'dd-MMM-yyyy') : '—' }}</td>
             </ng-container>
 
             <ng-container matColumnDef="actions">
@@ -121,6 +127,7 @@ import { LaserDialogComponent, LaserDialogResult, LaserPatientOption } from './l
     .empty-state { color: #888; padding: 32px; text-align: center; }
     .icon-ok { color: #2e7d32; }
     .icon-warn { color: #c62828; }
+    .consent-text { margin-left: 6px; }
   `]
 })
 export class LaserComponent {
@@ -136,13 +143,20 @@ export class LaserComponent {
   readonly consultations = signal<AestheticConsultation[]>([]);
   readonly attendance = signal<Attendance[]>([]);
   readonly searchText = signal<string>('');
-  readonly displayedColumns = ['patient', 'date', 'provider', 'skin', 'device', 'consent', 'actions'];
+  readonly displayedColumns = ['patient', 'date', 'provider', 'skin', 'device', 'consentStatus', 'consentDate', 'actions'];
 
   readonly filteredConsultations = computed(() => {
-    const search = this.searchText().toLowerCase();
-    if (!search) return this.consultations();
+    const search = this.searchText().trim().toLowerCase();
 
-    return this.consultations().filter(c => {
+    const base = search
+      ? this.consultations()
+      : this.consultations().filter(c => this.isToday(c.consultationDate));
+
+    if (!search) {
+      return base;
+    }
+
+    return base.filter(c => {
       const label = this.resolvePatientLabel(c).toLowerCase();
       return label.includes(search);
     });
@@ -244,6 +258,7 @@ export class LaserComponent {
   }
 
   onSearch(): void {
+    return;
   }
 
   resolvePatientLabel(row: AestheticConsultation): string {
@@ -318,6 +333,22 @@ export class LaserComponent {
         label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
       };
     });
+  }
+
+  private isToday(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
   }
 
   private getErrorMessage(error: unknown): string {

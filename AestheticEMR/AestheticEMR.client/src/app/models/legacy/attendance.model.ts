@@ -13,6 +13,7 @@ export interface Attendance {
   coyname?: string;
   billDate?: string;
   attndStatus?: string;
+  attendedTo?: boolean;
   attendedToByImmume?: boolean;
   hmoRef?: string;
   entryDate?: string;
