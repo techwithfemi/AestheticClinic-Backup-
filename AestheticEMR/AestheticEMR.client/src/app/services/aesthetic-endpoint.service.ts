@@ -64,6 +64,16 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.createLaserConsultationEndpoint<T>(consultation))));
   }
 
+  getSpaConsultationsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.consultationsUrl}/spa`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getSpaConsultationsEndpoint<T>())));
+  }
+
+  createSpaConsultationEndpoint<T>(consultation: object): Observable<T> {
+    return this.http.post<T>(`${this.consultationsUrl}/spa`, JSON.stringify(consultation), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.createSpaConsultationEndpoint<T>(consultation))));
+  }
+
   updateConsultationEndpoint<T>(consultationId: number, consultation: object): Observable<T> {
     return this.http.put<T>(`${this.consultationsUrl}/${consultationId}`, JSON.stringify(consultation), this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.updateConsultationEndpoint<T>(consultationId, consultation))));

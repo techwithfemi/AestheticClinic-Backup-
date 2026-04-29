@@ -172,6 +172,29 @@ namespace AestheticEMR.Server.Controllers
             return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
         }
 
+        [HttpGet("consultations/spa")]
+        [ProducesResponseType(typeof(IEnumerable<AestheticConsultationVM>), StatusCodes.Status200OK)]
+        public IActionResult GetSpaConsultations()
+        {
+            var consultations = _aestheticService.GetConsultationsByProcedure("Spa");
+            return Ok(_mapper.Map<IEnumerable<AestheticConsultationVM>>(consultations));
+        }
+
+        [HttpPost("consultations/spa")]
+        [ProducesResponseType(typeof(AestheticConsultationVM), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult CreateSpaConsultation([FromBody] AestheticConsultationVM consultationVM)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            consultationVM.ProcedureType = "Spa";
+            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+            consultation.Provider = GetCurrentUserId();
+            var created = _aestheticService.AddConsultation(consultation);
+            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+        }
+
         [HttpPut("consultations/{consultationId}")]
         [ProducesResponseType(typeof(AestheticConsultationVM), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
