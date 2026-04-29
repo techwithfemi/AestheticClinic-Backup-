@@ -2,6 +2,7 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Dental;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Dental.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace AestheticEMR.Core.Services.Dental;
 
@@ -30,41 +31,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         var existing = dbContext.HDentalTreats.Find(chart.Id)
             ?? throw new KeyNotFoundException($"Dental chart not found: {chart.Id}");
 
-        existing.Pno = chart.Pno;
-        existing.ConsultId = chart.ConsultId;
-        existing.Dtype = chart.Dtype;
-        existing.TDate = chart.TDate;
-        existing.TTime = chart.TTime;
-        existing.ARem = chart.ARem;
-        existing.CRem = chart.CRem;
-        existing.ConId = chart.ConId;
-
-        // tooth flags — Adult Upper Left
-        existing.Auli1 = chart.Auli1; existing.Auli2 = chart.Auli2; existing.Aulc = chart.Aulc;
-        existing.Aulpm1 = chart.Aulpm1; existing.Aulpm2 = chart.Aulpm2;
-        existing.Aulm1 = chart.Aulm1; existing.Aulm2 = chart.Aulm2; existing.Aulm3 = chart.Aulm3;
-        // Adult Upper Right
-        existing.Auri1 = chart.Auri1; existing.Auri2 = chart.Auri2; existing.Aurc = chart.Aurc;
-        existing.Aurpm1 = chart.Aurpm1; existing.Aurpm2 = chart.Aurpm2;
-        existing.Aurm1 = chart.Aurm1; existing.Aurm2 = chart.Aurm2; existing.Aurm3 = chart.Aurm3;
-        // Adult Lower Left
-        existing.Alli1 = chart.Alli1; existing.Alli2 = chart.Alli2; existing.Allc = chart.Allc;
-        existing.Allpm1 = chart.Allpm1; existing.Allpm2 = chart.Allpm2;
-        existing.Allm1 = chart.Allm1; existing.Allm2 = chart.Allm2; existing.Allm3 = chart.Allm3;
-        // Adult Lower Right
-        existing.Alri1 = chart.Alri1; existing.Alri2 = chart.Alri2; existing.Alrc = chart.Alrc;
-        existing.Alrpm1 = chart.Alrpm1; existing.Alrpm2 = chart.Alrpm2;
-        existing.Alrm1 = chart.Alrm1; existing.Alrm2 = chart.Alrm2; existing.Alrm3 = chart.Alrm3;
-        // Child Upper Left / Right
-        existing.Culi1 = chart.Culi1; existing.Culi2 = chart.Culi2; existing.Culc = chart.Culc;
-        existing.Culpm1 = chart.Culpm1; existing.Culpm2 = chart.Culpm2;
-        existing.Curi1 = chart.Curi1; existing.Curi2 = chart.Curi2; existing.Curc = chart.Curc;
-        existing.Curpm1 = chart.Curpm1; existing.Curpm2 = chart.Curpm2;
-        // Child Lower Left / Right
-        existing.Clli1 = chart.Clli1; existing.Clli2 = chart.Clli2; existing.Cllc = chart.Cllc;
-        existing.Cllpm1 = chart.Cllpm1; existing.Cllpm2 = chart.Cllpm2;
-        existing.Clri1 = chart.Clri1; existing.Clri2 = chart.Clri2; existing.Clrc = chart.Clrc;
-        existing.Clrpm1 = chart.Clrpm1; existing.Clrpm2 = chart.Clrpm2;
+        ApplyChartValues(existing, chart);
 
         dbContext.SaveChanges();
         return existing;
@@ -103,15 +70,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         var existing = dbContext.DentalImagings.Find(imaging.Id)
             ?? throw new KeyNotFoundException($"Dental imaging not found: {imaging.Id}");
 
-        existing.ImagingDate = imaging.ImagingDate;
-        existing.ImagingType = imaging.ImagingType;
-        existing.ToothRegion = imaging.ToothRegion;
-        existing.Findings = imaging.Findings;
-        existing.Impression = imaging.Impression;
-        existing.Recommendations = imaging.Recommendations;
-        existing.FilePath = imaging.FilePath;
-        existing.FileName = imaging.FileName;
-        existing.Notes = imaging.Notes;
+        ApplyImagingValues(existing, imaging);
         existing.UpdatedDate = DateTime.UtcNow;
 
         dbContext.SaveChanges();
@@ -124,5 +83,199 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
             ?? throw new KeyNotFoundException($"Dental imaging not found: {id}");
         dbContext.DentalImagings.Remove(entity);
         dbContext.SaveChanges();
+    }
+
+    // --- Combined Encounter ---
+
+    public (HDentalTreat Chart, DentalImaging Imaging, HConsulting Consulting) SaveEncounter(
+        HDentalTreat chart,
+        DentalImaging imaging,
+        HConsulting consulting,
+        string currentUserId)
+    {
+        using var tx = dbContext.Database.BeginTransaction();
+
+        var now = DateTime.UtcNow;
+
+        chart.Pno = chart.Pno?.Trim() ?? string.Empty;
+        chart.ConsultId = chart.ConsultId?.Trim() ?? string.Empty;
+        imaging.Pno = imaging.Pno?.Trim() ?? chart.Pno;
+        imaging.ConsultId = imaging.ConsultId?.Trim() ?? chart.ConsultId;
+
+        if (string.IsNullOrWhiteSpace(chart.Pno) || string.IsNullOrWhiteSpace(chart.ConsultId))
+            throw new InvalidOperationException("PNO and ConsultId are required.");
+
+        HDentalTreat persistedChart;
+        if (chart.Id > 0)
+        {
+            persistedChart = dbContext.HDentalTreats.Find(chart.Id)
+                ?? throw new KeyNotFoundException($"Dental chart not found: {chart.Id}");
+            ApplyChartValues(persistedChart, chart);
+        }
+        else
+        {
+            dbContext.HDentalTreats.Add(chart);
+            persistedChart = chart;
+        }
+
+        DentalImaging persistedImaging;
+        if (imaging.Id > 0)
+        {
+            persistedImaging = dbContext.DentalImagings.Find(imaging.Id)
+                ?? throw new KeyNotFoundException($"Dental imaging not found: {imaging.Id}");
+            ApplyImagingValues(persistedImaging, imaging);
+            persistedImaging.UpdatedDate = now;
+        }
+        else
+        {
+            var existingImaging = dbContext.DentalImagings
+                .FirstOrDefault(x => x.ConsultId == chart.ConsultId && x.Pno == chart.Pno);
+
+            if (existingImaging != null)
+            {
+                persistedImaging = existingImaging;
+                ApplyImagingValues(persistedImaging, imaging);
+                persistedImaging.UpdatedDate = now;
+            }
+            else
+            {
+                imaging.CreatedDate = now;
+                imaging.UpdatedDate = now;
+                dbContext.DentalImagings.Add(imaging);
+                persistedImaging = imaging;
+            }
+        }
+
+        var existingConsulting = dbContext.HConsultings
+            .FirstOrDefault(x => x.ConsultId == chart.ConsultId && x.PNo == chart.Pno);
+
+        var treatPlan = BuildTreatPlan(consulting.Prescription, consulting.Services, consulting.Investigate);
+
+        HConsulting persistedConsulting;
+        if (existingConsulting != null)
+        {
+            persistedConsulting = existingConsulting;
+            persistedConsulting.Diagnosis = consulting.Diagnosis;
+            persistedConsulting.Prescription = consulting.Prescription;
+            persistedConsulting.Services = consulting.Services;
+            persistedConsulting.Investigate = consulting.Investigate;
+            persistedConsulting.TreatPlan = treatPlan;
+            persistedConsulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? persistedConsulting.ClientCat : consulting.ClientCat;
+            persistedConsulting.EditDate = now;
+            persistedConsulting.EditTime = now;
+            persistedConsulting.TreatedBy = string.IsNullOrWhiteSpace(currentUserId) ? persistedConsulting.TreatedBy : currentUserId;
+        }
+        else
+        {
+            consulting.ConsultId = chart.ConsultId;
+            consulting.PNo = chart.Pno;
+            consulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? "PRIVATE" : consulting.ClientCat;
+            consulting.CDate = now;
+            consulting.CTime = now;
+            consulting.TreatedBy = string.IsNullOrWhiteSpace(currentUserId) ? "SYSTEM" : currentUserId;
+            consulting.Diagnosis = consulting.Diagnosis;
+            consulting.TreatPlan = treatPlan;
+
+            dbContext.HConsultings.Add(consulting);
+            persistedConsulting = consulting;
+        }
+
+        dbContext.SaveChanges();
+        tx.Commit();
+
+        return (persistedChart, persistedImaging, persistedConsulting);
+    }
+
+    public (HDentalTreat Chart, DentalImaging Imaging, HConsulting Consulting)? GetEncounter(string consultId, string pno)
+    {
+        var chart = dbContext.HDentalTreats
+            .FirstOrDefault(x => x.ConsultId == consultId && x.Pno == pno);
+        if (chart == null) return null;
+
+        var imaging = dbContext.DentalImagings
+            .OrderByDescending(x => x.UpdatedDate)
+            .FirstOrDefault(x => x.ConsultId == consultId && x.Pno == pno)
+            ?? new DentalImaging
+            {
+                Pno = pno,
+                ConsultId = consultId,
+                ImagingDate = DateTime.UtcNow
+            };
+
+        var consulting = dbContext.HConsultings
+            .OrderByDescending(x => x.EditDate ?? x.CDate)
+            .FirstOrDefault(x => x.ConsultId == consultId && x.PNo == pno)
+            ?? new HConsulting
+            {
+                ConsultId = consultId,
+                PNo = pno,
+                ClientCat = "PRIVATE",
+                TreatedBy = "SYSTEM",
+                CDate = DateTime.UtcNow
+            };
+
+        return (chart, imaging, consulting);
+    }
+
+    private static string? BuildTreatPlan(string? prescription, string? services, string? investigate)
+    {
+        var parts = new[]
+        {
+            string.IsNullOrWhiteSpace(prescription) ? null : $"Prescription: {prescription.Trim()}",
+            string.IsNullOrWhiteSpace(services) ? null : $"Services: {services.Trim()}",
+            string.IsNullOrWhiteSpace(investigate) ? null : $"Investigate: {investigate.Trim()}"
+        }
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToArray();
+
+        return parts.Length == 0 ? null : string.Join("\n", parts);
+    }
+
+    private static void ApplyChartValues(HDentalTreat existing, HDentalTreat chart)
+    {
+        existing.Pno = chart.Pno;
+        existing.ConsultId = chart.ConsultId;
+        existing.Dtype = chart.Dtype;
+        existing.TDate = chart.TDate;
+        existing.TTime = chart.TTime;
+        existing.ARem = chart.ARem;
+        existing.CRem = chart.CRem;
+        existing.ConId = chart.ConId;
+
+        existing.Auli1 = chart.Auli1; existing.Auli2 = chart.Auli2; existing.Aulc = chart.Aulc;
+        existing.Aulpm1 = chart.Aulpm1; existing.Aulpm2 = chart.Aulpm2;
+        existing.Aulm1 = chart.Aulm1; existing.Aulm2 = chart.Aulm2; existing.Aulm3 = chart.Aulm3;
+        existing.Auri1 = chart.Auri1; existing.Auri2 = chart.Auri2; existing.Aurc = chart.Aurc;
+        existing.Aurpm1 = chart.Aurpm1; existing.Aurpm2 = chart.Aurpm2;
+        existing.Aurm1 = chart.Aurm1; existing.Aurm2 = chart.Aurm2; existing.Aurm3 = chart.Aurm3;
+        existing.Alli1 = chart.Alli1; existing.Alli2 = chart.Alli2; existing.Allc = chart.Allc;
+        existing.Allpm1 = chart.Allpm1; existing.Allpm2 = chart.Allpm2;
+        existing.Allm1 = chart.Allm1; existing.Allm2 = chart.Allm2; existing.Allm3 = chart.Allm3;
+        existing.Alri1 = chart.Alri1; existing.Alri2 = chart.Alri2; existing.Alrc = chart.Alrc;
+        existing.Alrpm1 = chart.Alrpm1; existing.Alrpm2 = chart.Alrpm2;
+        existing.Alrm1 = chart.Alrm1; existing.Alrm2 = chart.Alrm2; existing.Alrm3 = chart.Alrm3;
+        existing.Culi1 = chart.Culi1; existing.Culi2 = chart.Culi2; existing.Culc = chart.Culc;
+        existing.Culpm1 = chart.Culpm1; existing.Culpm2 = chart.Culpm2;
+        existing.Curi1 = chart.Curi1; existing.Curi2 = chart.Curi2; existing.Curc = chart.Curc;
+        existing.Curpm1 = chart.Curpm1; existing.Curpm2 = chart.Curpm2;
+        existing.Clli1 = chart.Clli1; existing.Clli2 = chart.Clli2; existing.Cllc = chart.Cllc;
+        existing.Cllpm1 = chart.Cllpm1; existing.Cllpm2 = chart.Cllpm2;
+        existing.Clri1 = chart.Clri1; existing.Clri2 = chart.Clri2; existing.Clrc = chart.Clrc;
+        existing.Clrpm1 = chart.Clrpm1; existing.Clrpm2 = chart.Clrpm2;
+    }
+
+    private static void ApplyImagingValues(DentalImaging existing, DentalImaging imaging)
+    {
+        existing.Pno = imaging.Pno;
+        existing.ConsultId = imaging.ConsultId;
+        existing.ImagingDate = imaging.ImagingDate;
+        existing.ImagingType = imaging.ImagingType;
+        existing.ToothRegion = imaging.ToothRegion;
+        existing.Findings = imaging.Findings;
+        existing.Impression = imaging.Impression;
+        existing.Recommendations = imaging.Recommendations;
+        existing.FilePath = imaging.FilePath;
+        existing.FileName = imaging.FileName;
+        existing.Notes = imaging.Notes;
     }
 }

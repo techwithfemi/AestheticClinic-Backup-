@@ -20,4 +20,13 @@ public interface IDentalService
     DentalImaging AddImaging(DentalImaging imaging);
     DentalImaging UpdateImaging(DentalImaging imaging);
     void DeleteImaging(int id);
+
+    // --- Combined Encounter (single transaction: HDentalTreat + DentalImaging + HConsulting) ---
+    (HDentalTreat Chart, DentalImaging Imaging, HConsulting Consulting) SaveEncounter(
+        HDentalTreat chart,
+        DentalImaging imaging,
+        HConsulting consulting,
+        string currentUserId);
+
+    (HDentalTreat Chart, DentalImaging Imaging, HConsulting Consulting)? GetEncounter(string consultId, string pno);
 }

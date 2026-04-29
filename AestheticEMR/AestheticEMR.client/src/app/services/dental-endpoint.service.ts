@@ -13,8 +13,19 @@ export class DentalEndpoint extends EndpointBase {
 
   private get baseUrl() { return `${this.configurations.baseUrl}/api/dental`; }
   private get chartsUrl() { return `${this.baseUrl}/charts`; }
-  private get treatmentsUrl() { return `${this.baseUrl}/treatments`; }
   private get imagingUrl() { return `${this.baseUrl}/imaging`; }
+  private get encounterUrl() { return `${this.baseUrl}/encounter`; }
+
+  // Combined encounter
+  getEncounterEndpoint<T>(consultId: string, pno: string): Observable<T> {
+    return this.http.get<T>(`${this.encounterUrl}?consultId=${encodeURIComponent(consultId)}&pno=${encodeURIComponent(pno)}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getEncounterEndpoint<T>(consultId, pno))));
+  }
+
+  saveEncounterEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(this.encounterUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.saveEncounterEndpoint<T>(payload))));
+  }
 
   // Charts
   getChartsEndpoint<T>(): Observable<T> {
@@ -27,35 +38,14 @@ export class DentalEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.createChartEndpoint<T>(chart))));
   }
 
-  updateChartEndpoint<T>(sno: number, chart: object): Observable<T> {
-    return this.http.put<T>(`${this.chartsUrl}/${sno}`, JSON.stringify(chart), this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.updateChartEndpoint<T>(sno, chart))));
+  updateChartEndpoint<T>(id: number, chart: object): Observable<T> {
+    return this.http.put<T>(`${this.chartsUrl}/${id}`, JSON.stringify(chart), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.updateChartEndpoint<T>(id, chart))));
   }
 
-  deleteChartEndpoint<T>(sno: number): Observable<T> {
-    return this.http.delete<T>(`${this.chartsUrl}/${sno}`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.deleteChartEndpoint<T>(sno))));
-  }
-
-  // Treatments
-  getTreatmentsEndpoint<T>(): Observable<T> {
-    return this.http.get<T>(this.treatmentsUrl, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getTreatmentsEndpoint<T>())));
-  }
-
-  createTreatmentEndpoint<T>(treatment: object): Observable<T> {
-    return this.http.post<T>(this.treatmentsUrl, JSON.stringify(treatment), this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.createTreatmentEndpoint<T>(treatment))));
-  }
-
-  updateTreatmentEndpoint<T>(id: number, treatment: object): Observable<T> {
-    return this.http.put<T>(`${this.treatmentsUrl}/${id}`, JSON.stringify(treatment), this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.updateTreatmentEndpoint<T>(id, treatment))));
-  }
-
-  deleteTreatmentEndpoint<T>(id: number): Observable<T> {
-    return this.http.delete<T>(`${this.treatmentsUrl}/${id}`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.deleteTreatmentEndpoint<T>(id))));
+  deleteChartEndpoint<T>(id: number): Observable<T> {
+    return this.http.delete<T>(`${this.chartsUrl}/${id}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.deleteChartEndpoint<T>(id))));
   }
 
   // Imaging

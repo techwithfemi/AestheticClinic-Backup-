@@ -16,6 +16,57 @@ public class DentalController(
     IMapper mapper,
     IDentalService dentalService) : BaseApiController(logger, mapper)
 {
+    // ─── Combined Encounter (single transaction) ────────────────────────────
+
+    [HttpGet("encounter")]
+    [ProducesResponseType(typeof(DentalEncounterVM), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetEncounter([FromQuery] string consultId, [FromQuery] string pno)
+    {
+        if (string.IsNullOrWhiteSpace(consultId) || string.IsNullOrWhiteSpace(pno))
+            return BadRequest("consultId and pno are required.");
+
+        var encounter = dentalService.GetEncounter(consultId, pno);
+        if (encounter == null)
+            return NotFound();
+
+        return Ok(new DentalEncounterVM
+        {
+            Chart = _mapper.Map<DentalChartVM>(encounter.Value.Chart),
+            Imaging = _mapper.Map<DentalImagingVM>(encounter.Value.Imaging),
+            Consulting = _mapper.Map<DentalConsultingVM>(encounter.Value.Consulting)
+        });
+    }
+
+    [HttpPost("encounter")]
+    [ProducesResponseType(typeof(DentalEncounterVM), StatusCodes.Status200OK)]
+    public IActionResult SaveEncounter([FromBody] DentalEncounterSaveVM vm)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        // TreatPlan is hidden from UI and derived from these 3 fields
+        vm.Consulting.TreatPlan = null;
+
+        var chart = _mapper.Map<HDentalTreat>(vm.Chart);
+        var imaging = _mapper.Map<DentalImaging>(vm.Imaging);
+        var consulting = _mapper.Map<HConsulting>(vm.Consulting);
+
+        consulting.ConsultId = chart.ConsultId;
+        consulting.PNo = chart.Pno;
+        if (string.IsNullOrWhiteSpace(consulting.ClientCat))
+            consulting.ClientCat = "PRIVATE";
+
+        var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId());
+
+        return Ok(new DentalEncounterVM
+        {
+            Chart = _mapper.Map<DentalChartVM>(saved.Chart),
+            Imaging = _mapper.Map<DentalImagingVM>(saved.Imaging),
+            Consulting = _mapper.Map<DentalConsultingVM>(saved.Consulting)
+        });
+    }
+
     // ─── Odontogram / Dental Treatment Chart (HDentalTreat) ─────────────────
 
     [HttpGet("charts")]

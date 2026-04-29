@@ -67,3 +67,27 @@ export interface DentalImaging {
   createdBy?: string;
   createdDate?: string;
 }
+
+export interface DentalConsulting {
+  id: number;
+  consultId: string;
+  pNo: string;
+  clientCat: string;
+  diagnosis?: string;
+  prescription?: string;
+  services?: string;
+  investigate?: string;
+  treatPlan?: string; // hidden in UI; populated on backend
+}
+
+export interface DentalEncounter {
+  chart: DentalChart;
+  imaging: DentalImaging;
+  consulting: DentalConsulting;
+}
+
+export interface DentalEncounterSave {
+  chart: DentalChart;
+  imaging: DentalImaging;
+  consulting: DentalConsulting;
+}

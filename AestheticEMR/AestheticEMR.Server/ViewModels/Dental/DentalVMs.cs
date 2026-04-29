@@ -132,3 +132,46 @@ public class DentalImagingVM
     public string? CreatedBy { get; set; }
     public DateTime? CreatedDate { get; set; }
 }
+
+public class DentalConsultingVM
+{
+    public long Id { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public required string ConsultId { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public required string PNo { get; set; }
+
+    [Required]
+    [StringLength(50)]
+    public required string ClientCat { get; set; }
+
+    public string? Diagnosis { get; set; }
+    public string? Prescription { get; set; }
+    public string? Services { get; set; }
+    public string? Investigate { get; set; }
+
+    public string? TreatPlan { get; set; }
+}
+
+public class DentalEncounterSaveVM
+{
+    [Required]
+    public required DentalChartVM Chart { get; set; }
+
+    [Required]
+    public required DentalImagingVM Imaging { get; set; }
+
+    [Required]
+    public required DentalConsultingVM Consulting { get; set; }
+}
+
+public class DentalEncounterVM
+{
+    public required DentalChartVM Chart { get; set; }
+    public required DentalImagingVM Imaging { get; set; }
+    public required DentalConsultingVM Consulting { get; set; }
+}

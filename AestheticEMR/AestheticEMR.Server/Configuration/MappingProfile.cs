@@ -109,6 +109,10 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<DentalImaging, DentalImagingVM>()
                 .ReverseMap()
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+
+            CreateMap<HConsulting, DentalConsultingVM>()
+                .ReverseMap()
+                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
         }
     }
 }
