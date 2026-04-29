@@ -84,7 +84,8 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<HRecord, AttendanceVM>()
                 .ReverseMap()
-                .ForMember(d => d.ConsultId, map => map.Ignore());
+                .ForMember(d => d.ConsultId, map => map.Ignore())
+                .ForMember(d => d.RecId, map => map.Ignore());
 
             CreateMap<hAppointment, AppointmentVM>()
                 .ForMember(d => d.Id, map => map.MapFrom(s => s.ID))

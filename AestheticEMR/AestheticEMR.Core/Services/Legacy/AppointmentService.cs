@@ -1,11 +1,12 @@
 ﻿using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Legacy;
+using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class AppointmentService(ApplicationDbContext context) : IAppointmentService
+public class AppointmentService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : IAppointmentService
 {
     public async Task<IEnumerable<hAppointment>> GetAllAsync()
     {
@@ -86,12 +87,12 @@ public class AppointmentService(ApplicationDbContext context) : IAppointmentServ
         }
     }
 
-    private static void ApplyDefaults(hAppointment appointment)
+    private void ApplyDefaults(hAppointment appointment)
     {
         appointment.entryDate ??= DateTime.Now;
         appointment.entryTime ??= DateTime.Now;
         appointment.remarks = NormalizeText(appointment.remarks);
-        appointment.EmpID = NormalizeText(appointment.EmpID);
+        appointment.EmpID = NormalizeText(appointment.EmpID) ?? userIdAccessor.GetCurrentUserEmpId();
     }
 
     private static string? NormalizeText(string? value)

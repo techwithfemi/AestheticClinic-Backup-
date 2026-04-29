@@ -46,6 +46,7 @@ namespace AestheticEMR.Server.ViewModels.Account
         {
             Id = Id.NullIfWhiteSpace();
             FullName = FullName.NullIfWhiteSpace();
+            EmpID = EmpID.NullIfWhiteSpace();
             JobTitle = JobTitle.NullIfWhiteSpace();
             PhoneNumber = PhoneNumber.NullIfWhiteSpace();
             Configuration = Configuration.NullIfWhiteSpace();
@@ -58,6 +59,8 @@ namespace AestheticEMR.Server.ViewModels.Account
         public required string UserName { get; set; }
 
         public string? FullName { get; set; }
+
+        public string? EmpID { get; set; }
 
         [Required(ErrorMessage = "Email is required"),
          StringLength(200, ErrorMessage = "Email must be at most 200 characters"),

@@ -1,11 +1,12 @@
 using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Legacy;
+using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class AttendanceService(ApplicationDbContext context) : IAttendanceService
+public class AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : IAttendanceService
 {
     public async Task<IEnumerable<HRecord>> GetAllAsync()
     {
@@ -36,13 +37,17 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
             existingForDay.Coyname = record.Coyname;
             existingForDay.HmoRef = record.HmoRef;
             existingForDay.RecDate = record.RecDate;
+            existingForDay.EntryDate = record.EntryDate;
+            existingForDay.EntryTime = record.EntryTime;
 
+            await UpsertAttendanceBillAccumAsync(existingForDay);
             await context.SaveChangesAsync();
             return existingForDay;
         }
 
         record.ConsultId = await GenerateConsultIdAsync();
         context.HRecords.Add(record);
+        await UpsertAttendanceBillAccumAsync(record);
         await context.SaveChangesAsync();
         return record;
     }
@@ -52,6 +57,7 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
         await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
+        await UpsertAttendanceBillAccumAsync(record);
         await context.SaveChangesAsync();
         return record;
     }
@@ -131,7 +137,7 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
         record.HmoRef ??= patient.HmoRef;
     }
 
-    private static void ApplyDefaults(HRecord record)
+    private void ApplyDefaults(HRecord record)
     {
         record.RecDate = record.RecDate == default ? DateTime.Today : record.RecDate;
         record.Htime ??= DateTime.Now;
@@ -143,12 +149,47 @@ public class AttendanceService(ApplicationDbContext context) : IAttendanceServic
         record.ClinicType = NormalizeText(record.ClinicType) ?? throw new InvalidOperationException("Clinic type is required.");
         record.Remarks = NormalizeText(record.Remarks);
         record.DocAssigned = NormalizeText(record.DocAssigned);
-        record.EmpId = NormalizeText(record.EmpId);
+        record.EmpId = NormalizeText(record.EmpId) ?? userIdAccessor.GetCurrentUserEmpId();
         record.Diagnosis = NormalizeText(record.Diagnosis);
         record.Tariff = NormalizeText(record.Tariff);
         record.Coyname = NormalizeText(record.Coyname);
         record.ClientCat = NormalizeText(record.ClientCat);
         record.HmoRef = NormalizeText(record.HmoRef);
+    }
+
+    private async Task UpsertAttendanceBillAccumAsync(HRecord record)
+    {
+        var consultId = NormalizeText(record.ConsultId) ?? throw new InvalidOperationException("Consult ID is required for billing accumulation.");
+        var patientNo = NormalizeText(record.PNo) ?? throw new InvalidOperationException("Patient number is required for billing accumulation.");
+        var companyCode = NormalizeText(record.Coyname) ?? string.Empty;
+
+        var billAccum = await context.BillAccums
+            .FirstOrDefaultAsync(x => x.consultID == consultId && x.drgName == "ATTENDANCE");
+
+        if (billAccum is null)
+        {
+            billAccum = new BillAccum
+            {
+                consultID = consultId,
+                drgName = "ATTENDANCE"
+            };
+
+            context.BillAccums.Add(billAccum);
+        }
+
+        billAccum.dtDate = record.EntryDate ?? record.RecDate;
+        billAccum.Price = 0m;
+        billAccum.Qty = 1m;
+        billAccum.subTotal = 0m;
+        billAccum.pNO = patientNo;
+        billAccum.billtype = "SERVICE";
+        billAccum.conID = null;
+        billAccum.CoyName = companyCode;
+        billAccum.BillTo = companyCode;
+        billAccum.attendedTo = false;
+        billAccum.isBilled = false;
+        billAccum.revType = "CONSULTATION";
+        billAccum.AppVersion = 1;
     }
 
     private static string? NormalizeText(string? value)

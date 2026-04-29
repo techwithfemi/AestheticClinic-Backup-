@@ -14,6 +14,9 @@ namespace AestheticEMR.Core.Services.Account
         ///<summary>A claim that specifies the job title of an entity</summary>
         public const string JobTitle = "jobtitle";
 
+        ///<summary>A claim that specifies the employee id of an entity</summary>
+        public const string EmpID = "empid";
+
         ///<summary>A claim that specifies the configuration/customizations of an entity</summary>
         public const string Configuration = "configuration";
 

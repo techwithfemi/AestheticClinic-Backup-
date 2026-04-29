@@ -15,16 +15,25 @@ namespace AestheticEMR.Server.Services
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
         public string? GetCurrentUserId() => _httpContextAccessor.HttpContext?.User.FindFirstValue(Claims.Subject);
+
+        public string? GetCurrentUserEmpId() => _httpContextAccessor.HttpContext?.User.FindFirstValue(CustomClaims.EmpID);
     }
 
     public class SystemUserIdAccessor : IUserIdAccessor
     {
         private readonly string? id;
+        private readonly string? empId;
 
-        private SystemUserIdAccessor(string? id) => this.id = id;
+        private SystemUserIdAccessor(string? id, string? empId)
+        {
+            this.id = id;
+            this.empId = empId;
+        }
 
         public string? GetCurrentUserId() => id;
 
-        public static SystemUserIdAccessor GetNewAccessor(string? id = "SYSTEM") => new(id);
+        public string? GetCurrentUserEmpId() => empId;
+
+        public static SystemUserIdAccessor GetNewAccessor(string? id = "SYSTEM", string? empId = "SYSTEM") => new(id, empId);
     }
 }

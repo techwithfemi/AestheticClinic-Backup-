@@ -324,12 +324,8 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
         .subscribe({
           next: updated => {
             this.alertService.stopLoadingMessage();
-            const index = this.attendances.findIndex(item => item.consultId === updated.consultId);
-            if (index > -1) {
-              this.attendances[index] = updated;
-              this.attendancesCache = [...this.attendances];
-              this.applyFilters();
-            }
+            void updated;
+            this.loadData();
             this.cancelForm();
             this.alertService.showMessage('Success', 'Attendance updated successfully.', MessageSeverity.success);
           },
@@ -353,9 +349,8 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
       .subscribe({
         next: created => {
           this.alertService.stopLoadingMessage();
-          this.attendances.unshift(created);
-          this.attendancesCache = [...this.attendances];
-          this.applyFilters();
+          void created;
+          this.loadData();
           this.cancelForm();
           this.alertService.showMessage('Success', 'Attendance created successfully.', MessageSeverity.success);
         },
@@ -438,18 +433,18 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     const term = this.searchText.trim().toLowerCase();
     let records = [...this.attendancesCache];
 
-    if (!term) {
-      if (!this.showAll) {
-        records = records.filter(record => this.isToday(record.recDate));
-      }
-    } else {
+    if (term) {
       records = records.filter(record =>
-        (record.pNo ?? '').toLowerCase().includes(term)
+        (record.consultId ?? '').toLowerCase().includes(term)
+        || (record.pNo ?? '').toLowerCase().includes(term)
         || this.getPatientNameByNo(record.pNo).toLowerCase().includes(term)
         || this.getRetainershipNameById(record.coyname).toLowerCase().includes(term)
         || (record.coyname ?? '').toLowerCase().includes(term)
         || (record.clinicType ?? '').toLowerCase().includes(term)
+        || (record.attndStatus ?? '').toLowerCase().includes(term)
       );
+    } else if (!this.showAll) {
+      records = records.filter(record => this.isToday(record.recDate));
     }
 
     this.filteredAttendances = records;
@@ -510,7 +505,8 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
   }
 
   private getTodayInputValue(): string {
-    return new Date().toISOString().split('T')[0];
+    const today = new Date();
+    return this.toLocalDateInputValue(today);
   }
 
   private toDateInputValue(value?: string | null): string {
@@ -523,7 +519,15 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
       return '';
     }
 
-    return date.toISOString().split('T')[0];
+    return this.toLocalDateInputValue(date);
+  }
+
+  private toLocalDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 
   private isToday(value?: string): boolean {

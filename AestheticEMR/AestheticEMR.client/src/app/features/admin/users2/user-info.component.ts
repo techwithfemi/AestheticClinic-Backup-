@@ -10,16 +10,18 @@ import { NgModel, NgForm, FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgSelectComponent, NgLabelTemplateDirective, NgOptionTemplateDirective } from '@ng-select/ng-select';
 
-import { AlertService, MessageSeverity } from '../../services/alert.service';
-import { AccountService } from '../../services/account.service';
-import { Utilities } from '../../services/utilities';
+import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AccountService } from '../../../services/account.service';
+import { AppointmentEndpoint } from '../../../services/appointment-endpoint.service';
+import { Utilities } from '../../../services/utilities';
 import { User } from '../../models/user.model';
 import { UserEdit } from '../../models/user-edit.model';
 import { Role } from '../../models/role.model';
 import { Permissions } from '../../models/permission.model';
+import { VwEmpName } from '../../../models/legacy/vw-emp-name.model';
 import { NgClass } from '@angular/common';
-import { AutofocusDirective } from '../../directives/autofocus.directive';
-import { EqualValidator } from '../../directives/equal-validator.directive';
+import { AutofocusDirective } from '../../../directives/autofocus.directive';
+import { EqualValidator } from '../../../directives/equal-validator.directive';
 
 @Component({
   selector: 'app-user-info',
@@ -33,6 +35,7 @@ import { EqualValidator } from '../../directives/equal-validator.directive';
 export class UserInfoComponent implements OnInit {
   private alertService = inject(AlertService);
   private accountService = inject(AccountService);
+  private appointmentEndpoint = inject(AppointmentEndpoint);
 
   public isEditMode = false;
   public isNewUser = false;
@@ -73,7 +76,12 @@ export class UserInfoComponent implements OnInit {
 
   readonly roles = viewChild<NgModel>('roles');
 
+  public employees: VwEmpName[] = [];
+  public selectedEmpID: string | null = null;
+
   ngOnInit() {
+    this.loadEmployees();
+
     if (!this.isGeneralEditor) {
       this.loadCurrentUserData();
     }
@@ -328,8 +336,51 @@ export class UserInfoComponent implements OnInit {
       });
   }
 
+  loadEmployees() {
+    this.appointmentEndpoint.getAppointmentEmployeesEndpoint<VwEmpName[]>()
+      .subscribe({
+        next: employees => {
+          this.employees = employees;
+          this.syncSelectedEmployee();
+        },
+        error: () => {
+          this.employees = [];
+        }
+      });
+  }
+
+  onEmployeeSelected(emp: VwEmpName | string | null) {
+    if (!emp) {
+      this.userEdit.fullName = '';
+      this.userEdit.empID = '';
+      this.selectedEmpID = null;
+      return;
+    }
+
+    const selected = typeof emp === 'string'
+      ? this.employees.find(e => e.empID === emp) ?? null
+      : emp;
+
+    this.userEdit.fullName = selected?.empName ?? '';
+    this.userEdit.empID = selected?.empID ?? '';
+    this.selectedEmpID = selected?.empID ?? null;
+  }
+
+  private syncSelectedEmployee() {
+    if (this.userEdit.fullName) {
+      const match = this.employees.find(e => e.empName === this.userEdit.fullName);
+      this.selectedEmpID = match?.empID ?? null;
+      this.userEdit.empID = match?.empID ?? this.userEdit.empID;
+    } else {
+      this.selectedEmpID = null;
+      this.userEdit.empID = '';
+    }
+  }
+
   resetForm(replace = false) {
     this.isChangePassword = false;
+    this.selectedEmpID = null;
+    this.userEdit.empID = '';
 
     if (!replace) {
       this.form()?.reset();
@@ -350,6 +401,8 @@ export class UserInfoComponent implements OnInit {
     this.user = this.userEdit = new UserEdit();
     this.userEdit.isEnabled = true;
     this.userEdit.roles = [];
+    this.userEdit.empID = '';
+    this.selectedEmpID = null;
     this.edit();
 
     return this.userEdit;
@@ -365,6 +418,7 @@ export class UserInfoComponent implements OnInit {
       this.userEdit = new UserEdit();
       Object.assign(this.user, user);
       Object.assign(this.userEdit, user);
+      this.syncSelectedEmployee();
       this.edit();
 
       return this.userEdit;

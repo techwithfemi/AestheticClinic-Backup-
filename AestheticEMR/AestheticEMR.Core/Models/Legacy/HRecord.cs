@@ -5,7 +5,7 @@ namespace AestheticEMR.Core.Models.Legacy;
 
 public partial class HRecord
 {
-    public int RecId { get; set; } //identity
+    public int RecId { get; private set; } // identity (do not update during CRUD)
 
     public DateTime RecDate { get; set; }
 

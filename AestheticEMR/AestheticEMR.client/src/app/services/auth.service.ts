@@ -145,6 +145,7 @@ export class AuthService {
       decodedIdToken.sub,
       decodedIdToken.name,
       decodedIdToken.fullname,
+      decodedIdToken.empid ?? '',
       decodedIdToken.email,
       decodedIdToken.jobtitle,
       decodedIdToken.phone_number,

@@ -4,6 +4,7 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
+using AestheticEMR.Core.Services.Account;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -28,6 +29,11 @@ namespace AestheticEMR.Server.Services
         public static string? GetUserId(ClaimsPrincipal user)
         {
             return user.FindFirstValue(Claims.Subject)?.Trim();
+        }
+
+        public static string? GetUserEmpId(ClaimsPrincipal user)
+        {
+            return user.FindFirstValue(CustomClaims.EmpID)?.Trim();
         }
 
         public static string[] GetRoles(ClaimsPrincipal user)

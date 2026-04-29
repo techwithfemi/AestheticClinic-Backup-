@@ -9,6 +9,7 @@ export class User {
     public id = '',
     public userName = '',
     public fullName = '',
+    public empID = '',
     public email = '',
     public jobTitle = '',
     public phoneNumber = '',

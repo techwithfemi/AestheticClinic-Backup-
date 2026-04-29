@@ -138,16 +138,31 @@ export class UserInfoComponent implements OnInit {
       });
   }
 
-  onEmployeeSelected(emp: VwEmpName | null) {
-    this.userEdit.fullName = emp?.empName ?? '';
+  onEmployeeSelected(emp: VwEmpName | string | null) {
+    if (!emp) {
+      this.userEdit.fullName = '';
+      this.userEdit.empID = '';
+      this.selectedEmpID = null;
+      return;
+    }
+
+    const selected = typeof emp === 'string'
+      ? this.employees.find(e => e.empID === emp) ?? null
+      : emp;
+
+    this.userEdit.fullName = selected?.empName ?? '';
+    this.userEdit.empID = selected?.empID ?? '';
+    this.selectedEmpID = selected?.empID ?? null;
   }
 
   private syncSelectedEmployee() {
     if (this.userEdit.fullName) {
       const match = this.employees.find(e => e.empName === this.userEdit.fullName);
       this.selectedEmpID = match?.empID ?? null;
+      this.userEdit.empID = match?.empID ?? this.userEdit.empID;
     } else {
       this.selectedEmpID = null;
+      this.userEdit.empID = '';
     }
   }
 
@@ -364,6 +379,7 @@ export class UserInfoComponent implements OnInit {
   resetForm(replace = false) {
     this.isChangePassword = false;
     this.selectedEmpID = null;
+    this.userEdit.empID = '';
 
     if (!replace) {
       this.form()?.reset();
@@ -384,6 +400,7 @@ export class UserInfoComponent implements OnInit {
     this.user = this.userEdit = new UserEdit();
     this.userEdit.isEnabled = true;
     this.userEdit.roles = [];
+    this.userEdit.empID = '';
     this.selectedEmpID = null;
     this.edit();
 

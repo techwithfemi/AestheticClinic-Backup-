@@ -118,6 +118,7 @@ namespace AestheticEMR.Server.Controllers
 
             if (user.JobTitle != null) identity.SetClaim(CustomClaims.JobTitle, user.JobTitle);
             if (user.FullName != null) identity.SetClaim(CustomClaims.FullName, user.FullName);
+            if (user.EmpID != null) identity.SetClaim(CustomClaims.EmpID, user.EmpID);
             if (user.Configuration != null) identity.SetClaim(CustomClaims.Configuration, user.Configuration);
 
             principal.SetDestinations(GetDestinations);
@@ -151,6 +152,14 @@ namespace AestheticEMR.Server.Controllers
                     yield break;
 
                 case CustomClaims.FullName:
+                    if (claim.Subject.HasScope(Scopes.Profile))
+                        yield return Destinations.IdentityToken;
+
+                    yield break;
+
+                case CustomClaims.EmpID:
+                    yield return Destinations.AccessToken;
+
                     if (claim.Subject.HasScope(Scopes.Profile))
                         yield return Destinations.IdentityToken;
 

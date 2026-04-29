@@ -29,6 +29,7 @@ export interface IdToken {
   email: string;
   phone_number: string;
   fullname: string;
+  empid?: string;
   jobtitle: string;
   configuration: string;
 }

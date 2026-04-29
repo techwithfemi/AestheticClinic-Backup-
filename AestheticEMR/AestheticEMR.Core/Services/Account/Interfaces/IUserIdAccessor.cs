@@ -9,5 +9,6 @@ namespace AestheticEMR.Core.Services.Account
     public interface IUserIdAccessor
     {
         string? GetCurrentUserId();
+        string? GetCurrentUserEmpId();
     }
 }

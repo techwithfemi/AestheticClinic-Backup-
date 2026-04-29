@@ -23,7 +23,7 @@
       "route": "spa",
       "icon": "spa",
       "subItems": [
-        { "label": "Service Menu", "path": "services", "icon": "list_alt" }
+        { "label": "Spa session", "path": "services", "icon": "list_alt" }
       ]
     },
     "Dental": {

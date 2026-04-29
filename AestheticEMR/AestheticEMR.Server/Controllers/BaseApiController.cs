@@ -31,6 +31,11 @@ namespace AestheticEMR.Server.Controllers
             return Utilities.GetUserId(User) ?? throw new UserNotFoundException(errorMsg);
         }
 
+        protected string? GetCurrentUserEmpId()
+        {
+            return Utilities.GetUserEmpId(User);
+        }
+
         protected void AddModelError(IEnumerable<string> errors, string key = "")
         {
             foreach (var error in errors)
