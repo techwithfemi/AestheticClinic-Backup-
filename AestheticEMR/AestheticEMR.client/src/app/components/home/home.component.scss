@@ -62,3 +62,136 @@
     top: 4.9rem;
   }
 }
+
+.dashboard-home {
+  min-height: calc(100vh - 170px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-content-row {
+  margin: 0;
+}
+
+.dashboard-table-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.7rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.dashboard-table-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-align: center;
+  margin-bottom: 0.9rem;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-table-card .table {
+  font-size: 0.82rem;
+  margin-bottom: 0;
+}
+
+.dashboard-table-wrap {
+  border: 1px solid #dbeafe;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.dashboard-mat-table {
+  width: 100%;
+  background: #ffffff;
+
+  .mat-mdc-header-row {
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  }
+
+  .mat-mdc-header-cell {
+    white-space: nowrap;
+    text-align: center;
+    justify-content: center;
+    color: #1e40af;
+    font-weight: 700;
+    font-size: 0.8rem;
+    border-bottom-color: #bfdbfe;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .mat-mdc-cell {
+    text-align: center;
+    justify-content: center;
+    color: #334155;
+    font-size: 0.8rem;
+    padding-top: 0.58rem;
+    padding-bottom: 0.58rem;
+    border-bottom-color: #e2e8f0;
+  }
+
+  .mat-mdc-row:hover {
+    background: #f8fbff;
+  }
+}
+
+.dashboard-empty-state {
+  text-align: center;
+  color: #64748b;
+  padding: 0.9rem;
+  font-size: 0.8rem;
+}
+
+.dashboard-footer-wrap {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dashboard-footer {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  text-align: center;
+  width: 100%;
+  min-height: 32px !important;
+  height: 32px !important;
+  box-sizing: border-box;
+  line-height: 1.2;
+  padding: 0 10px !important;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  background: #1e293b;
+  color: #60a5fa;
+  border-top: 1px solid #334155;
+
+  .mat-toolbar-row,
+  .mat-mdc-toolbar-row {
+    min-height: 31px;
+    height: 31px;
+    width: 100%;
+    padding: 1px 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    line-height: 1.2;
+  }
+
+  a {
+    color: #93c5fd;
+    text-decoration: none;
+  }
+
+  a:hover,
+  a:focus-visible {
+    color: #bfdbfe;
+    text-decoration: underline;
+  }
+}

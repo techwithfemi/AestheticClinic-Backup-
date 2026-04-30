@@ -4,7 +4,7 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
-import { ApplicationConfig, ErrorHandler, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import { APP_INITIALIZER, ApplicationConfig, ErrorHandler, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { PreloadAllModules, provideRouter, TitleStrategy, UrlSerializer, withPreloading } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -18,6 +18,7 @@ import { AppErrorHandler } from './app-error.handler';
 import { AppTitleService } from './services/app-title.service';
 import { LowerCaseUrlSerializer } from './services/lowercase-url-serializer.service';
 import { TranslateLanguageLoader } from './services/app-translation.service';
+import { AppConfigService } from './services/app-config.service';
 
 const APP_DATE_FORMATS = {
   parse: {
@@ -47,6 +48,12 @@ export const appConfig: ApplicationConfig = {
     ),
     { provide: ErrorHandler, useClass: AppErrorHandler },
     { provide: TitleStrategy, useClass: AppTitleService },
-    { provide: UrlSerializer, useClass: LowerCaseUrlSerializer }
+    { provide: UrlSerializer, useClass: LowerCaseUrlSerializer },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (appConfig: AppConfigService) => () => appConfig.init(),
+      deps: [AppConfigService],
+      multi: true
+    }
   ]
 };

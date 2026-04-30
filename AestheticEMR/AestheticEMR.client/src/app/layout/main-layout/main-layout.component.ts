@@ -1,6 +1,7 @@
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
+import { AppConfigService } from '../../services/app-config.service';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -29,6 +30,7 @@ interface NavigationItem {
 export class MainLayoutComponent implements OnInit {
   private authService = inject(AuthService);
   private http = inject(HttpClient);
+  appConfig = inject(AppConfigService);
   private readonly mobileBreakpoint = 992;
 
   menuEntries: Array<{ title: string; item: NavigationItem }> = [];
@@ -43,6 +45,11 @@ export class MainLayoutComponent implements OnInit {
 
   get fullName(): string {
     return this.authService.currentUser?.fullName || 'User';
+  }
+
+  onLogoError(img: HTMLImageElement): void {
+    img.src = this.appConfig.altClientLogo;
+    img.onerror = null; // prevent infinite loop if fallback also fails
   }
 
   private get normalizedRoles(): string[] {
@@ -96,8 +103,8 @@ export class MainLayoutComponent implements OnInit {
 
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
+        // Keep static top entries (e.g. Dashboard) even when they are root links with no subItems.
         const top = Object.entries(json.Static_Top || {})
-          .filter(([, item]) => (item.subItems?.length || 0) > 0)
           .map(([title, item]) => ({ title, item }));
         const dynamic = Object.entries(json.Dynamic_Roles || {})
           .filter(([roleName]) => this.canAccessDynamicSection(roleName))

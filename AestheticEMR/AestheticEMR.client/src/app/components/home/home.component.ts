@@ -4,20 +4,20 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
-import { AfterViewInit, Component, ElementRef, inject, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { CdkDragDrop, moveItemInArray, CdkDropList, CdkDrag, CdkDragPlaceholder } from '@angular/cdk/drag-drop';
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
+import { MatTableModule } from '@angular/material/table';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { Appointment } from '../../models/legacy/appointment.model';
+import { Attendance } from '../../models/legacy/attendance.model';
+import { HPatient } from '../../models/legacy/h-patient.model';
 import { fadeInOut } from '../../services/animations';
-import { ConfigurationService } from '../../services/configuration.service';
-import { AuthService } from '../../services/auth.service';
+import { AppointmentEndpoint } from '../../services/appointment-endpoint.service';
+import { AttendanceEndpoint } from '../../services/attendance-endpoint.service';
+import { HPatientEndpoint } from '../../services/h-patient-endpoint.service';
 import { StatisticsDemoComponent } from '../controls/statistics-demo.component';
-import { NotificationsViewerComponent } from '../controls/notifications-viewer.component';
-import { TodoDemoComponent } from '../controls/todo-demo.component';
-import { BannerDemoComponent } from '../controls/banner-demo.component';
-
-interface WidgetIndex { element: string, index: number }
 
 @Component({
   selector: 'app-home',
@@ -25,88 +25,129 @@ interface WidgetIndex { element: string, index: number }
   styleUrl: './home.component.scss',
   animations: [fadeInOut],
   imports: [
-    CdkDropList, RouterLink, CdkDrag, CdkDragPlaceholder, StatisticsDemoComponent,
-    NotificationsViewerComponent, TodoDemoComponent, BannerDemoComponent, TranslateModule
+    CommonModule,
+    StatisticsDemoComponent,
+    MatTableModule,
+    MatToolbarModule,
+    TranslateModule
   ]
 })
-export class HomeComponent implements AfterViewInit {
-  private authService = inject(AuthService);
-  configurations = inject(ConfigurationService);
+export class HomeComponent implements OnInit {
+  private readonly appointmentEndpoint = inject(AppointmentEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
+  private readonly patientEndpoint = inject(HPatientEndpoint);
 
-  dragStartDelay = 200;
-  readonly DBKeyWidgetsOrder = 'home-component.widgets_order';
+  appointmentsToday: Appointment[] = [];
+  attendanceToday: Attendance[] = [];
+  patientRegistrationsToday: HPatient[] = [];
+  readonly dashboardPageSize = 10;
+  readonly appointmentColumns: string[] = ['patient', 'appointmentDate', 'appointmentTime', 'clinicType', 'remarks'];
+  readonly attendanceColumns: string[] = ['date', 'consultId', 'patient', 'company', 'clinic', 'purpose'];
+  readonly patientRegistrationColumns: string[] = ['patientNo', 'name', 'registrationDate', 'phone', 'email'];
+  private patientsByNo = new Map<string, HPatient>();
 
-  readonly widgetsContainer = viewChild.required<ElementRef<HTMLDivElement>>('widgetsContainer');
-
-  ngAfterViewInit(): void {
-    this.restoreWidgetsOrder();
+  ngOnInit(): void {
+    this.loadPatients();
+    this.loadAppointmentsToday();
+    this.loadAttendanceToday();
+    this.loadPatientRegistrationsToday();
   }
 
-  restoreWidgetsOrder() {
-    const widgetIndexes = this.loadWidgetIndexes();
-
-    if (widgetIndexes == null || widgetIndexes.length == 0)
-      return;
-
-    const parentEle = this.widgetsContainer().nativeElement;
-
-    for (const widget of Array.from(parentEle.children)) {
-      const index = widgetIndexes.find(w => w.element == widget.id)?.index;
-
-      if (index != null)
-        this.insertChildAtIndex(parentEle, widget, index);
-    }
-  }
-
-  getPlaceholderMinHeight(placeholder: HTMLElement, widget: HTMLElement) {
-    const placeholderMinHeight = parseInt(placeholder.style.minHeight, 10);
-    return placeholderMinHeight || widget.offsetHeight;
-  }
-
-  insertChildAtIndex(parent: HTMLDivElement, child: Element, index: number) {
-    if (!index)
-      index = 0;
-
-    if (index >= parent.children.length) {
-      parent.appendChild(child);
-    } else {
-      parent.insertBefore(child, parent.children[index]);
-    }
-  }
-
-  drop(event: CdkDragDrop<HTMLDivElement>) {
-    const el = event.item.element.nativeElement;
-    const parentEle = event.container.element.nativeElement;
-    const anchorEle = parentEle.children[event.currentIndex];
-
-    const widgetIndexes = new Array<WidgetIndex>(parentEle.children.length);
-
-    for (let i = 0; i < parentEle.children.length; i++) {
-      widgetIndexes[i] = { element: parentEle.children[i].id, index: i };
+  getPatientNameByNo(pNo?: string): string {
+    if (!pNo) {
+      return 'N/A';
     }
 
-    moveItemInArray(widgetIndexes, event.previousIndex, event.currentIndex);
-
-    for (let i = 0; i < widgetIndexes.length; i++) {
-      widgetIndexes[i].index = i;
+    const patient = this.patientsByNo.get(pNo);
+    if (!patient) {
+      return pNo;
     }
 
-    if (event.currentIndex < event.previousIndex)
-      parentEle.insertBefore(el, anchorEle);
-    else
-      parentEle.insertBefore(el, anchorEle.nextElementSibling);
-
-    this.saveWidgetIndexes(widgetIndexes);
+    return this.getPatientName(patient);
   }
 
-  saveWidgetIndexes(indexes: WidgetIndex[]) {
-    this.configurations
-      .saveConfiguration(indexes, `${this.DBKeyWidgetsOrder}:${this.authService.currentUser?.id}`);
+  private loadPatients(): void {
+    this.patientEndpoint.getHPatientsEndpoint<HPatient[]>()
+      .subscribe({
+        next: patients => {
+          this.patientsByNo = new Map(patients
+            .filter(patient => !!patient.pno)
+            .map(patient => [patient.pno as string, patient]));
+        },
+        error: () => {
+          this.patientsByNo = new Map<string, HPatient>();
+        }
+      });
   }
 
-  loadWidgetIndexes() {
-    return this.configurations
-      .getConfiguration<WidgetIndex[]>(`${this.DBKeyWidgetsOrder}:${this.authService.currentUser?.id}`);
+  private loadAppointmentsToday(): void {
+    this.appointmentEndpoint.getAppointmentsEndpoint<Appointment[]>()
+      .subscribe({
+        next: appointments => {
+          this.appointmentsToday = appointments
+            .filter(item => this.isToday(item.apptDate))
+            .sort((a, b) => this.compareDateDesc(a.apptTime, b.apptTime))
+            .slice(0, this.dashboardPageSize);
+        },
+        error: () => {
+          this.appointmentsToday = [];
+        }
+      });
   }
 
+  private loadAttendanceToday(): void {
+    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>()
+      .subscribe({
+        next: attendances => {
+          this.attendanceToday = attendances
+            .filter(item => this.isToday(item.recDate))
+            .sort((a, b) => this.compareDateDesc(a.entryDate ?? a.recDate, b.entryDate ?? b.recDate))
+            .slice(0, this.dashboardPageSize);
+        },
+        error: () => {
+          this.attendanceToday = [];
+        }
+      });
+  }
+
+  private loadPatientRegistrationsToday(): void {
+    this.patientEndpoint.getHPatientsEndpoint<HPatient[]>()
+      .subscribe({
+        next: patients => {
+          this.patientRegistrationsToday = patients
+            .filter(item => this.isToday(item.regDate))
+            .sort((a, b) => this.compareDateDesc(a.regDate, b.regDate))
+            .slice(0, this.dashboardPageSize);
+        },
+        error: () => {
+          this.patientRegistrationsToday = [];
+        }
+      });
+  }
+
+  private getPatientName(patient: HPatient): string {
+    return `${patient.pSurName ?? ''} ${patient.pFirstname ?? ''}`.trim() || (patient.pno ?? 'N/A');
+  }
+
+  private isToday(value?: string | null): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
+  }
+
+  private compareDateDesc(a?: string | null, b?: string | null): number {
+    const aTime = a ? new Date(a).getTime() : 0;
+    const bTime = b ? new Date(b).getTime() : 0;
+    return bTime - aTime;
+  }
 }

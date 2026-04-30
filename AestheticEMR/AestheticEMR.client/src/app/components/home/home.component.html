@@ -3,68 +3,146 @@
     <i class="fa fa-tachometer fa-lg page-caption" aria-hidden="true"></i> {{'pageHeader.Dashboard' | translate}}
   </h3>
 </header>
-<div [@fadeInOut]>
-  <div #widgetsContainer cdkDropList (cdkDropListDropped)="drop($event)" class="row">
-    @if (!configurations.showDashboardStatistics && !configurations.showDashboardNotifications &&
-         !configurations.showDashboardTodo && !configurations.showDashboardBanner) {
-      <div class="col-12 my-5">
-        <div class="card card-body bg-light">
-          <h4 class="text-muted text-center text-link">
-            {{'home.NoWidgets1' | translate}}
-            <a routerLink="/settings" fragment="preferences">
-              <i class="fa fa-sliders"></i> {{'settings.tab.Preferences' | translate}}
-            </a>
-            {{'home.NoWidgets2' | translate}}
-          </h4>
+<div class="dashboard-home" [@fadeInOut]>
+  <div class="row dashboard-content-row">
+    <div class="col-12 mb-4 px-0">
+      <div class="card card-body bg-light">
+        <h5 class="text-muted d-inline-block">{{'home.StatisticsTitle' | translate}}</h5>
+        <app-statistics-demo></app-statistics-demo>
+      </div>
+    </div>
+
+    <div class="col-12 mb-4 px-0">
+      <div class="card card-body bg-light dashboard-table-card">
+        <h5 class="dashboard-table-title">Appointments for today</h5>
+        <div class="table-responsive dashboard-table-wrap">
+          <table mat-table [dataSource]="appointmentsToday" class="dashboard-mat-table">
+            <ng-container matColumnDef="patient">
+              <mat-header-cell *matHeaderCellDef>Patient</mat-header-cell>
+              <mat-cell *matCellDef="let appointment">{{ getPatientNameByNo(appointment.pno) }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="appointmentDate">
+              <mat-header-cell *matHeaderCellDef>Appointment Date</mat-header-cell>
+              <mat-cell *matCellDef="let appointment">{{ appointment.apptDate | date: 'mediumDate' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="appointmentTime">
+              <mat-header-cell *matHeaderCellDef>Appointment Time</mat-header-cell>
+              <mat-cell *matCellDef="let appointment">{{ appointment.apptTime | date: 'shortTime' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="clinicType">
+              <mat-header-cell *matHeaderCellDef>Clinic Type</mat-header-cell>
+              <mat-cell *matCellDef="let appointment">{{ appointment.clinicType || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="remarks">
+              <mat-header-cell *matHeaderCellDef>Remarks</mat-header-cell>
+              <mat-cell *matCellDef="let appointment">{{ appointment.remarks || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="appointmentColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: appointmentColumns"></mat-row>
+          </table>
+          @if (appointmentsToday.length === 0) {
+            <div class="dashboard-empty-state">No appointments for today.</div>
+          }
         </div>
       </div>
-    }
+    </div>
 
-    @if (configurations.showDashboardStatistics) {
-      <div id="dashboardStatistics" #dashboardStatistics class="col-12 mb-4 widget-container px-0"
-           cdkDrag [cdkDragStartDelay]="dragStartDelay">
-        <button type="button" class="btn-close" aria-label="Close" title="Close"
-                (click)="configurations.showDashboardStatistics = false"></button>
-        <div class="card card-body bg-light">
-          <h5 class="text-muted d-inline-block">{{'home.StatisticsTitle' | translate}}</h5>
-          <div #dragPlaceholder *cdkDragPlaceholder class="widget-container-placeholder mb-4"
-               [style.minHeight.px]="getPlaceholderMinHeight(dragPlaceholder, dashboardStatistics)"></div>
-          <app-statistics-demo></app-statistics-demo>
+    <div class="col-12 mb-4 px-0">
+      <div class="card card-body bg-light dashboard-table-card">
+        <h5 class="dashboard-table-title">Attendance for today</h5>
+        <div class="table-responsive dashboard-table-wrap">
+          <table mat-table [dataSource]="attendanceToday" class="dashboard-mat-table">
+            <ng-container matColumnDef="date">
+              <mat-header-cell *matHeaderCellDef>Date</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ attendance.recDate | date: 'mediumDate' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="consultId">
+              <mat-header-cell *matHeaderCellDef>Consult ID</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ attendance.consultId || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="patient">
+              <mat-header-cell *matHeaderCellDef>Patient</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ getPatientNameByNo(attendance.pNo) }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="company">
+              <mat-header-cell *matHeaderCellDef>Company</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ attendance.coyname || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="clinic">
+              <mat-header-cell *matHeaderCellDef>Clinic</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ attendance.clinicType || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="purpose">
+              <mat-header-cell *matHeaderCellDef>Purpose</mat-header-cell>
+              <mat-cell *matCellDef="let attendance">{{ attendance.attndStatus || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="attendanceColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: attendanceColumns"></mat-row>
+          </table>
+          @if (attendanceToday.length === 0) {
+            <div class="dashboard-empty-state">No attendance records for today.</div>
+          }
         </div>
       </div>
-    }
+    </div>
 
-    @if (configurations.showDashboardNotifications) {
-      <div id="dashboardNotifications" #dashboardNotifications class="col-12 mb-4 widget-container px-0"
-           cdkDrag [cdkDragStartDelay]="dragStartDelay">
-        <button type="button" class="btn-close" aria-label="Close" title="Close"
-                (click)="configurations.showDashboardNotifications = false"></button>
-        <div #dragPlaceholder *cdkDragPlaceholder class="widget-container-placeholder mb-4"
-             [style.minHeight.px]="getPlaceholderMinHeight(dragPlaceholder, dashboardNotifications)"></div>
-        <app-notifications-viewer></app-notifications-viewer>
-      </div>
-    }
+    <div class="col-12 mb-4 px-0">
+      <div class="card card-body bg-light dashboard-table-card">
+        <h5 class="dashboard-table-title">Patient Registration for today</h5>
+        <div class="table-responsive dashboard-table-wrap">
+          <table mat-table [dataSource]="patientRegistrationsToday" class="dashboard-mat-table">
+            <ng-container matColumnDef="patientNo">
+              <mat-header-cell *matHeaderCellDef>Patient No</mat-header-cell>
+              <mat-cell *matCellDef="let patient">{{ patient.pno || 'N/A' }}</mat-cell>
+            </ng-container>
 
-    @if (configurations.showDashboardTodo) {
-      <div id="dashboardTodo" #dashboardTodo class="col-12 mb-4 pt-1 widget-container px-0"
-           cdkDrag [cdkDragStartDelay]="dragStartDelay">
-        <button type="button" class="btn-close extra-down" aria-label="Close" title="Close"
-                (click)="configurations.showDashboardTodo = false"></button>
-        <div #dragPlaceholder *cdkDragPlaceholder class="widget-container-placeholder mb-4"
-             [style.minHeight.px]="getPlaceholderMinHeight(dragPlaceholder, dashboardTodo)"></div>
-        <app-todo-demo></app-todo-demo>
-      </div>
-    }
+            <ng-container matColumnDef="name">
+              <mat-header-cell *matHeaderCellDef>Name</mat-header-cell>
+              <mat-cell *matCellDef="let patient">{{ patient.pSurName }} {{ patient.pFirstname }}</mat-cell>
+            </ng-container>
 
-    @if (configurations.showDashboardBanner) {
-      <div id="dashboardBanner" #dashboardBanner class="col-12 mb-4 widget-container no-shadow px-0"
-           cdkDrag [cdkDragStartDelay]="dragStartDelay">
-        <button type="button" class="btn-close" aria-label="Close" title="Close"
-                (click)="configurations.showDashboardBanner = false"></button>
-        <div #dragPlaceholder *cdkDragPlaceholder class="widget-container-placeholder mb-4"
-             [style.minHeight.px]="getPlaceholderMinHeight(dragPlaceholder, dashboardBanner)"></div>
-        <app-banner-demo></app-banner-demo>
+            <ng-container matColumnDef="registrationDate">
+              <mat-header-cell *matHeaderCellDef>Registration Date</mat-header-cell>
+              <mat-cell *matCellDef="let patient">{{ patient.regDate | date: 'mediumDate' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="phone">
+              <mat-header-cell *matHeaderCellDef>Phone</mat-header-cell>
+              <mat-cell *matCellDef="let patient">{{ patient.pPhoneNo || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="email">
+              <mat-header-cell *matHeaderCellDef>Email</mat-header-cell>
+              <mat-cell *matCellDef="let patient">{{ patient.email || 'N/A' }}</mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="patientRegistrationColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: patientRegistrationColumns"></mat-row>
+          </table>
+          @if (patientRegistrationsToday.length === 0) {
+            <div class="dashboard-empty-state">No patient registrations for today.</div>
+          }
+        </div>
       </div>
-    }
+    </div>
   </div>
+
+  <footer class="dashboard-footer-wrap" aria-label="Application footer">
+    <mat-toolbar class="dashboard-footer">
+      <span>Aesthetic EMR © 2026</span>
+      <a href="https://logicversion.ng" target="_blank" rel="noopener noreferrer">https://logicversion.ng</a>
+      <span>- All rights reserved</span>
+    </mat-toolbar>
+  </footer>
 </div>

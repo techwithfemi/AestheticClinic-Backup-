@@ -7,7 +7,7 @@
     [fixedInViewport]="isMobileViewport"
     [class.collapsed]="isSidebarCollapsed && !isMobileViewport">
     <div class="sidebar-header">
-      <img src="assets/images/logo.png" alt="EMR Logo" class="logo">
+      <img [src]="appConfig.clientLogo" [alt]="appConfig.clientName" class="logo" (error)="onLogoError($any($event.target))">
       <div class="user-info">
         <span class="user-name">{{ fullName }}</span>
         <span class="user-status">Online</span>
@@ -54,7 +54,7 @@
       <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle sidebar">
         <mat-icon>menu</mat-icon>
       </button>
-      <span class="brand-title">AestheticEMR - Clinic Management</span>
+      <span class="brand-title">{{ appConfig.clientName }}</span>
 
       <span class="spacer"></span>
 
