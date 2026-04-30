@@ -90,10 +90,19 @@ namespace AestheticEMR.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-            consultation.Provider = GetCurrentUserId();
-            var created = _aestheticService.AddConsultation(consultation);
-            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            try
+            {
+                var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                consultation.Provider = GetCurrentUserId();
+                var created = _aestheticService.AddConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
+                return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating consultation");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpGet("consultations/{consultationId}")]
@@ -143,10 +152,19 @@ namespace AestheticEMR.Server.Controllers
                 return BadRequest(ModelState);
 
             consultationVM.ProcedureType = "Botox";
-            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-            consultation.Provider = GetCurrentUserId();
-            var created = _aestheticService.AddConsultation(consultation);
-            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            try
+            {
+                var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                consultation.Provider = GetCurrentUserId();
+                var created = _aestheticService.AddConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
+                return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating Botox consultation");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpGet("consultations/laser")]
@@ -166,10 +184,19 @@ namespace AestheticEMR.Server.Controllers
                 return BadRequest(ModelState);
 
             consultationVM.ProcedureType = "Laser";
-            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-            consultation.Provider = GetCurrentUserId();
-            var created = _aestheticService.AddConsultation(consultation);
-            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            try
+            {
+                var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                consultation.Provider = GetCurrentUserId();
+                var created = _aestheticService.AddConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
+                return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating Laser consultation");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpGet("consultations/spa")]
@@ -189,10 +216,19 @@ namespace AestheticEMR.Server.Controllers
                 return BadRequest(ModelState);
 
             consultationVM.ProcedureType = "Spa";
-            var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-            consultation.Provider = GetCurrentUserId();
-            var created = _aestheticService.AddConsultation(consultation);
-            return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            try
+            {
+                var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
+                consultation.Provider = GetCurrentUserId();
+                var created = _aestheticService.AddConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
+                return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating Spa consultation");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
         }
 
         [HttpPut("consultations/{consultationId}")]
@@ -215,7 +251,7 @@ namespace AestheticEMR.Server.Controllers
             {
                 var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
                 consultation.Provider = GetCurrentUserId();
-                var updated = _aestheticService.UpdateConsultation(consultation);
+                var updated = _aestheticService.UpdateConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
                 return Ok(_mapper.Map<AestheticConsultationVM>(updated));
             }
             catch (Exception ex)

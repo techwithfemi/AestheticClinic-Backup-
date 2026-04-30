@@ -168,6 +168,11 @@ export interface LaserDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Services</mat-label>
+            <textarea matInput rows="2" formControlName="services"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Consent Date</mat-label>
             <input matInput [matDatepicker]="consentDatePicker" formControlName="consentDate" />
             <mat-datepicker-toggle matIconSuffix [for]="consentDatePicker"></mat-datepicker-toggle>
@@ -245,6 +250,7 @@ export class LaserDialogComponent {
     procedureDescription: [''],
     postTreatmentInstructions: [''],
     risksAndComplications: [''],
+    services: [''],
     consentDate: [new Date()],
     consentNotes: [''],
     consentGiven: [true],
@@ -278,6 +284,7 @@ export class LaserDialogComponent {
         procedureDescription: this.data.consultation.procedureDescription ?? '',
         postTreatmentInstructions: this.data.consultation.postTreatmentInstructions ?? '',
         risksAndComplications: this.data.consultation.risksAndComplications ?? '',
+        services: this.data.consultation.services ?? '',
         consentDate: this.toDate(this.data.consultation.consentDate) ?? new Date(),
         consentNotes: this.data.consultation.consentNotes ?? '',
         consentGiven: this.data.consultation.consentGiven ?? true,
@@ -334,6 +341,7 @@ export class LaserDialogComponent {
       procedureDescription: value.procedureDescription,
       postTreatmentInstructions: value.postTreatmentInstructions,
       risksAndComplications: value.risksAndComplications,
+      services: value.services,
       consentDate: this.toIsoDate(value.consentDate),
       consentNotes: value.consentNotes,
       consentGiven: value.consentGiven,

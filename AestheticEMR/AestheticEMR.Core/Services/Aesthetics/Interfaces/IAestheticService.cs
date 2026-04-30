@@ -17,8 +17,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
         IEnumerable<AestheticConsultation> GetConsultationsForPatient(int patientId);
         IEnumerable<AestheticConsultation> GetConsultationsByProcedure(string procedureType);
         IEnumerable<AestheticConsultation> GetLaserSessions();
-        AestheticConsultation AddConsultation(AestheticConsultation consultation);
-        AestheticConsultation UpdateConsultation(AestheticConsultation consultation);
+        AestheticConsultation AddConsultation(AestheticConsultation consultation, string? consultId = null, string? pNo = null, string? services = null);
+        AestheticConsultation UpdateConsultation(AestheticConsultation consultation, string? consultId = null, string? pNo = null, string? services = null);
         void DeleteConsultation(int consultationId);
         AestheticConsultation? GetConsultationById(int consultationId);
         IEnumerable<AestheticPhoto> GetPhotos();

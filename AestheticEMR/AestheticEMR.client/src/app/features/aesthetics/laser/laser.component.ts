@@ -44,8 +44,8 @@ import { LaserDialogComponent, LaserDialogResult, LaserPatientOption } from './l
         <input
           type="text"
           class="search-input"
-          [(ngModel)]="searchText"
-          (input)="onSearch()"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event ?? '')"
           placeholder="Search by patient name or PNO..." />
       </div>
 
@@ -163,10 +163,27 @@ export class LaserComponent {
   });
 
   readonly todayClinicAttendance = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return this.attendance().filter(a =>
-      a.recDate?.startsWith(today)
-      && (a.clinicType ?? '').toLowerCase().includes('laser'));
+    const todays = this.attendance().filter(a => this.isToday(a.recDate));
+
+    const clinicMatched = todays.filter(a => {
+      const clinic = (a.clinicType ?? '').toLowerCase();
+      const purpose = (a.attndStatus ?? '').toLowerCase();
+      return clinic.includes('laser')
+        || clinic.includes('aesthetic')
+        || purpose.includes('laser');
+    });
+
+    const source = clinicMatched.length > 0 ? clinicMatched : todays;
+
+    const unique = new Map<string, Attendance>();
+    for (const item of source) {
+      const key = `${item.consultId ?? ''}|${item.pNo ?? ''}`;
+      if (!unique.has(key)) {
+        unique.set(key, item);
+      }
+    }
+
+    return Array.from(unique.values());
   });
 
   constructor() {
@@ -294,6 +311,8 @@ export class LaserComponent {
       }
 
       consultation.patientId = patientId;
+      consultation.consultId = result.selectedPatient.consultId || consultation.consultId;
+      consultation.pNo = result.selectedPatient.pNo || consultation.pNo;
 
       if (consultation.id) {
         await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
@@ -332,7 +351,7 @@ export class LaserComponent {
         lastName,
         label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
       };
-    });
+    }).sort((a, b) => a.label.localeCompare(b.label));
   }
 
   private isToday(value?: string): boolean {

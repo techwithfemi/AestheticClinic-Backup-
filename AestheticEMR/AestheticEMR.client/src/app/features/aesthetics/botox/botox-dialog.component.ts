@@ -125,6 +125,11 @@ export interface BotoxDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Services</mat-label>
+            <textarea matInput rows="2" formControlName="services"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Treatment Plan</mat-label>
             <textarea matInput rows="3" formControlName="treatmentPlan"></textarea>
           </mat-form-field>
@@ -205,6 +210,7 @@ export class BotoxDialogComponent {
     injectionMapping: [''],
     lotNumber: [''],
     followUpReview: [''],
+    services: [''],
     treatmentPlan: [''],
     procedureDescription: [''],
     risksAndComplications: [''],
@@ -230,6 +236,7 @@ export class BotoxDialogComponent {
         injectionMapping: this.data.consultation.injectionMapping ?? '',
         lotNumber: this.data.consultation.lotNumber ?? '',
         followUpReview: this.data.consultation.followUpReview ?? '',
+        services: this.data.consultation.services ?? '',
         treatmentPlan: this.data.consultation.treatmentPlan ?? '',
         procedureDescription: this.data.consultation.procedureDescription ?? '',
         risksAndComplications: this.data.consultation.risksAndComplications ?? '',
@@ -281,6 +288,7 @@ export class BotoxDialogComponent {
       injectionMapping: value.injectionMapping,
       lotNumber: value.lotNumber,
       followUpReview: value.followUpReview,
+      services: value.services,
       treatmentPlan: value.treatmentPlan,
       procedureDescription: value.procedureDescription,
       risksAndComplications: value.risksAndComplications,

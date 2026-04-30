@@ -16,6 +16,9 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         public DateTime ConsultationDate { get; set; }
         public string? ProcedureType { get; set; }
         public string? Provider { get; set; }
+        public string? ConsultId { get; set; }
+        public string? PNo { get; set; }
+        public string? Services { get; set; }
         public bool ConsentGiven { get; set; }
         public bool InformationAccepted { get; set; }
         public DateTime? ConsentDate { get; set; }

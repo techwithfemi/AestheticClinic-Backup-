@@ -23,6 +23,9 @@ export interface AestheticConsultation {
   consultationDate?: string;
   procedureType?: string;
   provider?: string;
+  consultId?: string;
+  pNo?: string;
+  services?: string;
   consentGiven?: boolean;
   informationAccepted?: boolean;
   consentDate?: string;

@@ -82,16 +82,18 @@ namespace AestheticEMR.Core.Services.Aesthetics
             .OrderByDescending(c => c.ConsultationDate)
             .ToList();
 
-        public AestheticConsultation AddConsultation(AestheticConsultation consultation)
+        public AestheticConsultation AddConsultation(AestheticConsultation consultation, string? consultId = null, string? pNo = null, string? services = null)
         {
             consultation.CreatedDate = DateTime.UtcNow;
             consultation.UpdatedDate = DateTime.UtcNow;
             dbContext.AestheticConsultations.Add(consultation);
             dbContext.SaveChanges();
+
+            SyncLegacyConsultingOnCreate(consultation, consultId, pNo, services);
             return consultation;
         }
 
-        public AestheticConsultation UpdateConsultation(AestheticConsultation consultation)
+        public AestheticConsultation UpdateConsultation(AestheticConsultation consultation, string? consultId = null, string? pNo = null, string? services = null)
         {
             var existing = dbContext.AestheticConsultations.Find(consultation.Id);
             if (existing == null)
@@ -137,6 +139,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.UpdatedDate = DateTime.UtcNow;
 
             dbContext.SaveChanges();
+
+            SyncLegacyConsultingOnUpdate(existing, consultId, pNo, services);
             return existing;
         }
 
@@ -281,6 +285,105 @@ namespace AestheticEMR.Core.Services.Aesthetics
                    || dbContext.HDentalTreats.Any(x => x.ConsultId == consultId)
                    || dbContext.Billings.Any(x => x.billNO == consultId)
                    || dbContext.BillAccums.Any(x => x.consultID == consultId);
+        }
+
+        private void SyncLegacyConsultingOnCreate(AestheticConsultation consultation, string? consultId, string? pNo, string? services)
+        {
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo))
+                return;
+
+            var existing = dbContext.HConsultings.FirstOrDefault(x => x.ConsultId == resolvedConsultId);
+            if (existing != null)
+            {
+                existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
+                existing.EditDate = DateTime.UtcNow;
+                existing.EditTime = DateTime.UtcNow;
+                dbContext.SaveChanges();
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var consulting = new Models.Legacy.HConsulting
+            {
+                ConsultId = resolvedConsultId,
+                PNo = resolvedPNo,
+                CDate = consultation.ConsultationDate == default ? now : consultation.ConsultationDate,
+                CTime = now,
+                Services = services,
+                TreatedBy = string.IsNullOrWhiteSpace(consultation.Provider) ? "SYSTEM" : consultation.Provider,
+                ClientCat = "PRIVATE",
+                IsLatest = true
+            };
+
+            dbContext.HConsultings.Add(consulting);
+            dbContext.SaveChanges();
+        }
+
+        private void SyncLegacyConsultingOnUpdate(AestheticConsultation consultation, string? consultId, string? pNo, string? services)
+        {
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            if (string.IsNullOrWhiteSpace(resolvedConsultId))
+                return;
+
+            var existing = dbContext.HConsultings.FirstOrDefault(x => x.ConsultId == resolvedConsultId);
+            if (existing == null)
+                return;
+
+            existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
+            existing.EditDate = DateTime.UtcNow;
+            existing.EditTime = DateTime.UtcNow;
+            dbContext.SaveChanges();
+        }
+
+        private static string? MergeServices(string? existingServices, string? incomingServices, string? procedureType)
+        {
+            if (string.IsNullOrWhiteSpace(incomingServices))
+                return existingServices;
+
+            var isLaserOrBotox = string.Equals(procedureType, "Laser", StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(procedureType, "Botox", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLaserOrBotox || string.IsNullOrWhiteSpace(existingServices))
+                return incomingServices;
+
+            var incomingTrimmed = incomingServices.Trim();
+            if (existingServices.Contains(incomingTrimmed, StringComparison.OrdinalIgnoreCase))
+                return existingServices;
+
+            return $"{existingServices.TrimEnd()}\n{incomingTrimmed}";
+        }
+
+        private string? ResolveLegacyPNo(int patientId, string? providedPNo)
+        {
+            if (!string.IsNullOrWhiteSpace(providedPNo))
+                return providedPNo;
+
+            return dbContext.AestheticPatients
+                .Where(x => x.Id == patientId)
+                .Select(x => x.Pno)
+                .FirstOrDefault();
+        }
+
+        private string? ResolveLegacyConsultId(DateTime consultationDate, string? pNo, string? providedConsultId)
+        {
+            if (!string.IsNullOrWhiteSpace(providedConsultId))
+                return providedConsultId;
+
+            if (string.IsNullOrWhiteSpace(pNo))
+                return null;
+
+            var consultId = dbContext.HRecords
+                .Where(x => x.PNo == pNo && x.RecDate.Date == consultationDate.Date)
+                .OrderByDescending(x => x.EntryTime)
+                .Select(x => x.ConsultId)
+                .FirstOrDefault();
+
+            return string.IsNullOrWhiteSpace(consultId) ? null : consultId;
         }
     }
 }

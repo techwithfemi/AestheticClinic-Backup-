@@ -312,6 +312,8 @@ export class BotoxComponent {
       }
 
       consultation.patientId = patientId;
+      consultation.consultId = result.selectedPatient.consultId || consultation.consultId;
+      consultation.pNo = result.selectedPatient.pNo || consultation.pNo;
 
       if (consultation.id) {
         await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
