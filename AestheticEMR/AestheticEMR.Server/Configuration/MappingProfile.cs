@@ -99,8 +99,16 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.remarks, map => map.MapFrom(s => s.Remarks));
 
             CreateMap<HPatient, HPatientVM>()
+                .ForMember(d => d.PatPixBase64, map => map.MapFrom(s =>
+                    s.PatPix != null && s.PatPix.Length > 0
+                        ? Convert.ToBase64String(s.PatPix)
+                        : null))
                 .ReverseMap()
-                .ForMember(d => d.Pno, map => map.Ignore());
+                .ForMember(d => d.Pno, map => map.Ignore())
+                .ForMember(d => d.PatPix, map => map.MapFrom(s =>
+                    !string.IsNullOrWhiteSpace(s.PatPixBase64)
+                        ? Convert.FromBase64String(StripBase64Prefix(s.PatPixBase64))
+                        : null));
 
             CreateMap<HDentalTreat, DentalChartVM>()
                 .ForMember(d => d.PatientName, map => map.Ignore())
@@ -114,6 +122,13 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HConsulting, DentalConsultingVM>()
                 .ReverseMap()
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+        }
+
+        private static string StripBase64Prefix(string base64)
+        {
+            // Handles "data:image/jpeg;base64,..." or plain base64
+            var idx = base64.IndexOf(',');
+            return idx >= 0 ? base64[(idx + 1)..] : base64;
         }
     }
 }

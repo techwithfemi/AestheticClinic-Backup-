@@ -32,6 +32,20 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
     public async Task<HPatient> UpdateAsync(HPatient patient)
     {
         patient.CardType = string.IsNullOrWhiteSpace(patient.CardType) ? "single" : patient.CardType;
+
+        // If no new photo was supplied, preserve the existing one
+        if (patient.PatPix == null || patient.PatPix.Length == 0)
+        {
+            var existing = await context.HPatients
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Pno == patient.Pno);
+
+            if (existing?.PatPix != null && existing.PatPix.Length > 0)
+            {
+                patient.PatPix = existing.PatPix;
+            }
+        }
+
         await context.SaveChangesAsync();
         return patient;
     }

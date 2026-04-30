@@ -39,6 +39,11 @@ export class PatientsComponent implements OnInit {
   currentPatient: HPatient | null = null;
   modalRef: NgbModalRef | null = null;
 
+  // Photo state
+  photoPreview: string | null = null;
+  photoBase64: string | null = null;
+  viewingPhotoPatient: HPatient | null = null;
+
   readonly patientCategoryOptions = ['HMO', 'PRIVATE', 'MTHLY', 'NHIS'];
   readonly maritalStatuses = ['SINGLE', 'MARRIED'];
   readonly sexOptions = ['MALE', 'FEMALE'];
@@ -140,6 +145,8 @@ export class PatientsComponent implements OnInit {
   openCreate(content: TemplateRef<unknown>): void {
     this.isEditing = false;
     this.currentPatient = null;
+    this.photoPreview = null;
+    this.photoBase64 = null;
     this.patientForm.reset({
       regDate: this.getTodayInputValue()
     });
@@ -154,6 +161,12 @@ export class PatientsComponent implements OnInit {
   openEdit(content: TemplateRef<unknown>, patient: HPatient): void {
     this.isEditing = true;
     this.currentPatient = patient;
+    this.photoBase64 = null;
+    // Show existing photo from server if available
+    this.photoPreview = patient.patPixBase64
+      ? (patient.patPixBase64.startsWith('data:') ? patient.patPixBase64 : `data:image/jpeg;base64,${patient.patPixBase64}`)
+      : null;
+
     this.patientForm.patchValue({
       ...patient,
       dob: this.toDateInputValue(patient.dob),
@@ -169,11 +182,32 @@ export class PatientsComponent implements OnInit {
 
   cancelForm(): void {
     this.currentPatient = null;
+    this.photoPreview = null;
+    this.photoBase64 = null;
     this.patientForm.reset({
       regDate: this.getTodayInputValue()
     });
     this.modalRef?.close();
     this.modalRef = null;
+  }
+
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      this.photoPreview = result;
+      this.photoBase64 = result; // full data URI e.g. "data:image/jpeg;base64,..."
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removePhoto(): void {
+    this.photoPreview = null;
+    this.photoBase64 = null;
   }
 
   savePatient(): void {
@@ -187,7 +221,11 @@ export class PatientsComponent implements OnInit {
     this.alertService.startLoadingMessage();
 
     if (this.isEditing && this.currentPatient) {
-      const payload: HPatient = { ...raw, pno: this.currentPatient.pno } as HPatient;
+      const payload: HPatient = {
+        ...raw,
+        pno: this.currentPatient.pno,
+        patPixBase64: this.photoBase64 ?? undefined
+      } as HPatient;
       this.patientEndpoint.getUpdateHPatientEndpoint<HPatient>(this.currentPatient.pno!, payload)
         .subscribe({
           next: updated => {
@@ -215,7 +253,11 @@ export class PatientsComponent implements OnInit {
 
     const { pno, ...createPayload } = raw as HPatient;
     void pno;
-    this.patientEndpoint.getNewHPatientEndpoint<HPatient>(createPayload as HPatient)
+    const newPatient: HPatient = {
+      ...createPayload,
+      patPixBase64: this.photoBase64 ?? undefined
+    } as HPatient;
+    this.patientEndpoint.getNewHPatientEndpoint<HPatient>(newPatient)
       .subscribe({
         next: created => {
           this.alertService.stopLoadingMessage();
@@ -304,6 +346,16 @@ export class PatientsComponent implements OnInit {
     void this.router.navigate(['/frontdesk/appointments'], {
       queryParams: { action: 'create', pNo: patient.pno }
     });
+  }
+
+  viewPhoto(content: TemplateRef<unknown>, patient: HPatient): void {
+    this.viewingPhotoPatient = patient;
+    this.modalService.open(content, { size: 'sm', centered: true, backdrop: 'static', keyboard: false });
+  }
+
+  getPhotoSrc(patient: HPatient): string {
+    const b64 = patient.patPixBase64 ?? '';
+    return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`;
   }
 
   private extractCompanies(

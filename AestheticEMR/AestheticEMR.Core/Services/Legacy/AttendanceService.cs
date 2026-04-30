@@ -41,6 +41,7 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
             existingForDay.EntryTime = record.EntryTime;
 
             await UpsertAttendanceBillAccumAsync(existingForDay);
+            await UpdatePatientLastVisitAsync(existingForDay);
             await context.SaveChangesAsync();
             return existingForDay;
         }
@@ -48,6 +49,7 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         record.ConsultId = await GenerateConsultIdAsync();
         context.HRecords.Add(record);
         await UpsertAttendanceBillAccumAsync(record);
+        await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
         return record;
     }
@@ -58,6 +60,7 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         ApplyDefaults(record);
 
         await UpsertAttendanceBillAccumAsync(record);
+        await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
         return record;
     }
@@ -221,5 +224,19 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         }
 
         return generatedId;
+    }
+
+    private async Task UpdatePatientLastVisitAsync(HRecord record)
+    {
+        var patient = await context.HPatients
+            .FirstOrDefaultAsync(x => x.Pno == record.PNo);
+
+        if (patient is null)
+            return;
+
+        patient.LastPurpose = record.Remarks;
+        patient.LastClinicVisited = record.ClinicType;
+        patient.LastAttndDate = record.EntryDate ?? record.RecDate;
+        patient.LastConsultId = record.ConsultId;
     }
 }

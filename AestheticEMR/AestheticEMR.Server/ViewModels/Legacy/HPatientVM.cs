@@ -86,4 +86,10 @@ public class HPatientVM
 
     [StringLength(100)]
     public string? UserName { get; set; }
+
+    /// <summary>
+    /// Optional patient photo as a Base64-encoded string (e.g. "data:image/jpeg;base64,...").
+    /// Mapped to/from HPatient.PatPix (byte[]).
+    /// </summary>
+    public string? PatPixBase64 { get; set; }
 }

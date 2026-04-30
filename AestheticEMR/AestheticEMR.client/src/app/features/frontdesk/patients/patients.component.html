@@ -94,11 +94,48 @@
           </div>
         </div>
 
+        <!-- Patient Photo (optional) -->
+        <div class="photo-section mt-3">
+          <label class="form-label fw-semibold">Patient Photo <span class="text-muted fw-normal">(optional)</span></label>
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="photo-preview-wrap">
+              <img
+                *ngIf="photoPreview"
+                [src]="photoPreview"
+                alt="Patient photo"
+                class="photo-preview rounded border" />
+              <div *ngIf="!photoPreview" class="photo-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
+                No Photo
+              </div>
+            </div>
+            <div class="d-flex flex-column gap-2">
+              <label class="btn btn-outline-primary btn-sm mb-0" style="cursor:pointer;">
+                {{ photoPreview ? 'Change Photo' : 'Upload Photo' }}
+                <input type="file" accept="image/*" class="d-none" (change)="onPhotoSelected($event)" />
+              </label>
+              <button *ngIf="photoPreview" type="button" class="btn btn-outline-danger btn-sm" (click)="removePhoto()">Remove Photo</button>
+            </div>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-success" [disabled]="loadingIndicator">Save</button>
           <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
         </div>
       </form>
+    </div>
+  </ng-template>
+
+  <!-- Photo lightbox modal -->
+  <ng-template #photoDialog let-modal>
+    <div class="modal-header py-2">
+      <h6 class="modal-title mb-0">
+        {{ viewingPhotoPatient?.pSurName }} {{ viewingPhotoPatient?.pFirstname }} — Photo
+      </h6>
+      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body text-center p-3">
+      <img [src]="getPhotoSrc(viewingPhotoPatient!)" alt="Patient photo" class="patient-photo-full rounded" />
     </div>
   </ng-template>
 
@@ -126,6 +163,16 @@
           <td>{{ patient.pPhoneNo }}</td>
           <td>{{ patient.email }}</td>
           <td class="actions">
+            <!-- Photo thumbnail — only shown when patient has a photo -->
+            <button
+              *ngIf="patient.patPixBase64"
+              type="button"
+              class="btn btn-sm btn-outline-secondary icon-btn photo-thumb-btn"
+              (click)="viewPhoto(photoDialog, patient)"
+              title="View Photo"
+              aria-label="View patient photo">
+              <img [src]="getPhotoSrc(patient)" alt="" class="grid-photo-thumb" />
+            </button>
             <button type="button" class="btn btn-sm btn-outline-primary icon-btn" (click)="openEdit(patientDialog, patient)" title="Edit" aria-label="Edit patient">
               <span class="material-icons action-icon" aria-hidden="true">edit</span>
             </button>

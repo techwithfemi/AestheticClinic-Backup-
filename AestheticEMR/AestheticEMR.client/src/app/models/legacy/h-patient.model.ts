@@ -27,4 +27,5 @@ export interface HPatient {
   status?: string;
   regDate?: string;
   userName?: string;
+  patPixBase64?: string;  // optional patient photo as Base64 data URI
 }
