@@ -265,6 +265,62 @@ mat-panel-title.menu-title {
   gap: 6px;
 }
 
+.avatar-trigger {
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: 4px;
+}
+
+.toolbar-avatar-img,
+.toolbar-avatar-fallback,
+.menu-avatar-img,
+.menu-avatar-fallback {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+.toolbar-avatar-img,
+.menu-avatar-img {
+  object-fit: cover;
+  display: block;
+}
+
+.toolbar-avatar-fallback,
+.menu-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d9e8ff;
+  color: #1f3a6f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-menu-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 250px;
+  padding: 10px 14px;
+}
+
+.menu-user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.menu-user-email {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 :host ::ng-deep .main-toolbar {
   button,
   .mat-mdc-button-base {

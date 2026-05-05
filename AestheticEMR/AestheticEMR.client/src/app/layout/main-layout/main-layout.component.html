@@ -64,10 +64,43 @@
           <mat-icon>notifications_none</mat-icon>
         </button>
 
-        <button mat-button type="button" (click)="logout()" class="logout-btn">
-          Log out
+        <button
+          mat-icon-button
+          type="button"
+          class="avatar-trigger"
+          [matMenuTriggerFor]="userMenu"
+          aria-label="Open user menu">
+          <img *ngIf="toolbarUserPhoto" [src]="toolbarUserPhoto" alt="User avatar" class="toolbar-avatar-img" />
+          <span *ngIf="!toolbarUserPhoto" class="toolbar-avatar-fallback">{{ userInitials }}</span>
         </button>
       </div>
+
+      <mat-menu #userMenu="matMenu" xPosition="before" class="user-menu-panel">
+        <div class="user-menu-summary" (click)="$event.stopPropagation()">
+          <img *ngIf="toolbarUserPhoto" [src]="toolbarUserPhoto" alt="User avatar" class="menu-avatar-img" />
+          <span *ngIf="!toolbarUserPhoto" class="menu-avatar-fallback">{{ userInitials }}</span>
+
+          <div class="menu-user-meta">
+            <span class="menu-user-name">{{ toolbarDisplayName }}</span>
+            <span class="menu-user-email" *ngIf="toolbarUserEmail">{{ toolbarUserEmail }}</span>
+          </div>
+        </div>
+
+        <button mat-menu-item [routerLink]="['/settings']">
+          <mat-icon>manage_accounts</mat-icon>
+          <span>User settings</span>
+        </button>
+
+        <button mat-menu-item [routerLink]="['/settings']">
+          <mat-icon>person</mat-icon>
+          <span>My profile</span>
+        </button>
+
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Log out</span>
+        </button>
+      </mat-menu>
     </mat-toolbar>
 
     <div class="page-content">

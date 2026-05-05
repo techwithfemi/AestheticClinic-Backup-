@@ -60,6 +60,15 @@ input.form-control {
   font-size: 80%;
 }
 
+.user-photo-preview {
+  object-fit: cover;
+}
+
+.user-photo-placeholder {
+  width: 72px;
+  height: 72px;
+}
+
 
 @media (min-width: 992px) {
   .user-enabled {

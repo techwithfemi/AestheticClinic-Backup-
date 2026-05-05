@@ -24,6 +24,51 @@
         </div>
       </div>
       <div class="row">
+        <label [class.col-lg-3]="isViewOnly()" [class.col-lg-2]="!isViewOnly()" class="col-form-label" for="userPhoto-{{uniqueId}}">
+          {{'users.editor.ProfilePhoto' | translate}}
+        </label>
+        <div [class.col-lg-9]="isViewOnly()" [class.col-lg-10]="!isViewOnly()">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            @if ((isEditMode ? userEdit.userPhotoBase64 : user.userPhotoBase64)) {
+              <img [src]="isEditMode ? userEdit.userPhotoBase64 : user.userPhotoBase64"
+                   alt="User photo"
+                   width="72"
+                   height="72"
+                   class="rounded-circle border user-photo-preview" />
+            }
+            @else {
+              <div class="rounded-circle border d-flex align-items-center justify-content-center bg-light text-muted"
+                   class="user-photo-placeholder">
+                <i class="fa fa-user"></i>
+              </div>
+            }
+
+            @if (isEditMode) {
+              <div>
+                <input type="file"
+                       attr.id="userPhoto-{{uniqueId}}"
+                       name="userPhoto"
+                       accept="image/*"
+                       title="Upload user profile photo"
+                       class="form-control"
+                       (change)="onUserPhotoSelected($event)" />
+                <small class="hint-sm d-block mt-1">{{'users.editor.PhotoUploadHint' | translate}}</small>
+                @if (userEdit.userPhotoBase64) {
+                  <button type="button" class="btn btn-link text-link p-0 mt-1" (click)="removeUserPhoto()">
+                    {{'users.editor.RemovePhoto' | translate}}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12">
+          <hr class="hr-separator" [class.info-separator]="!isEditMode" [class.edit-separator]="isEditMode" />
+        </div>
+      </div>
+      <div class="row">
         <label [class.col-lg-3]="isViewOnly()" [class.col-lg-2]="!isViewOnly()" class="col-form-label" for="userName-{{uniqueId}}">
           {{'users.editor.UserName' | translate}}
         </label>

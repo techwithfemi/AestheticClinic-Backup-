@@ -2,6 +2,7 @@ import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { AppConfigService } from '../../services/app-config.service';
+import { AccountService } from '../../services/account.service';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -9,7 +10,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { CommonModule } from '@angular/common';
+import { User } from '../../models/user.model';
 
 interface NavigationItem {
   route?: string;
@@ -22,13 +25,15 @@ interface NavigationItem {
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    MatSidenavModule, MatListModule, MatIconModule, MatToolbarModule, MatExpansionModule, MatButtonModule
+    MatSidenavModule, MatListModule, MatIconModule, MatToolbarModule, MatExpansionModule, MatButtonModule,
+    MatMenuModule
   ],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.scss']
 })
 export class MainLayoutComponent implements OnInit {
   private authService = inject(AuthService);
+  private accountService = inject(AccountService);
   private http = inject(HttpClient);
   appConfig = inject(AppConfigService);
   private readonly mobileBreakpoint = 992;
@@ -42,9 +47,34 @@ export class MainLayoutComponent implements OnInit {
   isSidebarCollapsed = false;
   isMobileViewport = false;
   isSidenavOpened = true;
+  profileUser: User | null = null;
 
   get fullName(): string {
     return this.authService.currentUser?.fullName || 'User';
+  }
+
+  get toolbarDisplayName(): string {
+    return this.profileUser?.fullName || this.profileUser?.userName || this.authService.currentUser?.fullName ||
+      this.authService.currentUser?.userName || 'User';
+  }
+
+  get toolbarUserEmail(): string {
+    return this.profileUser?.email || this.authService.currentUser?.email || '';
+  }
+
+  get toolbarUserPhoto(): string {
+    return this.profileUser?.userPhotoBase64 || this.authService.currentUser?.userPhotoBase64 || '';
+  }
+
+  get userInitials(): string {
+    const name = this.toolbarDisplayName.trim();
+    if (!name) {
+      return 'U';
+    }
+
+    const parts = name.split(/\s+/).filter(Boolean);
+    const initials = parts.slice(0, 2).map(x => x[0]).join('').toUpperCase();
+    return initials || 'U';
   }
 
   onLogoError(img: HTMLImageElement): void {
@@ -100,6 +130,7 @@ export class MainLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportState();
+    this.loadCurrentUserProfile();
 
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
@@ -124,6 +155,18 @@ export class MainLayoutComponent implements OnInit {
           .map(([title, item]) => ({ title, item }));
 
         this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];
+      });
+  }
+
+  private loadCurrentUserProfile(): void {
+    this.accountService.getUser()
+      .subscribe({
+        next: user => {
+          this.profileUser = user;
+        },
+        error: () => {
+          this.profileUser = this.authService.currentUser;
+        }
       });
   }
 

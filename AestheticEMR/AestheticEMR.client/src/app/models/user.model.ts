@@ -31,5 +31,6 @@ export class User {
 
   public isEnabled = true;
   public isLockedOut = false;
+  public userPhotoBase64 = '';
   public roles: string[] = [];
 }

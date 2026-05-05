@@ -27,6 +27,7 @@ namespace AestheticEMR.Core.Models.Account
         public string? JobTitle { get; set; }
         public string? FullName { get; set; }
         public string? EmpID { get; set; }
+        public byte[]? UserPhoto { get; set; }
         public string? Configuration { get; set; }
         public bool IsEnabled { get; set; }
         public bool IsLockedOut => LockoutEnabled && LockoutEnd >= DateTimeOffset.UtcNow;

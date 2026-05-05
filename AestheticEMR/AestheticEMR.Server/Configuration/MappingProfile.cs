@@ -25,14 +25,18 @@ namespace AestheticEMR.Server.Configuration
         public MappingProfile()
         {
             CreateMap<ApplicationUser, UserVM>()
+                   .ForMember(d => d.UserPhotoBase64, map => map.MapFrom(s => ToDataUrl(s.UserPhoto)))
                    .ForMember(d => d.Roles, map => map.Ignore());
             CreateMap<UserVM, ApplicationUser>()
+                .ForMember(d => d.UserPhoto, map => map.MapFrom(s => FromBase64(s.UserPhotoBase64)))
                 .ForMember(d => d.Roles, map => map.Ignore())
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != null));
 
             CreateMap<ApplicationUser, UserEditVM>()
+                .ForMember(d => d.UserPhotoBase64, map => map.MapFrom(s => ToDataUrl(s.UserPhoto)))
                 .ForMember(d => d.Roles, map => map.Ignore());
             CreateMap<UserEditVM, ApplicationUser>()
+                .ForMember(d => d.UserPhoto, map => map.MapFrom(s => FromBase64(s.UserPhotoBase64)))
                 .ForMember(d => d.Roles, map => map.Ignore())
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != null));
 
@@ -129,6 +133,28 @@ namespace AestheticEMR.Server.Configuration
             // Handles "data:image/jpeg;base64,..." or plain base64
             var idx = base64.IndexOf(',');
             return idx >= 0 ? base64[(idx + 1)..] : base64;
+        }
+
+        private static string? ToDataUrl(byte[]? bytes)
+        {
+            return bytes != null && bytes.Length > 0
+                ? $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}"
+                : null;
+        }
+
+        private static byte[]? FromBase64(string? base64)
+        {
+            if (string.IsNullOrWhiteSpace(base64))
+                return null;
+
+            try
+            {
+                return Convert.FromBase64String(StripBase64Prefix(base64));
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
         }
     }
 }

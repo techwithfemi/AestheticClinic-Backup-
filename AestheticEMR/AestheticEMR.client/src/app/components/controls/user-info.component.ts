@@ -33,6 +33,8 @@ import { VwEmpName } from '../../models/legacy/vw-emp-name.model';
   ]
 })
 export class UserInfoComponent implements OnInit {
+  private static readonly maxPhotoSizeInBytes = 2 * 1024 * 1024;
+
   private alertService = inject(AlertService);
   private accountService = inject(AccountService);
   private appointmentEndpoint = inject(AppointmentEndpoint);
@@ -168,6 +170,42 @@ export class UserInfoComponent implements OnInit {
 
   showErrorAlert(caption: string, message: string) {
     this.alertService.showMessage(caption, message, MessageSeverity.error);
+  }
+
+  onUserPhotoSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.showErrorAlert('Invalid file', 'Please select a valid image file.');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > UserInfoComponent.maxPhotoSizeInBytes) {
+      this.showErrorAlert('Image too large', 'Please upload an image up to 2MB.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.userEdit.userPhotoBase64 = typeof reader.result === 'string' ? reader.result : '';
+    };
+    reader.onerror = () => {
+      this.showErrorAlert('Upload failed', 'Unable to read the selected image. Please try again.');
+    };
+    reader.readAsDataURL(file);
+
+    input.value = '';
+  }
+
+  removeUserPhoto() {
+    this.userEdit.userPhotoBase64 = '';
   }
 
   deletePasswordFromUser(user: UserEdit | User) {
