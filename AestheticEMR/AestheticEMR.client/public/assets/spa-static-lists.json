@@ -1,0 +1,10 @@
+{
+  "serviceTypes": [
+    "Massage",
+    "Facials",
+    "Body Scrub",
+    "Sauna"
+  ],
+  "defaultServiceType": "Massage",
+  "serviceTypesOrder": "asc"
+}

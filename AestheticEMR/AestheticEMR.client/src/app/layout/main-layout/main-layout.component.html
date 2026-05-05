@@ -26,9 +26,10 @@
 
           <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
             <a mat-list-item *ngFor="let sub of item.item.subItems"
-               [routerLink]="[item.item.route, sub.path]"
+               [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
+               [fragment]="sub.fragment || undefined"
                routerLinkActive="active-sub-item"
-              (click)="closeSidenavOnMobile()"
+               (click)="closeSidenavOnMobile()"
                title="{{ sub.label }}">
               <mat-icon class="subitem-icon">{{ sub.icon || 'chevron_right' }}</mat-icon>
               <span class="subitem-label">{{ sub.label }}</span>

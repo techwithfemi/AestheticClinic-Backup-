@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
 interface NavigationItem {
   route?: string;
   icon?: string;
-  subItems?: Array<{ path: string; label: string; icon?: string }>;
+  subItems?: Array<{ path?: string; fragment?: string; label: string; icon?: string }>;
 }
 
 @Component({
@@ -70,7 +70,7 @@ export class MainLayoutComponent implements OnInit {
     return this.normalizedRoles.includes(normalizedSection);
   }
 
-  private filterReportSubItems(subItems: Array<{ path: string; label: string }>): Array<{ path: string; label: string }> {
+  private filterReportSubItems(subItems: Array<{ path?: string; fragment?: string; label: string; icon?: string }>): Array<{ path?: string; fragment?: string; label: string; icon?: string }> {
     if (this.isManagementUser) {
       return subItems;
     }

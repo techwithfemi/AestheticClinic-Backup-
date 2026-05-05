@@ -28,7 +28,7 @@
     },
     "Dental": {
       "route": "dental",
-      "icon": "aesthetics",
+      "icon": "dentistry",
       "subItems": [
         { "label": "Odontogram", "path": "chart", "icon": "monitor_heart" },
         { "label": "Imaging", "path": "xray", "icon": "image" }
@@ -100,8 +100,9 @@
       "route": "settings",
       "icon": "settings",
       "subItems": [
-        { "label": "My Profile", "fragment": "profile", "icon": "person" },
-        { "label": "Preferences", "fragment": "preferences", "icon": "tune" }
+        { "label": "My Profile", "path": "profile", "icon": "person" },
+        { "label": "Security", "path": "security", "icon": "security" },
+        { "label": "Preferences", "path": "prefs", "icon": "tune" }
       ]
     }
   }

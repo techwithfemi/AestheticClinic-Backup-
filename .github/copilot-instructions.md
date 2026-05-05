@@ -374,6 +374,12 @@ loadData(): void {
 
 ---
 
+## Dropdown Ordering
+
+For SPA static list dropdown ordering, default behavior should be ascending order when no explicit order is provided.
+
+---
+
 ## Reference Implementations
 
 When implementing new features, reference these real implementations:

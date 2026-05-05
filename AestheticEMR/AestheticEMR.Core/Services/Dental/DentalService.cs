@@ -21,6 +21,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
 
     public HDentalTreat AddChart(HDentalTreat chart)
     {
+        EnsureChartDateTimes(chart);
         dbContext.HDentalTreats.Add(chart);
         dbContext.SaveChanges();
         return chart;
@@ -28,6 +29,8 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
 
     public HDentalTreat UpdateChart(HDentalTreat chart)
     {
+        EnsureChartDateTimes(chart);
+
         var existing = dbContext.HDentalTreats.Find(chart.Id)
             ?? throw new KeyNotFoundException($"Dental chart not found: {chart.Id}");
 
@@ -58,8 +61,10 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
 
     public DentalImaging AddImaging(DentalImaging imaging)
     {
-        imaging.CreatedDate = DateTime.UtcNow;
-        imaging.UpdatedDate = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, now);
+        imaging.CreatedDate = now;
+        imaging.UpdatedDate = now;
         dbContext.DentalImagings.Add(imaging);
         dbContext.SaveChanges();
         return imaging;
@@ -70,6 +75,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         var existing = dbContext.DentalImagings.Find(imaging.Id)
             ?? throw new KeyNotFoundException($"Dental imaging not found: {imaging.Id}");
 
+        imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, DateTime.UtcNow);
         ApplyImagingValues(existing, imaging);
         existing.UpdatedDate = DateTime.UtcNow;
 
@@ -101,6 +107,9 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         chart.ConsultId = chart.ConsultId?.Trim() ?? string.Empty;
         imaging.Pno = imaging.Pno?.Trim() ?? chart.Pno;
         imaging.ConsultId = imaging.ConsultId?.Trim() ?? chart.ConsultId;
+
+        EnsureChartDateTimes(chart);
+        imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, now);
 
         if (string.IsNullOrWhiteSpace(chart.Pno) || string.IsNullOrWhiteSpace(chart.ConsultId))
             throw new InvalidOperationException("PNO and ConsultId are required.");
@@ -236,8 +245,8 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.Pno = chart.Pno;
         existing.ConsultId = chart.ConsultId;
         existing.Dtype = chart.Dtype;
-        existing.TDate = chart.TDate;
-        existing.TTime = chart.TTime;
+        existing.TDate = NormalizeSqlDateTime(chart.TDate, DateTime.UtcNow);
+        existing.TTime = NormalizeSqlDateTime(chart.TTime, existing.TDate);
         existing.ARem = chart.ARem;
         existing.CRem = chart.CRem;
         existing.ConId = chart.ConId;
@@ -262,6 +271,24 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.Cllpm1 = chart.Cllpm1; existing.Cllpm2 = chart.Cllpm2;
         existing.Clri1 = chart.Clri1; existing.Clri2 = chart.Clri2; existing.Clrc = chart.Clrc;
         existing.Clrpm1 = chart.Clrpm1; existing.Clrpm2 = chart.Clrpm2;
+    }
+
+    private static void EnsureChartDateTimes(HDentalTreat chart)
+    {
+        var fallback = DateTime.UtcNow;
+        chart.TDate = NormalizeSqlDateTime(chart.TDate, fallback);
+        chart.TTime = NormalizeSqlDateTime(chart.TTime, chart.TDate);
+    }
+
+    private static DateTime NormalizeSqlDateTime(DateTime value, DateTime fallback)
+    {
+        var min = new DateTime(1753, 1, 1);
+        var max = new DateTime(9999, 12, 31, 23, 59, 59, 997);
+
+        if (value < min || value > max)
+            return fallback < min || fallback > max ? min : fallback;
+
+        return value;
     }
 
     private static void ApplyImagingValues(DentalImaging existing, DentalImaging imaging)

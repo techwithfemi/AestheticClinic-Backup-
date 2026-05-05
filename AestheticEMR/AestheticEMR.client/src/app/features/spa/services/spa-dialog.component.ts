@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -12,6 +13,12 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 
 import { AestheticConsultation } from '../../../models/aesthetic.model';
+
+interface SpaStaticLists {
+  serviceTypes?: string[];
+  defaultServiceType?: string;
+  serviceTypesOrder?: 'ASC' | 'DESC' | 'NONE';
+}
 
 export interface SpaPatientOption {
   patientId: number;
@@ -78,10 +85,9 @@ export interface SpaDialogResult {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Service Type</mat-label>
             <mat-select formControlName="indication" required>
-              <mat-option value="Massage">Massage</mat-option>
-              <mat-option value="Facials">Facials</mat-option>
-              <mat-option value="Body Scrub">Body Scrub</mat-option>
-              <mat-option value="Sauna">Sauna</mat-option>
+              @for (serviceType of serviceTypes; track serviceType) {
+                <mat-option [value]="serviceType">{{ serviceType }}</mat-option>
+              }
             </mat-select>
           </mat-form-field>
 
@@ -158,11 +164,13 @@ export interface SpaDialogResult {
 })
 export class SpaDialogComponent {
   private fb = inject(FormBuilder);
+  private http = inject(HttpClient);
   dialogRef = inject(MatDialogRef<SpaDialogComponent>);
 
   @ViewChild('patientSelect') patientSelect?: MatSelect;
 
   patientSearchText = '';
+  serviceTypes: string[] = [];
 
   get filteredPatientOptions(): SpaPatientOption[] {
     const term = this.patientSearchText.trim().toLowerCase();
@@ -182,7 +190,7 @@ export class SpaDialogComponent {
     id: [0],
     patientKey: ['', Validators.required],
     consultationDate: [new Date(), Validators.required],
-    indication: ['Massage', Validators.required],
+    indication: ['', Validators.required],
     brandUsed: [''],
     areaTreated: [''],
     skinAssessment: [''],
@@ -200,6 +208,8 @@ export class SpaDialogComponent {
   get data() { return this._data; }
 
   constructor() {
+    this.loadServiceTypes();
+
     if (this.data.isEdit && this.data.consultation) {
       const selectedOption = this.data.patientOptions.find(x => x.patientId === this.data.consultation!.patientId);
 
@@ -207,7 +217,7 @@ export class SpaDialogComponent {
         id: this.data.consultation.id,
         patientKey: selectedOption?.label ?? '',
         consultationDate: this.toDate(this.data.consultation.consultationDate) ?? new Date(),
-        indication: this.data.consultation.indication ?? 'Massage',
+        indication: this.data.consultation.indication ?? '',
         brandUsed: this.data.consultation.brandUsed ?? '',
         areaTreated: this.data.consultation.areaTreated ?? '',
         skinAssessment: this.data.consultation.skinAssessment ?? '',
@@ -270,6 +280,37 @@ export class SpaDialogComponent {
     };
 
     this.dialogRef.close({ consultation, selectedPatient } as SpaDialogResult);
+  }
+
+  private loadServiceTypes(): void {
+    this.http.get<SpaStaticLists>('assets/spa-static-lists.json').subscribe({
+      next: lists => {
+        const cleaned = lists.serviceTypes?.filter(x => !!x?.trim()) ?? [];
+        const order = (lists.serviceTypesOrder ?? 'ASC').toUpperCase();
+
+        if (order === 'ASC') {
+          this.serviceTypes = [...cleaned].sort((a, b) => a.localeCompare(b));
+        } else if (order === 'DESC') {
+          this.serviceTypes = [...cleaned].sort((a, b) => b.localeCompare(a));
+        } else {
+          this.serviceTypes = cleaned;
+        }
+
+        const configuredDefault = lists.defaultServiceType?.trim();
+        const selected = this.form.controls.indication.value;
+        const hasSelected = !!selected && this.serviceTypes.includes(selected);
+
+        if (!hasSelected) {
+          if (configuredDefault && this.serviceTypes.includes(configuredDefault)) {
+            this.form.controls.indication.setValue(configuredDefault);
+          } else {
+            this.form.controls.indication.setValue('');
+          }
+        }
+      },
+      error: () => {
+      }
+    });
   }
 
   private toDate(value?: string): Date | null {

@@ -265,8 +265,8 @@ export class DentalEncounterDialogComponent {
       return;
     }
 
-    this.chart.tDate = this.fromDateInput(this.chartDate);
-    this.imaging.imagingDate = this.fromDateInput(this.imagingDate);
+    this.chart.tDate = this.fromDateInput(this.chartDate, this.chart.tDate);
+    this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
 
     this.dialogRef.close({
       chart: this.withoutDefaults(this.chart),
@@ -284,8 +284,24 @@ export class DentalEncounterDialogComponent {
     return `${d.getFullYear()}-${mm}-${dd}`;
   }
 
-  private fromDateInput(value: string): string {
-    return value ? new Date(value).toISOString() : new Date().toISOString();
+  private fromDateInput(value: string, fallbackIso?: string): string {
+    if (!value) return this.ensureValidIsoDate(fallbackIso);
+
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return this.ensureValidIsoDate(fallbackIso);
+
+    return parsed.toISOString();
+  }
+
+  private ensureValidIsoDate(value?: string): string {
+    if (value) {
+      const d = new Date(value);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toISOString();
+      }
+    }
+
+    return new Date().toISOString();
   }
 
   private withoutDefaults<T>(obj: T): Partial<T> {
