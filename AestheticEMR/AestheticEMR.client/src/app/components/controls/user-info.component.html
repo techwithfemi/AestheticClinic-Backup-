@@ -29,19 +29,11 @@
         </label>
         <div [class.col-lg-9]="isViewOnly()" [class.col-lg-10]="!isViewOnly()">
           <div class="d-flex align-items-center gap-3 flex-wrap">
-            @if ((isEditMode ? userEdit.userPhotoBase64 : user.userPhotoBase64)) {
-              <img [src]="isEditMode ? userEdit.userPhotoBase64 : user.userPhotoBase64"
-                   alt="User photo"
-                   width="72"
-                   height="72"
-                   class="rounded-circle border user-photo-preview" />
-            }
-            @else {
-              <div class="rounded-circle border d-flex align-items-center justify-content-center bg-light text-muted"
-                   class="user-photo-placeholder">
-                <i class="fa fa-user"></i>
-              </div>
-            }
+            <img [src]="displayedUserPhoto"
+                 alt="User photo"
+                 width="72"
+                 height="72"
+                 class="rounded-circle border user-photo-preview" />
 
             @if (isEditMode) {
               <div>

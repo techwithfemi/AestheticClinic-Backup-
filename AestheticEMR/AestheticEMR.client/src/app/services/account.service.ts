@@ -30,6 +30,7 @@ export class AccountService {
   public static readonly roleModifiedOperation: RolesChangedOperation = 'modify';
 
   private rolesChanged = new Subject<RolesChangedEventArg>();
+  private currentUserProfileUpdated = new Subject<User>();
 
   getUser(userId?: string) {
     return this.accountEndpoint.getUserEndpoint<User>(userId);
@@ -159,6 +160,19 @@ export class AccountService {
 
   getRolesChangedEvent(): Observable<RolesChangedEventArg> {
     return this.rolesChanged.asObservable();
+  }
+
+  notifyCurrentUserProfileUpdated(user: User) {
+    this.currentUserProfileUpdated.next(user);
+  }
+
+  updateCurrentUserProfile(user: User) {
+    this.authService.updateCurrentUser(user);
+    this.notifyCurrentUserProfileUpdated(user);
+  }
+
+  getCurrentUserProfileUpdatedEvent(): Observable<User> {
+    return this.currentUserProfileUpdated.asObservable();
   }
 
   get permissions(): PermissionValues[] {

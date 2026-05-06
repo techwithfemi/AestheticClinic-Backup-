@@ -104,6 +104,36 @@ export class AuthService {
       .pipe(map(resp => this.processLoginResponse(resp, this.rememberMe)));
   }
 
+  updateCurrentUser(currentUser: User) {
+    const existingUser = this.currentUser;
+    if (existingUser == null) {
+      return;
+    }
+
+    const updatedUser = new User(
+      existingUser.id,
+      currentUser.userName,
+      currentUser.fullName,
+      currentUser.empID,
+      currentUser.email,
+      currentUser.jobTitle,
+      currentUser.phoneNumber,
+      currentUser.roles
+    );
+
+    updatedUser.isEnabled = currentUser.isEnabled;
+    updatedUser.isLockedOut = currentUser.isLockedOut;
+    updatedUser.userPhotoBase64 = currentUser.userPhotoBase64;
+
+    if (this.rememberMe) {
+      this.localStorage.savePermanentData(updatedUser, DBkeys.CURRENT_USER);
+    } else {
+      this.localStorage.saveSyncedSessionData(updatedUser, DBkeys.CURRENT_USER);
+    }
+
+    this.reevaluateLoginStatus(updatedUser);
+  }
+
   loginWithPassword(userName: string, password: string, rememberMe?: boolean) {
     if (this.isLoggedIn) {
       this.logout();

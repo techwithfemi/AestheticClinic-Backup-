@@ -272,6 +272,12 @@
       "UserDepartments": "用户部门",
       "UsersManagements": "用户管理",
       "RolesManagement": "角色管理"
+    },
+    "menu": {
+      "UserSettings": "用户设置",
+      "MyProfile": "我的资料",
+      "UserPreferences": "用户偏好",
+      "LogOut": "登出"
     }
   },
   "preferences": {

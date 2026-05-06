@@ -272,6 +272,12 @@
       "UserDepartments": "Departamentos de Usuario",
       "UsersManagements": "Gestión de Usuarios",
       "RolesManagement": "Gestión de Roles"
+    },
+    "menu": {
+      "UserSettings": "Configuración de Usuario",
+      "MyProfile": "Mi Perfil",
+      "UserPreferences": "Preferencias de Usuario",
+      "LogOut": "Cerrar Sesión"
     }
   },
   "preferences": {

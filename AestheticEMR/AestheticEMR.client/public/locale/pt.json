@@ -271,8 +271,12 @@
       "UserPreferences": "Preferências de Usuário",
       "UserDepartments": "Departamentos de Usuários",
       "UsersManagements": "Gerenciamento de Usuários",
-      "RolesManagement": "Gerenciamento de Funções"
-    }
+      "RolesManagement": "Gerenciamento de Funções"    },
+    "menu": {
+      "UserSettings": "Configurações do Usuário",
+      "MyProfile": "Meu Perfil",
+      "UserPreferences": "Preferências do Usuário",
+      "LogOut": "Sair"    }
   },
   "preferences": {
     "ReloadPreferences": "Recarregar Preferências:",

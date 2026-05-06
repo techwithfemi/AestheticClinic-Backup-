@@ -271,8 +271,12 @@
       "UserPreferences": "Benutzereinstellungen",
       "UserDepartments": "Benutzerabteilungen",
       "UsersManagements": "Benutzerverwaltung",
-      "RolesManagement": "Rollenverwaltung"
-    }
+      "RolesManagement": "Rollenverwaltung"    },
+    "menu": {
+      "UserSettings": "Benutzereinstellungen",
+      "MyProfile": "Mein Profil",
+      "UserPreferences": "Benutzereinstellungen",
+      "LogOut": "Abmelden"    }
   },
   "preferences": {
     "ReloadPreferences": "Einstellungen aktualisieren:",

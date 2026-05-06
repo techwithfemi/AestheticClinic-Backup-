@@ -8,10 +8,6 @@
     [class.collapsed]="isSidebarCollapsed && !isMobileViewport">
     <div class="sidebar-header">
       <img [src]="appConfig.clientLogo" [alt]="appConfig.clientName" class="logo" (error)="onLogoError($any($event.target))">
-      <div class="user-info">
-        <span class="user-name">{{ fullName }}</span>
-        <span class="user-status">Online</span>
-      </div>
     </div>
 
     <mat-nav-list>
@@ -88,17 +84,22 @@
 
         <button mat-menu-item [routerLink]="['/settings']">
           <mat-icon>manage_accounts</mat-icon>
-          <span>User settings</span>
+          <span>{{ 'settings.menu.UserSettings' | translate }}</span>
         </button>
 
-        <button mat-menu-item [routerLink]="['/settings']">
+        <button mat-menu-item [routerLink]="['/settings']" fragment="profile">
           <mat-icon>person</mat-icon>
-          <span>My profile</span>
+          <span>{{ 'settings.menu.MyProfile' | translate }}</span>
+        </button>
+
+        <button mat-menu-item [routerLink]="['/settings']" fragment="preferences">
+          <mat-icon>tune</mat-icon>
+          <span>{{ 'settings.menu.UserPreferences' | translate }}</span>
         </button>
 
         <button mat-menu-item (click)="logout()">
           <mat-icon>logout</mat-icon>
-          <span>Log out</span>
+          <span>{{ 'settings.menu.LogOut' | translate }}</span>
         </button>
       </mat-menu>
     </mat-toolbar>

@@ -271,8 +271,12 @@
       "UserPreferences": "خيارات المستخدم",
       "UserDepartments": "أقسام المستخدم",
       "UsersManagements": "إدارة المستخدمين",
-      "RolesManagement": "إدارة الأدوار"
-    }
+      "RolesManagement": "إدارة الأدوار"    },
+    "menu": {
+      "UserSettings": "إعدادات المستخدم",
+      "MyProfile": "ملفي الشخصي",
+      "UserPreferences": "تفضيلات المستخدم",
+      "LogOut": "تسجيل الخروج"    }
   },
   "preferences": {
     "ReloadPreferences": "إعادة تحميل التفضيلات:",

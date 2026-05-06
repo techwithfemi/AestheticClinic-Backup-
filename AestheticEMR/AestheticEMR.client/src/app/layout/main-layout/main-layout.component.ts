@@ -1,5 +1,6 @@
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../services/auth.service';
 import { AppConfigService } from '../../services/app-config.service';
 import { AccountService } from '../../services/account.service';
@@ -26,7 +27,7 @@ interface NavigationItem {
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
     MatSidenavModule, MatListModule, MatIconModule, MatToolbarModule, MatExpansionModule, MatButtonModule,
-    MatMenuModule
+    MatMenuModule, TranslateModule
   ],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.scss']
@@ -131,6 +132,10 @@ export class MainLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.updateViewportState();
     this.loadCurrentUserProfile();
+    this.accountService.getCurrentUserProfileUpdatedEvent()
+      .subscribe(user => {
+        this.profileUser = user;
+      });
 
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {

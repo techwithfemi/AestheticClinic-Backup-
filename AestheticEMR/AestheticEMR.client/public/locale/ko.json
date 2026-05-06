@@ -271,8 +271,12 @@
       "UserPreferences": "사용자 환경 설정",
       "UserDepartments": "사용자 부서",
       "UsersManagements": "사용자 관리",
-      "RolesManagement": "역할 관리"
-    }
+      "RolesManagement": "역할 관리"    },
+    "menu": {
+      "UserSettings": "사용자 설정",
+      "MyProfile": "내 프로필",
+      "UserPreferences": "사용자 기본 설정",
+      "LogOut": "로그아웃"    }
   },
   "preferences": {
     "ReloadPreferences": "환경 설정 새로 고침 :",

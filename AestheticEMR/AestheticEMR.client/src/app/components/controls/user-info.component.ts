@@ -34,6 +34,7 @@ import { VwEmpName } from '../../models/legacy/vw-emp-name.model';
 })
 export class UserInfoComponent implements OnInit {
   private static readonly maxPhotoSizeInBytes = 2 * 1024 * 1024;
+  readonly defaultUserPhoto = 'assets/img/blank.png';
 
   private alertService = inject(AlertService);
   private accountService = inject(AccountService);
@@ -166,6 +167,11 @@ export class UserInfoComponent implements OnInit {
       this.selectedEmpID = null;
       this.userEdit.empID = '';
     }
+  }
+
+  get displayedUserPhoto(): string {
+    const photo = this.isEditMode ? this.userEdit.userPhotoBase64 : this.user.userPhotoBase64;
+    return photo || this.defaultUserPhoto;
   }
 
   showErrorAlert(caption: string, message: string) {
@@ -309,6 +315,7 @@ export class UserInfoComponent implements OnInit {
 
     if (this.isEditingSelf) {
       this.alertService.showMessage('Success', 'Changes to your User Profile was saved successfully', MessageSeverity.success);
+      this.accountService.updateCurrentUserProfile(this.user);
       this.refreshLoggedInUser();
     }
 
@@ -439,6 +446,7 @@ export class UserInfoComponent implements OnInit {
     this.userEdit.isEnabled = true;
     this.userEdit.roles = [];
     this.userEdit.empID = '';
+    this.userEdit.userPhotoBase64 = this.defaultUserPhoto;
     this.selectedEmpID = null;
     this.edit();
 

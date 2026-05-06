@@ -273,6 +273,12 @@
       "UserDepartments": "User Departments",
       "UsersManagements": "Users Managements",
       "RolesManagement": "Roles Management"
+    },
+    "menu": {
+      "UserSettings": "User Settings",
+      "MyProfile": "My Profile",
+      "UserPreferences": "User Preferences",
+      "LogOut": "Log Out"
     }
   },
   "preferences": {
