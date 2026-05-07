@@ -1,0 +1,80 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+export interface TariffUploadDialogResult {
+  file: File;
+}
+
+@Component({
+  selector: 'app-tariff-upload-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule
+  ],
+  template: `
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2 mat-dialog-title>Upload Services Tariff from Excel</h2>
+        <button mat-icon-button type="button" (click)="dialogRef.close()" aria-label="Close dialog">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <mat-dialog-content>
+        <div class="file-row">
+          <button mat-stroked-button type="button" (click)="fileInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            Select File...
+          </button>
+          <input #fileInput type="file" accept=".xlsx,.csv" (change)="onFilePicked($event)" hidden />
+          <span class="file-name">{{ selectedFile?.name || 'No file selected' }}</span>
+        </div>
+
+        <p class="hint">Re-upload will replace any existing tariff upload for the selected company.</p>
+        <p class="hint">Supported formats: .xlsx, .csv</p>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end">
+        <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
+        <button mat-raised-button color="primary" type="button" [disabled]="!selectedFile" (click)="upload()">Upload Data</button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .dialog-content { width: 500px; box-sizing: border-box; padding: 16px; }
+    .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .dialog-header h2 { margin: 0; flex: 1; font-size: 1.2rem; }
+    .file-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .file-name { color: #666; font-size: 0.9rem; word-break: break-word; }
+    .hint { margin: 12px 0 0; color: #777; font-size: 0.85rem; }
+  `]
+})
+export class TariffUploadDialogComponent {
+  private _dialogRef = inject(MatDialogRef<TariffUploadDialogComponent>);
+
+  get dialogRef() { return this._dialogRef; }
+
+  selectedFile: File | null = null;
+
+  onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.selectedFile = input.files?.[0] ?? null;
+    input.value = '';
+  }
+
+  upload(): void {
+    if (!this.selectedFile) {
+      return;
+    }
+
+    this.dialogRef.close({
+      file: this.selectedFile
+    } as TariffUploadDialogResult);
+  }
+}

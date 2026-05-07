@@ -28,10 +28,19 @@
     },
     "Dental": {
       "route": "dental",
-      "icon": "aesthetics",
+      "icon": "medical_services",
       "subItems": [
         { "label": "Odontogram", "path": "chart", "icon": "monitor_heart" },
         { "label": "Imaging", "path": "xray", "icon": "image" }
+      ]
+    },
+    "Tariff": {
+      "route": "tariff",
+      "icon": "request_quote",
+      "subItems": [
+        { "label": "Stock", "path": "stock", "icon": "inventory_2" },
+        { "label": "Investigations", "path": "investigations", "icon": "science" },
+        { "label": "Services", "path": "services", "icon": "medical_services" }
       ]
     },
     "Aesthetics": {

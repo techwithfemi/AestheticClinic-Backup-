@@ -53,6 +53,11 @@ export const routes: Routes = [
           .then(m => m.spaRoutes)
       },
       {
+        path: 'tariff',
+        loadChildren: () => import('./features/tariff/tariff.routes')
+          .then(m => m.tariffRoutes)
+      },
+      {
         path: 'management',
         loadChildren: () => import('./features/management/management.routes')
           .then(m => m.managementRoutes)

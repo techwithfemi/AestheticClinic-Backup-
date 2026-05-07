@@ -49,8 +49,8 @@
                 <td>{{ retainership.phoneNo }}</td>
                 <td>{{ retainership.email }}</td>
                 <td>
-                  <span class="badge" [ngClass]="retainership.active === 'Y' ? 'bg-success' : 'bg-danger'">
-                    {{ retainership.active === 'Y' ? 'Active' : 'Inactive' }}
+                  <span class="badge" [ngClass]="retainership.active === 'YES' ? 'bg-success' : 'bg-danger'">
+                    {{ retainership.active === 'YES' ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
                 <td>
@@ -123,7 +123,7 @@
       <div class="mb-3">
         <label for="retainName" class="form-label">{{ 'Company Name' | translate }} *</label>
         <input type="text" class="form-control" id="retainName" formControlName="retainName"
-               [class.is-invalid]="retainershipForm.get('retainName')?.invalid && retainershipForm.get('retainName')?.touched">
+               [class.is-invalid]="retainershipForm.get('retainName')?.invalid && retainershipForm.get('retainershipName')?.touched">
         <div class="invalid-feedback">
           Company name is required and must be less than 255 characters.
         </div>
@@ -190,8 +190,8 @@
           <div class="mb-3">
             <label for="active" class="form-label">{{ 'Active' | translate }}</label>
             <select class="form-control" id="active" formControlName="active">
-              <option value="Y">{{ 'Yes' | translate }}</option>
-              <option value="N">{{ 'No' | translate }}</option>
+              <option value="YES">{{ 'Yes' | translate }}</option>
+              <option value="NO">{{ 'No' | translate }}</option>
             </select>
           </div>
         </div>
@@ -297,8 +297,8 @@
           <div class="mb-3">
             <label for="editActive" class="form-label">{{ 'Active' | translate }}</label>
             <select class="form-control" id="editActive" formControlName="active">
-              <option value="Y">{{ 'Yes' | translate }}</option>
-              <option value="N">{{ 'No' | translate }}</option>
+              <option value="YES">{{ 'Yes' | translate }}</option>
+              <option value="NO">{{ 'No' | translate }}</option>
             </select>
           </div>
         </div>

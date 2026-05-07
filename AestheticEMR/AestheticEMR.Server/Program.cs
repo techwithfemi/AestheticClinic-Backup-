@@ -231,6 +231,7 @@ builder.Services.AddScoped<IHRetainershipService, HRetainershipService>();
 builder.Services.AddScoped<IHPatientService, HPatientService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IServiceTariffService, ServiceTariffService>();
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();

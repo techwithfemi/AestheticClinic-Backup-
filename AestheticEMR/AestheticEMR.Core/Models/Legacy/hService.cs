@@ -1,37 +1,37 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace AestheticEMR.Core.Models.Legacy;
 
-public partial class hService
+public partial class HService
 {
     public string Service { get; set; } = null!;
 
     public string? Category { get; set; }
 
-    public string? TYPE { get; set; }
+    public string? Type { get; set; }
 
     public double? Private { get; set; }
 
-    public double? NHIS { get; set; }
+    public double? Nhis { get; set; }
 
-    public double? HMO { get; set; }
+    public double? Hmo { get; set; }
 
-    public double? MTHLY { get; set; }
+    public double? Mthly { get; set; }
 
-    public double? _3MTHLY { get; set; }
+    public double? _3mthly { get; set; }
 
-    public double? _6MTHLY { get; set; }
+    public double? _6mthly { get; set; }
 
-    public double? NEPA { get; set; }
+    public double? Nepa { get; set; }
 
-    public double? CBN { get; set; }
+    public double? Cbn { get; set; }
 
     public string? Capitated { get; set; }
 
-    public string? revType { get; set; }
+    public string? RevType { get; set; }
 
-    public string? ServiceID { get; set; }
+    public string? ServiceId { get; set; }
 
-    public long SNo { get; set; }
+    public long Sno { get; set; }
 }

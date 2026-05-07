@@ -36,6 +36,7 @@ public class HRetainershipService : IHRetainershipService
         var generatedCode = await GenerateRetainCodeAsync();
         retainership.RetainId = generatedCode;
         retainership.RetainCode = generatedCode;
+        retainership.Active = NormalizeActive(retainership.Active);
 
         _context.HRetainerships.Add(retainership);
         await _context.SaveChangesAsync();
@@ -44,6 +45,7 @@ public class HRetainershipService : IHRetainershipService
 
     public async Task<HRetainership> UpdateAsync(HRetainership retainership)
     {
+        retainership.Active = NormalizeActive(retainership.Active);
         _context.HRetainerships.Update(retainership);
         await _context.SaveChangesAsync();
         return retainership;
@@ -63,6 +65,24 @@ public class HRetainershipService : IHRetainershipService
             _context.HRetainerships.Remove(retainership);
             await _context.SaveChangesAsync();
         }
+    }
+
+    private static string? NormalizeActive(string? active)
+    {
+        if (string.IsNullOrWhiteSpace(active))
+        {
+            return active;
+        }
+
+        var normalized = active.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "Y" => "YES",
+            "YES" => "YES",
+            "N" => "NO",
+            "NO" => "NO",
+            _ => normalized
+        };
     }
 
     private async Task<string> GenerateRetainCodeAsync()

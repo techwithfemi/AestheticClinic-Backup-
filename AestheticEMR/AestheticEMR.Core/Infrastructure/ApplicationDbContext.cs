@@ -63,8 +63,35 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<hAppointment> hAppointments { get; set; }
         public DbSet<hReferal> hReferals { get; set; }
         public DbSet<hRevenueType> hRevenueTypes { get; set; }
-        public DbSet<hService> hServices { get; set; }
+        public DbSet<HService> hServices { get; set; }
         public DbSet<hServiceNHI> hServiceNHIs { get; set; }
+
+        public DbSet<AppDefault> AppDefaults { get; set; }
+        public DbSet<AppSetting> AppSettings { get; set; }
+        public DbSet<HExpenseCat> HExpenseCats { get; set; }
+        public DbSet<QryBillAccum> QryBillAccums { get; set; }
+        public DbSet<QryBillAccumAll> QryBillAccumAlls { get; set; }
+        public DbSet<QryBillAccumAll2> QryBillAccumAll2s { get; set; }
+        public DbSet<QryhFullnameHosp> QryhFullnameHosps { get; set; }
+        public DbSet<QryhVisit> QryhVisits { get; set; }
+        public DbSet<Qryhfullname> Qryhfullnames { get; set; }
+        public DbSet<QryhvisitsForSearch> QryhvisitsForSearches { get; set; }
+        public DbSet<QryhvisitsForToday> QryhvisitsForTodays { get; set; }
+        public DbSet<VwServiceNhi> VwServiceNhis { get; set; }
+        public DbSet<Vwhpatient> Vwhpatients { get; set; }
+
+        public DbSet<Drug> Drugs { get; set; }
+        public DbSet<DrugMaster> DrugMasters { get; set; }
+        public DbSet<DrugNhi> DrugNhis { get; set; }
+        public DbSet<HService> HServices { get; set; }
+        public DbSet<HserviceCat> HserviceCats { get; set; }
+        public DbSet<LabClass> LabClasses { get; set; }
+        public DbSet<LabClassSub> LabClassSubs { get; set; }
+        public DbSet<LabLabel> LabLabels { get; set; }
+        public DbSet<LabService> LabServices { get; set; }
+        public DbSet<LabServiceCat> LabServiceCats { get; set; }
+        public DbSet<LabServiceNhi> LabServiceNhis { get; set; }
+        public DbSet<VwCoyAndNhi> VwCoyAndNhis { get; set; }
         public DbSet<vwEmpCashier> vwEmpCashiers { get; set; }
         public DbSet<vwEmpName> vwEmpNames { get; set; }
         public DbSet<vwEmployee> vwEmployees { get; set; }
@@ -986,700 +1013,268 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.UseTariff).HasMaxLength(50);
             });
 
-            builder.Entity<BillAccum>(entity =>
-            {
-                entity.HasKey(e => new { e.consultID, e.SNo })
-                    .HasName("PK__BillAccu__C81B94055DCC8612")
-                    .HasFillFactor(80);
-
-                entity.ToTable("BillAccum", tb => tb.HasTrigger("Prevent_Signed_Bill_Trigger"));
-
-                entity.HasIndex(e => e.dtDate, "BillAccumDate").HasFillFactor(80);
-                entity.HasIndex(e => e.consultID, "Consult_Idx").HasFillFactor(80);
-
-                entity.Property(e => e.consultID).HasMaxLength(50);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.AppName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(appNameSql);
-                entity.Property(e => e.AppVersion).HasDefaultValue(0);
-                entity.Property(e => e.BillBy)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.BillTo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Capitated)
-                    .HasMaxLength(3)
-                    .HasDefaultValue("YES", "DF_BillAccum_Capitated");
-                entity.Property(e => e.Category)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.ClientName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(hostNameSql);
-                entity.Property(e => e.CoyName)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.DRGCode)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Dept)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.EntryDate)
-                    .HasDefaultValueSql(getDateSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.EntryTime)
-                    .HasDefaultValueSql(getTimeSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.Price).HasColumnType(decimalType);
-                entity.Property(e => e.Qty).HasColumnType(decimalType);
-                entity.Property(e => e.Remarks)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.RevClinic)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.Reversed).HasDefaultValue(false);
-                entity.Property(e => e.ReversedPair).HasDefaultValue(0L);
-                entity.Property(e => e.SubTotalSys)
-                    .HasComputedColumnSql("(isnull([qty],(0))*isnull([price],(0)))", false)
-                    .HasColumnType("decimal(37, 4)");
-                entity.Property(e => e.TranID)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Usage).HasMaxLength(500);
-                entity.Property(e => e.attendedTo).HasDefaultValue(false, "DF_BillAccum_attendedTo");
-                entity.Property(e => e.billtype)
-                    .HasMaxLength(150)
-                    .IsUnicode(false);
-                entity.Property(e => e.conID)
-                    .HasMaxLength(50)
-                    .HasComment("")
-                    .HasDefaultValueSql("(NULL)", "DF_BillAccum_conID");
-                entity.Property(e => e.drgName)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.dtDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.isBilled).HasDefaultValue(false, "DF_BillAccum_isBilled");
-                entity.Property(e => e.isOLD).HasDefaultValue(false);
-                entity.Property(e => e.isRct).HasDefaultValue(false, "DF__BillAccum__isRct__503293D2");
-                entity.Property(e => e.pNO).HasMaxLength(50);
-                entity.Property(e => e.revType)
-                    .HasMaxLength(50)
-                    .HasDefaultValue("OTHERS", "DF__BillAccum__revTy__5872D418");
-                entity.Property(e => e.subTotal).HasColumnType(decimalType);
-                entity.Property(e => e.suppres).HasDefaultValue(false, "DF__billaccum__suppr__6E96540A");
-                entity.Property(e => e.treatedBy)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-            });
-
-            builder.Entity<Billing>(entity =>
-            {
-                entity.HasKey(e => e.billNO).HasFillFactor(80);
-
-                entity.ToTable("Billing");
-
-                entity.Property(e => e.billNO).HasMaxLength(50);
-                entity.Property(e => e.AdmDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.AmountBilled).HasColumnType(decimalType);
-                entity.Property(e => e.AmountBilledInWord).HasMaxLength(950);
-                entity.Property(e => e.AmountPaid)
-                    .HasDefaultValue(0m, "DF_Billing_AmountPaid")
-                    .HasColumnType(decimalType);
-                entity.Property(e => e.AmountSigned)
-                    .HasDefaultValue(0m, "DF__Billing__AmountS__182E31D1")
-                    .HasColumnType(decimalType);
-                entity.Property(e => e.AmtBF).HasColumnType("decimal(18, 0)");
-                entity.Property(e => e.AppName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(appNameSql, "DF__Billing__AppName__6C1AA569");
-                entity.Property(e => e.ApprvCode)
-                    .HasMaxLength(8000)
-                    .IsUnicode(false);
-                entity.Property(e => e.BillingMonth).HasMaxLength(50);
-                entity.Property(e => e.ClientName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(hostNameSql, "DF__Billing__ClientN__6B268130");
-                entity.Property(e => e.DebtBF)
-                    .HasDefaultValue(0m, "DF__Billing__DebtBF__2E527D1A")
-                    .HasColumnType(decimalType);
-                entity.Property(e => e.DischDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.Discount)
-                    .HasDefaultValue(0m, "DF__Billing__Discoun__008BB26A")
-                    .HasColumnType(decimalType);
-                entity.Property(e => e.EntryDate)
-                    .HasDefaultValueSql(getDateSql, "DF__Billing__EntryDa__1DE70B27")
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.EntryTime)
-                    .HasDefaultValueSql(getTimeSql, "DF__Billing__EntryTi__1BFEC2B5")
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.ID).ValueGeneratedOnAdd();
-                entity.Property(e => e.InvNo).HasMaxLength(50);
-                entity.Property(e => e.bDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.billType)
-                    .HasMaxLength(250)
-                    .IsUnicode(false);
-                entity.Property(e => e.clientID).HasMaxLength(150);
-                entity.Property(e => e.consultDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.diagnosis)
-                    .HasMaxLength(8000)
-                    .IsUnicode(false);
-                entity.Property(e => e.isPaid).HasDefaultValue(false, "DF_Billing_isPaid");
-                entity.Property(e => e.isPost).HasDefaultValue(false, "DF_Billing_isPost");
-                entity.Property(e => e.isProcess).HasDefaultValue(false, "DF_Billing_isProcess");
-                entity.Property(e => e.isSigned).HasDefaultValue(false, "DF__Billing__isSigne__173A0D98");
-                entity.Property(e => e.pNo).HasMaxLength(50);
-                entity.Property(e => e.profFee).HasColumnType("decimal(18, 0)");
-                entity.Property(e => e.timeVal)
-                    .HasDefaultValueSql("(getdate())", "DF__Billing__timeVal__785593C5")
-                    .HasColumnType(dateTimeSql);
-            });
-
             builder.Entity<BillingDetail>(entity =>
             {
-                entity.HasKey(e => new { e.billNO, e.SNO })
-                    .HasName("PK__BillingD__B13C04EF60A8F2BD")
-                    .HasFillFactor(80);
-
-                entity.HasIndex(e => e.billNO, "ConsultID_idx").HasFillFactor(80);
-
-                entity.Property(e => e.billNO).HasMaxLength(50);
-                entity.Property(e => e.AmtPaid)
-                    .HasDefaultValue(0m, "DF_BillingDetails_AmtPaid")
-                    .HasColumnType(decimalType);
-                entity.Property(e => e.AppName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(appNameSql);
-                entity.Property(e => e.AppVersion).HasDefaultValue(0, "DF_BillingDetails_AppVersion");
-                entity.Property(e => e.BillBy)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.BillHead)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.BillTo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Capitated)
-                    .HasMaxLength(3)
-                    .HasDefaultValue("YES", "DF_BillingDetails_Capitated");
-                entity.Property(e => e.Category)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.ClientName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(hostNameSql);
-                entity.Property(e => e.CoyName)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.DRGCode)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Dept)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Dosage).HasMaxLength(500);
-                entity.Property(e => e.EntryDate)
-                    .HasDefaultValueSql(getDateSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.EntryTime)
-                    .HasDefaultValueSql(getTimeSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.Remarks)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.RevClinic)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.Reversed).HasDefaultValue(false);
-                entity.Property(e => e.ReversedPair).HasDefaultValue(0L);
-                entity.Property(e => e.TranID)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.billType)
-                    .HasMaxLength(250)
-                    .IsUnicode(false)
-                    .HasDefaultValue("SERVICE", "DF_BillingDetails_billType");
-                entity.Property(e => e.conID).HasMaxLength(50);
-                entity.Property(e => e.drgName)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.dtDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.isOLD).HasDefaultValue(false, "DF__BillingDe__isOLD__359E9927");
-                entity.Property(e => e.revType)
-                    .HasMaxLength(50)
-                    .HasDefaultValue("OTHERS", "DF__BillingDe__revTy__5966F851");
-                entity.Property(e => e.subTotal).HasColumnType(decimalType);
-                entity.Property(e => e.suppres).HasDefaultValue(false);
-                entity.Property(e => e.treatedBy)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
+                entity.HasKey(e => e.SNO);
+                entity.ToTable("BillingDetails");
+                entity.Property(e => e.SNO).ValueGeneratedOnAdd();
             });
 
             builder.Entity<BillsForClient>(entity =>
             {
-                entity.HasNoKey();
-
-                entity.Property(e => e.AmountBilled).HasColumnType(decimalType);
-                entity.Property(e => e.AmountBilledInWord).HasMaxLength(950);
-                entity.Property(e => e.AmountInvoiced).HasColumnType(decimalType);
-                entity.Property(e => e.AmountPaid).HasColumnType(decimalType);
-                entity.Property(e => e.AmtBF).HasColumnType("decimal(18, 0)");
-                entity.Property(e => e.AttendedToByClient).HasDefaultValue(false);
-                entity.Property(e => e.BatchNo).HasMaxLength(50);
-                entity.Property(e => e.BillMonth).HasMaxLength(50);
-                entity.Property(e => e.BillYear).HasMaxLength(50);
-                entity.Property(e => e.CoyCode).HasMaxLength(50);
-                entity.Property(e => e.InvDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.InvNo).HasMaxLength(50);
+                entity.HasKey(e => e.SNO);
+                entity.ToTable("BillsForClients");
                 entity.Property(e => e.SNO).ValueGeneratedOnAdd();
-                entity.Property(e => e.isOLd).HasDefaultValue(false, "DF_BillsForClients_isOLd");
-                entity.Property(e => e.isPost).HasDefaultValue(false);
+            });
+
+            builder.Entity<AppDefault>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.ToTable("AppDefaults");
+                entity.Property(e => e.Id).HasColumnName("ID");
+                entity.Property(e => e.Idval).HasColumnName("IDVal");
+            });
+
+            builder.Entity<AppSetting>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.ToTable("AppSettings");
+                entity.Property(e => e.Id).HasColumnName("ID");
+                entity.Property(e => e.Idval).HasColumnName("IDVal");
+                entity.Property(e => e.Idval2).HasColumnName("IDVal2");
+                entity.Property(e => e.Idval3).HasColumnName("IDVal3");
+                entity.Property(e => e.Idval4).HasColumnName("IDVal4");
+                entity.Property(e => e.Idval5).HasColumnName("IDVal5");
+                entity.Property(e => e.IdvalCode).HasColumnName("IDValCode");
+                entity.Property(e => e.IdvalPix).HasColumnName("IDValPix");
+            });
+
+            builder.Entity<HExpenseCat>(entity =>
+            {
+                entity.HasKey(e => e.CatCode);
+                entity.ToTable("hExpenseCat");
+                entity.Property(e => e.AcctId).HasColumnName("AcctID");
+            });
+
+            builder.Entity<BillAccum>(entity =>
+            {
+                entity.HasKey(e => e.SNo);
+                entity.ToTable("BillAccum");
+                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
+            });
+
+            builder.Entity<QryBillAccum>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryBillAccum");
+            });
+
+            builder.Entity<QryBillAccumAll>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryBillAccumAll");
+            });
+
+            builder.Entity<QryBillAccumAll2>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryBillAccumAll2");
+            });
+
+            builder.Entity<QryhFullnameHosp>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhFullnameHosp");
+            });
+
+            builder.Entity<QryhVisit>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhVisits");
+            });
+
+            builder.Entity<Qryhfullname>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhfullname");
+            });
+
+            builder.Entity<QryhvisitsForSearch>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhvisitsForSearch");
+            });
+
+            builder.Entity<QryhvisitsForToday>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhvisitsForToday");
+            });
+
+            builder.Entity<VwServiceNhi>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwServiceNHIS");
+                entity.Property(e => e.CoyId).HasColumnName("CoyID");
+                entity.Property(e => e.Sno).HasColumnName("SNO");
+            });
+
+            builder.Entity<Vwhpatient>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhpatients");
+                entity.Property(e => e.Pno).HasColumnName("PNo");
+            });
+
+            builder.Entity<hServiceNHI>(entity =>
+            {
+                entity.HasKey(e => e.SNO);
+                entity.ToTable("hServiceNHIS");
+            });
+
+            builder.Entity<Billing>(entity =>
+            {
+                entity.HasKey(e => e.billNO);
+                entity.ToTable("Billing");
             });
 
             builder.Entity<DrugNHISListEntered>(entity =>
             {
-                entity.HasKey(e => new { e.CoyID, e.Type }).HasFillFactor(80);
-
+                entity.HasKey(e => new { e.CoyID, e.Type });
                 entity.ToTable("DrugNHISListEntered");
-
-                entity.Property(e => e.CoyID).HasMaxLength(50);
-                entity.Property(e => e.Type).HasMaxLength(250);
-                entity.Property(e => e.Remarks).HasMaxLength(50);
-                entity.Property(e => e.UseTariff).HasMaxLength(50);
             });
 
             builder.Entity<Employee>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToView("Employees");
-
-                entity.Property(e => e.AcadQual).HasMaxLength(250);
-                entity.Property(e => e.BioID).HasMaxLength(52);
-                entity.Property(e => e.DOB).HasColumnType(dateTimeSql);
-                entity.Property(e => e.DeptID).HasMaxLength(50);
-                entity.Property(e => e.Designation).HasMaxLength(50);
-                entity.Property(e => e.DtExpectedConfirm).HasColumnType(dateTimeSql);
-                entity.Property(e => e.Email).HasMaxLength(50);
-                entity.Property(e => e.EmpCat).HasMaxLength(50);
-                entity.Property(e => e.EmpStatus).HasMaxLength(50);
-                entity.Property(e => e.FirstGrtAddress).HasMaxLength(250);
-                entity.Property(e => e.FirstGrtname).HasMaxLength(50);
-                entity.Property(e => e.FirstName).HasMaxLength(50);
-                entity.Property(e => e.FirstRef).HasMaxLength(50);
-                entity.Property(e => e.FirstRefAddress).HasMaxLength(250);
-                entity.Property(e => e.HireDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.IDVal).HasMaxLength(50);
-                entity.Property(e => e.JobDesc).HasMaxLength(3500);
-                entity.Property(e => e.LGovt).HasMaxLength(50);
-                entity.Property(e => e.LastName).HasMaxLength(50);
-                entity.Property(e => e.NHSNo).HasMaxLength(50);
-                entity.Property(e => e.NOK).HasMaxLength(250);
-                entity.Property(e => e.NOKAddress).HasMaxLength(250);
-                entity.Property(e => e.NOKPhone).HasMaxLength(50);
-                entity.Property(e => e.NOKRel).HasMaxLength(50);
-                entity.Property(e => e.NSITFNo).HasMaxLength(50);
-                entity.Property(e => e.OtherName).HasMaxLength(50);
-                entity.Property(e => e.Phone).HasMaxLength(50);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.SalaryScale).HasMaxLength(100);
-                entity.Property(e => e.SecondGrtAddress).HasMaxLength(250);
-                entity.Property(e => e.SecondGrtName).HasMaxLength(50);
-                entity.Property(e => e.SecondRef).HasMaxLength(50);
-                entity.Property(e => e.SecondRefAddress).HasMaxLength(250);
-                entity.Property(e => e.Sex).HasMaxLength(50);
-                entity.Property(e => e.State).HasMaxLength(50);
-                entity.Property(e => e.UnitID).HasMaxLength(50);
-                entity.Property(e => e.empID).HasMaxLength(50);
-                entity.Property(e => e.empPix).HasColumnType("image");
-                entity.Property(e => e.homeAddress).HasMaxLength(250);
-                entity.Property(e => e.maidenName).HasMaxLength(50);
-                entity.Property(e => e.marital).HasMaxLength(50);
-                entity.Property(e => e.spouseName).HasMaxLength(50);
+                entity.HasNoKey();
+                entity.ToView("Employees");
             });
 
             builder.Entity<Payment>(entity =>
             {
-                entity.HasKey(e => e.ReceiptNo).HasFillFactor(80);
-
-                entity.Property(e => e.ReceiptNo).HasMaxLength(50);
-                entity.Property(e => e.AmountBilled).HasColumnType(decimalType);
-                entity.Property(e => e.AmountInWord).HasMaxLength(550);
-                entity.Property(e => e.AmountPaid).HasColumnType(decimalType);
-                entity.Property(e => e.AppName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(appNameSql);
-                entity.Property(e => e.BankCode).HasMaxLength(50);
-                entity.Property(e => e.ChequeDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.ChequeNo).HasMaxLength(50);
-                entity.Property(e => e.ClientName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(hostNameSql);
-                entity.Property(e => e.EntryDate)
-                    .HasDefaultValueSql(getDateSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.EntryTime)
-                    .HasDefaultValueSql(getTimeSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.ReceiptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.Receivedby).HasMaxLength(50);
-                entity.Property(e => e.Remarks)
-                    .HasMaxLength(1000)
-                    .IsUnicode(false);
-                entity.Property(e => e.RetainCode).HasMaxLength(50);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.ValueDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.billNO).HasMaxLength(50);
-                entity.Property(e => e.clinicID).HasMaxLength(50);
-                entity.Property(e => e.isPost).HasDefaultValue(false, "DF_Payments_isPost");
-                entity.Property(e => e.pNO).HasMaxLength(50);
-                entity.Property(e => e.payType).HasMaxLength(50);
-                entity.Property(e => e.paymentFor).HasMaxLength(1000);
-                entity.Property(e => e.rTime).HasColumnType(dateTimeSql);
-                entity.Property(e => e.suppres).HasDefaultValue(false);
+                entity.HasKey(e => e.ReceiptNo);
             });
 
             builder.Entity<PaymentDetail>(entity =>
             {
                 entity.HasNoKey();
-
-                entity.Property(e => e.AccountNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.AmountPaid).HasColumnType(decimalType);
-                entity.Property(e => e.AmountToPay).HasColumnType(decimalType);
-                entity.Property(e => e.BillDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.BillItem)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.ReceiptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.ReceiptNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.RevType)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.billNO).HasMaxLength(50);
-                entity.Property(e => e.suppres).HasDefaultValue(false);
             });
 
             builder.Entity<PaymentType>(entity =>
             {
                 entity.HasNoKey();
-
-                entity.Property(e => e.AccountNo)
-                    .HasMaxLength(20)
-                    .IsUnicode(false);
-                entity.Property(e => e.AmountPaid).HasColumnType(decimalType);
-                entity.Property(e => e.AppName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(appNameSql);
-                entity.Property(e => e.ClientName)
-                    .HasMaxLength(500)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql(hostNameSql);
-                entity.Property(e => e.EntryDate)
-                    .HasDefaultValueSql(getDateSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.EntryTime)
-                    .HasDefaultValueSql(getTimeSql)
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.PayType)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.ReceiptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.ReceiptNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.TranID)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.isPost).HasDefaultValue(false, "DF__PaymentTy__isPos__14DCC3DA");
-                entity.Property(e => e.reversed).HasDefaultValue(false);
-                entity.Property(e => e.suppres).HasDefaultValue(false);
             });
 
             builder.Entity<PaymentTypeDetail>(entity =>
             {
                 entity.HasNoKey();
-
-                entity.Property(e => e.AccountNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.AmountPaid).HasColumnType(decimalType);
-                entity.Property(e => e.AmountToPay).HasColumnType(decimalType);
-                entity.Property(e => e.BillDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.BillItem)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.PayType)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.ReceiptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.ReceiptNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.RevType)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.billNO).HasMaxLength(50);
             });
 
             builder.Entity<hAppointment>(entity =>
             {
-                entity
-                    .HasKey(e => e.ID);
-
+                entity.HasKey(e => e.ID);
                 entity.ToTable("hAppointment");
-
-                entity.HasIndex(e => e.ApptDate, "idx_ApptDate").HasFillFactor(80);
-
-                entity.Property(e => e.ApptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.ApptTime).HasColumnType(dateTimeSql);
-                entity.Property(e => e.EmpID)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.ID).ValueGeneratedOnAdd();
-                entity.Property(e => e.clinicType)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
-                entity.Property(e => e.entryDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.entryTime).HasColumnType(dateTimeSql);
-                entity.Property(e => e.pno)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.remarks)
-                    .HasMaxLength(1000)
-                    .IsUnicode(false);
             });
 
             builder.Entity<hReferal>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToTable("hReferal");
-
-                entity.Property(e => e.AttendedTo).HasDefaultValue(false, "DF_hReferal_AttendedTo");
-                entity.Property(e => e.AttendedToByRec).HasDefaultValue(false);
-                entity.Property(e => e.Comments).HasMaxLength(500);
-                entity.Property(e => e.EmpID)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.ID).ValueGeneratedOnAdd();
-                entity.Property(e => e.Remarks)
-                    .HasMaxLength(5000)
-                    .IsUnicode(false);
-                entity.Property(e => e.apptDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.apptTime).HasColumnType(dateTimeSql);
-                entity.Property(e => e.clientCat).HasMaxLength(50);
-                entity.Property(e => e.conID).HasMaxLength(50);
-                entity.Property(e => e.consultID).HasMaxLength(50);
-                entity.Property(e => e.pNo).HasMaxLength(50);
-                entity.Property(e => e.refAddress).HasMaxLength(2000);
-                entity.Property(e => e.refDate).HasColumnType(dateTimeSql);
-                entity.Property(e => e.refReason).HasMaxLength(1000);
-                entity.Property(e => e.refTime).HasColumnType(dateTimeSql);
-                entity.Property(e => e.referTo).HasMaxLength(500);
-                entity.Property(e => e.suppres).HasDefaultValue(false, "DF__hreferal__suppre__7266E4EE");
+                entity.HasNoKey();
+                entity.ToTable("hReferal");
             });
 
             builder.Entity<hRevenueType>(entity =>
             {
-                entity.HasKey(e => e.RevType).HasFillFactor(80);
-
+                entity.HasKey(e => e.RevType);
                 entity.ToTable("hRevenueType");
-
-                entity.Property(e => e.RevType).HasMaxLength(50);
-                entity.Property(e => e.AccountNo)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
-                entity.Property(e => e.Active)
-                    .HasMaxLength(3)
-                    .IsUnicode(false);
-                entity.Property(e => e.CatRemarks).HasMaxLength(50);
-                entity.Property(e => e.PatNameDumm).HasMaxLength(150);
-                entity.Property(e => e.RevDateDumm)
-                    .HasDefaultValueSql("(getdate())", "DF_hRevenueType_RevDateDumm")
-                    .HasColumnType(dateTimeSql);
-                entity.Property(e => e.SNO).ValueGeneratedOnAdd();
-                entity.Property(e => e.Serial).HasDefaultValue(99, "DF_hRevenueType_Serial");
-                entity.Property(e => e.Subtotal).HasDefaultValue(0.0, "DF_hRevenueType_Subtotal");
             });
 
-            builder.Entity<hService>(entity =>
+            builder.Entity<HService>(entity =>
             {
-                entity.HasKey(e => e.Service)
-                    .HasName("PK_hServices2")
-                    .HasFillFactor(80);
-
-                entity.Property(e => e.Service)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.Capitated).HasMaxLength(3);
-                entity.Property(e => e.Category)
-                    .HasMaxLength(100)
-                    .IsUnicode(false);
-                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
-                entity.Property(e => e.ServiceID)
-                    .HasMaxLength(10)
-                    .IsUnicode(false);
-                entity.Property(e => e.TYPE).HasMaxLength(50);
-                entity.Property(e => e._3MTHLY).HasColumnName("3MTHLY");
-                entity.Property(e => e._6MTHLY).HasColumnName("6MTHLY");
-                entity.Property(e => e.revType).HasMaxLength(50);
+                entity.HasKey(e => e.Service);
+                entity.ToTable("hServices");
             });
 
-            builder.Entity<hServiceNHI>(entity =>
+            builder.Entity<Drug>(entity =>
             {
-                entity.HasKey(e => e.SNO)
-                    .HasName("hServiceNHIS_pk")
-                    .HasFillFactor(80);
+                entity.HasKey(e => new { e.DrgName, e.LocId });
+                entity.Property(e => e.LocId).HasColumnName("LocID");
+            });
 
-                entity.ToTable("hServiceNHIS");
+            builder.Entity<DrugMaster>(entity =>
+            {
+                entity.HasKey(e => e.DrgName);
+                entity.ToTable("DrugMaster");
+            });
 
-                entity.Property(e => e.Capitated)
-                    .HasMaxLength(50)
-                    .HasDefaultValue("NO", "DF__hServiceN__Capit__3B818FAF");
-                entity.Property(e => e.Category)
-                    .HasMaxLength(500)
-                    .IsUnicode(false);
-                entity.Property(e => e.Company).HasMaxLength(255);
-                entity.Property(e => e.CoyName).HasMaxLength(250);
-                entity.Property(e => e.Remarks).HasMaxLength(255);
-                entity.Property(e => e.RevType)
-                    .HasMaxLength(200)
-                    .IsUnicode(false);
-                entity.Property(e => e.Service).HasMaxLength(255);
-                entity.Property(e => e.TariffStatus).HasMaxLength(50);
-                entity.Property(e => e.UsersCat)
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
+            builder.Entity<DrugNhi>(entity =>
+            {
+                entity.HasKey(e => new { e.DrgName, e.Company });
+                entity.ToTable("DrugNHIS");
+            });
+
+            builder.Entity<HserviceCat>(entity =>
+            {
+                entity.HasKey(e => e.CatName);
+                entity.ToTable("HserviceCat");
+            });
+
+            builder.Entity<LabClass>(entity =>
+            {
+                entity.HasKey(e => e.ClassName);
+            });
+
+            builder.Entity<LabClassSub>(entity =>
+            {
+                entity.HasKey(e => e.SubClassName);
+                entity.ToTable("LabClassSub");
+            });
+
+            builder.Entity<LabLabel>(entity =>
+            {
+                entity.HasKey(e => new { e.LblDesc, e.TagName });
+            });
+
+            builder.Entity<LabService>(entity =>
+            {
+                entity.HasKey(e => e.DrgName);
+            });
+
+            builder.Entity<LabServiceCat>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToTable("LabServiceCat");
+            });
+
+            builder.Entity<LabServiceNhi>(entity =>
+            {
+                entity.HasKey(e => e.Sno);
+                entity.ToTable("LabServiceNHIS");
+                entity.Property(e => e.Sno).HasColumnName("SNO");
+            });
+
+            builder.Entity<VwCoyAndNhi>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwCoyAndNHIS");
+                entity.Property(e => e.CoyId).HasColumnName("CoyID");
             });
 
             builder.Entity<vwEmpCashier>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToView("vwEmpCashier");
-
-                entity.Property(e => e.EmpName).HasMaxLength(101);
-                entity.Property(e => e.empID).HasMaxLength(50);
+                entity.HasNoKey();
+                entity.ToView("vwEmpCashier");
             });
 
             builder.Entity<vwEmpName>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToView("vwEmpName");
-
-                entity.Property(e => e.Dept).HasMaxLength(50);
-                entity.Property(e => e.Designation).HasMaxLength(100);
-                entity.Property(e => e.EmpName).HasMaxLength(101);
-                entity.Property(e => e.empID).HasMaxLength(50);
+                entity.HasNoKey();
+                entity.ToView("vwEmpName");
             });
 
             builder.Entity<vwEmployee>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToView("vwEmployees");
-
-                entity.Property(e => e.Authorizer).HasMaxLength(50);
-                entity.Property(e => e.DeptName).HasMaxLength(50);
-                entity.Property(e => e.Designation).HasMaxLength(100);
-                entity.Property(e => e.Email).HasMaxLength(50);
-                entity.Property(e => e.EmpCat).HasMaxLength(50);
-                entity.Property(e => e.EmpNo).HasMaxLength(50);
-                entity.Property(e => e.FirstName).HasMaxLength(50);
-                entity.Property(e => e.Phone).HasMaxLength(50);
-                entity.Property(e => e.Sex).HasMaxLength(50);
-                entity.Property(e => e.Surname).HasMaxLength(50);
-                entity.Property(e => e.homeAddress).HasMaxLength(250);
-                entity.Property(e => e.statName).HasMaxLength(50);
-            });
-
-            builder.Entity<AestheticPatient>(entity =>
-            {
-                entity.ToTable("AestheticPatients");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Pno).HasMaxLength(50).IsUnicode(false);
-                entity.Property(e => e.Email).HasMaxLength(100);
-                entity.Property(e => e.PhoneNumber).HasMaxLength(30).IsUnicode(false);
-                entity.Property(e => e.SkinType).HasMaxLength(50);
-                entity.Property(e => e.MedicalHistory).HasMaxLength(4000).IsUnicode(false);
-
-                entity.HasMany(e => e.Consultations)
-                      .WithOne(c => c.Patient)
-                      .HasForeignKey(c => c.PatientId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            builder.Entity<AestheticConsultation>(entity =>
-            {
-                entity.ToTable("AestheticConsultations");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.ProcedureType).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.Provider).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.TreatmentPlan).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.ProcedureDescription).HasMaxLength(4000).IsUnicode(false);
-                entity.Property(e => e.RisksAndComplications).HasMaxLength(4000).IsUnicode(false);
-                entity.Property(e => e.PostTreatmentInstructions).HasMaxLength(4000).IsUnicode(false);
-                entity.Property(e => e.DeviceSettings).HasMaxLength(1000).IsUnicode(false);
-                entity.Property(e => e.AreaTreated).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.ConsentNotes).HasMaxLength(2000).IsUnicode(false);
-
-                entity.Property(e => e.DeviceUsed).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.Wavelength).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.SpotSize).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.Fluence).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.PulseDuration).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.CoolingMethod).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.SkinReaction).HasMaxLength(500).IsUnicode(false);
-
-                entity.Property(e => e.Indication).HasMaxLength(500).IsUnicode(false);
-                entity.Property(e => e.BrandUsed).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.Dilution).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.UnitsUsed).HasColumnType("decimal(18, 2)");
-                entity.Property(e => e.InjectionMapping).HasMaxLength(2000).IsUnicode(false);
-                entity.Property(e => e.LotNumber).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.FollowUpReview).HasMaxLength(2000).IsUnicode(false);
-
-                entity.Property(e => e.ConsentGiven).HasDefaultValue(false);
-                entity.Property(e => e.ConsultationDate).HasColumnType(dateTimeSql);
-
-                entity.HasMany(e => e.Photos)
-                      .WithOne(p => p.Consultation)
-                      .HasForeignKey(p => p.ConsultationId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            builder.Entity<AestheticPhoto>(entity =>
-            {
-                entity.ToTable("AestheticPhotos");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FilePath).HasMaxLength(4000).IsUnicode(false);
-                entity.Property(e => e.FileName).HasMaxLength(200).IsUnicode(false);
-                entity.Property(e => e.Type).HasMaxLength(100).IsUnicode(false);
-                entity.Property(e => e.ConsultId).HasMaxLength(50).IsUnicode(false);
-                entity.Property(e => e.PNo).HasMaxLength(50).IsUnicode(false);
+                entity.HasNoKey();
+                entity.ToView("vwEmployees");
             });
         }
 
@@ -1738,6 +1333,2727 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

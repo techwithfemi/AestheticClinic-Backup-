@@ -86,6 +86,21 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HRetainership, HRetainershipVM>()
                 .ReverseMap();
 
+            CreateMap<hServiceNHI, ServiceTariffVM>()
+                .ForMember(d => d.Sno, map => map.MapFrom(s => s.SNO))
+                .ForMember(d => d.CoyId, map => map.MapFrom(s => s.Company));
+
+            CreateMap<VwServiceNhi, ServiceTariffVM>()
+                .ForMember(d => d.CoyId, map => map.MapFrom(s => s.CoyId))
+                .ForMember(d => d.CoyName, map => map.MapFrom(s => s.Company))
+                .ForMember(d => d.Company, map => map.MapFrom(s => s.CoyId));
+
+            CreateMap<ServiceTariffVM, hServiceNHI>()
+                .ForMember(d => d.SNO, map => map.MapFrom(s => s.Sno))
+                .ForMember(d => d.Company, map => map.MapFrom(s => !string.IsNullOrWhiteSpace(s.Company) ? s.Company : s.CoyId));
+
+            CreateMap<VwCoyAndNhi, TariffCompanyVM>();
+
             CreateMap<HRecord, AttendanceVM>()
                 .ReverseMap()
                 .ForMember(d => d.ConsultId, map => map.Ignore())

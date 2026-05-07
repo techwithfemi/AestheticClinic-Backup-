@@ -80,7 +80,7 @@ export class RetainershipsComponent implements OnInit {
       debt: [0, [Validators.min(0)]],
       acctId: ['', Validators.maxLength(50)],
       debtType: ['', Validators.maxLength(50)],
-      active: ['Y'],
+      active: ['YES'],
       useTariff: ['N'],
       pcent: [0, [Validators.min(0), Validators.max(100)]],
       billEndDate: [31, [Validators.min(1), Validators.max(31)]],
@@ -125,7 +125,7 @@ export class RetainershipsComponent implements OnInit {
     this.isEditing = false;
     this.currentRetainership = null;
     this.retainershipForm.reset({
-      active: 'Y',
+      active: 'YES',
       useTariff: 'N',
       pcent: 0,
       billEndDate: 31,
@@ -151,12 +151,14 @@ export class RetainershipsComponent implements OnInit {
     }
 
     const formValue = this.retainershipForm.getRawValue() as HRetainership;
+    formValue.active = this.normalizeActiveValue(formValue.active);
     this.alertService.startLoadingMessage();
 
     if (this.isEditing && this.currentRetainership) {
       const payload: HRetainership = {
         ...this.currentRetainership,
         ...formValue,
+        active: this.normalizeActiveValue(formValue.active),
         retainId: this.currentRetainership.retainId,
         retainCode: this.currentRetainership.retainCode
       };
@@ -337,8 +339,25 @@ export class RetainershipsComponent implements OnInit {
       phoneNo: getString('phoneNo', 'PhoneNo'),
       email: getString('email', 'Email'),
       contact: getString('contact', 'Contact'),
-      active: getString('active', 'Active')
+      active: this.normalizeActiveValue(getString('active', 'Active'))
     };
+  }
+
+  private normalizeActiveValue(value?: string): string | undefined {
+    if (!value) {
+      return value;
+    }
+
+    const normalized = value.trim().toUpperCase();
+    if (normalized === 'Y' || normalized === 'YES') {
+      return 'YES';
+    }
+
+    if (normalized === 'N' || normalized === 'NO') {
+      return 'NO';
+    }
+
+    return normalized;
   }
 
   private getErrorMessage(error: unknown): string {
