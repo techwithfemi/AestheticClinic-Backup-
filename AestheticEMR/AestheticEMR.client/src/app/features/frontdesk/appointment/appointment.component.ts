@@ -424,7 +424,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
   }
 
   private getTodayInputValue(): string {
-    return new Date().toISOString().split('T')[0];
+    return this.toLocalDateInputValue(new Date());
   }
 
   private getNowTimeValue(): string {
@@ -442,7 +442,15 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
       return '';
     }
 
-    return date.toISOString().split('T')[0];
+    return this.toLocalDateInputValue(date);
+  }
+
+  private toLocalDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 
   private toTimeInputValue(value?: string | null): string {

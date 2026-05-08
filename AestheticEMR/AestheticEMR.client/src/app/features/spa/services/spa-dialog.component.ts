@@ -27,6 +27,11 @@ export interface SpaPatientOption {
   firstName: string;
   lastName: string;
   label: string;
+  fullName?: string;
+  photo?: string;
+  dateOfBirth?: string;
+  company?: string;
+  phoneNumber?: string;
 }
 
 export interface SpaDialogResult {
@@ -60,6 +65,25 @@ export interface SpaDialogResult {
       </div>
 
       <mat-dialog-content>
+        <div class="patient-header">
+          @if (selectedPatientInfo?.photo) {
+            <button class="photo-button" type="button" (click)="togglePhotoZoom()" [attr.aria-label]="isPhotoZoomed ? 'Zoom out photo' : 'Zoom in photo'">
+              <img class="patient-photo" [class.zoomed]="isPhotoZoomed" [src]="getPatientPhotoSource(selectedPatientInfo?.photo)" alt="Patient photo" />
+            </button>
+          } @else {
+            <div class="patient-photo placeholder">
+              <mat-icon>person</mat-icon>
+            </div>
+          }
+
+          <div class="patient-meta">
+            <div class="meta-item"><span class="label">Full Name:</span> <span>{{ selectedPatientFullName }}</span></div>
+            <div class="meta-item"><span class="label">Age:</span> <span>{{ selectedPatientAge ?? '—' }}</span></div>
+            <div class="meta-item"><span class="label">Company:</span> <span>{{ selectedPatientInfo?.company || '—' }}</span></div>
+            <div class="meta-item"><span class="label">Phone:</span> <span>{{ selectedPatientInfo?.phoneNumber || '—' }}</span></div>
+          </div>
+        </div>
+
         <form [formGroup]="form">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Search Patient</mat-label>
@@ -160,6 +184,16 @@ export interface SpaDialogResult {
     .toggles { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
     mat-dialog-content { max-height: 70vh; overflow-y: auto; overflow-x: hidden; padding: 0; margin: 0; }
     mat-form-field { width: 100%; }
+    .patient-header { display: flex; gap: 12px; align-items: center; border: 1px solid #e0e0e0; border-radius: 8px; min-height: 88px; padding: 10px 12px; margin-bottom: 12px; background: #fafafa; }
+    .photo-button { padding: 0; border: none; background: transparent; cursor: zoom-in; border-radius: 50%; line-height: 0; }
+    .photo-button:focus-visible { outline: 2px solid #1976d2; outline-offset: 2px; }
+    .patient-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #f1f1f1; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; color: #888; transition: transform 0.2s ease; transform-origin: center; }
+    .patient-photo.zoomed { transform: scale(2.2); }
+    .patient-photo.placeholder mat-icon { font-size: 32px; width: 32px; height: 32px; }
+    .patient-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; min-width: 0; flex: 1; }
+    .meta-item { font-size: 0.9rem; color: #444; display: flex; gap: 6px; min-width: 0; }
+    .meta-item span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta-item .label { color: #666; min-width: 72px; }
   `]
 })
 export class SpaDialogComponent {
@@ -171,6 +205,8 @@ export class SpaDialogComponent {
 
   patientSearchText = '';
   serviceTypes: string[] = [];
+
+  isPhotoZoomed = false;
 
   get filteredPatientOptions(): SpaPatientOption[] {
     const term = this.patientSearchText.trim().toLowerCase();
@@ -307,8 +343,6 @@ export class SpaDialogComponent {
             this.form.controls.indication.setValue('');
           }
         }
-      },
-      error: () => {
       }
     });
   }
@@ -333,5 +367,54 @@ export class SpaDialogComponent {
     }
 
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  get selectedPatientInfo(): SpaPatientOption | undefined {
+    const key = this.form.controls.patientKey.value;
+    return this.data.patientOptions.find(x => x.label === key);
+  }
+
+  get selectedPatientFullName(): string {
+    const selected = this.selectedPatientInfo;
+    if (!selected) {
+      return '—';
+    }
+
+    const resolved = selected.fullName ?? `${selected.firstName} ${selected.lastName}`.trim();
+    return resolved || '—';
+  }
+
+  get selectedPatientAge(): number | null {
+    const dob = this.selectedPatientInfo?.dateOfBirth;
+    if (!dob) {
+      return null;
+    }
+
+    const date = new Date(dob);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - date.getFullYear();
+    const monthDiff = today.getMonth() - date.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+      age--;
+    }
+
+    return age >= 0 ? age : null;
+  }
+
+  togglePhotoZoom(): void {
+    this.isPhotoZoomed = !this.isPhotoZoomed;
+  }
+
+  getPatientPhotoSource(photo?: string): string {
+    const trimmed = photo?.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    return trimmed.startsWith('data:') ? trimmed : `data:image/jpeg;base64,${trimmed}`;
   }
 }

@@ -228,17 +228,6 @@ export class LaserComponent {
 
   openEditDialog(consultation: AestheticConsultation): void {
     const options = this.getTodayAttendancePatientOptions();
-    const existingPatient = this.patients().find(x => x.id === consultation.patientId);
-    if (existingPatient && !options.some(x => x.patientId === existingPatient.id)) {
-      options.unshift({
-        patientId: existingPatient.id,
-        consultId: '',
-        pNo: existingPatient.pno ?? '',
-        firstName: existingPatient.firstName,
-        lastName: existingPatient.lastName,
-        label: `${existingPatient.lastName} ${existingPatient.firstName} [${existingPatient.pno || 'N/A'}]`
-      });
-    }
 
     const dialogRef = this.dialog.open(LaserDialogComponent, {
       data: { isEdit: true, consultation, patientOptions: options },

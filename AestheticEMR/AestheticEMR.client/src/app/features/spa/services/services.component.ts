@@ -11,9 +11,11 @@ import { AlertService, DialogType, MessageSeverity } from '../../../services/ale
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
+import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
+import { HRetainership } from '../../../models/legacy/h-retainership.model';
 import { SpaDialogComponent, SpaDialogResult, SpaPatientOption } from './spa-dialog.component';
 
 @Component({
@@ -114,6 +116,7 @@ export class ServicesComponent {
   private readonly endpoint = inject(AestheticEndpoint);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
+  private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly dialog = inject(MatDialog);
 
@@ -122,6 +125,7 @@ export class ServicesComponent {
   readonly legacyPatients = signal<HPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
   readonly attendance = signal<Attendance[]>([]);
+  readonly retainerships = signal<HRetainership[]>([]);
   searchText = '';
   readonly displayedColumns = ['patient', 'date', 'service', 'focus', 'notes', 'actions'];
 
@@ -172,12 +176,14 @@ export class ServicesComponent {
       this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
       this.endpoint.getSpaConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
       this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
-      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
-    ]).then(([patients, consultations, attendance, legacyPatients]) => {
+      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise(),
+      this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>().toPromise()
+    ]).then(([patients, consultations, attendance, legacyPatients, retainerships]) => {
       this.patients.set(patients || []);
       this.consultations.set(consultations || []);
       this.attendance.set(attendance || []);
       this.legacyPatients.set(legacyPatients || []);
+      this.retainerships.set(retainerships || []);
       this.loadingIndicator = false;
       this.alertService.stopLoadingMessage();
     }).catch(error => {
@@ -205,18 +211,6 @@ export class ServicesComponent {
 
   openEditDialog(consultation: AestheticConsultation): void {
     const options = this.getTodayAttendancePatientOptions();
-    const existingPatient = this.patients().find(x => x.id === consultation.patientId);
-
-    if (existingPatient && !options.some(x => x.patientId === existingPatient.id)) {
-      options.unshift({
-        patientId: existingPatient.id,
-        consultId: '',
-        pNo: existingPatient.pno ?? '',
-        firstName: existingPatient.firstName,
-        lastName: existingPatient.lastName,
-        label: `${existingPatient.lastName} ${existingPatient.firstName} [${existingPatient.pno ?? 'N/A'}]`
-      });
-    }
 
     const dialogRef = this.dialog.open(SpaDialogComponent, {
       data: { isEdit: true, consultation, patientOptions: options },
@@ -313,9 +307,7 @@ export class ServicesComponent {
       const firstName = legacy?.pFirstname?.trim() || 'Unknown';
       const lastName = legacy?.pSurName?.trim() || 'Patient';
 
-      const matchedAesthetic = this.patients().find(x =>
-        x.firstName.trim().toLowerCase() === firstName.toLowerCase()
-        && x.lastName.trim().toLowerCase() === lastName.toLowerCase());
+      const matchedAesthetic = this.findAestheticPatient(firstName, lastName, pNo);
 
       return {
         patientId: matchedAesthetic?.id ?? 0,
@@ -323,68 +315,14 @@ export class ServicesComponent {
         pNo,
         firstName,
         lastName,
-        label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
+        fullName: `${firstName} ${lastName}`.trim(),
+        label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`,
+        photo: legacy?.patPixBase64,
+        dateOfBirth: matchedAesthetic?.dateOfBirth ?? legacy?.dob,
+        company: this.getCompanyDisplayName(legacy),
+        phoneNumber: matchedAesthetic?.phoneNumber ?? legacy?.pPhoneNo
       };
     });
-
-    if (options.length === 0) {
-      const attendanceFallback = this.attendance().map(item => {
-        const pNo = item.pNo ?? '';
-        const legacy = this.legacyPatients().find(x => x.pno === pNo);
-        const firstName = legacy?.pFirstname?.trim() || 'Unknown';
-        const lastName = legacy?.pSurName?.trim() || 'Patient';
-
-        const matchedAesthetic = this.patients().find(x =>
-          x.firstName.trim().toLowerCase() === firstName.toLowerCase()
-          && x.lastName.trim().toLowerCase() === lastName.toLowerCase());
-
-        return {
-          patientId: matchedAesthetic?.id ?? 0,
-          consultId: item.consultId ?? '',
-          pNo,
-          firstName,
-          lastName,
-          label: `${lastName} ${firstName} [${item.consultId ?? 'N/A'}]`
-        } as SpaPatientOption;
-      });
-
-      options.push(...attendanceFallback);
-    }
-
-    if (options.length === 0) {
-      const legacyFallback = this.legacyPatients().map(p => {
-        const firstName = p.pFirstname?.trim() || 'Unknown';
-        const lastName = p.pSurName?.trim() || 'Patient';
-
-        const matchedAesthetic = this.patients().find(x =>
-          x.firstName.trim().toLowerCase() === firstName.toLowerCase()
-          && x.lastName.trim().toLowerCase() === lastName.toLowerCase());
-
-        return {
-          patientId: matchedAesthetic?.id ?? 0,
-          consultId: '',
-          pNo: p.pno ?? '',
-          firstName,
-          lastName,
-          label: `${lastName} ${firstName} [${p.pno ?? 'N/A'}]`
-        } as SpaPatientOption;
-      });
-
-      options.push(...legacyFallback);
-    }
-
-    if (options.length === 0) {
-      const aestheticFallback = this.patients().map(p => ({
-        patientId: p.id,
-        consultId: '',
-        pNo: p.pno ?? '',
-        firstName: p.firstName,
-        lastName: p.lastName,
-        label: `${p.lastName} ${p.firstName} [${p.pno ?? 'N/A'}]`
-      } as SpaPatientOption));
-
-      options.push(...aestheticFallback);
-    }
 
     const unique = new Map<string, SpaPatientOption>();
     for (const item of options) {
@@ -395,6 +333,31 @@ export class ServicesComponent {
     }
 
     return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private findAestheticPatient(firstName: string, lastName: string, pNo: string): AestheticPatient | undefined {
+    const normalizedFirst = firstName.trim().toLowerCase();
+    const normalizedLast = lastName.trim().toLowerCase();
+    const normalizedPNo = pNo.trim().toLowerCase();
+
+    return this.patients().find(x =>
+      (normalizedPNo && (x.pno ?? '').trim().toLowerCase() === normalizedPNo)
+      || (x.firstName.trim().toLowerCase() === normalizedFirst
+        && x.lastName.trim().toLowerCase() === normalizedLast));
+  }
+
+  private getCompanyDisplayName(patient?: HPatient): string | undefined {
+    if (!patient) {
+      return undefined;
+    }
+
+    const companyCode = patient.coyName?.trim();
+    if (!companyCode) {
+      return undefined;
+    }
+
+    const companyName = this.retainerships().find(x => x.retainId === companyCode)?.retainName?.trim();
+    return companyName || companyCode;
   }
 
   private isToday(value?: string): boolean {

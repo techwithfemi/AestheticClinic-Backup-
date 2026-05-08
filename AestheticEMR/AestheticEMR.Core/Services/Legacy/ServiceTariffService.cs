@@ -20,6 +20,22 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             .ToList();
     }
 
+    public IEnumerable<VwCoyAndNhi> GetCompaniesWithTariffs()
+    {
+        return context.VwServiceNhis
+            .AsNoTracking()
+            .GroupBy(x => new { x.CoyId, x.Company, x.Remarks })
+            .Select(x => new VwCoyAndNhi
+            {
+                CoyId = x.Key.CoyId,
+                Company = x.Key.Company,
+                Remarks = x.Key.Remarks ?? string.Empty
+            })
+            .OrderBy(x => x.Company)
+            .ThenBy(x => x.CoyId)
+            .ToList();
+    }
+
     public async Task<IEnumerable<VwServiceNhi>> GetAllAsync(string? coyId, string? searchText)
     {
         var query = context.VwServiceNhis.AsNoTracking().AsQueryable();
@@ -87,9 +103,9 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         }
 
         var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
-        if (extension is not ".csv" and not ".xlsx")
+        if (extension is not ".csv" and not ".xls" and not ".xlsx")
         {
-            throw new InvalidOperationException("Only .csv and .xlsx files are supported.");
+            throw new InvalidOperationException("Only .xls, .xlsx and .csv files are supported.");
         }
 
         var retainership = await context.HRetainerships
@@ -297,6 +313,71 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
 
         serviceTariff.CoyName = tariffCompany?.Company ?? serviceTariff.Company;
         serviceTariff.Remarks ??= tariffCompany?.Remarks ?? "HMO";
+    }
+
+    public async Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting)
+    {
+        var normalizedTargetCoyId = (targetCoyId ?? string.Empty).Trim();
+        var normalizedSourceCoyId = (sourceCoyId ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedTargetCoyId))
+        {
+            throw new InvalidOperationException("Target company code is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedSourceCoyId))
+        {
+            throw new InvalidOperationException("Source company code is required.");
+        }
+
+        if (string.Equals(normalizedTargetCoyId, normalizedSourceCoyId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Source and target company cannot be the same.");
+        }
+
+        var sourceTariffs = await context.hServiceNHIs
+            .AsNoTracking()
+            .Where(x => x.Company == normalizedSourceCoyId)
+            .ToListAsync();
+
+        if (sourceTariffs.Count == 0)
+        {
+            throw new InvalidOperationException("The selected source company has no tariff records.");
+        }
+
+        var targetCompany = await context.VwCoyAndNhis
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.CoyId == normalizedTargetCoyId);
+
+        var targetCompanyName = targetCompany?.Company ?? normalizedTargetCoyId;
+        var targetRemarks = targetCompany?.Remarks ?? "HMO";
+
+        if (deleteExisting)
+        {
+            var existing = context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId);
+            context.hServiceNHIs.RemoveRange(existing);
+            await context.SaveChangesAsync();
+        }
+
+        foreach (var item in sourceTariffs)
+        {
+            context.hServiceNHIs.Add(new hServiceNHI
+            {
+                Service = item.Service,
+                Category = item.Category,
+                Company = normalizedTargetCoyId,
+                Price = item.Price,
+                Remarks = item.Remarks ?? targetRemarks,
+                CoyName = targetCompanyName,
+                Capitated = item.Capitated,
+                TariffStatus = item.TariffStatus,
+                RevType = item.RevType,
+                UsersCat = item.UsersCat
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return sourceTariffs.Count;
     }
 
     private sealed class UploadRow

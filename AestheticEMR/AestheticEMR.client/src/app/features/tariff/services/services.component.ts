@@ -13,7 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { fadeInOut } from '../../../services/animations';
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { ServiceTariffEndpoint } from '../../../services/service-tariff-endpoint.service';
 import { ServiceTariff } from '../../../models/legacy/service-tariff.model';
 import { TariffCompany } from '../../../models/legacy/tariff-company.model';
@@ -80,7 +80,7 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
       <mat-card class="table-card">
         <mat-card-content>
           <div class="table-wrap">
-            <table mat-table [dataSource]="tariffs" class="tariff-table">
+            <table mat-table [dataSource]="pagedTariffs" class="tariff-table">
               <ng-container matColumnDef="service">
                 <th mat-header-cell *matHeaderCellDef>Service</th>
                 <td mat-cell *matCellDef="let item">{{ item.service }}</td>
@@ -96,11 +96,6 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
                 <td mat-cell *matCellDef="let item">{{ item.coyName || item.company }}</td>
               </ng-container>
 
-              <ng-container matColumnDef="status">
-                <th mat-header-cell *matHeaderCellDef>Status</th>
-                <td mat-cell *matCellDef="let item">{{ item.tariffStatus || 'FIXED' }}</td>
-              </ng-container>
-
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef class="text-end">Update</th>
                 <td mat-cell *matCellDef="let item" class="text-end">
@@ -114,6 +109,26 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
               <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
             </table>
           </div>
+
+          @if (tariffs.length > 0) {
+            <div class="pager-wrap">
+              <small class="pager-text">
+                Showing {{ (currentPage - 1) * pageSize + 1 }}-
+                {{ (currentPage * pageSize) < tariffs.length ? (currentPage * pageSize) : tariffs.length }} of {{ tariffs.length }}
+              </small>
+              <div class="pager-actions">
+                <button mat-stroked-button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">
+                  Previous
+                </button>
+                <button mat-stroked-button type="button" disabled>
+                  Page {{ currentPage }} / {{ totalPages }}
+                </button>
+                <button mat-stroked-button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">
+                  Next
+                </button>
+              </div>
+            </div>
+          }
 
           @if (tariffs.length === 0 && !loadingIndicator) {
             <p class="empty-text">No tariff items found</p>
@@ -137,9 +152,13 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
     .text-end { text-align: right; }
     .empty-text { margin: 12px 0 0; color: #777; }
     .spinner-wrap { display: flex; justify-content: center; padding: 12px 0 4px; }
+    .pager-wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .pager-text { color: #777; }
+    .pager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     @media (max-width: 992px) {
       .toolbar-grid { grid-template-columns: 1fr; }
       .actions-cell { padding-top: 0; }
+      .pager-wrap { flex-direction: column; align-items: stretch; }
     }
   `]
 })
@@ -153,10 +172,29 @@ export class TariffServicesComponent {
   selectedCoyId = '';
   searchText = '';
   loadingIndicator = false;
-  displayedColumns = ['service', 'price', 'company', 'status', 'actions'];
+  displayedColumns = ['service', 'price', 'company', 'actions'];
+  readonly pageSize = 10;
+  currentPage = 1;
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.tariffs.length / this.pageSize));
+  }
+
+  get pagedTariffs(): ServiceTariff[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.tariffs.slice(start, start + this.pageSize);
+  }
 
   constructor() {
     this.loadCompanies();
+  }
+
+  goToPage(page: number): void {
+    if (page < 1 || page > this.totalPages) {
+      return;
+    }
+
+    this.currentPage = page;
   }
 
   loadCompanies(): void {
@@ -175,6 +213,7 @@ export class TariffServicesComponent {
   loadTariffs(): void {
     if (!this.selectedCoyId) {
       this.tariffs = [];
+      this.currentPage = 1;
       return;
     }
 
@@ -186,6 +225,7 @@ export class TariffServicesComponent {
         this.loadingIndicator = false;
         this.alertService.stopLoadingMessage();
         this.tariffs = [...data];
+        this.currentPage = 1;
       },
       error: error => {
         this.loadingIndicator = false;
@@ -225,29 +265,72 @@ export class TariffServicesComponent {
       return;
     }
 
-    const dialogRef = this.dialog.open(TariffUploadDialogComponent, {
-      width: '560px',
-      disableClose: true
-    });
+    this.serviceTariffEndpoint.getTariffSourceCompaniesEndpoint<TariffCompany[]>().subscribe({
+      next: sourceCompanies => {
+        const dialogRef = this.dialog.open(TariffUploadDialogComponent, {
+          width: '560px',
+          disableClose: true,
+          data: {
+            sourceCompanies: sourceCompanies.filter(x => x.coyId !== this.selectedCoyId)
+          }
+        });
 
-    dialogRef.afterClosed().subscribe((result: TariffUploadDialogResult | undefined) => {
-      if (!result) {
-        return;
+        dialogRef.afterClosed().subscribe((result: TariffUploadDialogResult | undefined) => {
+          if (!result || (!result.file && !result.sourceCoyId)) {
+            return;
+          }
+
+          if (result.file) {
+            this.alertService.showDialog(
+              'This will replace any existing tariff records for the selected company with the uploaded file. Do you want to continue?',
+              DialogType.confirm,
+              () => {
+                this.alertService.startLoadingMessage('Uploading tariff data...');
+                this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(this.selectedCoyId, result.file!, true).subscribe({
+                  next: response => {
+                    this.alertService.stopLoadingMessage();
+                    this.loadTariffs();
+                    const inserted = response?.inserted ?? 0;
+                    this.alertService.showMessage('Success', `${inserted} tariff item(s) uploaded successfully. Existing company tariff upload was replaced.`, MessageSeverity.success);
+                  },
+                  error: error => {
+                    this.alertService.stopLoadingMessage();
+                    this.alertService.showStickyMessage('Upload Error', `Unable to upload tariff data.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+                  }
+                });
+              }
+            );
+
+            return;
+          }
+
+          const sourceCompany = sourceCompanies.find(x => x.coyId === result.sourceCoyId);
+          const sourceLabel = sourceCompany ? `${sourceCompany.company} [${sourceCompany.coyId}]` : result.sourceCoyId;
+
+          this.alertService.showDialog(
+            `No file was selected. The tariff for ${sourceLabel} will be used for the selected company. Do you want to continue?`,
+            DialogType.confirm,
+            () => {
+              this.alertService.startLoadingMessage('Applying tariff from existing company...');
+              this.serviceTariffEndpoint.copyServiceTariffEndpoint<{ inserted: number }>(this.selectedCoyId, result.sourceCoyId!, true).subscribe({
+                next: response => {
+                  this.alertService.stopLoadingMessage();
+                  this.loadTariffs();
+                  const inserted = response?.inserted ?? 0;
+                  this.alertService.showMessage('Success', `${inserted} tariff item(s) applied successfully from the selected company.`, MessageSeverity.success);
+                },
+                error: error => {
+                  this.alertService.stopLoadingMessage();
+                  this.alertService.showStickyMessage('Copy Error', `Unable to apply tariff from the selected company.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+                }
+              });
+            }
+          );
+        });
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Load Error', `Unable to retrieve source companies.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
       }
-
-      this.alertService.startLoadingMessage('Uploading tariff data...');
-      this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(this.selectedCoyId, result.file, true).subscribe({
-        next: response => {
-          this.alertService.stopLoadingMessage();
-          this.loadTariffs();
-          const inserted = response?.inserted ?? 0;
-          this.alertService.showMessage('Success', `${inserted} tariff item(s) uploaded successfully. Existing company tariff upload was replaced.`, MessageSeverity.success);
-        },
-        error: error => {
-          this.alertService.stopLoadingMessage();
-          this.alertService.showStickyMessage('Upload Error', `Unable to upload tariff data.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
-        }
-      });
     });
   }
 

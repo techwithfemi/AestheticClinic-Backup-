@@ -127,9 +127,15 @@ export class DentalPageComponent implements OnInit {
 
   readonly filteredRows = computed(() => {
     const s = this.searchText().trim().toLowerCase();
-    if (!s) return this.imagingRecords();
+    const base = s
+      ? this.imagingRecords()
+      : this.imagingRecords().filter(r => this.isToday(r.imagingDate));
 
-    return this.imagingRecords().filter(r =>
+    if (!s) {
+      return base;
+    }
+
+    return base.filter(r =>
       (r.pno || '').toLowerCase().includes(s)
       || (r.consultId || '').toLowerCase().includes(s)
       || this.resolvePatientLabel(r.pno).toLowerCase().includes(s));
@@ -265,5 +271,21 @@ export class DentalPageComponent implements OnInit {
         label: `${fullName} [${item.consultId}]`
       } as DentalPatientOption;
     }).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private isToday(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
   }
 }

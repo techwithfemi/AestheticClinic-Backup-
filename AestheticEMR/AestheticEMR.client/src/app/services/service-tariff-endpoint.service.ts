@@ -21,6 +21,12 @@ export class ServiceTariffEndpoint extends EndpointBase {
     );
   }
 
+  getTariffSourceCompaniesEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.serviceTariffUrl}/source-companies`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getTariffSourceCompaniesEndpoint<T>()))
+    );
+  }
+
   getServiceTariffsEndpoint<T>(coyId?: string, search?: string): Observable<T> {
     const params = new URLSearchParams();
 
@@ -72,6 +78,18 @@ export class ServiceTariffEndpoint extends EndpointBase {
 
     return this.http.post<T>(`${this.serviceTariffUrl}/upload`, formData, this.uploadHeaders).pipe(
       catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting)))
+    );
+  }
+
+  copyServiceTariffEndpoint<T>(targetCoyId: string, sourceCoyId: string, deleteExisting: boolean): Observable<T> {
+    const payload = {
+      targetCoyId,
+      sourceCoyId,
+      deleteExisting
+    };
+
+    return this.http.post<T>(`${this.serviceTariffUrl}/copy`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.copyServiceTariffEndpoint<T>(targetCoyId, sourceCoyId, deleteExisting)))
     );
   }
 }

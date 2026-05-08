@@ -135,9 +135,13 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
             throw new InvalidOperationException($"Patient '{record.PNo}' was not found.");
         }
 
-        record.ClientCat = patient.ClientCatId;
-        record.Coyname = patient.CoyName;
-        record.HmoRef ??= patient.HmoRef;
+        var incomingClientCat = NormalizeText(record.ClientCat);
+        var incomingCoyName = NormalizeText(record.Coyname);
+        var incomingHmoRef = NormalizeText(record.HmoRef);
+
+        record.ClientCat = incomingClientCat ?? patient.ClientCatId;
+        record.Coyname = incomingCoyName ?? patient.CoyName;
+        record.HmoRef = incomingHmoRef ?? patient.HmoRef;
     }
 
     private void ApplyDefaults(HRecord record)
