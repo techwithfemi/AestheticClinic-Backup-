@@ -2,6 +2,7 @@
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  position: relative;
 }
 
 .page-header {
@@ -130,26 +131,10 @@
   margin-top: 2px;
 }
 
-.kpi-teal {
-  .kpi-icon {
-    background: linear-gradient(135deg, #4db6ac, #00897b);
-  }
-}
-.kpi-purple {
-  .kpi-icon {
-    background: linear-gradient(135deg, #9575cd, #7b1fa2);
-  }
-}
-.kpi-rose {
-  .kpi-icon {
-    background: linear-gradient(135deg, #f06292, #c2185b);
-  }
-}
-.kpi-amber {
-  .kpi-icon {
-    background: linear-gradient(135deg, #ffb74d, #ef6c00);
-  }
-}
+.kpi-teal .kpi-icon { background: linear-gradient(135deg, #4db6ac, #00897b); }
+.kpi-purple .kpi-icon { background: linear-gradient(135deg, #9575cd, #7b1fa2); }
+.kpi-rose .kpi-icon { background: linear-gradient(135deg, #f06292, #c2185b); }
+.kpi-amber .kpi-icon { background: linear-gradient(135deg, #ffb74d, #ef6c00); }
 
 // ---- Filters ----
 .filters-card {
@@ -166,16 +151,10 @@
   padding: 4px 0;
 }
 
-.filter-search {
-  flex: 2;
-  min-width: 200px;
-}
+.filter-search { flex: 2; min-width: 240px; }
+.filter-date { flex: 1; min-width: 160px; }
 
-.filter-date {
-  flex: 1;
-  min-width: 150px;
-}
-
+.run-btn,
 .clear-btn {
   height: 56px;
   flex-shrink: 0;
@@ -201,13 +180,11 @@
   }
 }
 
-.table-wrapper {
-  overflow-x: auto;
-}
+.table-wrapper { overflow-x: auto; }
 
 .spa-table {
   width: 100%;
-  min-width: 700px;
+  min-width: 840px;
 
   th.mat-header-cell {
     background: #f8fafb;
@@ -224,6 +201,7 @@
     font-size: 0.9rem;
     border-bottom: 1px solid #f3f4f6;
     color: #374151;
+    vertical-align: top;
   }
 
   .data-row {
@@ -233,6 +211,59 @@
       background: #f5f3ff;
     }
   }
+}
+
+.date-cell,
+.provider-cell,
+.patient-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cell-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.therapist-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9575cd, #7b1fa2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.patient-avatar {
+  background: linear-gradient(135deg, #4db6ac, #26a69a);
+}
+
+.therapist-name {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.patient-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.truncate-text {
+  display: block;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
 }
 
 // ---- Rank Badge ----
@@ -260,61 +291,6 @@
 .rank-bronze {
   background: #fef3e2;
   color: #7c4a00;
-}
-
-// ---- Therapist cell ----
-.patient-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.therapist-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #9575cd, #7b1fa2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.therapist-name {
-  font-weight: 600;
-  color: #1a1a2e;
-}
-
-.session-count {
-  display: inline-block;
-  background: #ede9fe;
-  color: #5b21b6;
-  padding: 3px 12px;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-// ---- Progress bar ----
-.share-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  mat-progress-bar {
-    flex: 1;
-    border-radius: 4px;
-  }
-
-  .share-pct {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #374151;
-    min-width: 36px;
-  }
 }
 
 // ---- Service Tags ----
@@ -382,15 +358,75 @@
   }
 }
 
+mat-paginator {
+  border-top: 1px solid #f0f0f0;
+}
+
+.print-sidebar { display: none; }
+
 @media print {
+  .print-sidebar {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 180px;
+    height: 100vh;
+    background: #1a2e2b;
+    color: #fff;
+    padding: 24px 0;
+    box-sizing: border-box;
+    font-size: 0.82rem;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0 16px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    margin-bottom: 12px;
+  }
+
+  .print-sidebar-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+      padding: 7px 16px;
+      color: rgba(255, 255, 255, 0.7);
+
+      &.active {
+        background: rgba(149, 117, 205, 0.25);
+        color: #d1c4e9;
+        font-weight: 600;
+        border-left: 3px solid #9575cd;
+        padding-left: 13px;
+      }
+    }
+  }
+
+  .print-main { margin-left: 188px; }
+
   .header-actions,
   .filters-card,
-  .page-subtitle {
+  .page-subtitle,
+  mat-paginator {
     display: none !important;
   }
 
-  .report-page {
-    padding: 0;
+  .report-page { padding: 0; max-width: none; }
+  .kpi-card { box-shadow: none !important; border: 1px solid #e5e7eb; }
+
+  .spa-table th.mat-header-cell {
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 
