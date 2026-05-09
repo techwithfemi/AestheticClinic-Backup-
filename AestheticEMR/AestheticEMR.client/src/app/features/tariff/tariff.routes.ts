@@ -21,5 +21,10 @@ export const tariffRoutes: Routes = [
     loadComponent: () => import('./services/services.component')
       .then(m => m.TariffServicesComponent),
     title: 'Tariff - Services'
+  },
+  {
+    path: 'products',
+    redirectTo: '/inventory/products',
+    pathMatch: 'full'
   }
 ];

@@ -43,6 +43,14 @@
         { "label": "Services", "path": "services", "icon": "medical_services" }
       ]
     },
+    "Inventory": {
+      "route": "inventory",
+      "icon": "inventory",
+      "subItems": [
+        { "label": "Products", "path": "products", "icon": "inventory" },
+        { "label": "Product Category", "path": "product-categories", "icon": "category" }
+      ]
+    },
     "Aesthetics": {
       "route": "aesthetics",
       "icon": "face",

@@ -13,6 +13,9 @@ namespace AestheticEMR.Core.Models.Shop
         public string? Icon { get; set; }
         public decimal BuyingPrice { get; set; }
         public decimal SellingPrice { get; set; }
+        public decimal PreviousBuyingPrices { get; set; } = 0;
+        public decimal PreviousSellingPrice { get; set; } = 0;
+        public int PreviousUnitsInStock { get; set; } = 0;
         public int UnitsInStock { get; set; }
         public bool IsActive { get; set; }
         public bool IsDiscontinued { get; set; }
@@ -25,5 +28,6 @@ namespace AestheticEMR.Core.Models.Shop
 
         public ICollection<Product> Children { get; } = [];
         public ICollection<OrderDetail> OrderDetails { get; } = [];
+        public ICollection<ProductStockReport> StockReports { get; } = [];
     }
 }

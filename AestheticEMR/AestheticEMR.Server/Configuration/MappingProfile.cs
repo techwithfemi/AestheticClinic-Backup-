@@ -65,7 +65,19 @@ namespace AestheticEMR.Server.Configuration
                 .ReverseMap();
 
             CreateMap<Product, ProductVM>()
-                .ReverseMap();
+                .ForMember(d => d.ProductCategoryName, map => map.MapFrom(s => s.ProductCategory != null ? s.ProductCategory.Name : null));
+
+            CreateMap<ProductStockReport, ProductStockReportVM>()
+                .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null));
+
+            CreateMap<ProductEditVM, Product>()
+                .ForMember(d => d.ProductCategory, map => map.Ignore())
+                .ForMember(d => d.Parent, map => map.Ignore())
+                .ForMember(d => d.Children, map => map.Ignore())
+                .ForMember(d => d.OrderDetails, map => map.Ignore());
+
+            CreateMap<ProductCategory, ProductCategoryVM>();
+            CreateMap<ProductCategoryEditVM, ProductCategory>();
 
             CreateMap<Order, OrderVM>()
                 .ReverseMap();
