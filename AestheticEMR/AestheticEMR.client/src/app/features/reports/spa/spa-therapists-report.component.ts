@@ -11,6 +11,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, MAT_DATE_FORMATS, MAT_DATE_LOCALE, NativeDateAdapter, DateAdapter } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import * as XLSX from 'xlsx';
 
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AccountEndpoint } from '../../../services/account-endpoint.service';
@@ -256,6 +257,187 @@ export class SpaTherapistsReportComponent implements OnInit {
 
   printReport(): void {
     window.print();
+  }
+
+  exportExcel(event: Event): void {
+    event.preventDefault();
+
+    const rows = this.getExportRows();
+    if (!rows.length) {
+      this.alertService.showMessage('Export', 'No records available to export.', MessageSeverity.warn);
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(rows.map(r => ({
+      Date: r.date,
+      Patient: r.patient,
+      Therapist: r.therapist,
+      Service: r.service,
+      'Area/Focus': r.areaFocus,
+      Notes: r.notes
+    })));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Spa Therapists Report');
+
+    const excelArray = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelArray], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    this.downloadBlob(blob, this.buildFileName('spa-therapists-report', 'xlsx'));
+  }
+
+  exportCsv(event: Event): void {
+    event.preventDefault();
+
+    const rows = this.getExportRows();
+    if (!rows.length) {
+      this.alertService.showMessage('Export', 'No records available to export.', MessageSeverity.warn);
+      return;
+    }
+
+    const headers = ['Date', 'Patient', 'Therapist', 'Service', 'Area/Focus', 'Notes'];
+    const lines = [
+      headers.join(','),
+      ...rows.map(r => [r.date, r.patient, r.therapist, r.service, r.areaFocus, r.notes]
+        .map(v => this.escapeCsv(v)).join(','))
+    ];
+
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    this.downloadBlob(blob, this.buildFileName('spa-therapists-report', 'csv'));
+  }
+
+  exportPdf(event: Event): void {
+    event.preventDefault();
+
+    const rows = this.getExportRows();
+    if (!rows.length) {
+      this.alertService.showMessage('Export', 'No records available to export.', MessageSeverity.warn);
+      return;
+    }
+
+    const lines = [
+      'Spa Therapists Report',
+      `Generated: ${this.formatDate(new Date())}`,
+      `Records: ${rows.length}`,
+      '',
+      'Date | Patient | Therapist | Service | Notes'
+    ];
+
+    for (const r of rows) {
+      const line = `${r.date} | ${r.patient} | ${r.therapist} | ${r.service} | ${r.notes}`;
+      lines.push(line.length > 145 ? `${line.slice(0, 142)}...` : line);
+    }
+
+    const pdfContent = this.buildSimplePdf(lines);
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    this.downloadBlob(blob, this.buildFileName('spa-therapists-report', 'pdf'));
+  }
+
+  private getExportRows(): Array<{
+    date: string;
+    patient: string;
+    therapist: string;
+    service: string;
+    areaFocus: string;
+    notes: string;
+  }> {
+    return this.filtered().map(row => ({
+      date: this.formatDate(row.consultationDate),
+      patient: this.resolvePatientName(row),
+      therapist: this.resolveProviderName(row.provider),
+      service: row.indication ?? '—',
+      areaFocus: row.areaTreated ?? '—',
+      notes: row.procedureDescription ?? '—'
+    }));
+  }
+
+  private formatDate(value: string | Date | undefined): string {
+    if (!value) return '—';
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleString('en', { month: 'short' });
+    return `${day}-${month}-${d.getFullYear()}`;
+  }
+
+  private buildFileName(prefix: string, extension: string): string {
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+    return `${prefix}-${stamp}.${extension}`;
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }
+
+  private escapeCsv(value: string): string {
+    const escaped = (value ?? '').replace(/"/g, '""');
+    return `"${escaped}"`;
+  }
+
+  private escapePdfText(value: string): string {
+    return (value ?? '')
+      .replaceAll('\\', '\\\\')
+      .replaceAll('(', '\\(')
+      .replaceAll(')', '\\)');
+  }
+
+  private buildSimplePdf(lines: string[]): string {
+    const safeLines = lines.slice(0, 220);
+    const lineHeight = 14;
+    const startY = 800;
+
+    const content = [
+      'BT',
+      '/F1 10 Tf',
+      `40 ${startY} Td`,
+      ...safeLines.flatMap((line, index) => {
+        const escaped = this.escapePdfText(line);
+        if (index === 0) {
+          return [`(${escaped}) Tj`];
+        }
+        return [`0 -${lineHeight} Td`, `(${escaped}) Tj`];
+      }),
+      'ET'
+    ].join('\n');
+
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
+      '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+      `5 0 obj\n<< /Type /Contents /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`
+    ];
+
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+
+    for (const obj of objects) {
+      offsets.push(pdf.length);
+      pdf += obj;
+    }
+
+    const xrefOffset = pdf.length;
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+
+    for (let i = 1; i <= objects.length; i++) {
+      pdf += `${offsets[i].toString().padStart(10, '0')} 00000 n \n`;
+    }
+
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    return pdf;
   }
 
   resolvePatientName(row: AestheticConsultation): string {

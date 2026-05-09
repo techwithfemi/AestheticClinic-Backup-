@@ -5,13 +5,43 @@ import { Subscription } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { AppTranslationService } from './services/app-translation.service';
 import { AlertService, AlertCommand, AlertDialog, DialogType, MessageSeverity } from './services/alert.service';
+import { GlobalLoadingService } from './services/global-loading.service';
 
 @Component({
     selector: 'app-root',
     template: `
+      @if (globalLoadingService.isLoading()) {
+        <div class="global-loading-bar" aria-live="polite" aria-label="Loading"></div>
+      }
       <ngx-toasta></ngx-toasta>
       <router-outlet></router-outlet>
     `,
+    styles: [`
+      .global-loading-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 3000;
+        width: 100%;
+        height: 3px;
+        overflow: hidden;
+        background: rgba(25, 118, 210, 0.2);
+      }
+
+      .global-loading-bar::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: linear-gradient(90deg, #1976d2, #64b5f6);
+        animation: global-loading-slide 1.1s ease-in-out infinite;
+      }
+
+      @keyframes global-loading-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(300%); }
+      }
+    `],
     standalone: true,
     imports: [ToastaModule, RouterOutlet]
 })
@@ -21,6 +51,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly alertService = inject(AlertService);
   private readonly authService = inject(AuthService);
   private readonly translationService = inject(AppTranslationService);
+  readonly globalLoadingService = inject(GlobalLoadingService);
   private messageSubscription?: Subscription;
   private dialogSubscription?: Subscription;
 

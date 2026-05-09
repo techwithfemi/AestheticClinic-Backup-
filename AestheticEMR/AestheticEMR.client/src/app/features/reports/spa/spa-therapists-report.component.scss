@@ -54,6 +54,50 @@
 .header-actions {
   display: flex;
   gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.export-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  background: rgba(77, 182, 172, 0.08);
+  border: 1px solid rgba(77, 182, 172, 0.25);
+  border-radius: 999px;
+  padding: 6px 10px;
+  line-height: 1;
+
+  .export-label {
+    color: #9ca3af;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+
+  a {
+    color: #80cbc4;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+
+    &:hover {
+      color: #e0f2f1;
+      background: rgba(77, 182, 172, 0.22);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  span {
+    color: #6b7280;
+  }
 }
 
 // ---- KPI ----

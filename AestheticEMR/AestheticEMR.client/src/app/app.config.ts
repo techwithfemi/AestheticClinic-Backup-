@@ -5,7 +5,7 @@
 // ---------------------------------------
 
 import { APP_INITIALIZER, ApplicationConfig, ErrorHandler, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { PreloadAllModules, provideRouter, TitleStrategy, UrlSerializer, withPreloading } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { MAT_DATE_FORMATS, provideNativeDateAdapter } from '@angular/material/core';
@@ -19,6 +19,7 @@ import { AppTitleService } from './services/app-title.service';
 import { LowerCaseUrlSerializer } from './services/lowercase-url-serializer.service';
 import { TranslateLanguageLoader } from './services/app-translation.service';
 import { AppConfigService } from './services/app-config.service';
+import { GlobalLoadingInterceptor } from './services/global-loading.interceptor';
 
 const APP_DATE_FORMATS = {
   parse: {
@@ -54,6 +55,7 @@ export const appConfig: ApplicationConfig = {
       useFactory: (appConfig: AppConfigService) => () => appConfig.init(),
       deps: [AppConfigService],
       multi: true
-    }
+    },
+    { provide: HTTP_INTERCEPTORS, useClass: GlobalLoadingInterceptor, multi: true }
   ]
 };

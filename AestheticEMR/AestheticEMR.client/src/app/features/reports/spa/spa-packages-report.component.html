@@ -23,6 +23,15 @@
         </div>
       </div>
       <div class="header-actions">
+        <div class="export-links">
+          <span class="export-label">Export to</span>
+          <a href="#" (click)="exportExcel($event)">Excel</a>
+          <span>|</span>
+          <a href="#" (click)="exportCsv($event)">CSV</a>
+          <span>|</span>
+          <a href="#" (click)="exportPdf($event)">PDF</a>
+        </div>
+
         <button mat-stroked-button color="primary" (click)="load()" [disabled]="loadingIndicator">
           <mat-icon>refresh</mat-icon>
           Refresh

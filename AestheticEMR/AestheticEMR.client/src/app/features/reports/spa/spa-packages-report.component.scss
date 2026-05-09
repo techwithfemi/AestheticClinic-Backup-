@@ -31,7 +31,12 @@
 
 .page-title    { margin: 0; font-size: 1.6rem; font-weight: 700; color: #1a1a2e; }
 .page-subtitle { margin: 4px 0 0; color: #6b7280; font-size: 0.9rem; }
-.header-actions { display: flex; gap: 10px; }
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
 // ---- KPI ----
 .kpi-row {
@@ -198,6 +203,47 @@ mat-paginator {
 }
 
 .print-sidebar { display: none; }
+
+.export-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  background: rgba(240, 98, 146, 0.08);
+  border: 1px solid rgba(240, 98, 146, 0.25);
+  border-radius: 999px;
+  padding: 6px 10px;
+
+  .export-label {
+    color: #9ca3af;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+
+  a {
+    color: #f8bbd0;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    transition: background-color .15s ease, color .15s ease, transform .15s ease;
+
+    &:hover {
+      color: #fde2ec;
+      background: rgba(240, 98, 146, 0.22);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  span {
+    color: #6b7280;
+  }
+}
 
 @media print {
   .print-sidebar {
