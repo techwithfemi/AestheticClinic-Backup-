@@ -202,10 +202,19 @@ export class SpaTherapistsReportComponent implements OnInit {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Loading therapist data...');
 
+    const usersPromise = this.accountEndpoint.getUsersEndpoint<User[]>().toPromise()
+      .catch((error: { status?: number }) => {
+        if (error?.status === 401 || error?.status === 403) {
+          return [] as User[];
+        }
+
+        throw error;
+      });
+
     Promise.all([
       this.endpoint.getSpaConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
       this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
-      this.accountEndpoint.getUsersEndpoint<User[]>().toPromise()
+      usersPromise
     ]).then(([consultations, patients, users]) => {
       this.consultations.set(consultations ?? []);
       this.patients.set(patients ?? []);
@@ -267,6 +276,8 @@ export class SpaTherapistsReportComponent implements OnInit {
     return guidPattern.test(provider.trim()) ? 'Unknown Therapist' : provider.trim();
   }
 }
+
+
 
 
 
