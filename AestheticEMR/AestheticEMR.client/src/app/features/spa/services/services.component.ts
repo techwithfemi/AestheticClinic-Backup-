@@ -17,6 +17,7 @@ import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { HRetainership } from '../../../models/legacy/h-retainership.model';
 import { SpaDialogComponent, SpaDialogResult, SpaPatientOption } from './spa-dialog.component';
+import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-invoice-dialog.component';
 
 @Component({
   selector: 'app-services',
@@ -85,6 +86,9 @@ import { SpaDialogComponent, SpaDialogResult, SpaPatientOption } from './spa-dia
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
+                <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill">
+                  <mat-icon>receipt_long</mat-icon>
+                </button>
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -222,6 +226,28 @@ export class ServicesComponent {
     dialogRef.afterClosed().subscribe((result: SpaDialogResult | undefined) => {
       if (!result) return;
       void this.saveConsultation(result);
+    });
+  }
+
+  openBilling(consultation: AestheticConsultation): void {
+    const legacy = this.legacyPatients().find(x => x.pno === consultation.pNo);
+
+    const dialogRef = this.dialog.open(BillingInvoiceDialogComponent, {
+      data: {
+        mode: 'create',
+        consultId: consultation.consultId,
+        billNo: consultation.consultId,
+        pNo: consultation.pNo,
+        company: this.getCompanyDisplayName(legacy),
+        clientID: legacy?.clientCatId
+      },
+      width: '95vw',
+      maxWidth: '1300px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // no-op
     });
   }
 

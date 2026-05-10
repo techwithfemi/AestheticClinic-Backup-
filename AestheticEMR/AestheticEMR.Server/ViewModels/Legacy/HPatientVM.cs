@@ -82,6 +82,9 @@ public class HPatientVM
     [StringLength(100)]
     public string? Status { get; set; }
 
+    [Range(0, (double)decimal.MaxValue)]
+    public decimal? DebtBf { get; set; }
+
     public DateTime? RegDate { get; set; }
 
     [StringLength(100)]

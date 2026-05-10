@@ -397,6 +397,7 @@ When implementing new features, reference these real implementations:
 - Reference existing components in `quickapp.client/src/app/components/`
 - Reference endpoint services in `quickapp.client/src/app/services/`
 - **Use Angular Material components/icons instead of Bootstrap** in the Tariff module UI.
+- **Use Angular Material components/icons throughout the Billing module UI** (including invoice list and add/edit invoice workflows).
 
 ---
 
@@ -434,4 +435,4 @@ When creating a new entity with full CRUD:
 - [ ] Create controller in `QuickApp.Server/Controllers/{EntityName}Controller.cs` inheriting `BaseApiController`
 - [ ] Add authorization (policies or inline checks)
 - [ ] Update `ApplicationDbContext` if new DbSet needed
-- [ ] Create migration: `dot
+- [ ] Create migration: `

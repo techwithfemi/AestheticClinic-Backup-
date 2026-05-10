@@ -1,0 +1,96 @@
+<div [@fadeInOut] class="invoices-page">
+  <mat-card class="page-card">
+    <div class="page-header">
+      <div>
+        <h2>Invoices</h2>
+        <p class="subtitle">Manage billing invoices and bill details.</p>
+      </div>
+      <div class="header-actions">
+        <button mat-stroked-button type="button" (click)="refresh()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+        <button mat-raised-button color="primary" type="button" (click)="openCreate()">
+          <mat-icon>add</mat-icon>
+          New bill
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search</mat-label>
+        <input matInput [(ngModel)]="searchText" (input)="onSearch()" placeholder="Search by patient name" />
+      </mat-form-field>
+    </div>
+
+    <div class="table-wrap">
+      <table mat-table [dataSource]="pagedInvoices" class="list-table">
+        <ng-container matColumnDef="billNo">
+          <th mat-header-cell *matHeaderCellDef>Invoice No</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.billNo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="bDate">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.bDate | date: 'mediumDate' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="patient">
+          <th mat-header-cell *matHeaderCellDef>Patient</th>
+          <td mat-cell *matCellDef="let invoice">{{ getPatientName(invoice.pNo) }} [{{ invoice.pNo }}]</td>
+        </ng-container>
+
+        <ng-container matColumnDef="clientID">
+          <th mat-header-cell *matHeaderCellDef>Client</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.clientID || 'N/A' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="billType">
+          <th mat-header-cell *matHeaderCellDef>Bill Type</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.billType || 'N/A' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amountBilled">
+          <th mat-header-cell *matHeaderCellDef>Amount Billed</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.amountBilled ?? 0 | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amountPaid">
+          <th mat-header-cell *matHeaderCellDef>Amount Paid</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.amountPaid ?? 0 | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let invoice" class="actions-cell">
+            <button mat-button type="button" (click)="openAddBill(invoice)">Add Bill</button>
+            <button mat-icon-button type="button" (click)="openEdit(invoice)" title="Edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" (click)="deleteInvoice(invoice)" title="Delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="listColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: listColumns"></tr>
+      </table>
+
+      <p class="empty" *ngIf="!loadingIndicator && filteredInvoices.length === 0">No invoices found.</p>
+    </div>
+
+    <div class="pager" *ngIf="filteredInvoices.length > 0">
+      <small>
+        Showing {{ (currentPage - 1) * pageSize + 1 }}-
+        {{ (currentPage * pageSize) < filteredInvoices.length ? (currentPage * pageSize) : filteredInvoices.length }} of {{ filteredInvoices.length }}
+      </small>
+      <div class="pager-buttons">
+        <button mat-stroked-button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">Previous</button>
+        <button mat-stroked-button type="button" disabled>Page {{ currentPage }} / {{ totalPages }}</button>
+        <button mat-stroked-button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">Next</button>
+      </div>
+    </div>
+  </mat-card>
+</div>

@@ -7,11 +7,11 @@ public partial class BillingDetail
 {
     public string billNO { get; set; } = null!;
 
-    public long SNO { get; set; }
+    public long SNO { get; set; } // primary key in billing detail, auto increment
 
     public DateTime dtDate { get; set; }
 
-    public string drgName { get; set; } = null!;
+    public string drgName { get; set; } // same as bill item
 
     public double Price { get; set; }
 
@@ -19,59 +19,59 @@ public partial class BillingDetail
 
     public decimal? subTotal { get; set; }
 
-    public string? billType { get; set; }
+    public string? billType { get; set; }=null!;
 
-    public string? conID { get; set; }
+    public string? conID { get; set; }=null!;
 
-    public string? Capitated { get; set; }
+    public string? Capitated { get; set; }="NO"!;
 
-    public string? Dosage { get; set; }
+    public string? Dosage { get; set; }=null!;
 
-    public string? Category { get; set; }
+    public string? Category { get; set; }=null!;
 
-    public string BillTo { get; set; } = null!;
+    public string BillTo { get; set; } // same as coyname in attendance
 
-    public string CoyName { get; set; } = null!;
+    public string CoyName { get; set; } // same as coyname in attendance, for audit trail
 
-    public string? BillHead { get; set; }
+    public string? BillHead { get; set; } = null!;
 
-    public string? revType { get; set; }
+    public string? revType { get; set; } = null!;
 
-    public string? DRGCode { get; set; }
+    public string? DRGCode { get; set; } = null!;
 
-    public bool isPost { get; set; }
+    public bool isPost { get; set; }=false;
 
-    public bool? isRct { get; set; }
+    public bool? isRct { get; set; } = false;
 
-    public string? BillBy { get; set; }
+    public string? BillBy { get; set; }// same as empID in attendance, for audit trail
 
-    public string? treatedBy { get; set; }
+    public string? treatedBy { get; set; } //same as doctor in attendance, for audit trail
 
-    public string? Dept { get; set; }
+    public string? Dept { get; set; }=null!;
 
-    public bool? isOLD { get; set; }
+    public bool? isOLD { get; set; } = false;
 
-    public DateTime? EntryDate { get; set; }
+    //public DateTime? EntryDate { get; set; }
 
-    public DateTime? EntryTime { get; set; }
+    //public DateTime? EntryTime { get; set; }
 
-    public string? ClientName { get; set; }
+    public string? ClientName { get; set; } // device name that posted the billing detail, for audit trail
 
-    public string? AppName { get; set; }
+    public string? AppName { get; set; }// name of the application that posted the billing detail, for audit trail
 
-    public string? RevClinic { get; set; }
+    public string? RevClinic { get; set; } // for revenue clinic
 
-    public decimal? AmtPaid { get; set; }
+    //public decimal? AmtPaid { get; set; } = 0;
 
-    public bool? Reversed { get; set; }
+    public bool? Reversed { get; set; } = false;
 
-    public string? Remarks { get; set; }
+    public string? Remarks { get; set; }= null!;
 
-    public bool? suppres { get; set; }
+    public bool? suppres { get; set; } = false;
 
-    public int? AppVersion { get; set; }
+    public int? AppVersion { get; set; } = 1;
 
-    public string? TranID { get; set; }
+    //public string? TranID { get; set; }
 
-    public long? ReversedPair { get; set; }
+    //public long? ReversedPair { get; set; }
 }

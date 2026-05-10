@@ -16,6 +16,7 @@ import { Attendance } from '../../models/legacy/attendance.model';
 import { HPatient } from '../../models/legacy/h-patient.model';
 import { DentalEncounter, DentalImaging } from '../../models/dental.model';
 import { DentalEncounterDialogComponent, DentalPatientOption } from './dental-encounter-dialog.component';
+import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoice-dialog.component';
 
 @Component({
   selector: 'app-dental-page',
@@ -82,6 +83,9 @@ import { DentalEncounterDialogComponent, DentalPatientOption } from './dental-en
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
+                <button mat-icon-button type="button" (click)="openBilling(row)" title="Bill Patient">
+                  <mat-icon>receipt_long</mat-icon>
+                </button>
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -191,6 +195,28 @@ export class DentalPageComponent implements OnInit {
     });
   }
 
+  openBilling(row: DentalImaging): void {
+    const attendance = this.attendance().find(a => a.consultId === row.consultId && a.pNo === row.pno);
+
+    const ref = this.dialog.open(BillingInvoiceDialogComponent, {
+      width: '95vw',
+      maxWidth: '1300px',
+      disableClose: true,
+      data: {
+        mode: 'create',
+        consultId: row.consultId,
+        billNo: row.consultId,
+        company: attendance?.coyname ?? '',
+        pNo: row.pno,
+        clientID: attendance?.clientCat ?? ''
+      }
+    });
+
+    ref.afterClosed().subscribe(() => {
+      // no-op; billing dialog handles save feedback internally
+    });
+  }
+
   deleteImaging(id: number): void {
     this.alertService.showDialog('Delete this dental record?', DialogType.confirm, () => {
       this.alertService.startLoadingMessage('Deleting...');
@@ -241,7 +267,7 @@ export class DentalPageComponent implements OnInit {
     });
   }
 
-  resolvePatientLabel(pno: string): string {
+  resolvePatientLabel(pno: string): String {
     const p = this.patients().find(x => x.pno === pno);
     return p ? `${p.pSurName} ${p.pFirstname ?? ''} [${pno}]`.trim() : `[${pno}]`;
   }

@@ -25,6 +25,7 @@ export interface HPatient {
   policyType?: string;
   nokphone?: string;
   status?: string;
+  debtBf?: number;
   regDate?: string;
   userName?: string;
   patPixBase64?: string;  // optional patient photo as Base64 data URI

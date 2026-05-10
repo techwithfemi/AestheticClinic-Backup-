@@ -153,6 +153,33 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<HConsulting, DentalConsultingVM>()
                 .ReverseMap()
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+
+            CreateMap<Billing, BillingVM>()
+                .ForMember(d => d.BillNo, map => map.MapFrom(s => s.billNO))
+                .ForMember(d => d.BDate, map => map.MapFrom(s => s.bDate))
+                .ForMember(d => d.PNo, map => map.MapFrom(s => s.pNo))
+                .ForMember(d => d.ClientID, map => map.MapFrom(s => s.clientID))
+                .ForMember(d => d.BillType, map => map.MapFrom(s => s.billType))
+                .ForMember(d => d.IsPaid, map => map.MapFrom(s => s.isPaid))
+                .ForMember(d => d.Details, map => map.Ignore());
+
+            CreateMap<BillingVM, Billing>()
+                .ForMember(d => d.billNO, map => map.MapFrom(s => s.BillNo))
+                .ForMember(d => d.bDate, map => map.MapFrom(s => s.BDate))
+                .ForMember(d => d.pNo, map => map.MapFrom(s => s.PNo))
+                .ForMember(d => d.clientID, map => map.MapFrom(s => s.ClientID))
+                .ForMember(d => d.billType, map => map.MapFrom(s => s.BillType))
+                .ForMember(d => d.isPaid, map => map.MapFrom(s => s.IsPaid));
+
+            CreateMap<BillingDetail, BillingDetailVM>()
+                .ForMember(d => d.DrgName, map => map.MapFrom(s => s.drgName))
+                .ForMember(d => d.BillType, map => map.MapFrom(s => s.billType))
+                .ForMember(d => d.ConID, map => map.MapFrom(s => s.conID));
+
+            CreateMap<BillingDetailVM, BillingDetail>()
+                .ForMember(d => d.drgName, map => map.MapFrom(s => s.DrgName))
+                .ForMember(d => d.billType, map => map.MapFrom(s => s.BillType))
+                .ForMember(d => d.conID, map => map.MapFrom(s => s.ConID));
         }
 
         private static string StripBase64Prefix(string base64)
