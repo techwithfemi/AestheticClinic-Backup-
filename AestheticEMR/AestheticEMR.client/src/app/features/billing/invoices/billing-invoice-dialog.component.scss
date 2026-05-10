@@ -84,9 +84,29 @@
   gap: 8px;
 }
 
+.line-editor-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.line-total-box label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.single-row-editor {
+  margin-bottom: 12px;
+}
+
 @media (max-width: 992px) {
   .context-grid,
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .line-editor-grid {
     grid-template-columns: 1fr;
   }
 }

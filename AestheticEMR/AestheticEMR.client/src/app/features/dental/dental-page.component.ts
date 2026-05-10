@@ -199,8 +199,8 @@ export class DentalPageComponent implements OnInit {
     const attendance = this.attendance().find(a => a.consultId === row.consultId && a.pNo === row.pno);
 
     const ref = this.dialog.open(BillingInvoiceDialogComponent, {
-      width: '95vw',
-      maxWidth: '1300px',
+      width: '57vw',
+      maxWidth: '780px',
       disableClose: true,
       data: {
         mode: 'create',

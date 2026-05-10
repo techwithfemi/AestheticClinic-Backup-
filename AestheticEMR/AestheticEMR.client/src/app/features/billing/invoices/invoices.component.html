@@ -12,7 +12,7 @@
         </button>
         <button mat-raised-button color="primary" type="button" (click)="openCreate()">
           <mat-icon>add</mat-icon>
-          New bill
+          New Invoice
         </button>
       </div>
     </div>
@@ -46,9 +46,9 @@
           <td mat-cell *matCellDef="let invoice">{{ invoice.clientID || 'N/A' }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="billType">
-          <th mat-header-cell *matHeaderCellDef>Bill Type</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.billType || 'N/A' }}</td>
+        <ng-container matColumnDef="debtBF">
+          <th mat-header-cell *matHeaderCellDef>Debt BF</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.debtBF ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="amountBilled">

@@ -53,7 +53,7 @@ export class InvoicesComponent implements OnInit {
   searchText = '';
   currentPage = 1;
   readonly pageSize = 10;
-  readonly listColumns = ['billNo', 'bDate', 'patient', 'clientID', 'billType', 'amountBilled', 'amountPaid', 'actions'];
+  readonly listColumns = ['billNo', 'bDate', 'patient', 'clientID', 'debtBF', 'amountBilled', 'amountPaid', 'actions'];
 
   ngOnInit(): void {
     this.loadPatients();
@@ -172,7 +172,8 @@ export class InvoicesComponent implements OnInit {
       billNo: invoice.billNo,
       pNo: invoice.pNo,
       company: invoice.company ?? invoice.clientID,
-      clientID: invoice.clientID
+      clientID: invoice.clientID,
+      debtBF: invoice.debtBF
     });
   }
 
@@ -202,8 +203,8 @@ export class InvoicesComponent implements OnInit {
 
   private openInvoiceDialog(data: BillingInvoiceDialogData): void {
     const ref = this.dialog.open(BillingInvoiceDialogComponent, {
-      width: '95vw',
-      maxWidth: '1300px',
+      width: '57vw',
+      maxWidth: '780px',
       disableClose: true,
       data
     });

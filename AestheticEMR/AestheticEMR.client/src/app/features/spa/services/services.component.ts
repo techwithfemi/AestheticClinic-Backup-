@@ -241,8 +241,8 @@ export class ServicesComponent {
         company: this.getCompanyDisplayName(legacy),
         clientID: legacy?.clientCatId
       },
-      width: '95vw',
-      maxWidth: '1300px',
+      width: '57vw',
+      maxWidth: '780px',
       disableClose: true
     });
 

@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
+import { firstValueFrom } from 'rxjs';
 
 import { Billing, BillingDetail } from '../../../models/legacy/billing.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
@@ -25,6 +26,7 @@ export interface BillingInvoiceDialogData {
   pNo?: string;
   company?: string;
   clientID?: string;
+  debtBF?: number;
 }
 
 interface AttendanceOption {
@@ -66,9 +68,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   readonly detailsColumns = ['drgName', 'price', 'qty', 'lineTotal', 'actions'];
   loadingIndicator = false;
+  hasChanges = false;
 
   attendanceOptions: AttendanceOption[] = [];
   selectedAttendanceKey = '';
+  persistedDetails: BillingDetail[] = [];
 
   invoiceForm: FormGroup = this.fb.group({
     bDate: [this.today(), Validators.required],
@@ -91,6 +95,10 @@ export class BillingInvoiceDialogComponent implements OnInit {
     return this.invoiceForm.get('details') as FormArray;
   }
 
+  get lineItemGroup(): FormGroup {
+    return this.detailsArray.at(0) as FormGroup;
+  }
+
   get isEditing(): boolean {
     return this.data.mode === 'edit';
   }
@@ -99,23 +107,84 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.loadAttendanceOptions();
 
     if (this.isEditing && this.data.billNo) {
-      this.loadInvoice(this.data.billNo);
+      void this.loadInvoice(this.data.billNo);
       return;
     }
 
     this.applyContextDefaults();
   }
 
-  addDetailRow(): void {
-    this.detailsArray.push(this.createDetailGroup());
-  }
-
-  removeDetailRow(index: number): void {
-    if (this.detailsArray.length <= 1) {
+  async addToGrid(): Promise<void> {
+    if (this.lineItemGroup.invalid || !this.headerInfo.billNo || !this.headerInfo.pNo) {
+      this.alertService.showStickyMessage('Validation Error', 'Please select Patient [ConsultID] and complete Bill Item, Price and Qty.', MessageSeverity.error);
       return;
     }
 
-    this.detailsArray.removeAt(index);
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Adding bill item...');
+
+    try {
+      const newDetail = this.mapCurrentLineItem();
+      const existing = await this.getInvoiceByBillNo(this.headerInfo.billNo);
+
+      if (!existing) {
+        const createPayload = this.buildPayload([newDetail]);
+        await firstValueFrom(this.billingEndpoint.getNewInvoiceEndpoint<Billing>(createPayload));
+      } else {
+        const updatedDetails = [...(existing.details ?? []), newDetail];
+        const updatePayload = this.buildPayload(updatedDetails);
+        await firstValueFrom(this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(existing.billNo, updatePayload));
+      }
+
+      await this.refreshPersistedDetails();
+      this.resetLineItemForm();
+      this.hasChanges = true;
+
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showMessage('Success', 'Bill item added to grid.', MessageSeverity.success);
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Add Error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
+  }
+
+  async deleteDetail(index: number): Promise<void> {
+    if (!this.headerInfo.billNo) {
+      return;
+    }
+
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Deleting bill item...');
+
+    try {
+      const existing = await this.getInvoiceByBillNo(this.headerInfo.billNo);
+      if (!existing) {
+        this.alertService.stopLoadingMessage();
+        this.loadingIndicator = false;
+        return;
+      }
+
+      const remaining = (existing.details ?? []).filter((_, i) => i !== index);
+      if (remaining.length === 0) {
+        await firstValueFrom(this.billingEndpoint.getDeleteInvoiceEndpoint<void>(existing.billNo));
+      } else {
+        const updatePayload = this.buildPayload(remaining);
+        await firstValueFrom(this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(existing.billNo, updatePayload));
+      }
+
+      await this.refreshPersistedDetails();
+      this.hasChanges = true;
+
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showMessage('Success', 'Bill item deleted.', MessageSeverity.success);
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Delete Error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
   }
 
   onAttendanceSelectionChanged(): void {
@@ -130,47 +199,15 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.patientName = selected.patientName;
     this.headerInfo.company = selected.company ?? '';
     this.headerInfo.debtBF = selected.debtBf ?? 0;
+    void this.refreshPersistedDetails();
   }
 
   save(): void {
-    if (this.invoiceForm.invalid || this.detailsArray.length === 0 || !this.headerInfo.billNo || !this.headerInfo.pNo) {
-      this.alertService.showStickyMessage('Validation Error', 'Please select Patient [ConsultID] and complete required fields.', MessageSeverity.error);
-      return;
-    }
-
-    const payload = this.mapFormToInvoice();
-    this.alertService.startLoadingMessage();
-
-    if (this.isEditing && this.data.billNo) {
-      this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(this.data.billNo, payload).subscribe({
-        next: () => {
-          this.alertService.stopLoadingMessage();
-          this.alertService.showMessage('Success', 'Invoice updated successfully.', MessageSeverity.success);
-          this.dialogRef.close(true);
-        },
-        error: error => {
-          this.alertService.stopLoadingMessage();
-          this.alertService.showStickyMessage('Update Error', this.getErrorMessage(error), MessageSeverity.error, error);
-        }
-      });
-      return;
-    }
-
-    this.billingEndpoint.getNewInvoiceEndpoint<Billing>(payload).subscribe({
-      next: () => {
-        this.alertService.stopLoadingMessage();
-        this.alertService.showMessage('Success', 'Invoice created successfully.', MessageSeverity.success);
-        this.dialogRef.close(true);
-      },
-      error: error => {
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage('Create Error', this.getErrorMessage(error), MessageSeverity.error, error);
-      }
-    });
+    this.dialogRef.close(this.hasChanges);
   }
 
   cancel(): void {
-    this.dialogRef.close(false);
+    this.dialogRef.close(this.hasChanges);
   }
 
   computeLineTotal(index: number): number {
@@ -180,8 +217,12 @@ export class BillingInvoiceDialogComponent implements OnInit {
     return price * qty;
   }
 
+  computePersistedLineTotal(detail: BillingDetail): number {
+    return Number(detail.price ?? 0) * Number(detail.qty ?? 0);
+  }
+
   computeGrandTotal(): number {
-    return this.detailsArray.controls.reduce((sum, _, index) => sum + this.computeLineTotal(index), 0);
+    return this.persistedDetails.reduce((sum, item) => sum + this.computePersistedLineTotal(item), 0);
   }
 
   optionKey(option: AttendanceOption): string {
@@ -193,47 +234,51 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.billNo = this.data.billNo ?? this.data.consultId ?? '';
     this.headerInfo.company = this.data.company ?? this.data.clientID ?? '';
     this.headerInfo.pNo = this.data.pNo ?? '';
+    this.headerInfo.debtBF = Number(this.data.debtBF ?? 0);
+    void this.refreshPersistedDetails();
   }
 
-  private loadInvoice(billNo: string): void {
+  private async loadInvoice(billNo: string): Promise<void> {
     this.alertService.startLoadingMessage();
     this.loadingIndicator = true;
 
-    this.billingEndpoint.getInvoiceByBillNoEndpoint<Billing>(billNo).subscribe({
-      next: invoice => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
+    try {
+      const invoice = await firstValueFrom(this.billingEndpoint.getInvoiceByBillNoEndpoint<Billing>(billNo));
 
-        this.headerInfo.billNo = invoice.billNo;
-        this.headerInfo.consultId = invoice.consultId ?? invoice.billNo;
-        this.headerInfo.pNo = invoice.pNo;
-        this.headerInfo.company = invoice.company ?? invoice.clientID ?? '';
-        this.headerInfo.debtBF = invoice.debtBF ?? 0;
+      this.headerInfo.billNo = invoice.billNo;
+      this.headerInfo.consultId = invoice.consultId ?? invoice.billNo;
+      this.headerInfo.pNo = invoice.pNo;
+      this.headerInfo.company = invoice.company ?? invoice.clientID ?? '';
+      this.headerInfo.debtBF = invoice.debtBF ?? 0;
 
-        this.invoiceForm.patchValue({
-          bDate: this.normalizeDateInput(invoice.bDate),
-          discount: invoice.discount ?? 0,
-          amountPaid: invoice.amountPaid ?? 0,
-          billType: invoice.billType ?? ''
-        });
+      this.invoiceForm.patchValue({
+        bDate: this.normalizeDateInput(invoice.bDate),
+        discount: invoice.discount ?? 0,
+        amountPaid: invoice.amountPaid ?? 0,
+        billType: invoice.billType ?? ''
+      });
 
-        this.resetDetailsArray(invoice.details?.length ? invoice.details : [{ drgName: '', price: 0, qty: 1 }]);
+      this.persistedDetails = [...(invoice.details ?? [])];
+      this.resetLineItemForm();
 
-        if (this.headerInfo.pNo) {
-          const option = this.attendanceOptions.find(x => x.pNo === this.headerInfo.pNo && x.consultId === this.headerInfo.consultId);
-          if (option) {
-            this.selectedAttendanceKey = this.optionKey(option);
-            this.headerInfo.patientName = option.patientName;
+      if (this.headerInfo.pNo) {
+        const option = this.attendanceOptions.find(x => x.pNo === this.headerInfo.pNo && x.consultId === this.headerInfo.consultId);
+        if (option) {
+          this.selectedAttendanceKey = this.optionKey(option);
+          this.headerInfo.patientName = option.patientName;
+          if (!this.data.debtBF && this.data.debtBF !== 0) {
             this.headerInfo.debtBF = option.debtBf ?? this.headerInfo.debtBF;
           }
         }
-      },
-      error: error => {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
       }
-    });
+
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
   }
 
   private loadAttendanceOptions(): void {
@@ -277,12 +322,14 @@ export class BillingInvoiceDialogComponent implements OnInit {
         if (preselected) {
           this.selectedAttendanceKey = this.optionKey(preselected);
           this.headerInfo.patientName = preselected.patientName;
-          this.headerInfo.debtBF = preselected.debtBf ?? this.headerInfo.debtBF;
+          if (!this.data.debtBF && this.data.debtBF !== 0) {
+            this.headerInfo.debtBF = preselected.debtBf ?? this.headerInfo.debtBF;
+          }
           return;
         }
       }
 
-      if (!this.isEditing && this.attendanceOptions.length > 0) {
+      if (!this.isEditing && this.attendanceOptions.length > 0 && !this.headerInfo.consultId) {
         const first = this.attendanceOptions[0];
         this.selectedAttendanceKey = this.optionKey(first);
         this.onAttendanceSelectionChanged();
@@ -290,13 +337,31 @@ export class BillingInvoiceDialogComponent implements OnInit {
     });
   }
 
-  private resetDetailsArray(details: BillingDetail[]): void {
-    while (this.detailsArray.length) {
-      this.detailsArray.removeAt(0);
+  private async refreshPersistedDetails(): Promise<void> {
+    if (!this.headerInfo.billNo) {
+      this.persistedDetails = [];
+      return;
     }
 
-    details.forEach(item => {
-      this.detailsArray.push(this.createDetailGroup(item));
+    const existing = await this.getInvoiceByBillNo(this.headerInfo.billNo);
+    this.persistedDetails = [...(existing?.details ?? [])];
+  }
+
+  private async getInvoiceByBillNo(billNo: string): Promise<Billing | null> {
+    try {
+      return await firstValueFrom(this.billingEndpoint.getInvoiceByBillNoEndpoint<Billing>(billNo));
+    } catch {
+      return null;
+    }
+  }
+
+  private resetLineItemForm(): void {
+    this.lineItemGroup.reset({
+      drgName: '',
+      price: 0,
+      qty: 1,
+      billType: '',
+      conID: this.headerInfo.consultId ?? ''
     });
   }
 
@@ -310,7 +375,18 @@ export class BillingInvoiceDialogComponent implements OnInit {
     });
   }
 
-  private mapFormToInvoice(): Billing {
+  private mapCurrentLineItem(): BillingDetail {
+    const value = this.lineItemGroup.getRawValue();
+    return {
+      drgName: (value.drgName ?? '').trim(),
+      price: Number(value.price ?? 0),
+      qty: Number(value.qty ?? 1),
+      billType: (value.billType ?? '').trim() || undefined,
+      conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined
+    } as BillingDetail;
+  }
+
+  private buildPayload(details: BillingDetail[]): Billing {
     const raw = this.invoiceForm.getRawValue();
 
     return {
@@ -319,22 +395,13 @@ export class BillingInvoiceDialogComponent implements OnInit {
       pNo: this.headerInfo.pNo,
       clientID: this.headerInfo.company || undefined,
       debtBF: Number(this.headerInfo.debtBF ?? 0),
-      amountBilled: this.computeGrandTotal(),
+      amountBilled: details.reduce((sum, item) => sum + (Number(item.price ?? 0) * Number(item.qty ?? 0)), 0),
       discount: Number(raw.discount ?? 0),
       amountPaid: Number(raw.amountPaid ?? 0),
       billType: (raw.billType ?? '').trim() || undefined,
       consultId: this.headerInfo.consultId || undefined,
       company: this.headerInfo.company || undefined,
-      details: this.detailsArray.controls.map(control => {
-        const value = control.getRawValue();
-        return {
-          drgName: (value.drgName ?? '').trim(),
-          price: Number(value.price ?? 0),
-          qty: Number(value.qty ?? 1),
-          billType: (value.billType ?? '').trim() || undefined,
-          conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined
-        } as BillingDetail;
-      })
+      details
     };
   }
 
