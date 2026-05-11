@@ -238,8 +238,8 @@ export class ServicesComponent {
         consultId: consultation.consultId,
         billNo: consultation.consultId,
         pNo: consultation.pNo,
-        company: this.getCompanyDisplayName(legacy),
-        clientID: legacy?.clientCatId
+        coyID: legacy?.coyName ?? '',
+        clientID: legacy?.coyName
       },
       width: '57vw',
       maxWidth: '780px',
@@ -361,7 +361,7 @@ export class ServicesComponent {
     return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  private findAestheticPatient(firstName: string, lastName: string, pNo: string): AestheticPatient | undefined {
+  private findAestheticPatient(firstName: String, lastName: string, pNo: string): AestheticPatient | undefined {
     const normalizedFirst = firstName.trim().toLowerCase();
     const normalizedLast = lastName.trim().toLowerCase();
     const normalizedPNo = pNo.trim().toLowerCase();

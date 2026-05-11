@@ -24,17 +24,16 @@ export interface BillingInvoiceDialogData {
   billNo?: string;
   consultId?: string;
   pNo?: string;
+  coyID?: string;
   company?: string;
   clientID?: string;
-  debtBF?: number;
 }
 
 interface AttendanceOption {
   consultId: string;
   pNo: string;
   patientName: string;
-  company?: string;
-  debtBf?: number;
+  coyID?: string;
   label: string;
 }
 
@@ -85,10 +84,9 @@ export class BillingInvoiceDialogComponent implements OnInit {
   headerInfo = {
     consultId: '',
     billNo: '',
-    company: '',
     pNo: '',
     patientName: '',
-    debtBF: 0
+    coyID: ''
   };
 
   get detailsArray(): FormArray {
@@ -197,8 +195,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.billNo = selected.consultId;
     this.headerInfo.pNo = selected.pNo;
     this.headerInfo.patientName = selected.patientName;
-    this.headerInfo.company = selected.company ?? '';
-    this.headerInfo.debtBF = selected.debtBf ?? 0;
+    this.headerInfo.coyID = selected.coyID ?? '';
     void this.refreshPersistedDetails();
   }
 
@@ -232,9 +229,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private applyContextDefaults(): void {
     this.headerInfo.consultId = this.data.consultId ?? '';
     this.headerInfo.billNo = this.data.billNo ?? this.data.consultId ?? '';
-    this.headerInfo.company = this.data.company ?? this.data.clientID ?? '';
     this.headerInfo.pNo = this.data.pNo ?? '';
-    this.headerInfo.debtBF = Number(this.data.debtBF ?? 0);
+    this.headerInfo.coyID = this.data.coyID ?? this.data.clientID ?? '';
     void this.refreshPersistedDetails();
   }
 
@@ -248,8 +244,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       this.headerInfo.billNo = invoice.billNo;
       this.headerInfo.consultId = invoice.consultId ?? invoice.billNo;
       this.headerInfo.pNo = invoice.pNo;
-      this.headerInfo.company = invoice.company ?? invoice.clientID ?? '';
-      this.headerInfo.debtBF = invoice.debtBF ?? 0;
+      this.headerInfo.coyID = invoice.clientID ?? '';
 
       this.invoiceForm.patchValue({
         bDate: this.normalizeDateInput(invoice.bDate),
@@ -266,9 +261,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
         if (option) {
           this.selectedAttendanceKey = this.optionKey(option);
           this.headerInfo.patientName = option.patientName;
-          if (!this.data.debtBF && this.data.debtBF !== 0) {
-            this.headerInfo.debtBF = option.debtBf ?? this.headerInfo.debtBF;
-          }
+          this.headerInfo.coyID = option.coyID ?? this.headerInfo.coyID;
         }
       }
 
@@ -304,8 +297,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           consultId,
           pNo,
           patientName,
-          company,
-          debtBf: patient?.debtBf,
+          coyID: company,
           label: `${patientName} [${consultId}]`
         };
 
@@ -322,9 +314,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
         if (preselected) {
           this.selectedAttendanceKey = this.optionKey(preselected);
           this.headerInfo.patientName = preselected.patientName;
-          if (!this.data.debtBF && this.data.debtBF !== 0) {
-            this.headerInfo.debtBF = preselected.debtBf ?? this.headerInfo.debtBF;
-          }
+          this.headerInfo.coyID = preselected.coyID ?? this.headerInfo.coyID;
           return;
         }
       }
@@ -393,14 +383,14 @@ export class BillingInvoiceDialogComponent implements OnInit {
       billNo: this.headerInfo.billNo,
       bDate: this.normalizeDateInput(raw.bDate),
       pNo: this.headerInfo.pNo,
-      clientID: this.headerInfo.company || undefined,
-      debtBF: Number(this.headerInfo.debtBF ?? 0),
+      clientID: this.headerInfo.coyID || undefined,
+      debtBF: Number(0),
       amountBilled: details.reduce((sum, item) => sum + (Number(item.price ?? 0) * Number(item.qty ?? 0)), 0),
       discount: Number(raw.discount ?? 0),
       amountPaid: Number(raw.amountPaid ?? 0),
       billType: (raw.billType ?? '').trim() || undefined,
       consultId: this.headerInfo.consultId || undefined,
-      company: this.headerInfo.company || undefined,
+      company: undefined,
       details
     };
   }

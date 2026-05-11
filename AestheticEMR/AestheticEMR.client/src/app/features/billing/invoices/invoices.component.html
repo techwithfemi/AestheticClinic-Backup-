@@ -6,13 +6,23 @@
         <p class="subtitle">Manage billing invoices and bill details.</p>
       </div>
       <div class="header-actions">
-        <button mat-stroked-button type="button" (click)="refresh()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
+        <mat-form-field appearance="outline" class="attendance-select-field">
+          <mat-label>Select Patient</mat-label>
+          <mat-select [(value)]="selectedAttendanceKey">
+            <mat-option *ngFor="let option of attendanceOptions" [value]="optionKey(option)">
+              {{ option.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
         <button mat-raised-button color="primary" type="button" (click)="openCreate()">
           <mat-icon>add</mat-icon>
           New Invoice
+        </button>
+
+        <button mat-stroked-button type="button" class="refresh-btn" (click)="refresh()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
         </button>
       </div>
     </div>
@@ -20,14 +30,14 @@
     <div class="toolbar-row">
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Search</mat-label>
-        <input matInput [(ngModel)]="searchText" (input)="onSearch()" placeholder="Search by patient name" />
+        <input matInput [(ngModel)]="searchText" (input)="onSearch()" placeholder="Search by patient name or bill no" />
       </mat-form-field>
     </div>
 
     <div class="table-wrap">
       <table mat-table [dataSource]="pagedInvoices" class="list-table">
         <ng-container matColumnDef="billNo">
-          <th mat-header-cell *matHeaderCellDef>Invoice No</th>
+          <th mat-header-cell *matHeaderCellDef>Bill No</th>
           <td mat-cell *matCellDef="let invoice">{{ invoice.billNo }}</td>
         </ng-container>
 
@@ -47,18 +57,38 @@
         </ng-container>
 
         <ng-container matColumnDef="debtBF">
-          <th mat-header-cell *matHeaderCellDef>Debt BF</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.debtBF ?? 0 | number: '1.2-2' }}</td>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Debt BF</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.debtBF ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="amountBilled">
-          <th mat-header-cell *matHeaderCellDef>Amount Billed</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.amountBilled ?? 0 | number: '1.2-2' }}</td>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Amount Billed</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.amountBilled ?? 0 | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="discount">
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Discount</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.discount ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="amountPaid">
-          <th mat-header-cell *matHeaderCellDef>Amount Paid</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.amountPaid ?? 0 | number: '1.2-2' }}</td>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Amount Paid</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.amountPaid ?? 0 | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="balance">
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Balance</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ getBalance(invoice) | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="coyID">
+          <th mat-header-cell *matHeaderCellDef class="hidden-column">Coy ID</th>
+          <td mat-cell *matCellDef="let invoice" class="hidden-column">{{ invoice.clientID || '' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="pNo">
+          <th mat-header-cell *matHeaderCellDef class="hidden-column">PNO</th>
+          <td mat-cell *matCellDef="let invoice" class="hidden-column">{{ invoice.pNo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="actions">

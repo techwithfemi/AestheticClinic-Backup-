@@ -15,6 +15,7 @@ import { AestheticConsultation, AestheticPatient } from '../../../models/aesthet
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { BotoxDialogComponent, BotoxDialogResult, BotoxPatientOption } from './botox-dialog.component';
+import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-invoice-dialog.component';
 
 @Component({
   selector: 'app-botox',
@@ -95,6 +96,9 @@ import { BotoxDialogComponent, BotoxDialogResult, BotoxPatientOption } from './b
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
+                <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill">
+                  <mat-icon>receipt_long</mat-icon>
+                </button>
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -239,6 +243,29 @@ export class BotoxComponent {
     dialogRef.afterClosed().subscribe((result: BotoxDialogResult | undefined) => {
       if (!result) return;
       void this.saveConsultation(result);
+    });
+  }
+
+  openBilling(consultation: AestheticConsultation): void {
+    const attendance = this.attendance().find(a => a.consultId === consultation.consultId && a.pNo === consultation.pNo);
+    const legacy = this.legacyPatients().find(x => x.pno === consultation.pNo);
+
+    const dialogRef = this.dialog.open(BillingInvoiceDialogComponent, {
+      data: {
+        mode: 'create',
+        consultId: consultation.consultId,
+        billNo: consultation.consultId,
+        pNo: consultation.pNo,
+        coyID: attendance?.coyname ?? legacy?.coyName ?? '',
+        clientID: attendance?.coyname ?? legacy?.coyName ?? ''
+      },
+      width: '57vw',
+      maxWidth: '780px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // no-op
     });
   }
 

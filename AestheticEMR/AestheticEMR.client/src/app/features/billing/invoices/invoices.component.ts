@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { MatSelectModule } from '@angular/material/select';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -18,6 +19,16 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { Billing } from '../../../models/legacy/billing.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { BillingInvoiceDialogComponent, BillingInvoiceDialogData } from './billing-invoice-dialog.component';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
+import { Attendance } from '../../../models/legacy/attendance.model';
+
+interface InvoiceAttendanceOption {
+  consultId: string;
+  pNo: string;
+  patientName: string;
+  coyID?: string;
+  label: string;
+}
 
 @Component({
   selector: 'app-invoices',
@@ -32,7 +43,8 @@ import { BillingInvoiceDialogComponent, BillingInvoiceDialogData } from './billi
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatTableModule
+    MatTableModule,
+    MatSelectModule
   ],
   animations: [fadeInOut],
   templateUrl: './invoices.component.html',
@@ -42,6 +54,7 @@ export class InvoicesComponent implements OnInit {
   private alertService = inject(AlertService);
   private billingEndpoint = inject(BillingEndpoint);
   private patientEndpoint = inject(HPatientEndpoint);
+  private attendanceEndpoint = inject(AttendanceEndpoint);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
 
@@ -49,14 +62,17 @@ export class InvoicesComponent implements OnInit {
   invoicesCache: Billing[] = [];
   filteredInvoices: Billing[] = [];
   patients: HPatient[] = [];
+  attendanceOptions: InvoiceAttendanceOption[] = [];
   loadingIndicator = false;
   searchText = '';
   currentPage = 1;
   readonly pageSize = 10;
-  readonly listColumns = ['billNo', 'bDate', 'patient', 'clientID', 'debtBF', 'amountBilled', 'amountPaid', 'actions'];
+  readonly listColumns = ['billNo', 'bDate', 'patient', 'clientID', 'debtBF', 'amountBilled', 'discount', 'amountPaid', 'balance', 'coyID', 'pNo', 'actions'];
+  selectedAttendanceKey = '';
 
   ngOnInit(): void {
     this.loadPatients();
+    this.loadAttendanceOptions();
 
     this.route.queryParamMap.subscribe(query => {
       const action = (query.get('action') ?? '').toLowerCase();
@@ -69,12 +85,19 @@ export class InvoicesComponent implements OnInit {
         mode: 'create',
         consultId: query.get('consultId') ?? undefined,
         billNo: query.get('billNo') ?? query.get('consultId') ?? undefined,
-        company: query.get('company') ?? undefined,
+        coyID: query.get('coyID') ?? query.get('clientID') ?? undefined,
         pNo: query.get('pNo') ?? undefined,
         clientID: query.get('clientID') ?? undefined
       };
 
       this.openInvoiceDialog(data);
+
+      if (data.consultId && data.pNo) {
+        const matched = this.attendanceOptions.find(x => x.consultId === data.consultId && x.pNo === data.pNo);
+        if (matched) {
+          this.selectedAttendanceKey = this.optionKey(matched);
+        }
+      }
     });
 
     this.loadData();
@@ -157,8 +180,30 @@ export class InvoicesComponent implements OnInit {
     return `${patient.pSurName ?? ''} ${patient.pFirstname ?? ''}`.trim();
   }
 
+  getBalance(invoice: Billing): number {
+    const debtBF = invoice.debtBF ?? 0;
+    const amountBilled = invoice.amountBilled ?? 0;
+    const discount = invoice.discount ?? 0;
+    const amountPaid = invoice.amountPaid ?? 0;
+
+    return debtBF + amountBilled - discount - amountPaid;
+  }
+
   openCreate(): void {
-    this.openInvoiceDialog({ mode: 'create' });
+    const selected = this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
+    if (!selected) {
+      this.openInvoiceDialog({ mode: 'create' });
+      return;
+    }
+
+    this.openInvoiceDialog({
+      mode: 'create',
+      consultId: selected.consultId,
+      billNo: selected.consultId,
+      pNo: selected.pNo,
+      coyID: selected.coyID,
+      clientID: selected.coyID
+    });
   }
 
   openEdit(invoice: Billing): void {
@@ -171,9 +216,8 @@ export class InvoicesComponent implements OnInit {
       consultId: invoice.consultId ?? invoice.billNo,
       billNo: invoice.billNo,
       pNo: invoice.pNo,
-      company: invoice.company ?? invoice.clientID,
-      clientID: invoice.clientID,
-      debtBF: invoice.debtBF
+      coyID: invoice.clientID,
+      clientID: invoice.clientID
     });
   }
 
@@ -201,6 +245,10 @@ export class InvoicesComponent implements OnInit {
       });
   }
 
+  optionKey(option: InvoiceAttendanceOption): string {
+    return `${option.consultId}|${option.pNo}`;
+  }
+
   private openInvoiceDialog(data: BillingInvoiceDialogData): void {
     const ref = this.dialog.open(BillingInvoiceDialogComponent, {
       width: '57vw',
@@ -220,9 +268,54 @@ export class InvoicesComponent implements OnInit {
     this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({
       next: patients => {
         this.patients = patients ?? [];
+        this.loadAttendanceOptions();
       },
       error: () => {
         this.patients = [];
+        this.loadAttendanceOptions();
+      }
+    });
+  }
+
+  private loadAttendanceOptions(): void {
+    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
+      next: attendance => {
+        const todays = (attendance ?? []).filter(a => this.isToday(a.recDate));
+        const unique = new Map<string, InvoiceAttendanceOption>();
+
+        for (const item of todays) {
+          const consultId = item.consultId ?? '';
+          const pNo = item.pNo ?? '';
+          if (!consultId || !pNo) {
+            continue;
+          }
+
+          const patient = this.patients.find(p => p.pno === pNo);
+          const patientName = `${patient?.pSurName ?? 'Unknown'} ${patient?.pFirstname ?? ''}`.trim();
+          const coyID = item.coyname ?? patient?.coyName;
+
+          const option: InvoiceAttendanceOption = {
+            consultId,
+            pNo,
+            patientName,
+            coyID,
+            label: `${patientName} [${consultId}]`
+          };
+
+          const key = this.optionKey(option);
+          if (!unique.has(key)) {
+            unique.set(key, option);
+          }
+        }
+
+        this.attendanceOptions = Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+        if (!this.selectedAttendanceKey && this.attendanceOptions.length > 0) {
+          this.selectedAttendanceKey = this.optionKey(this.attendanceOptions[0]);
+        }
+      },
+      error: () => {
+        this.attendanceOptions = [];
       }
     });
   }

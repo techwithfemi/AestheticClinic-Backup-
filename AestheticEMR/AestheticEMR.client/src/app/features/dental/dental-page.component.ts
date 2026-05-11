@@ -206,9 +206,9 @@ export class DentalPageComponent implements OnInit {
         mode: 'create',
         consultId: row.consultId,
         billNo: row.consultId,
-        company: attendance?.coyname ?? '',
+        coyID: attendance?.coyname ?? '',
         pNo: row.pno,
-        clientID: attendance?.clientCat ?? ''
+        clientID: attendance?.coyname ?? ''
       }
     });
 

@@ -9,7 +9,7 @@
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -23,6 +23,12 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+  margin-left: auto;
+}
+
+.attendance-select-field {
+  min-width: 280px;
 }
 
 .toolbar-row {
@@ -62,10 +68,26 @@
   gap: 8px;
 }
 
+.hidden-column {
+  display: none;
+}
+
+.figure-col {
+  text-align: right;
+}
+
 @media (max-width: 992px) {
   .page-header,
   .pager {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .header-actions {
+    margin-left: 0;
+  }
+
+  .refresh-btn {
+    margin-left: 0;
   }
 }

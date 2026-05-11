@@ -10,33 +10,14 @@
     <mat-card class="section-card">
       <h4 class="section-title">Header</h4>
 
-      <div class="header-select-row" *ngIf="!isEditing">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Patient [ConsultID]</mat-label>
-          <mat-select [(value)]="selectedAttendanceKey" (selectionChange)="onAttendanceSelectionChanged()">
-            <mat-option *ngFor="let option of attendanceOptions" [value]="optionKey(option)">
-              {{ option.label }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
       <div class="context-grid">
         <div>
           <label>ConsultID / BillNo</label>
           <div class="readonly-text">{{ headerInfo.consultId || headerInfo.billNo || '-' }}</div>
         </div>
         <div>
-          <label>Company</label>
-          <div class="readonly-text">{{ headerInfo.company || '-' }}</div>
-        </div>
-        <div>
           <label>Patient</label>
           <div class="readonly-text">{{ headerInfo.patientName || '-' }} [{{ headerInfo.pNo || '-' }}]</div>
-        </div>
-        <div>
-          <label>Debt BF</label>
-          <div class="readonly-text">{{ headerInfo.debtBF | number: '1.2-2' }}</div>
         </div>
       </div>
 
