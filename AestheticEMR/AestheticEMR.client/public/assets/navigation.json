@@ -55,9 +55,7 @@
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Botox Treatments", "path": "botox", "icon": "medical_services" },
-        { "label": "Laser Treatments", "path": "laser", "icon": "flare" },
-        { "label": "Before & After Photos", "path": "photos", "icon": "photo_library" }
+        { "label": "Procedures", "path": "procedures", "icon": "biotech" }
       ]
     },
     "Billing": {
