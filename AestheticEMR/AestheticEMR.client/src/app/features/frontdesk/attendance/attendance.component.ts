@@ -2,7 +2,7 @@ import { AfterViewInit, Component, OnInit, TemplateRef, ViewChild, computed, inj
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
@@ -20,7 +20,7 @@ import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint
   templateUrl: './attendance.component.html',
   styleUrl: './attendance.component.scss',
   animations: [fadeInOut],
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule]
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule, RouterLink]
 })
 export class AttendanceComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);

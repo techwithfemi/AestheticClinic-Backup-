@@ -8,6 +8,7 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Reflection;
 
 namespace AestheticEMR.Server.Configuration
@@ -28,6 +29,7 @@ namespace AestheticEMR.Server.Configuration
             var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
 
             builder.UseSqlServer(configuration["ConnectionStrings:DefaultConnection"], b => b.MigrationsAssembly(migrationsAssembly));
+            builder.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
             builder.UseOpenIddict();
 
             return new ApplicationDbContext(builder.Options, SystemUserIdAccessor.GetNewAccessor());

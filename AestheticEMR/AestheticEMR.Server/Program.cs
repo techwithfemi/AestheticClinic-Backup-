@@ -23,6 +23,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.OpenApi;
 using OpenIddict.Validation.AspNetCore;
@@ -51,9 +52,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(connectionString, b => b.MigrationsAssembly(migrationsAssembly));
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
     options.UseOpenIddict();
 });
-
 
 //builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //{

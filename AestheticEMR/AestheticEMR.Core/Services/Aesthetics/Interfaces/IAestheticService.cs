@@ -27,5 +27,16 @@ namespace AestheticEMR.Core.Services.Aesthetics
         AestheticPhoto AddPhoto(AestheticPhoto photo);
         AestheticPhoto UpdatePhoto(AestheticPhoto photo);
         void DeletePhoto(int photoId);
+        IEnumerable<AestheticConsentTemplate> GetConsentTemplates(string? procedureType = null, bool includeInactive = false);
+        AestheticConsentTemplate? GetConsentTemplateById(int id);
+        AestheticConsentTemplate AddConsentTemplate(AestheticConsentTemplate template);
+        AestheticConsentTemplate UpdateConsentTemplate(AestheticConsentTemplate template);
+        void DeleteConsentTemplate(int id);
+        AestheticConsentStatus GetConsentStatus(string consultId, string pNo, string procedureType);
+        IEnumerable<AestheticSignedConsent> GetSignedConsents(string? consultId = null, string? pNo = null, string? procedureType = null, bool includeVoided = false);
+        AestheticSignedConsent? GetLatestSignedConsent(string consultId, string pNo, string procedureType);
+        AestheticSignedConsent SignConsent(int? patientId, string consultId, string pNo, string procedureType, int consentTemplateId, string signatureName, string? witnessedBy, string? signedBy, string? notes, byte[]? signatureImage, string? signatureImagePath);
+        AestheticSignedConsent MarkConsentViewed(int consentId, string doctorViewedBy);
+        AestheticSignedConsent VoidConsent(int consentId, string voidReason, string voidedBy);
     }
 }

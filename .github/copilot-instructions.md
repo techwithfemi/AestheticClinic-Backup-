@@ -380,6 +380,17 @@ For SPA static list dropdown ordering, default behavior should be ascending orde
 
 ---
 
+## Aesthetics Consent Workflow
+
+- Use `ConsultId` rather than `ConsultationId`.
+- Only allow patient consent signing after attendance has been taken.
+- Persist `ConsultId` and `PNo` alongside consent records and consent images.
+- Use per-procedure consent templates.
+- Add sidebar items for Consent Templates under Admin, Consent Form under Frontdesk, and View Consent under Aesthetics.
+- Add a last Procedures tab for doctors to review signed consents before procedures.
+
+---
+
 ## Reference Implementations
 
 When implementing new features, reference these real implementations:

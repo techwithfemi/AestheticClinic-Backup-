@@ -13,6 +13,12 @@ export const aestheticsRoutes: Routes = [
     title: 'Aesthetic Procedures'
   },
   {
+    path: 'view-consent',
+    loadComponent: () => import('./view-consent/view-consent.component')
+      .then(m => m.ViewConsentComponent),
+    title: 'View Consent'
+  },
+  {
     path: 'botox',
     loadComponent: () => import('./procedures/procedures.component')
       .then(m => m.ProceduresComponent),

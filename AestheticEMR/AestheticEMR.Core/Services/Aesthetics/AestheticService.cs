@@ -86,6 +86,9 @@ namespace AestheticEMR.Core.Services.Aesthetics
         {
             consultation.CreatedDate = DateTime.UtcNow;
             consultation.UpdatedDate = DateTime.UtcNow;
+
+            ApplyConsentStatus(consultation, consultId, pNo);
+
             dbContext.AestheticConsultations.Add(consultation);
             dbContext.SaveChanges();
 
@@ -103,10 +106,6 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.ConsultationDate = consultation.ConsultationDate;
             existing.ProcedureType = consultation.ProcedureType;
             existing.Provider = consultation.Provider;
-            existing.ConsentGiven = consultation.ConsentGiven;
-            existing.InformationAccepted = consultation.InformationAccepted;
-            existing.ConsentDate = consultation.ConsentDate;
-            existing.ConsentNotes = consultation.ConsentNotes;
             existing.ProcedureDescription = consultation.ProcedureDescription;
             existing.RisksAndComplications = consultation.RisksAndComplications;
             existing.PostTreatmentInstructions = consultation.PostTreatmentInstructions;
@@ -115,9 +114,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.CurrentMedications = consultation.CurrentMedications;
             existing.Allergies = consultation.Allergies;
             existing.DeviceSettings = consultation.DeviceSettings;
-
             existing.AreaTreated = consultation.AreaTreated;
-
             existing.DeviceUsed = consultation.DeviceUsed;
             existing.Wavelength = consultation.Wavelength;
             existing.SpotSize = consultation.SpotSize;
@@ -127,7 +124,6 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.NumberOfShots = consultation.NumberOfShots;
             existing.SkinReaction = consultation.SkinReaction;
             existing.NextSessionDate = consultation.NextSessionDate;
-
             existing.Indication = consultation.Indication;
             existing.BrandUsed = consultation.BrandUsed;
             existing.Dilution = consultation.Dilution;
@@ -136,6 +132,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.LotNumber = consultation.LotNumber;
             existing.FollowUpReview = consultation.FollowUpReview;
 
+            ApplyConsentStatus(existing, consultId, pNo);
             existing.UpdatedDate = DateTime.UtcNow;
 
             dbContext.SaveChanges();
@@ -244,6 +241,357 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 throw new KeyNotFoundException($"Photo not found: {photoId}");
 
             dbContext.AestheticPhotos.Remove(photo);
+            dbContext.SaveChanges();
+        }
+
+        public IEnumerable<AestheticConsentTemplate> GetConsentTemplates(string? procedureType = null, bool includeInactive = false)
+        {
+            var query = dbContext.AestheticConsentTemplates.AsNoTracking().AsQueryable();
+
+            if (!includeInactive)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            if (!string.IsNullOrWhiteSpace(procedureType))
+            {
+                var normalizedProcedureType = NormalizeRequired(procedureType, "Procedure type");
+                query = query.Where(x => x.ProcedureType == null || x.ProcedureType == normalizedProcedureType);
+            }
+
+            return query
+                .OrderBy(x => x.ProcedureType)
+                .ThenBy(x => x.Name)
+                .ThenBy(x => x.Title)
+                .ToList();
+        }
+
+        public AestheticConsentTemplate? GetConsentTemplateById(int id) => dbContext.AestheticConsentTemplates
+            .FirstOrDefault(x => x.Id == id);
+
+        public AestheticConsentTemplate AddConsentTemplate(AestheticConsentTemplate template)
+        {
+            template.Name = NormalizeRequired(template.Name, "Template name");
+            template.Title = NormalizeRequired(template.Title, "Template title");
+            template.Content = NormalizeRequired(template.Content, "Template content");
+            template.ProcedureType = NormalizeOptional(template.ProcedureType);
+            template.CreatedDate = DateTime.UtcNow;
+            template.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.AestheticConsentTemplates.Add(template);
+            dbContext.SaveChanges();
+            return template;
+        }
+
+        public AestheticConsentTemplate UpdateConsentTemplate(AestheticConsentTemplate template)
+        {
+            var existing = dbContext.AestheticConsentTemplates.FirstOrDefault(x => x.Id == template.Id);
+            if (existing == null)
+            {
+                throw new KeyNotFoundException($"Consent template not found: {template.Id}");
+            }
+
+            existing.Name = NormalizeRequired(template.Name, "Template name");
+            existing.Title = NormalizeRequired(template.Title, "Template title");
+            existing.Content = NormalizeRequired(template.Content, "Template content");
+            existing.ProcedureType = NormalizeOptional(template.ProcedureType);
+            existing.IsActive = template.IsActive;
+            existing.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.SaveChanges();
+            return existing;
+        }
+
+        public void DeleteConsentTemplate(int id)
+        {
+            var existing = dbContext.AestheticConsentTemplates
+                .Include(x => x.SignedConsents)
+                .FirstOrDefault(x => x.Id == id);
+
+            if (existing == null)
+            {
+                throw new KeyNotFoundException($"Consent template not found: {id}");
+            }
+
+            if (existing.SignedConsents.Count > 0)
+            {
+                throw new InvalidOperationException("Consent template cannot be deleted because it has signed consent records.");
+            }
+
+            dbContext.AestheticConsentTemplates.Remove(existing);
+            dbContext.SaveChanges();
+        }
+
+        public IEnumerable<AestheticSignedConsent> GetSignedConsents(string? consultId = null, string? pNo = null, string? procedureType = null, bool includeVoided = false)
+        {
+            var query = dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .AsQueryable();
+
+            if (!includeVoided)
+            {
+                query = query.Where(x => !x.IsVoided);
+            }
+
+            if (!string.IsNullOrWhiteSpace(consultId))
+            {
+                var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+                query = query.Where(x => x.ConsultId == normalizedConsultId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(pNo))
+            {
+                var normalizedPNo = NormalizeRequired(pNo, "PNo");
+                query = query.Where(x => x.PNo == normalizedPNo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(procedureType))
+            {
+                var normalizedProcedureType = NormalizeRequired(procedureType, "Procedure type");
+                query = query.Where(x => x.ProcedureType == normalizedProcedureType);
+            }
+
+            return query
+                .OrderByDescending(x => x.SignedDate)
+                .ThenByDescending(x => x.Id)
+                .ToList();
+        }
+
+        public AestheticSignedConsent SignConsent(int? patientId, string consultId, string pNo, string procedureType, int consentTemplateId, string signatureName, string? witnessedBy, string? signedBy, string? notes, byte[]? signatureImage, string? signatureImagePath)
+        {
+            var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+            var normalizedPNo = NormalizeRequired(pNo, "PNo");
+            var normalizedProcedureType = NormalizeRequired(procedureType, "Procedure type");
+            var normalizedSignatureName = NormalizeRequired(signatureName, "Signature name");
+            var normalizedSignatureImagePath = NormalizeOptional(signatureImagePath);
+
+            var attendance = dbContext.HRecords.FirstOrDefault(x => x.ConsultId == normalizedConsultId && x.PNo == normalizedPNo);
+            if (attendance == null)
+            {
+                throw new InvalidOperationException("Patient consent can only be signed after attendance is taken.");
+            }
+
+            var template = dbContext.AestheticConsentTemplates.FirstOrDefault(x => x.Id == consentTemplateId && x.IsActive);
+            if (template == null)
+            {
+                throw new KeyNotFoundException($"Consent template not found: {consentTemplateId}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(template.ProcedureType)
+                && !string.Equals(template.ProcedureType, normalizedProcedureType, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Selected consent template does not match the procedure type.");
+            }
+
+            var existing = GetLatestSignedConsent(normalizedConsultId, normalizedPNo, normalizedProcedureType);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            var resolvedPatientId = patientId ?? dbContext.AestheticPatients
+                .Where(x => x.Pno == normalizedPNo)
+                .Select(x => (int?)x.Id)
+                .FirstOrDefault();
+
+            var signedConsent = new AestheticSignedConsent
+            {
+                PatientId = resolvedPatientId,
+                ConsentTemplateId = consentTemplateId,
+                ConsentTemplate = template,
+                ConsultId = normalizedConsultId,
+                PNo = normalizedPNo,
+                ProcedureType = normalizedProcedureType,
+                SignedDate = DateTime.UtcNow,
+                SignedBy = NormalizeOptional(signedBy),
+                WitnessedBy = NormalizeOptional(witnessedBy),
+                SignatureName = normalizedSignatureName,
+                Notes = NormalizeOptional(notes),
+                ConsentContent = template.Content,
+                SignatureImage = signatureImage,
+                SignatureImagePath = normalizedSignatureImagePath,
+                CreatedDate = DateTime.UtcNow,
+                UpdatedDate = DateTime.UtcNow,
+                IsVoided = false
+            };
+
+            dbContext.AestheticSignedConsents.Add(signedConsent);
+            dbContext.SaveChanges();
+
+            UpdateConsultationConsentFields(normalizedConsultId, normalizedPNo, normalizedProcedureType, signedConsent);
+            return dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .First(x => x.Id == signedConsent.Id);
+        }
+
+        public AestheticSignedConsent VoidConsent(int consentId, string voidReason, string voidedBy)
+        {
+            var normalizedVoidReason = NormalizeRequired(voidReason, "Void reason");
+            var normalizedVoidedBy = NormalizeRequired(voidedBy, "Voided by");
+            var consent = dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(x => x.Id == consentId);
+
+            if (consent == null)
+            {
+                throw new KeyNotFoundException($"Signed consent not found: {consentId}");
+            }
+
+            consent.IsVoided = true;
+            consent.VoidReason = $"{normalizedVoidReason} (by {normalizedVoidedBy})";
+            consent.UpdatedDate = DateTime.UtcNow;
+            dbContext.SaveChanges();
+
+            ResetConsultationConsentFields(consent.ConsultId, consent.PNo, consent.ProcedureType);
+            return consent;
+        }
+
+        public AestheticConsentStatus GetConsentStatus(string consultId, string pNo, string procedureType)
+        {
+            var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+            var normalizedPNo = NormalizeRequired(pNo, "PNo");
+            var normalizedProcedureType = NormalizeRequired(procedureType, "Procedure type");
+
+            var attendanceTaken = dbContext.HRecords.Any(x => x.ConsultId == normalizedConsultId && x.PNo == normalizedPNo);
+            var latestSignedConsent = GetLatestSignedConsent(normalizedConsultId, normalizedPNo, normalizedProcedureType);
+            var activeTemplate = GetConsentTemplates(normalizedProcedureType).FirstOrDefault();
+
+            return new AestheticConsentStatus
+            {
+                ConsultId = normalizedConsultId,
+                PNo = normalizedPNo,
+                ProcedureType = normalizedProcedureType,
+                AttendanceTaken = attendanceTaken,
+                HasValidConsent = latestSignedConsent != null,
+                ActiveTemplate = activeTemplate,
+                LatestSignedConsent = latestSignedConsent
+            };
+        }
+
+        public AestheticSignedConsent? GetLatestSignedConsent(string consultId, string pNo, string procedureType)
+        {
+            var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+            var normalizedPNo = NormalizeRequired(pNo, "PNo");
+            var normalizedProcedureType = NormalizeRequired(procedureType, "Procedure type");
+
+            return dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .Where(x => x.ConsultId == normalizedConsultId
+                         && x.PNo == normalizedPNo
+                         && x.ProcedureType == normalizedProcedureType
+                         && !x.IsVoided)
+                .OrderByDescending(x => x.SignedDate)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefault();
+        }
+
+        public AestheticSignedConsent MarkConsentViewed(int consentId, string doctorViewedBy)
+        {
+            var normalizedDoctorViewedBy = NormalizeRequired(doctorViewedBy, "Doctor");
+            var consent = dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(x => x.Id == consentId);
+
+            if (consent == null)
+            {
+                throw new KeyNotFoundException($"Signed consent not found: {consentId}");
+            }
+
+            consent.DoctorViewedBy = normalizedDoctorViewedBy;
+            consent.DoctorViewedDate = DateTime.UtcNow;
+            consent.UpdatedDate = DateTime.UtcNow;
+            dbContext.SaveChanges();
+            return consent;
+        }
+
+        private void ApplyConsentStatus(AestheticConsultation consultation, string? consultId, string? pNo)
+        {
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo) || string.IsNullOrWhiteSpace(consultation.ProcedureType))
+            {
+                consultation.ConsentGiven = false;
+                consultation.InformationAccepted = false;
+                consultation.ConsentDate = null;
+                return;
+            }
+
+            var signedConsent = GetLatestSignedConsent(resolvedConsultId, resolvedPNo, consultation.ProcedureType);
+            consultation.ConsentGiven = signedConsent != null;
+            consultation.InformationAccepted = signedConsent != null;
+            consultation.ConsentDate = signedConsent?.SignedDate;
+            if (signedConsent != null && string.IsNullOrWhiteSpace(consultation.ConsentNotes))
+            {
+                consultation.ConsentNotes = signedConsent.Notes;
+            }
+        }
+
+        private void UpdateConsultationConsentFields(string consultId, string pNo, string procedureType, AestheticSignedConsent signedConsent)
+        {
+            var consultation = dbContext.AestheticConsultations
+                .FirstOrDefault(x => x.PatientId == signedConsent.PatientId
+                    && x.ProcedureType == procedureType
+                    && x.ConsultationDate.Date == signedConsent.SignedDate.Date);
+
+            if (consultation == null)
+            {
+                consultation = dbContext.AestheticConsultations
+                    .Include(x => x.Patient)
+                    .AsEnumerable()
+                    .FirstOrDefault(x => string.Equals(x.Patient?.Pno, pNo, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(x.ProcedureType, procedureType, StringComparison.OrdinalIgnoreCase)
+                        && x.ConsultationDate.Date == signedConsent.SignedDate.Date);
+            }
+
+            if (consultation == null)
+            {
+                return;
+            }
+
+            consultation.ConsentGiven = true;
+            consultation.InformationAccepted = true;
+            consultation.ConsentDate = signedConsent.SignedDate;
+            consultation.ConsentNotes = signedConsent.Notes;
+            consultation.UpdatedDate = DateTime.UtcNow;
+            dbContext.SaveChanges();
+        }
+
+        private void ResetConsultationConsentFields(string consultId, string pNo, string procedureType)
+        {
+            var remainingConsent = GetLatestSignedConsent(consultId, pNo, procedureType);
+            if (remainingConsent != null)
+            {
+                UpdateConsultationConsentFields(consultId, pNo, procedureType, remainingConsent);
+                return;
+            }
+
+            var consultations = dbContext.AestheticConsultations
+                .Include(x => x.Patient)
+                .AsEnumerable()
+                .Where(x => string.Equals(x.Patient?.Pno, pNo, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(x.ProcedureType, procedureType, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var consultation in consultations)
+            {
+                consultation.ConsentGiven = false;
+                consultation.InformationAccepted = false;
+                consultation.ConsentDate = null;
+                consultation.ConsentNotes = null;
+                consultation.UpdatedDate = DateTime.UtcNow;
+            }
+
             dbContext.SaveChanges();
         }
 
@@ -384,6 +732,19 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 .FirstOrDefault();
 
             return string.IsNullOrWhiteSpace(consultId) ? null : consultId;
+        }
+
+        private static string NormalizeRequired(string? value, string fieldName)
+        {
+            var normalized = NormalizeOptional(value);
+            return !string.IsNullOrWhiteSpace(normalized)
+                ? normalized
+                : throw new InvalidOperationException($"{fieldName} is required.");
+        }
+
+        private static string? NormalizeOptional(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
     }
 }

@@ -6,10 +6,12 @@
 
 using AestheticEMR.Core.Models;
 using AestheticEMR.Core.Models.Account;
+using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Data;
 
 namespace AestheticEMR.Core.Infrastructure
 {
@@ -20,7 +22,90 @@ namespace AestheticEMR.Core.Infrastructure
         {
             await dbContext.Database.MigrateAsync();
             await SeedDefaultUsersAsync();
+            await SeedConsentTemplatesAsync();
             await SeedDemoDataAsync();
+        }
+
+        private async Task SeedConsentTemplatesAsync()
+        {
+            if (!await TableExistsAsync("AppAestheticConsentTemplates"))
+            {
+                logger.LogWarning("Skipping consent template seeding because table {TableName} does not exist", "AppAestheticConsentTemplates");
+                return;
+            }
+
+            if (await dbContext.AestheticConsentTemplates.AnyAsync())
+            {
+                return;
+            }
+
+            logger.LogInformation("Seeding aesthetics consent templates");
+
+            var templates = new[]
+            {
+                new AestheticConsentTemplate
+                {
+                    Name = "Botox Consent",
+                    Title = "Botox Treatment Consent",
+                    ProcedureType = "Botox",
+                    Content = "I confirm that the Botox procedure has been explained to me, including expected benefits, possible risks, side effects, alternatives and after-care instructions. I consent to proceed with treatment.",
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                },
+                new AestheticConsentTemplate
+                {
+                    Name = "Laser Consent",
+                    Title = "Laser Treatment Consent",
+                    ProcedureType = "Laser",
+                    Content = "I confirm that the laser procedure has been explained to me, including expected results, possible discomfort, burns, pigment changes, required eye protection and after-care instructions. I consent to proceed with treatment.",
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                },
+                new AestheticConsentTemplate
+                {
+                    Name = "Spa Consent",
+                    Title = "Spa Treatment Consent",
+                    ProcedureType = "Spa",
+                    Content = "I confirm that the spa procedure has been explained to me, including expected benefits, possible irritation, contraindications and after-care instructions. I consent to proceed with treatment.",
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                }
+            };
+
+            dbContext.AestheticConsentTemplates.AddRange(templates);
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Aesthetics consent templates seeded");
+        }
+
+        private async Task<bool> TableExistsAsync(string tableName)
+        {
+            var connection = dbContext.Database.GetDbConnection();
+            var wasOpen = connection.State == ConnectionState.Open;
+
+            if (!wasOpen)
+            {
+                await connection.OpenAsync();
+            }
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @tableName";
+
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "@tableName";
+            parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+
+            var exists = await command.ExecuteScalarAsync() is not null;
+
+            if (!wasOpen)
+            {
+                await connection.CloseAsync();
+            }
+
+            return exists;
         }
 
         /************ DEFAULT USERS **************/

@@ -13,6 +13,7 @@
       "subItems": [
         { "label": "Patients Information", "path": "patients", "icon": "badge" },
         { "label": "Attendance", "path": "attendance", "icon": "checklist" },
+        { "label": "Consent Form", "path": "consent-form", "icon": "fact_check" },
         { "label": "Appointments", "path": "appointments", "icon": "event" },
         { "label": "Patient Search", "path": "search", "icon": "search" },
         { "label": "Recent Charts", "path": "recent", "icon": "history" },
@@ -55,7 +56,8 @@
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Procedures", "path": "procedures", "icon": "biotech" }
+        { "label": "Procedures", "path": "procedures", "icon": "biotech" },
+        { "label": "View Consent", "path": "view-consent", "icon": "description" }
       ]
     },
     "Billing": {
@@ -77,6 +79,7 @@
       "subItems": [
         { "label": "User Management", "path": "users", "icon": "group" },
         { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings" },
+        { "label": "Consent Templates", "path": "consent-templates", "icon": "article" },
         { "label": "Audit Logs", "path": "audit", "icon": "history_edu" }
       ]
     }

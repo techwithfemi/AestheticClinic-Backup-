@@ -19,6 +19,12 @@ export const frontdeskRoutes: Routes = [
     title: 'Patient Attendance'
   },
   {
+    path: 'consent-form',
+    loadComponent: () => import('./consent-form/consent-form.component')
+      .then(m => m.ConsentFormComponent),
+    title: 'Consent Form'
+  },
+  {
     path: 'appointments',
     loadComponent: () => import('./appointment/appointment.component')
       .then(m => m.AppointmentComponent),

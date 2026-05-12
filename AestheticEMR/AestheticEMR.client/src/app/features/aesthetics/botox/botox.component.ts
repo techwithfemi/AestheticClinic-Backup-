@@ -11,11 +11,12 @@ import { AlertService, DialogType, MessageSeverity } from '../../../services/ale
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
-import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
+import { AestheticConsultation, AestheticConsentStatus, AestheticPatient, AestheticSignedConsent, SignAestheticConsent } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { BotoxDialogComponent, BotoxDialogResult, BotoxPatientOption } from './botox-dialog.component';
 import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-invoice-dialog.component';
+import { ConsentDialogComponent } from '../shared/consent-dialog.component';
 
 @Component({
   selector: 'app-botox',
@@ -45,8 +46,8 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
         <input
           type="text"
           class="search-input"
-          [(ngModel)]="searchText"
-          (input)="onSearch()"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event ?? '')"
           placeholder="Search by patient name or PNO..." />
       </div>
 
@@ -96,7 +97,10 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
-                <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill">
+                <button mat-icon-button type="button" (click)="openConsent(row)" title="View / Sign Consent">
+                  <mat-icon>fact_check</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill" [disabled]="!row.consentGiven">
                   <mat-icon>receipt_long</mat-icon>
                 </button>
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
@@ -247,6 +251,11 @@ export class BotoxComponent {
   }
 
   openBilling(consultation: AestheticConsultation): void {
+    if (!consultation.consentGiven) {
+      this.alertService.showStickyMessage('Consent required', 'A signed consent form is required before billing can proceed.', MessageSeverity.warn);
+      return;
+    }
+
     const attendance = this.attendance().find(a => a.consultId === consultation.consultId && a.pNo === consultation.pNo);
     const legacy = this.legacyPatients().find(x => x.pno === consultation.pNo);
 
@@ -266,6 +275,49 @@ export class BotoxComponent {
 
     dialogRef.afterClosed().subscribe(() => {
       // no-op
+    });
+  }
+
+  openConsent(consultation: AestheticConsultation): void {
+    const consultId = consultation.consultId;
+    const pNo = consultation.pNo;
+    const procedureType = consultation.procedureType ?? 'Botox';
+
+    if (!consultId || !pNo) {
+      this.alertService.showStickyMessage('Consent unavailable', 'ConsultId and PNo are required before consent can be viewed or signed.', MessageSeverity.warn);
+      return;
+    }
+
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Loading consent status...');
+
+    this.endpoint.getConsentStatusEndpoint<AestheticConsentStatus>(consultId, pNo, procedureType).subscribe({
+      next: status => {
+        this.alertService.stopLoadingMessage();
+        this.loadingIndicator = false;
+
+        const dialogRef = this.dialog.open(ConsentDialogComponent, {
+          data: {
+            status,
+            patientName: this.resolvePatientLabel(consultation)
+          },
+          width: '560px',
+          disableClose: true
+        });
+
+        dialogRef.afterClosed().subscribe((payload: SignAestheticConsent | undefined) => {
+          if (!payload) {
+            return;
+          }
+
+          this.signConsent(payload);
+        });
+      },
+      error: error => {
+        this.alertService.stopLoadingMessage();
+        this.loadingIndicator = false;
+        this.alertService.showStickyMessage('Consent error', this.getErrorMessage(error), MessageSeverity.error, error);
+      }
     });
   }
 
@@ -317,6 +369,7 @@ export class BotoxComponent {
         const createdPatient = await this.endpoint.createPatientEndpoint<AestheticPatient>({
           firstName: result.selectedPatient.firstName,
           lastName: result.selectedPatient.lastName,
+          pno: result.selectedPatient.pNo,
           notes: result.selectedPatient.pNo ? `Legacy PNO: ${result.selectedPatient.pNo}` : ''
         }).toPromise();
 
@@ -330,6 +383,9 @@ export class BotoxComponent {
       consultation.patientId = patientId;
       consultation.consultId = result.selectedPatient.consultId || consultation.consultId;
       consultation.pNo = result.selectedPatient.pNo || consultation.pNo;
+      consultation.consentGiven = false;
+      consultation.informationAccepted = false;
+      consultation.consentDate = undefined;
 
       if (consultation.id) {
         await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
@@ -347,6 +403,34 @@ export class BotoxComponent {
       this.loadingIndicator = false;
       this.alertService.showStickyMessage('Save error', this.getErrorMessage(error), MessageSeverity.error, error);
     }
+  }
+
+  private signConsent(payload: SignAestheticConsent): void {
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Signing consent...');
+
+    this.endpoint.signConsentEndpoint<AestheticSignedConsent>(payload).subscribe({
+      next: consent => {
+        this.endpoint.markConsentViewedEndpoint<AestheticSignedConsent>(consent.id).subscribe({
+          next: () => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.alertService.showMessage('Consent signed', 'Consent captured successfully.', MessageSeverity.success);
+            this.load();
+          },
+          error: error => {
+            this.alertService.stopLoadingMessage();
+            this.loadingIndicator = false;
+            this.alertService.showStickyMessage('Consent error', this.getErrorMessage(error), MessageSeverity.error, error);
+          }
+        });
+      },
+      error: error => {
+        this.alertService.stopLoadingMessage();
+        this.loadingIndicator = false;
+        this.alertService.showStickyMessage('Consent error', this.getErrorMessage(error), MessageSeverity.error, error);
+      }
+    });
   }
 
   private getTodayAttendancePatientOptions(): BotoxPatientOption[] {

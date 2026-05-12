@@ -88,6 +88,19 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<AestheticConsultation, AestheticConsultationVM>()
                 .ReverseMap();
 
+            CreateMap<AestheticConsentTemplate, AestheticConsentTemplateVM>()
+                .ReverseMap();
+
+            CreateMap<AestheticSignedConsent, AestheticSignedConsentVM>()
+                .ForMember(d => d.SignatureImageBase64, map => map.MapFrom(s => ToDataUrl(s.SignatureImage)))
+                .ForMember(d => d.SignatureImagePath, map => map.MapFrom(s => s.SignatureImagePath))
+                .ReverseMap()
+                .ForMember(d => d.SignatureImage, map => map.MapFrom(s => FromBase64(s.SignatureImageBase64)))
+                .ForMember(d => d.SignatureImagePath, map => map.MapFrom(s => s.SignatureImagePath));
+
+            CreateMap<AestheticConsentStatus, AestheticConsentStatusVM>()
+                .ForMember(d => d.CanSign, map => map.MapFrom(s => s.CanSign));
+
             CreateMap<AestheticPhoto, AestheticPhotoVM>()
                 .ForMember(d => d.Url, map => map.MapFrom(s => s.FilePath))
                 .ForMember(d => d.ThumbnailUrl, map => map.MapFrom(s => s.FilePath))

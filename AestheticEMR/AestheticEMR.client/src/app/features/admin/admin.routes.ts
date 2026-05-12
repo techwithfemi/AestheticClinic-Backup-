@@ -15,5 +15,11 @@ export const adminRoutes: Routes = [
     path: 'roles',
     loadComponent: () => import('../../components/controls/roles-management.component')
       .then(m => m.RolesManagementComponent)
+  },
+  {
+    path: 'consent-templates',
+    loadComponent: () => import('./consent-templates/consent-templates.component')
+      .then(m => m.ConsentTemplatesComponent),
+    title: 'Consent Templates'
   }
 ];

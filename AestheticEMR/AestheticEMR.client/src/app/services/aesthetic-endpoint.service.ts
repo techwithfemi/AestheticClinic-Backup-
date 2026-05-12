@@ -84,6 +84,77 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.deleteConsultationEndpoint<T>(consultationId))));
   }
 
+  getConsentTemplatesEndpoint<T>(procedureType: string, includeInactive = false): Observable<T> {
+    const params = new URLSearchParams();
+    if (procedureType) {
+      params.set('procedureType', procedureType);
+    }
+    if (includeInactive) {
+      params.set('includeInactive', 'true');
+    }
+
+    return this.http.get<T>(`${this.baseUrl}/consent-templates${params.toString() ? `?${params.toString()}` : ''}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsentTemplatesEndpoint<T>(procedureType, includeInactive))));
+  }
+
+  getConsentTemplateEndpoint<T>(id: number): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/consent-templates/${id}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsentTemplateEndpoint<T>(id))));
+  }
+
+  createConsentTemplateEndpoint<T>(template: object): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/consent-templates`, JSON.stringify(template), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.createConsentTemplateEndpoint<T>(template))));
+  }
+
+  updateConsentTemplateEndpoint<T>(id: number, template: object): Observable<T> {
+    return this.http.put<T>(`${this.baseUrl}/consent-templates/${id}`, JSON.stringify(template), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.updateConsentTemplateEndpoint<T>(id, template))));
+  }
+
+  deleteConsentTemplateEndpoint<T>(id: number): Observable<T> {
+    return this.http.delete<T>(`${this.baseUrl}/consent-templates/${id}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.deleteConsentTemplateEndpoint<T>(id))));
+  }
+
+  getConsentStatusEndpoint<T>(consultId: string, pNo: string, procedureType: string): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/consent-status?consultId=${encodeURIComponent(consultId)}&pNo=${encodeURIComponent(pNo)}&procedureType=${encodeURIComponent(procedureType)}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsentStatusEndpoint<T>(consultId, pNo, procedureType))));
+  }
+
+  signConsentEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/consents/sign`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.signConsentEndpoint<T>(payload))));
+  }
+
+  markConsentViewedEndpoint<T>(consentId: number): Observable<T> {
+    return this.http.put<T>(`${this.baseUrl}/consents/${consentId}/viewed`, JSON.stringify({}), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.markConsentViewedEndpoint<T>(consentId))));
+  }
+
+  getSignedConsentsEndpoint<T>(options?: { consultId?: string; pNo?: string; procedureType?: string; includeVoided?: boolean }): Observable<T> {
+    const params = new URLSearchParams();
+    if (options?.consultId) params.set('consultId', options.consultId);
+    if (options?.pNo) params.set('pNo', options.pNo);
+    if (options?.procedureType) params.set('procedureType', options.procedureType);
+    if (options?.includeVoided !== undefined) params.set('includeVoided', String(options.includeVoided));
+    const query = params.toString();
+    const url = query ? `${this.baseUrl}/consents?${query}` : `${this.baseUrl}/consents`;
+
+    return this.http.get<T>(url, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getSignedConsentsEndpoint<T>(options))));
+  }
+
+  getSignedConsentEndpoint<T>(consentId: number): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/consents/${consentId}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getSignedConsentEndpoint<T>(consentId))));
+  }
+
+  voidConsentEndpoint<T>(consentId: number, payload: object): Observable<T> {
+    return this.http.put<T>(`${this.baseUrl}/consents/${consentId}/void`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.voidConsentEndpoint<T>(consentId, payload))));
+  }
+
   getPhotosEndpoint<T>(): Observable<T> {
     return this.http.get<T>(this.photosUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getPhotosEndpoint<T>())));

@@ -4,6 +4,7 @@ using AestheticEMR.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AestheticEMR.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512024907_consents2")]
+    partial class consents2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -159,54 +162,6 @@ namespace AestheticEMR.Server.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticConsentTemplate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("ProcedureType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AppAestheticConsentTemplates", (string)null);
-                });
-
             modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticConsultation", b =>
                 {
                     b.Property<int>("Id")
@@ -333,7 +288,7 @@ namespace AestheticEMR.Server.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.ToTable("AestheticConsultations", (string)null);
+                    b.ToTable("AestheticConsultations");
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticPatient", b =>
@@ -398,7 +353,7 @@ namespace AestheticEMR.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AestheticPatients", (string)null);
+                    b.ToTable("AestheticPatients");
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticPhoto", b =>
@@ -447,106 +402,7 @@ namespace AestheticEMR.Server.Migrations
 
                     b.HasIndex("ConsultationId");
 
-                    b.ToTable("AestheticPhotos", (string)null);
-                });
-
-            modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticSignedConsent", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ConsentContent")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ConsentTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConsultId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DoctorViewedBy")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<DateTime?>("DoctorViewedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsVoided")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PNo")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int?>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProcedureType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<byte[]>("SignatureImage")
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<string>("SignatureImagePath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SignatureName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("SignedBy")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<DateTime>("SignedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("VoidReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("WitnessedBy")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConsentTemplateId");
-
-                    b.HasIndex("PNo");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("ConsultId", "ProcedureType", "IsVoided");
-
-                    b.ToTable("AppAestheticSignedConsents", (string)null);
+                    b.ToTable("AestheticPhotos");
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Dental.DentalImaging", b =>
@@ -5981,24 +5837,6 @@ namespace AestheticEMR.Server.Migrations
                     b.Navigation("Consultation");
                 });
 
-            modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticSignedConsent", b =>
-                {
-                    b.HasOne("AestheticEMR.Core.Models.Aesthetic.AestheticConsentTemplate", "ConsentTemplate")
-                        .WithMany("SignedConsents")
-                        .HasForeignKey("ConsentTemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AestheticEMR.Core.Models.Aesthetic.AestheticPatient", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("ConsentTemplate");
-
-                    b.Navigation("Patient");
-                });
-
             modelBuilder.Entity("AestheticEMR.Core.Models.Shop.Order", b =>
                 {
                     b.HasOne("AestheticEMR.Core.Models.Account.ApplicationUser", "Cashier")
@@ -6153,11 +5991,6 @@ namespace AestheticEMR.Server.Migrations
                     b.Navigation("Orders");
 
                     b.Navigation("Roles");
-                });
-
-            modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticConsentTemplate", b =>
-                {
-                    b.Navigation("SignedConsents");
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Aesthetic.AestheticConsultation", b =>

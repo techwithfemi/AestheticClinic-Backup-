@@ -11,10 +11,11 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatTableModule } from '@angular/material/table';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
-import { AestheticConsultation, AestheticPatient, AestheticPhoto } from '../../../models/aesthetic.model';
+import { AestheticConsultation, AestheticPatient, AestheticPhoto, AestheticSignedConsent, VoidAestheticConsent } from '../../../models/aesthetic.model';
 
 type PhotoTab = 'neuromodulator' | 'dermalFiller' | 'laser';
 type PhotoPhase = 'Before' | 'After';
@@ -30,6 +31,10 @@ interface TabPhotoItem {
   file?: File;
 }
 
+type TabPhotoCollection = Record<PhotoTab, TabPhotoItem[]>;
+
+type JsonMap = Record<string, unknown>;
+
 @Component({
   selector: 'app-procedures',
   standalone: true,
@@ -44,7 +49,8 @@ interface TabPhotoItem {
     MatSlideToggleModule,
     MatCheckboxModule,
     MatIconModule,
-    MatCardModule
+    MatCardModule,
+    MatTableModule
   ],
   template: `
     <div class="procedures-page">
@@ -92,7 +98,7 @@ interface TabPhotoItem {
                 </div>
 
                 <div class="full checkbox-grid">
-                  <label>Medical conditions</label>
+                  <div class="block-title">Medical conditions</div>
                   <div class="checks" [formGroup]="medicalConditionsGroup">
                     <mat-checkbox formControlName="diabetes">Diabetes</mat-checkbox>
                     <mat-checkbox formControlName="hypertension">Hypertension</mat-checkbox>
@@ -202,7 +208,7 @@ interface TabPhotoItem {
                 </mat-form-field>
 
                 <div class="full" [formGroup]="unitsAreaGroup">
-                  <label class="block-title">Units injected per area</label>
+                  <div class="block-title">Units injected per area</div>
                   <div class="grid-2">
                     <mat-form-field appearance="outline"><mat-label>Glabella</mat-label><input matInput type="number" formControlName="glabella" /></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Forehead</mat-label><input matInput type="number" formControlName="forehead" /></mat-form-field>
@@ -217,7 +223,7 @@ interface TabPhotoItem {
                 <mat-form-field appearance="outline" class="full"><mat-label>Post-care instructions</mat-label><textarea matInput rows="2" formControlName="postCareInstructions" readonly></textarea></mat-form-field>
 
                 <div class="full">
-                  <label class="block-title">Photos</label>
+                  <div class="block-title">Photos</div>
                   <div class="photo-toolbar">
                     <mat-form-field appearance="outline"><mat-label>Phase</mat-label><mat-select #nPhase><mat-option value="Before">Before</mat-option><mat-option value="After">After</mat-option></mat-select></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Tag</mat-label><mat-select #nTag><mat-option value="frontal">frontal</mat-option><mat-option value="left">left</mat-option><mat-option value="right">right</mat-option><mat-option value="profile">profile</mat-option></mat-select></mat-form-field>
@@ -227,8 +233,12 @@ interface TabPhotoItem {
                     <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
                   }
                   <div class="compare-grid">
-                    <img *ngFor="let img of getComparisonImages('neuromodulator').before" [src]="img.url || ''" alt="before" />
-                    <img *ngFor="let img of getComparisonImages('neuromodulator').after" [src]="img.url || ''" alt="after" />
+                    @for (img of getComparisonImages('neuromodulator').before; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="before" />
+                    }
+                    @for (img of getComparisonImages('neuromodulator').after; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="after" />
+                    }
                   </div>
                 </div>
               </div>
@@ -247,7 +257,7 @@ interface TabPhotoItem {
                 <div class="full action-row"><button mat-raised-button color="warn" type="button" (click)="showVascularProtocol()">Vascular Occlusion Protocol</button></div>
 
                 <div class="full">
-                  <label class="block-title">Photos</label>
+                  <div class="block-title">Photos</div>
                   <div class="photo-toolbar">
                     <mat-form-field appearance="outline"><mat-label>Phase</mat-label><mat-select #dPhase><mat-option value="Before">Before</mat-option><mat-option value="After">After</mat-option></mat-select></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Tag</mat-label><mat-select #dTag><mat-option value="frontal">frontal</mat-option><mat-option value="left">left</mat-option><mat-option value="right">right</mat-option><mat-option value="profile">profile</mat-option></mat-select></mat-form-field>
@@ -257,8 +267,12 @@ interface TabPhotoItem {
                     <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
                   }
                   <div class="compare-grid">
-                    <img *ngFor="let img of getComparisonImages('dermalFiller').before" [src]="img.url || ''" alt="before" />
-                    <img *ngFor="let img of getComparisonImages('dermalFiller').after" [src]="img.url || ''" alt="after" />
+                    @for (img of getComparisonImages('dermalFiller').before; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="before" />
+                    }
+                    @for (img of getComparisonImages('dermalFiller').after; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="after" />
+                    }
                   </div>
                 </div>
               </div>
@@ -275,7 +289,7 @@ interface TabPhotoItem {
                 <div class="half toggle-row"><span>Test patch</span><mat-slide-toggle formControlName="testPatch"></mat-slide-toggle></div>
 
                 <div class="full">
-                  <label class="block-title">Photos</label>
+                  <div class="block-title">Photos</div>
                   <div class="photo-toolbar">
                     <mat-form-field appearance="outline"><mat-label>Phase</mat-label><mat-select #lPhase><mat-option value="Before">Before</mat-option><mat-option value="After">After</mat-option></mat-select></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Tag</mat-label><mat-select #lTag><mat-option value="frontal">frontal</mat-option><mat-option value="left">left</mat-option><mat-option value="right">right</mat-option><mat-option value="profile">profile</mat-option></mat-select></mat-form-field>
@@ -285,10 +299,81 @@ interface TabPhotoItem {
                     <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
                   }
                   <div class="compare-grid">
-                    <img *ngFor="let img of getComparisonImages('laser').before" [src]="img.url || ''" alt="before" />
-                    <img *ngFor="let img of getComparisonImages('laser').after" [src]="img.url || ''" alt="after" />
+                    @for (img of getComparisonImages('laser').before; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="before" />
+                    }
+                    @for (img of getComparisonImages('laser').after; track img.fileName + (img.url || '')) {
+                      <img [src]="img.url || ''" alt="after" />
+                    }
                   </div>
                 </div>
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Consent Review">
+              <div class="tab-body consent-review-tab">
+                <div class="full action-row align-end">
+                  <button mat-stroked-button type="button" (click)="refreshConsentReview()" [disabled]="!selectedPatientPNo()">Refresh Consents</button>
+                </div>
+
+                @if (!selectedPatientPNo()) {
+                  <div class="full empty-consent-state">Select a patient to review signed consents.</div>
+                } @else if (consentReviewItems().length === 0) {
+                  <div class="full empty-consent-state">No signed consents found for this patient.</div>
+                } @else {
+                  <div class="full">
+                    <table mat-table [dataSource]="consentReviewItems()" class="data-table">
+                      <ng-container matColumnDef="procedureType">
+                        <th mat-header-cell *matHeaderCellDef>Procedure</th>
+                        <td mat-cell *matCellDef="let row">{{ row.procedureType }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="consultId">
+                        <th mat-header-cell *matHeaderCellDef>ConsultId</th>
+                        <td mat-cell *matCellDef="let row">{{ row.consultId }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="signedDate">
+                        <th mat-header-cell *matHeaderCellDef>Signed Date</th>
+                        <td mat-cell *matCellDef="let row">{{ row.signedDate | date:'medium' }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="doctorViewed">
+                        <th mat-header-cell *matHeaderCellDef>Doctor Viewed</th>
+                        <td mat-cell *matCellDef="let row">{{ row.doctorViewedDate ? (row.doctorViewedDate | date:'short') : 'Pending' }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="actions">
+                        <th mat-header-cell *matHeaderCellDef>Actions</th>
+                        <td mat-cell *matCellDef="let row">
+                          <button mat-button type="button" (click)="openConsentReview(row)">Open</button>
+                          <button mat-button type="button" (click)="markConsentReviewed(row)" [disabled]="!!row.doctorViewedDate || row.isVoided">Mark Viewed</button>
+                        </td>
+                      </ng-container>
+
+                      <tr mat-header-row *matHeaderRowDef="consentColumns"></tr>
+                      <tr mat-row *matRowDef="let row; columns: consentColumns"></tr>
+                    </table>
+                  </div>
+
+                  @if (selectedConsentReview()) {
+                    <div class="full consent-detail-card">
+                      <h3>Signed Consent</h3>
+                      <p><strong>Signature:</strong> {{ selectedConsentReview()?.signatureName }}</p>
+                      <p><strong>Witness:</strong> {{ selectedConsentReview()?.witnessedBy || '—' }}</p>
+                      <p><strong>Status:</strong> {{ selectedConsentReview()?.isVoided ? selectedConsentReview()?.voidReason : 'Active' }}</p>
+                      <div class="consent-content-box">{{ selectedConsentReview()?.consentContent }}</div>
+                      @if (selectedConsentReview()?.signatureImagePath) {
+                        <img [src]="selectedConsentReview()?.signatureImagePath" alt="Signature" class="consent-signature-img" />
+                      }
+                      <div class="void-grid">
+                        <mat-form-field appearance="outline" class="full">
+                          <mat-label>Void Reason</mat-label>
+                          <textarea matInput [value]="voidReason()" (input)="voidReason.set(($any($event.target).value || '').trim())"></textarea>
+                        </mat-form-field>
+                        <div class="actions-row align-end">
+                          <button mat-stroked-button color="warn" type="button" (click)="voidSelectedConsent()" [disabled]="selectedConsentReview()?.isVoided || !voidReason()">Void Consent</button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
               </div>
             </mat-tab>
           </mat-tab-group>
@@ -322,6 +407,13 @@ interface TabPhotoItem {
     .compare-grid img { width: 100%; height: 160px; object-fit: cover; border: 1px solid #ddd; border-radius: 6px; }
     .action-row { margin-top: 4px; }
     .save-row { display: flex; justify-content: flex-end; margin-top: 16px; }
+    .align-end { justify-content: flex-end; }
+    .consent-review-tab { display: block; }
+    .empty-consent-state { color: #777; padding: 20px 0; }
+    .consent-detail-card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-top: 16px; background: #fafafa; }
+    .consent-content-box { white-space: pre-wrap; border: 1px solid #ddd; border-radius: 6px; background: #fff; padding: 12px; margin: 12px 0; }
+    .consent-signature-img { max-width: 220px; max-height: 110px; object-fit: contain; border: 1px solid #ddd; border-radius: 6px; padding: 8px; background: #fff; }
+    .void-grid { display: grid; gap: 12px; margin-top: 12px; }
     @media (max-width: 992px) {
       .tab-body, .grid-2 { grid-template-columns: 1fr; }
       .photo-toolbar { grid-template-columns: 1fr; }
@@ -340,11 +432,18 @@ export class ProceduresComponent implements OnInit {
   readonly currentConsultationId = signal<number | null>(null);
   readonly selectedTabIndex = signal(0);
 
-  readonly tabPhotos = signal<Record<PhotoTab, TabPhotoItem[]>>({
+  readonly tabPhotos = signal<TabPhotoCollection>({
     neuromodulator: [],
     dermalFiller: [],
     laser: []
   });
+
+  readonly selectedPatientPNo = computed(() => this.patients().find(x => x.id === this.form.controls.patientId.value)?.pno || '');
+
+  readonly consentColumns = ['procedureType', 'consultId', 'signedDate', 'doctorViewed', 'actions'];
+  readonly consentReviewItems = signal<AestheticSignedConsent[]>([]);
+  readonly selectedConsentReview = signal<AestheticSignedConsent | null>(null);
+  readonly voidReason = signal('');
 
   form = this.fb.nonNullable.group({
     patientId: [0, Validators.min(1)],
@@ -456,6 +555,7 @@ export class ProceduresComponent implements OnInit {
       .sort((a, b) => (b.consultationDate || '').localeCompare(a.consultationDate || ''))[0];
 
     this.loadFromConsultation(existing);
+    this.refreshConsentReview();
   }
 
   onPhotoSelected(tab: PhotoTab, files: FileList | null, phase: string, tag: string): void {
@@ -565,54 +665,54 @@ export class ProceduresComponent implements OnInit {
     const laserData = this.tryParseJson(consultation.deviceSettings);
 
     this.form.controls.consultation.patchValue({
-      chiefComplaint: consultation.procedureDescription || consultationData?.chiefComplaint || '',
-      duration: consultationData?.duration || '',
-      expectationRealistic: consultationData?.expectationRealistic ?? true,
-      medicalConditions: consultationData?.medicalConditions || {},
-      medications: consultationData?.medications || [],
-      allergySelections: consultationData?.allergySelections || [],
-      allergyNotes: consultationData?.allergyNotes || '',
-      hsvHistory: consultationData?.hsvHistory ?? false,
-      pregnancy: consultationData?.pregnancy ?? false,
-      fitzpatrickSkinType: consultationData?.fitzpatrickSkinType ?? 1,
-      acneSeverity: consultationData?.acneSeverity || 'mild',
-      pigmentation: consultationData?.pigmentation || 'none',
-      scarring: consultationData?.scarring || '',
-      volumeLoss: consultationData?.volumeLoss || 'mild'
+      chiefComplaint: consultation.procedureDescription || this.readString(consultationData, 'chiefComplaint'),
+      duration: this.readString(consultationData, 'duration'),
+      expectationRealistic: this.readBoolean(consultationData, 'expectationRealistic', true),
+      medicalConditions: this.readObject(consultationData, 'medicalConditions'),
+      medications: this.readStringArray(consultationData, 'medications'),
+      allergySelections: this.readStringArray(consultationData, 'allergySelections'),
+      allergyNotes: this.readString(consultationData, 'allergyNotes'),
+      hsvHistory: this.readBoolean(consultationData, 'hsvHistory', false),
+      pregnancy: this.readBoolean(consultationData, 'pregnancy', false),
+      fitzpatrickSkinType: this.readNumber(consultationData, 'fitzpatrickSkinType', 1),
+      acneSeverity: this.readString(consultationData, 'acneSeverity', 'mild'),
+      pigmentation: this.readString(consultationData, 'pigmentation', 'none'),
+      scarring: this.readString(consultationData, 'scarring'),
+      volumeLoss: this.readString(consultationData, 'volumeLoss', 'mild')
     });
 
     this.form.controls.neuromodulator.patchValue({
-      productName: neuromodulatorData?.productName || 'Botox',
-      lotNumber: consultation.lotNumber || neuromodulatorData?.lotNumber || '',
-      expiryDate: neuromodulatorData?.expiryDate || '',
-      dilution: Number(consultation.dilution ?? neuromodulatorData?.dilution ?? 0),
-      totalUnitsDrawn: Number(neuromodulatorData?.totalUnitsDrawn ?? 0),
-      unitsPerArea: neuromodulatorData?.unitsPerArea || { glabella: 0, forehead: 0, crowsFeet: 0, masseter: 0 },
-      needleType: neuromodulatorData?.needleType || '',
-      injectionTechnique: neuromodulatorData?.injectionTechnique || '',
-      complications: neuromodulatorData?.complications ?? false,
+      productName: this.readString(neuromodulatorData, 'productName', 'Botox'),
+      lotNumber: consultation.lotNumber || this.readString(neuromodulatorData, 'lotNumber'),
+      expiryDate: this.readString(neuromodulatorData, 'expiryDate'),
+      dilution: Number(consultation.dilution ?? this.readNumber(neuromodulatorData, 'dilution', 0)),
+      totalUnitsDrawn: this.readNumber(neuromodulatorData, 'totalUnitsDrawn', 0),
+      unitsPerArea: this.readObject(neuromodulatorData, 'unitsPerArea', { glabella: 0, forehead: 0, crowsFeet: 0, masseter: 0 }),
+      needleType: this.readString(neuromodulatorData, 'needleType'),
+      injectionTechnique: this.readString(neuromodulatorData, 'injectionTechnique'),
+      complications: this.readBoolean(neuromodulatorData, 'complications', false),
       postCareInstructions: consultation.postTreatmentInstructions || this.generatedPostCare()
     });
 
     this.form.controls.dermalFiller.patchValue({
-      productName: dermalFillerData?.productName || '',
-      volumePerSyringe: Number(dermalFillerData?.volumePerSyringe ?? 0),
-      totalVolumeUsed: Number(dermalFillerData?.totalVolumeUsed ?? 0),
-      injectionAreas: dermalFillerData?.injectionAreas || [],
-      plane: dermalFillerData?.plane || 'subdermal',
-      cannulaOrNeedle: dermalFillerData?.cannulaOrNeedle || 'cannula',
-      aspirationPerformed: dermalFillerData?.aspirationPerformed ?? false,
-      immediateOutcome: dermalFillerData?.immediateOutcome || ''
+      productName: this.readString(dermalFillerData, 'productName'),
+      volumePerSyringe: this.readNumber(dermalFillerData, 'volumePerSyringe', 0),
+      totalVolumeUsed: this.readNumber(dermalFillerData, 'totalVolumeUsed', 0),
+      injectionAreas: this.readStringArray(dermalFillerData, 'injectionAreas'),
+      plane: this.readString(dermalFillerData, 'plane', 'subdermal'),
+      cannulaOrNeedle: this.readString(dermalFillerData, 'cannulaOrNeedle', 'cannula'),
+      aspirationPerformed: this.readBoolean(dermalFillerData, 'aspirationPerformed', false),
+      immediateOutcome: this.readString(dermalFillerData, 'immediateOutcome')
     });
 
     this.form.controls.laser.patchValue({
-      deviceName: consultation.deviceUsed || laserData?.deviceName || '',
-      wavelength: consultation.wavelength || laserData?.wavelength || '',
-      fluence: consultation.fluence || laserData?.fluence || '',
-      pulseDuration: consultation.pulseDuration || laserData?.pulseDuration || '',
-      spotSize: consultation.spotSize || laserData?.spotSize || '',
-      endpoint: laserData?.endpoint || 'erythema',
-      testPatch: laserData?.testPatch ?? false
+      deviceName: consultation.deviceUsed || this.readString(laserData, 'deviceName'),
+      wavelength: consultation.wavelength || this.readString(laserData, 'wavelength'),
+      fluence: consultation.fluence || this.readString(laserData, 'fluence'),
+      pulseDuration: consultation.pulseDuration || this.readString(laserData, 'pulseDuration'),
+      spotSize: consultation.spotSize || this.readString(laserData, 'spotSize'),
+      endpoint: this.readString(laserData, 'endpoint', 'erythema'),
+      testPatch: this.readBoolean(laserData, 'testPatch', false)
     });
 
     this.tabPhotos.set(this.mapPhotosByTab(consultation.photos || []));
@@ -753,15 +853,96 @@ export class ProceduresComponent implements OnInit {
     if (normalized === 'neuromodulator' || normalized === 'botox') return 1;
     if (normalized === 'dermalfiller') return 2;
     if (normalized === 'laser') return 3;
+    if (normalized === 'consentreview' || normalized === 'consent') return 4;
     return 0;
   }
 
-  private tryParseJson(value?: string): any {
+  private tryParseJson(value?: string): JsonMap | null {
     if (!value) return null;
     try {
-      return JSON.parse(value);
+      return JSON.parse(value) as JsonMap;
     } catch {
       return null;
     }
+  }
+
+  refreshConsentReview(): void {
+    const pNo = this.selectedPatientPNo();
+    if (!pNo) {
+      this.consentReviewItems.set([]);
+      this.selectedConsentReview.set(null);
+      return;
+    }
+
+    this.endpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ pNo, includeVoided: true }).subscribe({
+      next: consents => {
+        this.consentReviewItems.set(consents || []);
+        this.selectedConsentReview.set((consents || [])[0] || null);
+        this.voidReason.set('');
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Consent Error', 'Unable to load signed consents for review.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  openConsentReview(consent: AestheticSignedConsent): void {
+    this.selectedConsentReview.set(consent);
+    this.voidReason.set('');
+  }
+
+  markConsentReviewed(consent: AestheticSignedConsent): void {
+    this.endpoint.markConsentViewedEndpoint<AestheticSignedConsent>(consent.id).subscribe({
+      next: () => {
+        this.alertService.showMessage('Updated', 'Consent marked as viewed.', MessageSeverity.success);
+        this.refreshConsentReview();
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Update Error', 'Unable to mark consent as viewed.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  voidSelectedConsent(): void {
+    const consent = this.selectedConsentReview();
+    if (!consent || !this.voidReason()) {
+      return;
+    }
+
+    const payload: VoidAestheticConsent = { voidReason: this.voidReason() };
+    this.endpoint.voidConsentEndpoint<AestheticSignedConsent>(consent.id, payload).subscribe({
+      next: () => {
+        this.alertService.showMessage('Voided', 'Consent voided successfully.', MessageSeverity.success);
+        this.refreshConsentReview();
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Void Error', 'Unable to void consent.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  private readString(data: JsonMap | null, key: string, fallback = ''): string {
+    const value = data?.[key];
+    return typeof value === 'string' ? value : fallback;
+  }
+
+  private readBoolean(data: JsonMap | null, key: string, fallback = false): boolean {
+    const value = data?.[key];
+    return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private readNumber(data: JsonMap | null, key: string, fallback = 0): number {
+    const value = data?.[key];
+    return typeof value === 'number' ? value : fallback;
+  }
+
+  private readStringArray(data: JsonMap | null, key: string): string[] {
+    const value = data?.[key];
+    return Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string') : [];
+  }
+
+  private readObject<T extends object>(data: JsonMap | null, key: string, fallback = {} as T): T {
+    const value = data?.[key];
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as T : fallback;
   }
 }

@@ -16,6 +16,60 @@ export interface AestheticPhoto {
   updatedDate?: string;
 }
 
+export interface AestheticConsentTemplate {
+  id: number;
+  name?: string;
+  title?: string;
+  procedureType?: string;
+  content?: string;
+  isActive?: boolean;
+}
+
+export interface AestheticSignedConsent {
+  id: number;
+  patientId?: number;
+  consentTemplateId: number;
+  consultId?: string;
+  pNo?: string;
+  procedureType?: string;
+  signedDate?: string;
+  signedBy?: string;
+  witnessedBy?: string;
+  signatureName?: string;
+  notes?: string;
+  consentContent?: string;
+  signatureImageBase64?: string;
+  signatureImagePath?: string;
+  doctorViewedBy?: string;
+  doctorViewedDate?: string;
+  isVoided?: boolean;
+  voidReason?: string;
+}
+
+export interface AestheticConsentStatus {
+  consultId?: string;
+  pNo?: string;
+  procedureType?: string;
+  attendanceTaken?: boolean;
+  hasValidConsent?: boolean;
+  canSign?: boolean;
+  activeTemplate?: AestheticConsentTemplate;
+  latestSignedConsent?: AestheticSignedConsent;
+}
+
+export interface SignAestheticConsent {
+  patientId?: number;
+  consultId: string;
+  pNo: string;
+  procedureType: string;
+  consentTemplateId: number;
+  signatureName: string;
+  witnessedBy?: string;
+  signedBy?: string;
+  notes?: string;
+  signatureImageBase64?: string;
+}
+
 export interface AestheticConsultation {
   id: number;
   patientId: number;
@@ -77,4 +131,8 @@ export interface AestheticPatient {
   currentMedications?: string;
   notes?: string;
   consultations?: AestheticConsultation[];
+}
+
+export interface VoidAestheticConsent {
+  voidReason: string;
 }
