@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import SignaturePad from 'signature_pad';
 
 import { AestheticConsentStatus, AestheticConsentTemplate, AestheticSignedConsent, SignAestheticConsent } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
@@ -100,15 +101,11 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
                 </div>
                 <canvas
                   #signatureCanvas
-                  class="signature-canvas"
-                  (mousedown)="startSignature($event)"
-                  (mousemove)="drawSignature($event)"
-                  (mouseup)="endSignature()"
-                  (mouseleave)="endSignature()"
-                  (touchstart)="startSignature($event)"
-                  (touchmove)="drawSignature($event)"
-                  (touchend)="endSignature()"></canvas>
+                  class="signature-canvas"></canvas>
+
               </div>
+
+              <div class="signature-hint">Draw the patient's signature using mouse, touch, or stylus.</div>
 
               <div class="actions-row">
                 <button mat-raised-button color="primary" type="button" (click)="signConsent()" [disabled]="form.invalid || !status()?.canSign || !activeTemplate() || loadingIndicator">
@@ -149,10 +146,12 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
       height: 180px;
       border: 1px dashed #9aa7bd;
       border-radius: 8px;
-      background: #fff;
+      background: #fff !important;
+      background-color: #fff !important;
       touch-action: none;
       cursor: crosshair;
     }
+    .signature-hint { color: #667085; font-size: .85rem; }
     @media (max-width: 992px) { .layout-grid, .header-grid { grid-template-columns: 1fr; } }
   `]
 })
@@ -175,8 +174,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   readonly selectedTemplateId = signal<number | null>(null);
 
   @ViewChild('signatureCanvas') signatureCanvas?: ElementRef<HTMLCanvasElement>;
-  private signatureContext: CanvasRenderingContext2D | null = null;
-  private isDrawingSignature = false;
+  private signaturePad: SignaturePad | null = null;
 
   readonly selectedAttendance = computed(() => this.attendances().find(x => x.consultId === this.selectedConsultId()) ?? null);
   readonly selectedPatientName = computed(() => {
@@ -363,81 +361,50 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
 
       canvas.width = Math.floor(width * ratio);
       canvas.height = Math.floor(height * ratio);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.style.backgroundColor = '#ffffff';
 
-      const context = canvas.getContext('2d');
-      if (!context) {
-        return;
+      this.signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)',
+        penColor: '#000000'
+      });
+
+      this.signaturePad.minWidth = 1.8;
+      this.signaturePad.maxWidth = 3.0;
+      this.signaturePad.addEventListener('endStroke', () => this.persistSignatureImage());
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      context.lineWidth = 2;
-      context.lineCap = 'round';
-      context.lineJoin = 'round';
-      context.strokeStyle = '#1b2a41';
-      this.signatureContext = context;
-      this.clearSignatureCanvas();
+      this.signaturePad.clear();
+      this.persistSignatureImage();
     });
   }
 
-  startSignature(event: MouseEvent | TouchEvent): void {
-    this.initializeSignaturePad();
-    if (!this.signatureContext) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = this.getCanvasPoint(event);
-    this.signatureContext.beginPath();
-    this.signatureContext.moveTo(point.x, point.y);
-    this.isDrawingSignature = true;
-  }
-
-  drawSignature(event: MouseEvent | TouchEvent): void {
-    if (!this.isDrawingSignature || !this.signatureContext) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = this.getCanvasPoint(event);
-    this.signatureContext.lineTo(point.x, point.y);
-    this.signatureContext.stroke();
-    this.persistSignatureImage();
-  }
-
-  endSignature(): void {
-    if (!this.isDrawingSignature) {
-      return;
-    }
-
-    this.isDrawingSignature = false;
-    this.signatureContext?.closePath();
-    this.persistSignatureImage();
-  }
-
   clearSignature(): void {
-    this.clearSignatureCanvas();
+    if (this.signaturePad) {
+      this.signaturePad.clear();
+      const canvas = this.signatureCanvas?.nativeElement;
+      const ctx = canvas?.getContext('2d');
+      if (canvas && ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
     this.form.controls.signatureImageBase64.setValue('');
   }
 
-  private clearSignatureCanvas(): void {
-    const canvas = this.signatureCanvas?.nativeElement;
-    if (!canvas || !this.signatureContext) {
-      return;
-    }
-
-    this.signatureContext.clearRect(0, 0, canvas.width, canvas.height);
-    this.signatureContext.fillStyle = '#ffffff';
-    this.signatureContext.fillRect(0, 0, canvas.width, canvas.height);
-    this.signatureContext.fillStyle = '#1b2a41';
-  }
-
   private persistSignatureImage(): void {
-    const canvas = this.signatureCanvas?.nativeElement;
-    if (!canvas) {
+    if (!this.signaturePad || this.signaturePad.isEmpty()) {
+      this.form.controls.signatureImageBase64.setValue('');
       return;
     }
 
-    this.form.controls.signatureImageBase64.setValue(canvas.toDataURL('image/png'), { emitEvent: false });
+    this.form.controls.signatureImageBase64.setValue(this.signaturePad.toDataURL('image/png'), { emitEvent: false });
   }
 
   private getCanvasPoint(event: MouseEvent | TouchEvent): { x: number; y: number } {
@@ -454,5 +421,19 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
 
     const mouse = event as MouseEvent;
     return { x: mouse.clientX - rect.left, y: mouse.clientY - rect.top };
+  }
+
+  private clearSignatureCanvas(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    if (!canvas || !this.signaturePad) {
+      return;
+    }
+
+    this.signaturePad.clear();
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
   }
 }
