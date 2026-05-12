@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -93,10 +93,22 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
                 <textarea matInput rows="3" formControlName="notes"></textarea>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Signature Image (Base64 optional)</mat-label>
-                <textarea matInput rows="3" formControlName="signatureImageBase64"></textarea>
-              </mat-form-field>
+              <div class="signature-pad-wrap full-width">
+                <div class="signature-pad-header">
+                  <span>Patient Signature</span>
+                  <button mat-stroked-button type="button" (click)="clearSignature()">Clear</button>
+                </div>
+                <canvas
+                  #signatureCanvas
+                  class="signature-canvas"
+                  (mousedown)="startSignature($event)"
+                  (mousemove)="drawSignature($event)"
+                  (mouseup)="endSignature()"
+                  (mouseleave)="endSignature()"
+                  (touchstart)="startSignature($event)"
+                  (touchmove)="drawSignature($event)"
+                  (touchend)="endSignature()"></canvas>
+              </div>
 
               <div class="actions-row">
                 <button mat-raised-button color="primary" type="button" (click)="signConsent()" [disabled]="form.invalid || !status()?.canSign || !activeTemplate() || loadingIndicator">
@@ -130,10 +142,21 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
     .consent-box { white-space: pre-wrap; border: 1px solid #ddd; border-radius: 8px; padding: 12px; min-height: 180px; background: #fafafa; margin-bottom: 16px; }
     .form-stack { display: flex; flex-direction: column; gap: 12px; }
     .actions-row { display: flex; justify-content: flex-end; }
+    .signature-pad-wrap { display: grid; gap: 8px; }
+    .signature-pad-header { display: flex; align-items: center; justify-content: space-between; }
+    .signature-canvas {
+      width: 100%;
+      height: 180px;
+      border: 1px dashed #9aa7bd;
+      border-radius: 8px;
+      background: #fff;
+      touch-action: none;
+      cursor: crosshair;
+    }
     @media (max-width: 992px) { .layout-grid, .header-grid { grid-template-columns: 1fr; } }
   `]
 })
-export class ConsentFormComponent implements OnInit {
+export class ConsentFormComponent implements OnInit, AfterViewInit {
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly aestheticEndpoint = inject(AestheticEndpoint);
@@ -150,6 +173,10 @@ export class ConsentFormComponent implements OnInit {
   readonly selectedConsultId = signal<string>('');
   readonly selectedProcedureType = signal<string>('Laser');
   readonly selectedTemplateId = signal<number | null>(null);
+
+  @ViewChild('signatureCanvas') signatureCanvas?: ElementRef<HTMLCanvasElement>;
+  private signatureContext: CanvasRenderingContext2D | null = null;
+  private isDrawingSignature = false;
 
   readonly selectedAttendance = computed(() => this.attendances().find(x => x.consultId === this.selectedConsultId()) ?? null);
   readonly selectedPatientName = computed(() => {
@@ -182,6 +209,10 @@ export class ConsentFormComponent implements OnInit {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.initializeSignaturePad();
+  }
+
   loadPatients(): void {
     this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({ next: patients => this.patients.set(patients || []), error: () => this.patients.set([]) });
   }
@@ -191,7 +222,7 @@ export class ConsentFormComponent implements OnInit {
     this.alertService.startLoadingMessage('Loading attendance records...');
     this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
       next: attendances => {
-        const records = (attendances || []).filter(x => !!x.consultId);
+        const records = (attendances || []).filter(x => !!x.consultId?.trim() && !!x.pNo?.trim());
         this.attendances.set(records);
         this.loadingIndicator = false;
         this.alertService.stopLoadingMessage();
@@ -214,6 +245,7 @@ export class ConsentFormComponent implements OnInit {
     this.selectedConsultId.set(consultId);
     this.selectedTemplateId.set(null);
     this.latestSignedConsent.set(null);
+    this.clearSignature();
     this.loadTemplatesAndStatus();
   }
 
@@ -229,29 +261,50 @@ export class ConsentFormComponent implements OnInit {
 
   private loadTemplatesAndStatus(): void {
     const attendance = this.selectedAttendance();
-    if (!attendance?.consultId || !attendance.pNo) {
+    const consultId = attendance?.consultId?.trim() || '';
+    const pNo = attendance?.pNo?.trim() || '';
+    if (!consultId || !pNo) {
+      this.status.set(null);
+      this.latestSignedConsent.set(null);
       return;
     }
 
     const procedureType = this.selectedProcedureType();
+
+    // Attendance is the entry point for this page, so patient can sign when a valid attendance row is selected.
+    this.status.set({
+      consultId,
+      pNo,
+      procedureType,
+      attendanceTaken: true,
+      canSign: true,
+      hasValidConsent: false,
+      activeTemplate: undefined,
+      latestSignedConsent: undefined
+    });
+
     this.aestheticEndpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>(procedureType).subscribe({
       next: templates => {
-        this.templates.set(templates || []);
-        this.selectedTemplateId.set((templates || [])[0]?.id ?? null);
+        const list = templates || [];
+        this.templates.set(list);
+        this.selectedTemplateId.set(list[0]?.id ?? null);
+
+        this.status.update(current => current
+          ? { ...current, activeTemplate: list[0], hasValidConsent: !!this.latestSignedConsent() }
+          : current);
       },
       error: () => this.templates.set([])
     });
 
-    this.aestheticEndpoint.getConsentStatusEndpoint<AestheticConsentStatus>(attendance.consultId, attendance.pNo, procedureType).subscribe({
-      next: status => {
-        this.status.set(status);
-        this.latestSignedConsent.set(status.latestSignedConsent || null);
-        if (!this.selectedTemplateId() && status.activeTemplate?.id) {
-          this.selectedTemplateId.set(status.activeTemplate.id);
-        }
+    this.aestheticEndpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ consultId, pNo, procedureType, includeVoided: false }).subscribe({
+      next: consents => {
+        const latest = (consents || [])[0] || null;
+        this.latestSignedConsent.set(latest);
+        this.status.update(current => current
+          ? { ...current, hasValidConsent: !!latest, latestSignedConsent: latest ?? undefined }
+          : current);
       },
       error: error => {
-        this.status.set(null);
         this.latestSignedConsent.set(null);
         this.alertService.showStickyMessage('Status Error', 'Unable to retrieve consent status.', MessageSeverity.error, error);
       }
@@ -260,14 +313,16 @@ export class ConsentFormComponent implements OnInit {
 
   signConsent(): void {
     const attendance = this.selectedAttendance();
+    const consultId = attendance?.consultId?.trim() || '';
+    const pNo = attendance?.pNo?.trim() || '';
     const template = this.activeTemplate();
-    if (!attendance?.consultId || !attendance.pNo || !template?.id || this.form.invalid) {
+    if (!consultId || !pNo || !template?.id || this.form.invalid) {
       return;
     }
 
     const payload: SignAestheticConsent = {
-      consultId: attendance.consultId,
-      pNo: attendance.pNo,
+      consultId,
+      pNo,
       procedureType: this.selectedProcedureType(),
       consentTemplateId: template.id,
       signatureName: this.form.controls.signatureName.value,
@@ -292,5 +347,112 @@ export class ConsentFormComponent implements OnInit {
         this.alertService.showStickyMessage('Sign Error', 'Unable to sign consent.', MessageSeverity.error, error);
       }
     });
+  }
+
+  private initializeSignaturePad(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    if (!canvas) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width || 600;
+      const height = rect.height || 180;
+      const ratio = window.devicePixelRatio || 1;
+
+      canvas.width = Math.floor(width * ratio);
+      canvas.height = Math.floor(height * ratio);
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return;
+      }
+
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      context.lineWidth = 2;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      context.strokeStyle = '#1b2a41';
+      this.signatureContext = context;
+      this.clearSignatureCanvas();
+    });
+  }
+
+  startSignature(event: MouseEvent | TouchEvent): void {
+    this.initializeSignaturePad();
+    if (!this.signatureContext) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = this.getCanvasPoint(event);
+    this.signatureContext.beginPath();
+    this.signatureContext.moveTo(point.x, point.y);
+    this.isDrawingSignature = true;
+  }
+
+  drawSignature(event: MouseEvent | TouchEvent): void {
+    if (!this.isDrawingSignature || !this.signatureContext) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = this.getCanvasPoint(event);
+    this.signatureContext.lineTo(point.x, point.y);
+    this.signatureContext.stroke();
+    this.persistSignatureImage();
+  }
+
+  endSignature(): void {
+    if (!this.isDrawingSignature) {
+      return;
+    }
+
+    this.isDrawingSignature = false;
+    this.signatureContext?.closePath();
+    this.persistSignatureImage();
+  }
+
+  clearSignature(): void {
+    this.clearSignatureCanvas();
+    this.form.controls.signatureImageBase64.setValue('');
+  }
+
+  private clearSignatureCanvas(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    if (!canvas || !this.signatureContext) {
+      return;
+    }
+
+    this.signatureContext.clearRect(0, 0, canvas.width, canvas.height);
+    this.signatureContext.fillStyle = '#ffffff';
+    this.signatureContext.fillRect(0, 0, canvas.width, canvas.height);
+    this.signatureContext.fillStyle = '#1b2a41';
+  }
+
+  private persistSignatureImage(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    if (!canvas) {
+      return;
+    }
+
+    this.form.controls.signatureImageBase64.setValue(canvas.toDataURL('image/png'), { emitEvent: false });
+  }
+
+  private getCanvasPoint(event: MouseEvent | TouchEvent): { x: number; y: number } {
+    const canvas = this.signatureCanvas?.nativeElement;
+    const rect = canvas?.getBoundingClientRect();
+    if (!rect) {
+      return { x: 0, y: 0 };
+    }
+
+    if ('touches' in event && event.touches.length > 0) {
+      const touch = event.touches[0];
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    const mouse = event as MouseEvent;
+    return { x: mouse.clientX - rect.left, y: mouse.clientY - rect.top };
   }
 }
