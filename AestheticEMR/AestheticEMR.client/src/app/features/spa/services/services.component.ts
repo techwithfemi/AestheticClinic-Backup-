@@ -92,7 +92,7 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete">
+                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete" [disabled]="true">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
@@ -361,7 +361,7 @@ export class ServicesComponent {
     return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  private findAestheticPatient(firstName: String, lastName: string, pNo: string): AestheticPatient | undefined {
+  private findAestheticPatient(firstName: string, lastName: string, pNo: string): AestheticPatient | undefined {
     const normalizedFirst = firstName.trim().toLowerCase();
     const normalizedLast = lastName.trim().toLowerCase();
     const normalizedPNo = pNo.trim().toLowerCase();

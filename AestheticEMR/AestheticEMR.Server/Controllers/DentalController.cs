@@ -57,14 +57,23 @@ public class DentalController(
         if (string.IsNullOrWhiteSpace(consulting.ClientCat))
             consulting.ClientCat = "PRIVATE";
 
-        var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId());
-
-        return Ok(new DentalEncounterVM
+        try
         {
-            Chart = _mapper.Map<DentalChartVM>(saved.Chart),
-            Imaging = _mapper.Map<DentalImagingVM>(saved.Imaging),
-            Consulting = _mapper.Map<DentalConsultingVM>(saved.Consulting)
-        });
+            var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId());
+
+            return Ok(new DentalEncounterVM
+            {
+                Chart = _mapper.Map<DentalChartVM>(saved.Chart),
+                Imaging = _mapper.Map<DentalImagingVM>(saved.Imaging),
+                Consulting = _mapper.Map<DentalConsultingVM>(saved.Consulting)
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Encounter save forbidden for consultId {ConsultId}", chart.ConsultId);
+            AddModelError(ex.Message);
+            return Forbid();
+        }
     }
 
     // ─── Odontogram / Dental Treatment Chart (HDentalTreat) ─────────────────
@@ -103,17 +112,44 @@ public class DentalController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         if (id != vm.Id) return BadRequest("Chart id mismatch");
-        var entity = _mapper.Map<HDentalTreat>(vm);
-        var updated = dentalService.UpdateChart(entity);
-        return Ok(_mapper.Map<DentalChartVM>(updated));
+
+        try
+        {
+            var entity = _mapper.Map<HDentalTreat>(vm);
+            var updated = dentalService.UpdateChart(entity, GetCurrentUserId());
+            return Ok(_mapper.Map<DentalChartVM>(updated));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Chart update forbidden {Id}", id);
+            AddModelError(ex.Message);
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(id);
+        }
     }
 
     [HttpDelete("charts/{id:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult DeleteChart(long id)
     {
-        try { dentalService.DeleteChart(id); return NoContent(); }
-        catch (KeyNotFoundException) { return NotFound(id); }
+        try
+        {
+            dentalService.DeleteChart(id, GetCurrentUserId());
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Chart delete forbidden {Id}", id);
+            AddModelError(ex.Message);
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(id);
+        }
     }
 
     // ─── Imaging ─────────────────────────────────────────────────────────────
@@ -153,16 +189,43 @@ public class DentalController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         if (id != vm.Id) return BadRequest("Imaging id mismatch");
-        var entity = _mapper.Map<DentalImaging>(vm);
-        var updated = dentalService.UpdateImaging(entity);
-        return Ok(_mapper.Map<DentalImagingVM>(updated));
+
+        try
+        {
+            var entity = _mapper.Map<DentalImaging>(vm);
+            var updated = dentalService.UpdateImaging(entity, GetCurrentUserId());
+            return Ok(_mapper.Map<DentalImagingVM>(updated));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Imaging update forbidden {Id}", id);
+            AddModelError(ex.Message);
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(id);
+        }
     }
 
     [HttpDelete("imaging/{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult DeleteImaging(int id)
     {
-        try { dentalService.DeleteImaging(id); return NoContent(); }
-        catch (KeyNotFoundException) { return NotFound(id); }
+        try
+        {
+            dentalService.DeleteImaging(id, GetCurrentUserId());
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Imaging delete forbidden {Id}", id);
+            AddModelError(ex.Message);
+            return Forbid();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(id);
+        }
     }
 }

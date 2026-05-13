@@ -96,11 +96,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return consultation;
         }
 
-        public AestheticConsultation UpdateConsultation(AestheticConsultation consultation, string? consultId = null, string? pNo = null, string? services = null)
+        public AestheticConsultation UpdateConsultation(AestheticConsultation consultation, string currentUserId, string? consultId = null, string? pNo = null, string? services = null)
         {
             var existing = dbContext.AestheticConsultations.Find(consultation.Id);
             if (existing == null)
                 throw new KeyNotFoundException($"Consultation not found: {consultation.Id}");
+
+            if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
             existing.PatientId = consultation.PatientId;
             existing.ConsultationDate = consultation.ConsultationDate;
@@ -141,7 +144,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return existing;
         }
 
-        public void DeleteConsultation(int consultationId)
+        public void DeleteConsultation(int consultationId, string currentUserId)
         {
             var consultation = dbContext.AestheticConsultations
                 .Include(c => c.Photos)
@@ -150,6 +153,9 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
             if (consultation == null)
                 throw new KeyNotFoundException($"Consultation not found: {consultationId}");
+
+            if (!string.Equals(consultation.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can delete it.");
 
             var consultId = ResolveLegacyConsultId(consultation);
             if (!string.IsNullOrWhiteSpace(consultId) && IsConsultIdReferenced(consultId))
@@ -208,11 +214,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return photo;
         }
 
-        public AestheticPhoto UpdatePhoto(AestheticPhoto photo)
+        public AestheticPhoto UpdatePhoto(AestheticPhoto photo, string currentUserId)
         {
             var existing = dbContext.AestheticPhotos.Find(photo.Id);
             if (existing == null)
                 throw new KeyNotFoundException($"Photo not found: {photo.Id}");
+
+            if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
             var consultation = dbContext.AestheticConsultations
                 .Include(c => c.Patient)
@@ -234,11 +243,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return existing;
         }
 
-        public void DeletePhoto(int photoId)
+        public void DeletePhoto(int photoId, string currentUserId)
         {
             var photo = dbContext.AestheticPhotos.Find(photoId);
             if (photo == null)
                 throw new KeyNotFoundException($"Photo not found: {photoId}");
+
+            if (!string.Equals(photo.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can delete it.");
 
             dbContext.AestheticPhotos.Remove(photo);
             dbContext.SaveChanges();

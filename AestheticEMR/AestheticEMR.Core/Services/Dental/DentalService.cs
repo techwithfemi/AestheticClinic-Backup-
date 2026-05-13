@@ -27,12 +27,15 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         return chart;
     }
 
-    public HDentalTreat UpdateChart(HDentalTreat chart)
+    public HDentalTreat UpdateChart(HDentalTreat chart, string currentUserId)
     {
         EnsureChartDateTimes(chart);
 
         var existing = dbContext.HDentalTreats.Find(chart.Id)
             ?? throw new KeyNotFoundException($"Dental chart not found: {chart.Id}");
+
+        if (!string.Equals(existing.ConId, currentUserId, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
         ApplyChartValues(existing, chart);
 
@@ -40,10 +43,14 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         return existing;
     }
 
-    public void DeleteChart(long id)
+    public void DeleteChart(long id, string currentUserId)
     {
         var entity = dbContext.HDentalTreats.Find(id)
             ?? throw new KeyNotFoundException($"Dental chart not found: {id}");
+
+        if (!string.Equals(entity.ConId, currentUserId, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("Only the author that created this clinical record can delete it.");
+
         dbContext.HDentalTreats.Remove(entity);
         dbContext.SaveChanges();
     }
@@ -70,10 +77,13 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         return imaging;
     }
 
-    public DentalImaging UpdateImaging(DentalImaging imaging)
+    public DentalImaging UpdateImaging(DentalImaging imaging, string currentUserId)
     {
         var existing = dbContext.DentalImagings.Find(imaging.Id)
             ?? throw new KeyNotFoundException($"Dental imaging not found: {imaging.Id}");
+
+        if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
         imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, DateTime.UtcNow);
         ApplyImagingValues(existing, imaging);
@@ -83,10 +93,14 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         return existing;
     }
 
-    public void DeleteImaging(int id)
+    public void DeleteImaging(int id, string currentUserId)
     {
         var entity = dbContext.DentalImagings.Find(id)
             ?? throw new KeyNotFoundException($"Dental imaging not found: {id}");
+
+        if (!string.Equals(entity.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("Only the author that created this clinical record can delete it.");
+
         dbContext.DentalImagings.Remove(entity);
         dbContext.SaveChanges();
     }
@@ -119,10 +133,15 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         {
             persistedChart = dbContext.HDentalTreats.Find(chart.Id)
                 ?? throw new KeyNotFoundException($"Dental chart not found: {chart.Id}");
+
+            if (!string.Equals(persistedChart.ConId, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
+
             ApplyChartValues(persistedChart, chart);
         }
         else
         {
+            chart.ConId = string.IsNullOrWhiteSpace(chart.ConId) ? currentUserId : chart.ConId;
             dbContext.HDentalTreats.Add(chart);
             persistedChart = chart;
         }
@@ -132,6 +151,10 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         {
             persistedImaging = dbContext.DentalImagings.Find(imaging.Id)
                 ?? throw new KeyNotFoundException($"Dental imaging not found: {imaging.Id}");
+
+            if (!string.Equals(persistedImaging.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
+
             ApplyImagingValues(persistedImaging, imaging);
             persistedImaging.UpdatedDate = now;
         }
@@ -142,12 +165,16 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
 
             if (existingImaging != null)
             {
+                if (!string.Equals(existingImaging.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                    throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
+
                 persistedImaging = existingImaging;
                 ApplyImagingValues(persistedImaging, imaging);
                 persistedImaging.UpdatedDate = now;
             }
             else
             {
+                imaging.CreatedBy = currentUserId;
                 imaging.CreatedDate = now;
                 imaging.UpdatedDate = now;
                 dbContext.DentalImagings.Add(imaging);

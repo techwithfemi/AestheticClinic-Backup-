@@ -106,7 +106,7 @@ import { ConsentDialogComponent } from '../shared/consent-dialog.component';
                 <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete">
+                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete" [disabled]="true">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>

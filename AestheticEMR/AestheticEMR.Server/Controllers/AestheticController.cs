@@ -252,8 +252,14 @@ namespace AestheticEMR.Server.Controllers
             {
                 var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
                 consultation.Provider = GetCurrentUserId();
-                var updated = _aestheticService.UpdateConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
+                var updated = _aestheticService.UpdateConsultation(consultation, GetCurrentUserId(), consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
                 return Ok(_mapper.Map<AestheticConsultationVM>(updated));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Update blocked for consultation {ConsultationId}", consultationId);
+                AddModelError(ex.Message);
+                return Forbid();
             }
             catch (Exception ex)
             {
@@ -279,8 +285,14 @@ namespace AestheticEMR.Server.Controllers
                     DeletePhysicalFile(photo.FilePath);
                 }
 
-                _aestheticService.DeleteConsultation(consultationId);
+                _aestheticService.DeleteConsultation(consultationId, GetCurrentUserId());
                 return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Delete blocked for consultation {ConsultationId}", consultationId);
+                AddModelError(ex.Message);
+                return Forbid();
             }
             catch (InvalidOperationException ex)
             {
@@ -364,9 +376,18 @@ namespace AestheticEMR.Server.Controllers
             if (existing == null)
                 return NotFound(photoId);
 
-            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
-            var updated = _aestheticService.UpdatePhoto(photo);
-            return Ok(ToPhotoViewModel(updated));
+            try
+            {
+                var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+                var updated = _aestheticService.UpdatePhoto(photo, GetCurrentUserId());
+                return Ok(ToPhotoViewModel(updated));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Photo update blocked for {PhotoId}", photoId);
+                AddModelError(ex.Message);
+                return Forbid();
+            }
         }
 
         [HttpPut("photos/{photoId}/upload")]
@@ -403,9 +424,18 @@ namespace AestheticEMR.Server.Controllers
                 Url = savedPath
             };
 
-            var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
-            var updated = _aestheticService.UpdatePhoto(photo);
-            return Ok(ToPhotoViewModel(updated));
+            try
+            {
+                var photo = _mapper.Map<Core.Models.Aesthetic.AestheticPhoto>(photoVM);
+                var updated = _aestheticService.UpdatePhoto(photo, GetCurrentUserId());
+                return Ok(ToPhotoViewModel(updated));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Photo upload update blocked for {PhotoId}", photoId);
+                AddModelError(ex.Message);
+                return Forbid();
+            }
         }
 
         [HttpGet("consent-templates")]
