@@ -280,6 +280,153 @@ public class ProductController(ILogger<ProductController> logger, IMapper mapper
         }
     }
 
+    [HttpGet("batches")]
+    [ProducesResponseType(typeof(IEnumerable<ProductBatchVM>), 200)]
+    public async Task<IActionResult> GetBatches([FromQuery] int? productId, [FromQuery] bool includeRecalled = false)
+    {
+        try
+        {
+            var batches = await productService.GetBatchesAsync(productId, includeRecalled);
+            return Ok(_mapper.Map<IEnumerable<ProductBatchVM>>(batches));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving product batches");
+            AddModelError("Unable to retrieve product batches");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("batches/{id:int}")]
+    [ProducesResponseType(typeof(ProductBatchVM), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetBatchById(int id)
+    {
+        try
+        {
+            var batch = await productService.GetBatchByIdAsync(id);
+            if (batch is null)
+                return NotFound(id);
+
+            return Ok(_mapper.Map<ProductBatchVM>(batch));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving product batch {Id}", id);
+            AddModelError("Unable to retrieve product batch");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpPost("batches")]
+    [ProducesResponseType(typeof(ProductBatchVM), 201)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> CreateBatch([FromBody] ProductBatchEditVM model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var entity = _mapper.Map<ProductBatch>(model);
+            var created = await productService.CreateBatchAsync(entity, GetCurrentUserName());
+            var loaded = await productService.GetBatchByIdAsync(created.Id) ?? created;
+            return CreatedAtAction(nameof(GetBatchById), new { id = loaded.Id }, _mapper.Map<ProductBatchVM>(loaded));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating product batch");
+            AddModelError(ex.GetBaseException().Message);
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpPut("batches/{id:int}/recall")]
+    [ProducesResponseType(typeof(ProductBatchVM), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RecallBatch(int id, [FromBody] RecallBatchVM model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var existing = await productService.GetBatchByIdAsync(id);
+            if (existing is null)
+                return NotFound(id);
+
+            var recalled = await productService.RecallBatchAsync(id, model.Reason, GetCurrentUserName());
+            var loaded = await productService.GetBatchByIdAsync(recalled.Id) ?? recalled;
+            return Ok(_mapper.Map<ProductBatchVM>(loaded));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recalling batch {Id}", id);
+            AddModelError(ex.GetBaseException().Message);
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("batches/expiring")]
+    [ProducesResponseType(typeof(IEnumerable<ProductBatchVM>), 200)]
+    public async Task<IActionResult> GetExpiringBatches([FromQuery] int daysAhead = 30)
+    {
+        try
+        {
+            var batches = await productService.GetExpiringBatchesAsync(daysAhead);
+            return Ok(_mapper.Map<IEnumerable<ProductBatchVM>>(batches));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving expiring batches");
+            AddModelError("Unable to retrieve expiring batches");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("procedure-usage")]
+    [ProducesResponseType(typeof(IEnumerable<ProcedureProductUsageVM>), 200)]
+    public async Task<IActionResult> GetProcedureUsage([FromQuery] int? consultationId, [FromQuery] int? productId)
+    {
+        try
+        {
+            var usages = await productService.GetProcedureUsagesAsync(consultationId, productId);
+            return Ok(_mapper.Map<IEnumerable<ProcedureProductUsageVM>>(usages));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving procedure product usage");
+            AddModelError("Unable to retrieve procedure product usage");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpPost("procedure-usage")]
+    [ProducesResponseType(typeof(ProcedureProductUsageVM), 201)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> RecordProcedureUsage([FromBody] ProcedureProductUsageEditVM model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var usage = _mapper.Map<ProcedureProductUsage>(model);
+            var created = await productService.RecordProcedureUsageAsync(usage, GetCurrentUserName());
+            var loaded = (await productService.GetProcedureUsagesAsync(consultationId: created.ConsultationId, productId: created.ProductId))
+                .FirstOrDefault(x => x.Id == created.Id) ?? created;
+
+            return StatusCode(201, _mapper.Map<ProcedureProductUsageVM>(loaded));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording procedure product usage");
+            AddModelError(ex.GetBaseException().Message);
+            return BadRequest(ModelState);
+        }
+    }
+
     private string? GetCurrentUserName()
     {
         return User.Identity?.Name

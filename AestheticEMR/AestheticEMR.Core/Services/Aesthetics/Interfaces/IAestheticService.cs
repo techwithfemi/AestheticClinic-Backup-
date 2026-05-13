@@ -38,5 +38,15 @@ namespace AestheticEMR.Core.Services.Aesthetics
         AestheticSignedConsent SignConsent(int? patientId, string consultId, string pNo, string procedureType, int consentTemplateId, string signatureName, string? witnessedBy, string? signedBy, string? notes, byte[]? signatureImage, string? signatureImagePath);
         AestheticSignedConsent MarkConsentViewed(int consentId, string doctorViewedBy);
         AestheticSignedConsent VoidConsent(int consentId, string voidReason, string voidedBy);
+        IEnumerable<AestheticFollowUp> GetFollowUps(int? patientId = null, int? consultationId = null, bool? isCompleted = null);
+        AestheticFollowUp? GetFollowUpById(int followUpId);
+        AestheticFollowUp ScheduleFollowUp(int consultationId, int daysAhead, bool isAutoScheduled = false, string? notes = null);
+        AestheticFollowUp CompleteFollowUp(int followUpId, string? outcome, int? patientSatisfactionScore, bool repeatPhotosTaken, string? nextTreatmentRecommendation, string? notes);
+
+        IEnumerable<ProcedureRevenueMetric> GetRevenuePerProcedure(DateTime? from = null, DateTime? to = null);
+        IEnumerable<ProductUsageMetric> GetMostUsedProducts(int top = 10, DateTime? from = null, DateTime? to = null);
+        ComplicationRateMetric GetComplicationRate(DateTime? from = null, DateTime? to = null);
+        PatientRetentionMetric GetPatientRetention(DateTime? from = null, DateTime? to = null);
+        BeforeAfterOutcomeMetric GetBeforeAfterOutcomeTracking(DateTime? from = null, DateTime? to = null);
     }
 }

@@ -631,6 +631,115 @@ namespace AestheticEMR.Server.Controllers
             }
         }
 
+        [HttpGet("follow-ups")]
+        [ProducesResponseType(typeof(IEnumerable<AestheticFollowUpVM>), StatusCodes.Status200OK)]
+        public IActionResult GetFollowUps([FromQuery] int? patientId, [FromQuery] int? consultationId, [FromQuery] bool? isCompleted)
+        {
+            var followUps = _aestheticService.GetFollowUps(patientId, consultationId, isCompleted);
+            return Ok(_mapper.Map<IEnumerable<AestheticFollowUpVM>>(followUps));
+        }
+
+        [HttpGet("follow-ups/{followUpId:int}")]
+        [ProducesResponseType(typeof(AestheticFollowUpVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult GetFollowUp(int followUpId)
+        {
+            var followUp = _aestheticService.GetFollowUpById(followUpId);
+            if (followUp == null)
+                return NotFound(followUpId);
+
+            return Ok(_mapper.Map<AestheticFollowUpVM>(followUp));
+        }
+
+        [HttpPost("follow-ups/schedule")]
+        [ProducesResponseType(typeof(AestheticFollowUpVM), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult ScheduleFollowUp([FromBody] ScheduleAestheticFollowUpVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var scheduled = _aestheticService.ScheduleFollowUp(model.ConsultationId, model.DaysAhead, false, model.Notes);
+                return StatusCode(StatusCodes.Status201Created, _mapper.Map<AestheticFollowUpVM>(scheduled));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error scheduling follow-up for consultation {ConsultationId}", model.ConsultationId);
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
+        [HttpPut("follow-ups/{followUpId:int}/complete")]
+        [ProducesResponseType(typeof(AestheticFollowUpVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult CompleteFollowUp(int followUpId, [FromBody] CompleteAestheticFollowUpVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var completed = _aestheticService.CompleteFollowUp(
+                    followUpId,
+                    model.Outcome,
+                    model.PatientSatisfactionScore,
+                    model.RepeatPhotosTaken,
+                    model.NextTreatmentRecommendation,
+                    model.Notes);
+
+                return Ok(_mapper.Map<AestheticFollowUpVM>(completed));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing follow-up {FollowUpId}", followUpId);
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
+        [HttpGet("analytics/revenue-per-procedure")]
+        [ProducesResponseType(typeof(IEnumerable<ProcedureRevenueMetricVM>), StatusCodes.Status200OK)]
+        public IActionResult GetRevenuePerProcedure([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var metrics = _aestheticService.GetRevenuePerProcedure(from, to);
+            return Ok(_mapper.Map<IEnumerable<ProcedureRevenueMetricVM>>(metrics));
+        }
+
+        [HttpGet("analytics/most-used-products")]
+        [ProducesResponseType(typeof(IEnumerable<ProductUsageMetricVM>), StatusCodes.Status200OK)]
+        public IActionResult GetMostUsedProducts([FromQuery] int top = 10, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+        {
+            var metrics = _aestheticService.GetMostUsedProducts(top, from, to);
+            return Ok(_mapper.Map<IEnumerable<ProductUsageMetricVM>>(metrics));
+        }
+
+        [HttpGet("analytics/complication-rates")]
+        [ProducesResponseType(typeof(ComplicationRateMetricVM), StatusCodes.Status200OK)]
+        public IActionResult GetComplicationRates([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var metric = _aestheticService.GetComplicationRate(from, to);
+            return Ok(_mapper.Map<ComplicationRateMetricVM>(metric));
+        }
+
+        [HttpGet("analytics/patient-retention")]
+        [ProducesResponseType(typeof(PatientRetentionMetricVM), StatusCodes.Status200OK)]
+        public IActionResult GetPatientRetention([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var metric = _aestheticService.GetPatientRetention(from, to);
+            return Ok(_mapper.Map<PatientRetentionMetricVM>(metric));
+        }
+
+        [HttpGet("analytics/before-after-outcomes")]
+        [ProducesResponseType(typeof(BeforeAfterOutcomeMetricVM), StatusCodes.Status200OK)]
+        public IActionResult GetBeforeAfterOutcomes([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        {
+            var metric = _aestheticService.GetBeforeAfterOutcomeTracking(from, to);
+            return Ok(_mapper.Map<BeforeAfterOutcomeMetricVM>(metric));
+        }
+
         private AestheticSignedConsentVM ApplyConsentImageUrl(AestheticSignedConsentVM vm)
         {
             vm.SignatureImagePath = BuildPublicUrl(vm.SignatureImagePath);

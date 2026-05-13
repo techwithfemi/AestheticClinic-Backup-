@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 using AestheticEMR.Core.Models;
+using AestheticEMR.Core.Models.Shop;
 
 namespace AestheticEMR.Core.Models.Aesthetic
 {
@@ -51,5 +52,7 @@ namespace AestheticEMR.Core.Models.Aesthetic
         public string? FollowUpReview { get; set; }
 
         public ICollection<AestheticPhoto> Photos { get; } = [];
+        public ICollection<ProcedureProductUsage> ProductUsages { get; } = [];
+        public ICollection<AestheticFollowUp> FollowUps { get; } = [];
     }
 }

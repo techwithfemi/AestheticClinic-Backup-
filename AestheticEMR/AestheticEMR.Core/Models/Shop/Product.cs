@@ -29,5 +29,7 @@ namespace AestheticEMR.Core.Models.Shop
         public ICollection<Product> Children { get; } = [];
         public ICollection<OrderDetail> OrderDetails { get; } = [];
         public ICollection<ProductStockReport> StockReports { get; } = [];
+        public ICollection<ProductBatch> Batches { get; } = [];
+        public ICollection<ProcedureProductUsage> ProcedureUsages { get; } = [];
     }
 }

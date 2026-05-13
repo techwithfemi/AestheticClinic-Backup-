@@ -156,6 +156,204 @@ namespace AestheticEMR.Core.Services.Shop
             await context.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<ProductBatch>> GetBatchesAsync(int? productId = null, bool includeRecalled = false)
+        {
+            var query = context.ProductBatches
+                .Include(x => x.Product)
+                .AsQueryable();
+
+            if (productId.HasValue)
+            {
+                query = query.Where(x => x.ProductId == productId.Value);
+            }
+
+            if (!includeRecalled)
+            {
+                query = query.Where(x => !x.IsRecalled);
+            }
+
+            return await query
+                .OrderBy(x => x.ExpiryDate)
+                .ThenBy(x => x.BatchNumber)
+                .ToListAsync();
+        }
+
+        public async Task<ProductBatch?> GetBatchByIdAsync(int id)
+        {
+            return await context.ProductBatches
+                .Include(x => x.Product)
+                .FirstOrDefaultAsync(x => x.Id == id);
+        }
+
+        public async Task<ProductBatch> CreateBatchAsync(ProductBatch batch, string? userName)
+        {
+            if (batch.QuantityReceived <= 0)
+                throw new InvalidOperationException("Quantity received must be greater than zero.");
+
+            var product = await context.Products.FirstOrDefaultAsync(x => x.Id == batch.ProductId)
+                ?? throw new KeyNotFoundException($"Product not found: {batch.ProductId}");
+
+            var duplicateExists = await context.ProductBatches
+                .AnyAsync(x => x.ProductId == batch.ProductId && x.BatchNumber == batch.BatchNumber);
+            if (duplicateExists)
+                throw new InvalidOperationException("A batch with the same batch number already exists for this product.");
+
+            batch.QuantityRemaining = batch.QuantityReceived;
+            context.ProductBatches.Add(batch);
+
+            product.PreviousUnitsInStock = product.UnitsInStock;
+            product.UnitsInStock += batch.QuantityReceived;
+
+            AddStockReportEntry(product, "BatchIn", userName);
+
+            await context.SaveChangesAsync();
+            return batch;
+        }
+
+        public async Task<ProductBatch> RecallBatchAsync(int id, string reason, string? userName)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new InvalidOperationException("Recall reason is required.");
+
+            var batch = await context.ProductBatches
+                .Include(x => x.Product)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                ?? throw new KeyNotFoundException($"Batch not found: {id}");
+
+            if (batch.IsRecalled)
+                return batch;
+
+            batch.IsRecalled = true;
+            batch.RecalledOn = DateTime.UtcNow;
+            batch.RecallReason = reason.Trim();
+
+            if (batch.QuantityRemaining > 0)
+            {
+                var removedQty = batch.QuantityRemaining;
+                batch.QuantityRemaining = 0;
+
+                var product = batch.Product;
+                product.PreviousUnitsInStock = product.UnitsInStock;
+                product.UnitsInStock = Math.Max(0, product.UnitsInStock - removedQty);
+
+                AddStockReportEntry(product, "Recall", userName);
+            }
+
+            await context.SaveChangesAsync();
+            return batch;
+        }
+
+        public async Task<IEnumerable<ProductBatch>> GetExpiringBatchesAsync(int daysAhead = 30)
+        {
+            var cutoff = DateTime.UtcNow.Date.AddDays(daysAhead);
+
+            return await context.ProductBatches
+                .Include(x => x.Product)
+                .Where(x => !x.IsRecalled && x.QuantityRemaining > 0 && x.ExpiryDate.Date <= cutoff)
+                .OrderBy(x => x.ExpiryDate)
+                .ThenBy(x => x.Product.Name)
+                .ToListAsync();
+        }
+
+        public async Task<ProcedureProductUsage> RecordProcedureUsageAsync(ProcedureProductUsage usage, string? userName)
+        {
+            if (usage.QuantityUsed <= 0)
+                throw new InvalidOperationException("Quantity used must be greater than zero.");
+
+            var consultation = await context.AestheticConsultations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == usage.ConsultationId)
+                ?? throw new KeyNotFoundException($"Consultation not found: {usage.ConsultationId}");
+
+            var product = await context.Products.FirstOrDefaultAsync(x => x.Id == usage.ProductId)
+                ?? throw new KeyNotFoundException($"Product not found: {usage.ProductId}");
+
+            usage.ProcedureType = string.IsNullOrWhiteSpace(usage.ProcedureType)
+                ? consultation.ProcedureType
+                : usage.ProcedureType.Trim();
+
+            var remainingToDeduct = usage.QuantityUsed;
+            ProductBatch? selectedBatch = null;
+
+            if (usage.ProductBatchId > 0)
+            {
+                selectedBatch = await context.ProductBatches
+                    .FirstOrDefaultAsync(x => x.Id == usage.ProductBatchId && x.ProductId == usage.ProductId)
+                    ?? throw new KeyNotFoundException($"Batch not found: {usage.ProductBatchId}");
+
+                if (selectedBatch.IsRecalled)
+                    throw new InvalidOperationException("Cannot use a recalled batch.");
+
+                if (selectedBatch.ExpiryDate.Date < DateTime.UtcNow.Date)
+                    throw new InvalidOperationException("Cannot use an expired batch.");
+
+                if (selectedBatch.QuantityRemaining < remainingToDeduct)
+                    throw new InvalidOperationException("Insufficient batch quantity.");
+
+                selectedBatch.QuantityRemaining -= remainingToDeduct;
+                remainingToDeduct = 0;
+            }
+            else
+            {
+                var availableBatches = await context.ProductBatches
+                    .Where(x => x.ProductId == usage.ProductId
+                                && !x.IsRecalled
+                                && x.QuantityRemaining > 0
+                                && x.ExpiryDate.Date >= DateTime.UtcNow.Date)
+                    .OrderBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.Id)
+                    .ToListAsync();
+
+                foreach (var batch in availableBatches)
+                {
+                    if (remainingToDeduct <= 0)
+                        break;
+
+                    selectedBatch ??= batch;
+
+                    var deduct = Math.Min(batch.QuantityRemaining, remainingToDeduct);
+                    batch.QuantityRemaining -= deduct;
+                    remainingToDeduct -= deduct;
+                }
+
+                if (remainingToDeduct > 0)
+                    throw new InvalidOperationException("Insufficient stock across active non-expired batches.");
+            }
+
+            product.PreviousUnitsInStock = product.UnitsInStock;
+            product.UnitsInStock = Math.Max(0, product.UnitsInStock - usage.QuantityUsed);
+
+            usage.ProductBatchId = selectedBatch?.Id ?? usage.ProductBatchId;
+            usage.ProductBatch = selectedBatch ?? await context.ProductBatches.FirstAsync(x => x.Id == usage.ProductBatchId);
+            usage.UsedOn = usage.UsedOn == default ? DateTime.UtcNow : usage.UsedOn;
+
+            context.ProcedureProductUsages.Add(usage);
+            AddStockReportEntry(product, "ProcedureUse", userName);
+
+            await context.SaveChangesAsync();
+            return usage;
+        }
+
+        public async Task<IEnumerable<ProcedureProductUsage>> GetProcedureUsagesAsync(int? consultationId = null, int? productId = null)
+        {
+            var query = context.ProcedureProductUsages
+                .Include(x => x.Product)
+                .Include(x => x.ProductBatch)
+                .Include(x => x.Consultation)
+                .AsQueryable();
+
+            if (consultationId.HasValue)
+                query = query.Where(x => x.ConsultationId == consultationId.Value);
+
+            if (productId.HasValue)
+                query = query.Where(x => x.ProductId == productId.Value);
+
+            return await query
+                .OrderByDescending(x => x.UsedOn)
+                .ThenByDescending(x => x.Id)
+                .ToListAsync();
+        }
+
         private void AddStockReportEntry(Product product, string operationType, string? userName)
         {
             var now = DateTime.UtcNow;

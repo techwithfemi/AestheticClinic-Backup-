@@ -92,6 +92,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             dbContext.AestheticConsultations.Add(consultation);
             dbContext.SaveChanges();
 
+            AutoScheduleDefaultFollowUp(consultation.Id);
             SyncLegacyConsultingOnCreate(consultation, consultId, pNo, services);
             return consultation;
         }
@@ -526,6 +527,105 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return consent;
         }
 
+        public IEnumerable<AestheticFollowUp> GetFollowUps(int? patientId = null, int? consultationId = null, bool? isCompleted = null)
+        {
+            var query = dbContext.Set<AestheticFollowUp>()
+                .Include(x => x.Consultation)
+                .ThenInclude(c => c.Patient)
+                .AsSingleQuery()
+                .AsQueryable();
+
+            if (patientId.HasValue)
+            {
+                query = query.Where(x => x.Consultation.PatientId == patientId.Value);
+            }
+
+            if (consultationId.HasValue)
+            {
+                query = query.Where(x => x.ConsultationId == consultationId.Value);
+            }
+
+            if (isCompleted.HasValue)
+            {
+                query = query.Where(x => x.IsCompleted == isCompleted.Value);
+            }
+
+            return query
+                .OrderBy(x => x.IsCompleted)
+                .ThenBy(x => x.ScheduledDate)
+                .ToList();
+        }
+
+        public AestheticFollowUp? GetFollowUpById(int followUpId)
+        {
+            return dbContext.Set<AestheticFollowUp>()
+                .Include(x => x.Consultation)
+                .ThenInclude(c => c.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(x => x.Id == followUpId);
+        }
+
+        public AestheticFollowUp ScheduleFollowUp(int consultationId, int daysAhead, bool isAutoScheduled = false, string? notes = null)
+        {
+            if (daysAhead < 1)
+            {
+                throw new InvalidOperationException("Follow-up schedule days must be at least 1 day.");
+            }
+
+            var consultation = dbContext.AestheticConsultations.FirstOrDefault(x => x.Id == consultationId)
+                ?? throw new KeyNotFoundException($"Consultation not found: {consultationId}");
+
+            var followUp = new AestheticFollowUp
+            {
+                ConsultationId = consultationId,
+                Consultation = consultation,
+                ScheduledDate = DateTime.UtcNow.Date.AddDays(daysAhead),
+                IsAutoScheduled = isAutoScheduled,
+                IsCompleted = false,
+                Notes = NormalizeOptional(notes),
+                CreatedDate = DateTime.UtcNow,
+                UpdatedDate = DateTime.UtcNow
+            };
+
+            dbContext.Set<AestheticFollowUp>().Add(followUp);
+            dbContext.SaveChanges();
+            return followUp;
+        }
+
+        public AestheticFollowUp CompleteFollowUp(int followUpId, string? outcome, int? patientSatisfactionScore, bool repeatPhotosTaken, string? nextTreatmentRecommendation, string? notes)
+        {
+            var followUp = dbContext.Set<AestheticFollowUp>().FirstOrDefault(x => x.Id == followUpId)
+                ?? throw new KeyNotFoundException($"Follow-up not found: {followUpId}");
+
+            if (patientSatisfactionScore.HasValue && (patientSatisfactionScore.Value < 1 || patientSatisfactionScore.Value > 10))
+            {
+                throw new InvalidOperationException("Patient satisfaction score must be between 1 and 10.");
+            }
+
+            followUp.IsCompleted = true;
+            followUp.CompletedDate = DateTime.UtcNow;
+            followUp.Outcome = NormalizeOptional(outcome);
+            followUp.PatientSatisfactionScore = patientSatisfactionScore;
+            followUp.RepeatPhotosTaken = repeatPhotosTaken;
+            followUp.NextTreatmentRecommendation = NormalizeOptional(nextTreatmentRecommendation);
+            followUp.Notes = NormalizeOptional(notes);
+            followUp.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.SaveChanges();
+            return followUp;
+        }
+
+        private void AutoScheduleDefaultFollowUp(int consultationId)
+        {
+            var alreadyScheduled = dbContext.Set<AestheticFollowUp>().Any(x => x.ConsultationId == consultationId && !x.IsCompleted);
+            if (alreadyScheduled)
+            {
+                return;
+            }
+
+            ScheduleFollowUp(consultationId, 14, true, "Auto-scheduled default follow-up.");
+        }
+
         private void ApplyConsentStatus(AestheticConsultation consultation, string? consultId, string? pNo)
         {
             var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
@@ -744,6 +844,208 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 .FirstOrDefault();
 
             return string.IsNullOrWhiteSpace(consultId) ? null : consultId;
+        }
+
+        public IEnumerable<ProcedureRevenueMetric> GetRevenuePerProcedure(DateTime? from = null, DateTime? to = null)
+        {
+            var query = dbContext.AestheticConsultations
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .AsQueryable();
+
+            if (from.HasValue)
+            {
+                var fromDate = from.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date >= fromDate);
+            }
+
+            if (to.HasValue)
+            {
+                var toDate = to.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date <= toDate);
+            }
+
+            var consultIds = query
+                .Select(x => x.ConsultationDate.Date)
+                .Distinct()
+                .ToList();
+
+            var billingQuery = dbContext.Billings.AsQueryable();
+            if (from.HasValue)
+            {
+                var fromDateOnly = DateOnly.FromDateTime(from.Value.Date);
+                billingQuery = billingQuery.Where(x => x.bDate >= fromDateOnly);
+            }
+
+            if (to.HasValue)
+            {
+                var toDateOnly = DateOnly.FromDateTime(to.Value.Date);
+                billingQuery = billingQuery.Where(x => x.bDate <= toDateOnly);
+            }
+
+            var billingMap = billingQuery
+                .GroupBy(x => x.billNO)
+                .ToDictionary(x => x.Key, x => x.Sum(i => i.AmountBilled ?? 0));
+
+            return dbContext.AestheticConsultations
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .Where(x => !from.HasValue || x.ConsultationDate.Date >= from.Value.Date)
+                .Where(x => !to.HasValue || x.ConsultationDate.Date <= to.Value.Date)
+                .AsEnumerable()
+                .GroupBy(x => string.IsNullOrWhiteSpace(x.ProcedureType) ? "Unknown" : x.ProcedureType)
+                .Select(group => new ProcedureRevenueMetric
+                {
+                    ProcedureType = group.Key,
+                    ConsultationCount = group.Count(),
+                    Revenue = group.Sum(c =>
+                    {
+                        var consultId = ResolveLegacyConsultId(c.ConsultationDate, c.Patient?.Pno, null);
+                        return !string.IsNullOrWhiteSpace(consultId) && billingMap.TryGetValue(consultId, out var amount)
+                            ? amount
+                            : 0m;
+                    })
+                })
+                .OrderByDescending(x => x.Revenue)
+                .ThenBy(x => x.ProcedureType)
+                .ToList();
+        }
+
+        public IEnumerable<ProductUsageMetric> GetMostUsedProducts(int top = 10, DateTime? from = null, DateTime? to = null)
+        {
+            var query = dbContext.Set<Models.Shop.ProcedureProductUsage>()
+                .Include(x => x.Product)
+                .AsSingleQuery()
+                .AsQueryable();
+
+            if (from.HasValue)
+            {
+                var fromDate = from.Value.Date;
+                query = query.Where(x => x.UsedOn.Date >= fromDate);
+            }
+
+            if (to.HasValue)
+            {
+                var toDate = to.Value.Date;
+                query = query.Where(x => x.UsedOn.Date <= toDate);
+            }
+
+            return query
+                .AsEnumerable()
+                .GroupBy(x => new { x.ProductId, ProductName = x.Product.Name })
+                .Select(g => new ProductUsageMetric
+                {
+                    ProductId = g.Key.ProductId,
+                    ProductName = g.Key.ProductName,
+                    TotalQuantityUsed = g.Sum(x => x.QuantityUsed)
+                })
+                .OrderByDescending(x => x.TotalQuantityUsed)
+                .ThenBy(x => x.ProductName)
+                .Take(top)
+                .ToList();
+        }
+
+        public ComplicationRateMetric GetComplicationRate(DateTime? from = null, DateTime? to = null)
+        {
+            var query = dbContext.Set<AestheticFollowUp>()
+                .AsQueryable()
+                .Where(x => x.IsCompleted);
+
+            if (from.HasValue)
+            {
+                var fromDate = from.Value.Date;
+                query = query.Where(x => x.CompletedDate.HasValue && x.CompletedDate.Value.Date >= fromDate);
+            }
+
+            if (to.HasValue)
+            {
+                var toDate = to.Value.Date;
+                query = query.Where(x => x.CompletedDate.HasValue && x.CompletedDate.Value.Date <= toDate);
+            }
+
+            var completed = query.ToList();
+            var total = completed.Count;
+            var complications = completed.Count(x =>
+                (!string.IsNullOrWhiteSpace(x.Outcome) && x.Outcome.Contains("complication", StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrWhiteSpace(x.Notes) && x.Notes.Contains("complication", StringComparison.OrdinalIgnoreCase)));
+
+            var rate = total == 0 ? 0 : Math.Round((decimal)complications * 100m / total, 2);
+
+            return new ComplicationRateMetric
+            {
+                TotalCompletedFollowUps = total,
+                ComplicationCases = complications,
+                ComplicationRatePercent = rate
+            };
+        }
+
+        public PatientRetentionMetric GetPatientRetention(DateTime? from = null, DateTime? to = null)
+        {
+            var query = dbContext.AestheticConsultations.AsQueryable();
+
+            if (from.HasValue)
+            {
+                var fromDate = from.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date >= fromDate);
+            }
+
+            if (to.HasValue)
+            {
+                var toDate = to.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date <= toDate);
+            }
+
+            var grouped = query
+                .AsEnumerable()
+                .GroupBy(x => x.PatientId)
+                .Select(g => g.Count())
+                .ToList();
+
+            var totalPatients = grouped.Count;
+            var returning = grouped.Count(x => x > 1);
+            var rate = totalPatients == 0 ? 0 : Math.Round((decimal)returning * 100m / totalPatients, 2);
+
+            return new PatientRetentionMetric
+            {
+                TotalPatients = totalPatients,
+                ReturningPatients = returning,
+                RetentionRatePercent = rate
+            };
+        }
+
+        public BeforeAfterOutcomeMetric GetBeforeAfterOutcomeTracking(DateTime? from = null, DateTime? to = null)
+        {
+            var query = dbContext.AestheticConsultations
+                .Include(x => x.Photos)
+                .AsSingleQuery()
+                .AsQueryable();
+
+            if (from.HasValue)
+            {
+                var fromDate = from.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date >= fromDate);
+            }
+
+            if (to.HasValue)
+            {
+                var toDate = to.Value.Date;
+                query = query.Where(x => x.ConsultationDate.Date <= toDate);
+            }
+
+            var consultations = query.ToList();
+            var withPhotos = consultations.Count(x => x.Photos.Count > 0);
+            var withBeforeAfter = consultations.Count(x =>
+                x.Photos.Any(p => !string.IsNullOrWhiteSpace(p.Type) && p.Type.Equals("Before", StringComparison.OrdinalIgnoreCase))
+                && x.Photos.Any(p => !string.IsNullOrWhiteSpace(p.Type) && p.Type.Equals("After", StringComparison.OrdinalIgnoreCase)));
+
+            var rate = withPhotos == 0 ? 0 : Math.Round((decimal)withBeforeAfter * 100m / withPhotos, 2);
+
+            return new BeforeAfterOutcomeMetric
+            {
+                TotalConsultationsWithPhotos = withPhotos,
+                ConsultationsWithBeforeAfter = withBeforeAfter,
+                BeforeAfterRatePercent = rate
+            };
         }
 
         private static string NormalizeRequired(string? value, string fieldName)

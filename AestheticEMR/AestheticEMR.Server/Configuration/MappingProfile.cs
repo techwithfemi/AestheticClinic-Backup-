@@ -70,11 +70,27 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<ProductStockReport, ProductStockReportVM>()
                 .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null));
 
+            CreateMap<ProductBatch, ProductBatchVM>()
+                .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null));
+            CreateMap<ProductBatchEditVM, ProductBatch>()
+                .ForMember(d => d.Product, map => map.Ignore())
+                .ForMember(d => d.ProcedureUsages, map => map.Ignore());
+
+            CreateMap<ProcedureProductUsage, ProcedureProductUsageVM>()
+                .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null))
+                .ForMember(d => d.BatchNumber, map => map.MapFrom(s => s.ProductBatch != null ? s.ProductBatch.BatchNumber : null));
+            CreateMap<ProcedureProductUsageEditVM, ProcedureProductUsage>()
+                .ForMember(d => d.Product, map => map.Ignore())
+                .ForMember(d => d.ProductBatch, map => map.Ignore())
+                .ForMember(d => d.Consultation, map => map.Ignore());
+
             CreateMap<ProductEditVM, Product>()
                 .ForMember(d => d.ProductCategory, map => map.Ignore())
                 .ForMember(d => d.Parent, map => map.Ignore())
                 .ForMember(d => d.Children, map => map.Ignore())
-                .ForMember(d => d.OrderDetails, map => map.Ignore());
+                .ForMember(d => d.OrderDetails, map => map.Ignore())
+                .ForMember(d => d.Batches, map => map.Ignore())
+                .ForMember(d => d.ProcedureUsages, map => map.Ignore());
 
             CreateMap<ProductCategory, ProductCategoryVM>();
             CreateMap<ProductCategoryEditVM, ProductCategory>();
@@ -87,6 +103,19 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<AestheticConsultation, AestheticConsultationVM>()
                 .ReverseMap();
+
+            CreateMap<AestheticFollowUp, AestheticFollowUpVM>()
+                .ForMember(d => d.PatientId, map => map.MapFrom(s => s.Consultation.PatientId))
+                .ForMember(d => d.PatientName, map => map.MapFrom(s => s.Consultation.Patient != null ? $"{s.Consultation.Patient.FirstName} {s.Consultation.Patient.LastName}" : null));
+
+            CreateMap<ScheduleAestheticFollowUpVM, AestheticFollowUp>();
+            CreateMap<CompleteAestheticFollowUpVM, AestheticFollowUp>();
+
+            CreateMap<ProcedureRevenueMetric, ProcedureRevenueMetricVM>();
+            CreateMap<ProductUsageMetric, ProductUsageMetricVM>();
+            CreateMap<ComplicationRateMetric, ComplicationRateMetricVM>();
+            CreateMap<PatientRetentionMetric, PatientRetentionMetricVM>();
+            CreateMap<BeforeAfterOutcomeMetric, BeforeAfterOutcomeMetricVM>();
 
             CreateMap<AestheticConsentTemplate, AestheticConsentTemplateVM>()
                 .ReverseMap();

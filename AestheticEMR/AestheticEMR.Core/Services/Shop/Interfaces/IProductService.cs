@@ -22,5 +22,14 @@ namespace AestheticEMR.Core.Services.Shop
         Task<ProductCategory> CreateCategoryAsync(ProductCategory category);
         Task<ProductCategory> UpdateCategoryAsync(ProductCategory category);
         Task DeleteCategoryAsync(int id);
+
+        Task<IEnumerable<ProductBatch>> GetBatchesAsync(int? productId = null, bool includeRecalled = false);
+        Task<ProductBatch?> GetBatchByIdAsync(int id);
+        Task<ProductBatch> CreateBatchAsync(ProductBatch batch, string? userName);
+        Task<ProductBatch> RecallBatchAsync(int id, string reason, string? userName);
+        Task<IEnumerable<ProductBatch>> GetExpiringBatchesAsync(int daysAhead = 30);
+
+        Task<ProcedureProductUsage> RecordProcedureUsageAsync(ProcedureProductUsage usage, string? userName);
+        Task<IEnumerable<ProcedureProductUsage>> GetProcedureUsagesAsync(int? consultationId = null, int? productId = null);
     }
 }
