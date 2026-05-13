@@ -1,0 +1,17 @@
+// Add this route to: AestheticEMR/AestheticEMR.client/src/app/features/aesthetics/aesthetics.routes.ts
+
+// {
+//   path: 'audit-trail',
+//   loadComponent: () => import('./audit-trail/audit-trail.component').then(m => m.AuditTrailComponent),
+//   canActivate: [AuthGuard],
+//   title: 'Audit Trail & Incidents'
+// }
+
+// Also add to the sidebar in assets/navigation.json under Aesthetics section:
+// {
+//   "name": "Audit Trail",
+//   "routeOrAction": "aesthetics/audit-trail",
+//   "icon": "history",
+//   "resourcePermission": null,
+//   "subItems": []
+// }

@@ -388,6 +388,23 @@ export class LaserComponent {
       consultation.patientId = patientId;
       consultation.consultId = result.selectedPatient.consultId || consultation.consultId;
       consultation.pNo = result.selectedPatient.pNo || consultation.pNo;
+
+      // Enforce mandatory consent before creating a new procedure record
+      if (!consultation.id) {
+        const consultId = consultation.consultId ?? '';
+        const hasConsent = await this.checkSignedConsent(consultId, consultation.pNo ?? '', 'Laser');
+        if (!hasConsent) {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage(
+            'Consent Required',
+            'A signed consent form is required before saving a Laser session. Please complete the patient consent form first.',
+            MessageSeverity.warn
+          );
+          return;
+        }
+      }
+
       consultation.consentGiven = false;
       consultation.informationAccepted = false;
       consultation.consentDate = undefined;
@@ -408,6 +425,13 @@ export class LaserComponent {
       this.loadingIndicator = false;
       this.alertService.showStickyMessage('Save error', this.getErrorMessage(error), MessageSeverity.error, error);
     }
+  }
+
+  private checkSignedConsent(consultId: string, pNo: string, procedureType: string): Promise<boolean> {
+    return this.endpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ consultId, pNo, procedureType, includeVoided: false })
+      .toPromise()
+      .then(consents => (consents || []).length > 0)
+      .catch(() => false);
   }
 
   private signConsent(payload: SignAestheticConsent): void {

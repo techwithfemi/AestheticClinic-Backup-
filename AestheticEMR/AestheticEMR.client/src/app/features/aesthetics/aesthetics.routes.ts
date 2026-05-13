@@ -36,5 +36,11 @@ export const aestheticsRoutes: Routes = [
     path: 'photos',
     redirectTo: 'procedures',
     pathMatch: 'full'
+  },
+  {
+    path: 'audit-trail',
+    loadComponent: () => import('./audit-trail/audit-trail.component')
+      .then(m => m.AuditTrailComponent),
+    title: 'Audit Trail & Incidents'
   }
 ];

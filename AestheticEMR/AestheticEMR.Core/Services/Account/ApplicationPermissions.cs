@@ -49,12 +49,23 @@ namespace AestheticEMR.Core.Services.Account
             RolesPermissionGroupName,
             "Permission to assign roles to users");
 
+        /************* MANAGEMENT PERMISSIONS *************/
+
+        public const string ManagementPermissionGroupName = "Management Permissions";
+
+        public static readonly ApplicationPermission ViewAuditLogs = new(
+            "View Audit Logs",
+            "management.audit.view",
+            ManagementPermissionGroupName,
+            "Permission to view audit trail reports");
+
         /************* ALL PERMISSIONS *************/
 
         public static readonly ReadOnlyCollection<ApplicationPermission> AllPermissions =
             new List<ApplicationPermission> {
                 ViewUsers, ManageUsers,
-                ViewRoles, ManageRoles, AssignRoles
+                ViewRoles, ManageRoles, AssignRoles,
+                ViewAuditLogs
             }.AsReadOnly();
 
         /************* HELPER METHODS *************/
@@ -76,7 +87,7 @@ namespace AestheticEMR.Core.Services.Account
 
         public static string[] GetAdministrativePermissionValues()
         {
-            return [ManageUsers, ManageRoles, AssignRoles];
+            return [ManageUsers, ManageRoles, AssignRoles, ViewAuditLogs];
         }
     }
 }

@@ -1,0 +1,15 @@
+// Add this to Program.cs in the service registration section:
+
+// builder.Services.AddScoped<IAuditService, AuditService>();
+
+// Example usage in Program.cs (search for builder.Services.AddScoped and add after other service registrations):
+/*
+using AestheticEMR.Core.Services.Aesthetics;
+
+// ... other services ...
+
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IAestheticService, AestheticService>();
+
+// ... rest of configuration ...
+*/

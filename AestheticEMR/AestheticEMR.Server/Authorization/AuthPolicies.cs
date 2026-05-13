@@ -25,5 +25,8 @@ namespace AestheticEMR.Server.Authorization
 
         /// <summary>Policy to allow assigning roles the user has access to (Requires new and current roles as parameter).</summary>
         public const string AssignAllowedRolesPolicy = "Assign Allowed Roles";
+
+        /// <summary>Policy to allow viewing audit trail reports.</summary>
+        public const string ViewAuditLogsPolicy = "View Audit Logs";
     }
 }

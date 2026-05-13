@@ -57,7 +57,8 @@
       "icon": "face",
       "subItems": [
         { "label": "Procedures", "path": "procedures", "icon": "biotech" },
-        { "label": "View Consent", "path": "view-consent", "icon": "description" }
+        { "label": "View Consent", "path": "view-consent", "icon": "description" },
+        { "label": "Audit Trail", "path": "audit-trail", "icon": "history" }
       ]
     },
     "Billing": {

@@ -102,6 +102,7 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<AestheticPhoto> AestheticPhotos { get; set; }
         public DbSet<AestheticConsentTemplate> AestheticConsentTemplates { get; set; }
         public DbSet<AestheticSignedConsent> AestheticSignedConsents { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<DentalImaging> DentalImagings { get; set; }
 
 
@@ -1409,6 +1410,7 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
 
 
 

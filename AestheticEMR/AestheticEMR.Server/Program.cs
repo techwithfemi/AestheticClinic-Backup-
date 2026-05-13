@@ -188,7 +188,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthPolicies.ManageAllRolesPolicy,
         policy => policy.RequireClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles))
     .AddPolicy(AuthPolicies.AssignAllowedRolesPolicy,
-        policy => policy.Requirements.Add(new AssignRolesAuthorizationRequirement()));
+        policy => policy.Requirements.Add(new AssignRolesAuthorizationRequirement()))
+    .AddPolicy(AuthPolicies.ViewAuditLogsPolicy,
+        policy => policy.RequireClaim(CustomClaims.Permission, ApplicationPermissions.ViewAuditLogs));
 
 // Add cors
 builder.Services.AddCors();
@@ -227,6 +229,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrdersService, OrdersService>();
 builder.Services.AddScoped<IAestheticService, AestheticService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IDentalService, DentalService>();
 builder.Services.AddScoped<IHRetainershipService, HRetainershipService>();
 builder.Services.AddScoped<IHPatientService, HPatientService>();
