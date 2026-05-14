@@ -40,7 +40,6 @@ body {
   // Reset the user agent margin.
   margin: 0;
   height: 100%;
-  overflow-x: hidden;
 }
 
 body, html {
@@ -486,13 +485,10 @@ a:not([class*="btn"]):hover {
 }*/
 table {
   width: 100%;
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .mat-mdc-table {
-  min-width: 640px;
+  width: 100%;
 }
 
 @media (max-width: 1199.98px) {
@@ -513,15 +509,6 @@ table {
   .reports-container {
     border-radius: 10px;
   }
-
-  .mat-mdc-form-field,
-  .form-control,
-  .btn,
-  .mat-mdc-raised-button,
-  .mat-mdc-stroked-button,
-  .mat-mdc-unelevated-button {
-    width: 100%;
-  }
 }
 
 @media (max-width: 767.98px) {
@@ -537,6 +524,12 @@ table {
     padding-right: 12px !important;
   }
 
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .mat-mdc-table {
     min-width: 520px;
   }
@@ -549,6 +542,15 @@ table {
 }
 
 @media (max-width: 575.98px) {
+  .mat-mdc-form-field,
+  .form-control,
+  .btn,
+  .mat-mdc-raised-button,
+  .mat-mdc-stroked-button,
+  .mat-mdc-unelevated-button {
+    width: 100%;
+  }
+
   .mat-mdc-card,
   .card,
   .panel,

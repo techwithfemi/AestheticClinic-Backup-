@@ -1,6 +1,5 @@
 .sidenav-container {
   height: 100vh;
-  min-height: 100dvh;
 }
 
 .sidenav {
@@ -381,7 +380,6 @@ mat-panel-title.menu-title {
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
-  min-height: calc(100dvh - 64px);
   box-sizing: border-box;
   overflow-x: hidden;
 }
