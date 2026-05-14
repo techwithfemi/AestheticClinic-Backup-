@@ -42,6 +42,10 @@ namespace AestheticEMR.Core.Services.Aesthetics
         AestheticFollowUp? GetFollowUpById(int followUpId);
         AestheticFollowUp ScheduleFollowUp(int consultationId, int daysAhead, bool isAutoScheduled = false, string? notes = null);
         AestheticFollowUp CompleteFollowUp(int followUpId, string? outcome, int? patientSatisfactionScore, bool repeatPhotosTaken, string? nextTreatmentRecommendation, string? notes);
+        (int followUpId, int consultationId, string? consultId, string? pNo, string? patientName, DateTime? scheduledDate) GetFollowUpSubmissionContext(int followUpId);
+        string CreatePatientSatisfactionToken(int followUpId, string consultId, string pNo, DateTime expiresOnUtc);
+        (int followUpId, string consultId, string pNo)? ValidatePatientSatisfactionToken(string token);
+        AestheticFollowUp SubmitPatientSatisfaction(int followUpId, string consultId, string pNo, int patientSatisfactionScore, string? outcome);
 
         IEnumerable<ProcedureRevenueMetric> GetRevenuePerProcedure(DateTime? from = null, DateTime? to = null);
         IEnumerable<ProductUsageMetric> GetMostUsedProducts(int top = 10, DateTime? from = null, DateTime? to = null);

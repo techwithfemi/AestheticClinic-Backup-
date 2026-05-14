@@ -97,14 +97,23 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
     .page-header { margin-bottom: 16px; }
     .subtitle { color: #666; margin: 4px 0 0; }
     .toolbar-grid { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px; }
-    .data-table { width: 100%; }
+    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .detail-card { margin-top: 16px; }
     .content-box { white-space: pre-wrap; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; margin: 12px 0; }
     .signature-img { max-width: 260px; max-height: 120px; object-fit: contain; border: 1px solid #ddd; border-radius: 6px; padding: 8px; background: #fff; }
     .void-form { margin-top: 16px; }
     .full-width { width: 100%; }
     .actions-row { display: flex; justify-content: flex-end; }
-    @media (max-width: 992px) { .toolbar-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 992px) {
+      .page-shell { padding: 16px; }
+      .toolbar-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 575.98px) {
+      .page-shell { padding: 12px; }
+      .actions-row { justify-content: stretch; }
+      .actions-row button { width: 100%; min-height: 44px; }
+      .signature-img { max-width: 100%; }
+    }
   `]
 })
 export class ViewConsentComponent implements OnInit {

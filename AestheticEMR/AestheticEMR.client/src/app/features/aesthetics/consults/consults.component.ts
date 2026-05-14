@@ -114,6 +114,7 @@ import { AestheticPatient } from '../../../models/aesthetic.model';
         padding: 10px 18px;
         border-radius: 8px;
         cursor: pointer;
+        min-height: 44px;
       }
 
       button:disabled {
@@ -158,6 +159,26 @@ import { AestheticPatient } from '../../../models/aesthetic.model';
 
       .detail-row {
         margin-bottom: 10px;
+      }
+
+      @media (max-width: 991.98px) {
+        .consults-container {
+          padding: 16px;
+        }
+
+        .grid-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 575.98px) {
+        .consults-container {
+          padding: 12px;
+        }
+
+        .panel {
+          padding: 12px;
+        }
       }
     `
   ]

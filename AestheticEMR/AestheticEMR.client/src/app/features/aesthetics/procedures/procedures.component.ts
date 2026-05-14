@@ -549,6 +549,26 @@ interface SafetyAlert {
       .photo-toolbar { grid-template-columns: 1fr; }
       .half { grid-column: 1 / -1; }
     }
+
+    @media (max-width: 767.98px) {
+      .procedures-page { padding: 12px; }
+      .page-header { flex-direction: column; gap: 10px; }
+      .page-header > div { width: 100%; }
+      .save-row { justify-content: stretch; }
+      .save-row button { width: 100%; min-height: 44px; }
+      .toggle-row { padding: 6px 2px; }
+      .compare-grid { grid-template-columns: 1fr; }
+      .compare-grid img { height: auto; min-height: 160px; }
+      .emergency-content { flex-direction: column; align-items: flex-start; }
+      .emergency-content button { width: 100%; }
+    }
+
+    @media (max-width: 575.98px) {
+      .procedures-page { padding: 10px; }
+      .form-shell { padding: 8px; }
+      .tab-body { gap: 8px; }
+      .photo-item { font-size: .85rem; }
+    }
   `]
 })
 export class ProceduresComponent implements OnInit {

@@ -10,6 +10,12 @@ export const routes: Routes = [
     component: LoginComponent,
     title: 'Login - AestheticEMR'
   },
+  {
+    path: 'aesthetics/satisfaction',
+    loadComponent: () => import('./features/aesthetics/satisfaction/satisfaction.component')
+      .then(m => m.SatisfactionComponent),
+    title: 'Patient Satisfaction'
+  },
 
   // 2. PROTECTED ROUTES: Wrapped in MainLayout
   {

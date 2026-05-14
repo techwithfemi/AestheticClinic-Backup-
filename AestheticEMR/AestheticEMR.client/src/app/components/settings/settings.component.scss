@@ -2,3 +2,9 @@
   margin-top: 0;
   margin-bottom: 10px;
 }
+
+@media (max-width: 575.98px) {
+  .hr-separator {
+    margin-bottom: 8px;
+  }
+}

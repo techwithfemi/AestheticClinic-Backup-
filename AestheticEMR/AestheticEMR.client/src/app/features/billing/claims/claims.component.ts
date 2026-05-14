@@ -15,6 +15,18 @@ import { CommonModule } from '@angular/common';
     .claims-container {
       padding: 20px;
     }
+
+    @media (max-width: 992px) {
+      .claims-container {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .claims-container {
+        padding: 12px;
+      }
+    }
   `]
 })
 export class ClaimsComponent {

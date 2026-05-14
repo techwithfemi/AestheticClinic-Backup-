@@ -1,4 +1,3 @@
-﻿
 .control-box {
     margin-bottom: 5px;
 }
@@ -11,4 +10,21 @@
     padding-top: 3px;
     padding-bottom: 3px;
     min-width: 100px;
+}
+
+@media (max-width: 992px) {
+    .nav-item.toolbaritem a {
+        min-width: 84px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .control-box {
+        margin-bottom: 8px;
+    }
+
+    .nav-item.toolbaritem a {
+        min-width: 100%;
+        text-align: center;
+    }
 }

@@ -9,6 +9,7 @@ namespace AestheticEMR.Server.Configuration
     public class AppSettings
     {
         public SmtpConfig? SmtpConfig { get; set; }
+        public string? ClientBaseUrl { get; set; }
     }
 
     public class SmtpConfig

@@ -7,11 +7,16 @@
 using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Aesthetic;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace AestheticEMR.Core.Services.Aesthetics
 {
     public class AestheticService(ApplicationDbContext dbContext) : IAestheticService
     {
+        private const string PatientSatisfactionTokenPurpose = "AESTHETIC_PATIENT_SATISFACTION";
+
         public IEnumerable<AestheticPatient> GetPatients() => dbContext.AestheticPatients
             .Include(p => p.Consultations)
             .ThenInclude(c => c.Photos)
@@ -88,6 +93,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             consultation.UpdatedDate = DateTime.UtcNow;
 
             ApplyConsentStatus(consultation, consultId, pNo);
+            ValidateConsultationSafetyRequirements(consultation, consultId, pNo);
 
             dbContext.AestheticConsultations.Add(consultation);
             dbContext.SaveChanges();
@@ -137,6 +143,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.FollowUpReview = consultation.FollowUpReview;
 
             ApplyConsentStatus(existing, consultId, pNo);
+            ValidateConsultationSafetyRequirements(existing, consultId, pNo);
             existing.UpdatedDate = DateTime.UtcNow;
 
             dbContext.SaveChanges();
@@ -597,9 +604,24 @@ namespace AestheticEMR.Core.Services.Aesthetics
             var followUp = dbContext.Set<AestheticFollowUp>().FirstOrDefault(x => x.Id == followUpId)
                 ?? throw new KeyNotFoundException($"Follow-up not found: {followUpId}");
 
-            if (patientSatisfactionScore.HasValue && (patientSatisfactionScore.Value < 1 || patientSatisfactionScore.Value > 10))
+            if (string.IsNullOrWhiteSpace(outcome))
+            {
+                throw new InvalidOperationException("Follow-up outcome is required.");
+            }
+
+            if (!patientSatisfactionScore.HasValue)
+            {
+                throw new InvalidOperationException("Patient satisfaction score (1-10) is required.");
+            }
+
+            if (patientSatisfactionScore.Value < 1 || patientSatisfactionScore.Value > 10)
             {
                 throw new InvalidOperationException("Patient satisfaction score must be between 1 and 10.");
+            }
+
+            if (string.IsNullOrWhiteSpace(nextTreatmentRecommendation))
+            {
+                throw new InvalidOperationException("Next treatment recommendation is required.");
             }
 
             followUp.IsCompleted = true;
@@ -613,6 +635,228 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
             dbContext.SaveChanges();
             return followUp;
+        }
+
+        public (int followUpId, int consultationId, string? consultId, string? pNo, string? patientName, DateTime? scheduledDate) GetFollowUpSubmissionContext(int followUpId)
+        {
+            var followUp = dbContext.Set<AestheticFollowUp>()
+                .Include(x => x.Consultation)
+                .ThenInclude(c => c.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(x => x.Id == followUpId)
+                ?? throw new KeyNotFoundException($"Follow-up not found: {followUpId}");
+
+            var pNo = ResolveLegacyPNo(followUp.Consultation.PatientId, followUp.Consultation.Patient?.Pno);
+            var consultId = ResolveLegacyConsultId(followUp.Consultation.ConsultationDate, pNo, null);
+            var patientName = followUp.Consultation.Patient != null
+                ? $"{followUp.Consultation.Patient.FirstName} {followUp.Consultation.Patient.LastName}".Trim()
+                : null;
+
+            return (followUp.Id, followUp.ConsultationId, consultId, pNo, patientName, followUp.ScheduledDate);
+        }
+
+        public string CreatePatientSatisfactionToken(int followUpId, string consultId, string pNo, DateTime expiresOnUtc)
+        {
+            var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+            var normalizedPNo = NormalizeRequired(pNo, "PNo");
+            var expiry = expiresOnUtc.ToUniversalTime();
+
+            var payload = $"{PatientSatisfactionTokenPurpose}|{followUpId}|{normalizedConsultId}|{normalizedPNo}|{expiry:O}";
+            var payloadBytes = Encoding.UTF8.GetBytes(payload);
+            var signatureBytes = SHA256.HashData(payloadBytes);
+
+            return $"{Convert.ToBase64String(payloadBytes)}.{Convert.ToBase64String(signatureBytes)}";
+        }
+
+        public (int followUpId, string consultId, string pNo)? ValidatePatientSatisfactionToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return null;
+            }
+
+            var parts = token.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2)
+            {
+                return null;
+            }
+
+            try
+            {
+                var payloadBytes = Convert.FromBase64String(parts[0]);
+                var signatureBytes = Convert.FromBase64String(parts[1]);
+                var expectedSignature = SHA256.HashData(payloadBytes);
+
+                if (!CryptographicOperations.FixedTimeEquals(signatureBytes, expectedSignature))
+                {
+                    return null;
+                }
+
+                var payload = Encoding.UTF8.GetString(payloadBytes);
+                var segments = payload.Split('|', StringSplitOptions.None);
+                if (segments.Length != 5 || !string.Equals(segments[0], PatientSatisfactionTokenPurpose, StringComparison.Ordinal))
+                {
+                    return null;
+                }
+
+                if (!int.TryParse(segments[1], out var followUpId) || followUpId <= 0)
+                {
+                    return null;
+                }
+
+                var consultId = NormalizeOptional(segments[2]);
+                var pNo = NormalizeOptional(segments[3]);
+
+                if (string.IsNullOrWhiteSpace(consultId) || string.IsNullOrWhiteSpace(pNo))
+                {
+                    return null;
+                }
+
+                if (!DateTime.TryParse(segments[4], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresOnUtc))
+                {
+                    return null;
+                }
+
+                if (DateTime.UtcNow > expiresOnUtc)
+                {
+                    return null;
+                }
+
+                return (followUpId, consultId, pNo);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public AestheticFollowUp SubmitPatientSatisfaction(int followUpId, string consultId, string pNo, int patientSatisfactionScore, string? outcome)
+        {
+            if (patientSatisfactionScore < 1 || patientSatisfactionScore > 10)
+            {
+                throw new InvalidOperationException("Patient satisfaction score must be between 1 and 10.");
+            }
+
+            var normalizedConsultId = NormalizeRequired(consultId, "ConsultId");
+            var normalizedPNo = NormalizeRequired(pNo, "PNo");
+            var normalizedOutcome = NormalizeOptional(outcome);
+
+            var followUp = dbContext.Set<AestheticFollowUp>()
+                .Include(x => x.Consultation)
+                .ThenInclude(c => c.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(x => x.Id == followUpId)
+                ?? throw new KeyNotFoundException($"Follow-up not found: {followUpId}");
+
+            var resolvedPNo = ResolveLegacyPNo(followUp.Consultation.PatientId, followUp.Consultation?.Patient?.Pno);
+            var resolvedConsultId = ResolveLegacyConsultId(followUp.Consultation.ConsultationDate, resolvedPNo, null);
+
+            if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo))
+            {
+                throw new InvalidOperationException("ConsultId and PNo are required for patient satisfaction submission.");
+            }
+
+            if (!string.Equals(resolvedConsultId, normalizedConsultId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(resolvedPNo, normalizedPNo, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Invalid satisfaction submission context for this follow-up.");
+            }
+
+            followUp.PatientSatisfactionScore = patientSatisfactionScore;
+            followUp.PatientSatisfactionConsultId = normalizedConsultId;
+            followUp.PatientSatisfactionPNo = normalizedPNo;
+            followUp.PatientSatisfactionSubmittedOn = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(normalizedOutcome))
+            {
+                followUp.Outcome = normalizedOutcome;
+            }
+
+            if (!followUp.IsCompleted)
+            {
+                followUp.IsCompleted = true;
+                followUp.CompletedDate = DateTime.UtcNow;
+            }
+
+            followUp.UpdatedDate = DateTime.UtcNow;
+            dbContext.SaveChanges();
+            return followUp;
+        }
+
+        private void ValidateConsultationSafetyRequirements(AestheticConsultation consultation, string? consultId, string? pNo)
+        {
+            if (consultation.PatientId <= 0)
+            {
+                throw new InvalidOperationException("Patient is required.");
+            }
+
+            if (consultation.ConsultationDate == default)
+            {
+                throw new InvalidOperationException("Consultation date is required.");
+            }
+
+            if (consultation.ConsultationDate > DateTime.UtcNow.AddMinutes(5))
+            {
+                throw new InvalidOperationException("Consultation date cannot be in the future.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.ProcedureType))
+            {
+                throw new InvalidOperationException("Procedure type is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.Provider))
+            {
+                throw new InvalidOperationException("Provider is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.Allergies))
+            {
+                throw new InvalidOperationException("Allergy information is required for safety.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.CurrentMedications))
+            {
+                throw new InvalidOperationException("Current medications are required for safety.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.RisksAndComplications))
+            {
+                throw new InvalidOperationException("Risks and complications assessment is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(consultation.PostTreatmentInstructions))
+            {
+                throw new InvalidOperationException("Post-treatment instructions are required.");
+            }
+
+            var requiresSignedConsent = IsConsentRequiredProcedure(consultation.ProcedureType);
+            if (!requiresSignedConsent)
+            {
+                return;
+            }
+
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo))
+            {
+                throw new InvalidOperationException("ConsultId and PNo are required to validate signed consent for this procedure.");
+            }
+
+            var hasValidConsent = GetLatestSignedConsent(resolvedConsultId, resolvedPNo, consultation.ProcedureType) != null;
+            if (!hasValidConsent)
+            {
+                throw new InvalidOperationException("Signed consent is required before saving this procedure record.");
+            }
+        }
+
+        private static bool IsConsentRequiredProcedure(string procedureType)
+        {
+            return procedureType.Equals("Botox", StringComparison.OrdinalIgnoreCase)
+                   || procedureType.Equals("Laser", StringComparison.OrdinalIgnoreCase)
+                   || procedureType.Equals("Spa", StringComparison.OrdinalIgnoreCase)
+                   || procedureType.Equals("Procedures", StringComparison.OrdinalIgnoreCase);
         }
 
         private void AutoScheduleDefaultFollowUp(int consultationId)

@@ -391,6 +391,12 @@ For SPA static list dropdown ordering, default behavior should be ascending orde
 
 ---
 
+## Patient Satisfaction Scoring
+
+- For patient satisfaction, user prefers patient-submitted scoring via email link: patient clicks done, score is persisted with `ConsultId` and `PNo`.
+
+---
+
 ## Reference Implementations
 
 When implementing new features, reference these real implementations:

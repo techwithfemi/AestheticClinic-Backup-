@@ -107,13 +107,24 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
   `,
   styles: [`
     .spa-page { padding: 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; }
     .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
     .search-section { margin-bottom: 16px; }
     .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
-    .data-table { width: 100%; }
+    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .truncate { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .empty-state { color: #888; padding: 32px; text-align: center; }
+
+    @media (max-width: 992px) {
+      .spa-page { padding: 16px; }
+      .page-header { flex-direction: column; align-items: stretch; }
+      .page-header button { width: 100%; min-height: 44px; }
+    }
+
+    @media (max-width: 575.98px) {
+      .spa-page { padding: 12px; }
+      .truncate { max-width: 220px; }
+    }
   `]
 })
 export class ServicesComponent {

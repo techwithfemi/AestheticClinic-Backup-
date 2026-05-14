@@ -3,7 +3,7 @@
 // ---------------------------------------
 
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -183,5 +183,29 @@ export class AestheticEndpoint extends EndpointBase {
   deletePhotoEndpoint<T>(photoId: number): Observable<T> {
     return this.http.delete<T>(`${this.photosUrl}/${photoId}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.deletePhotoEndpoint<T>(photoId))));
+  }
+
+  sendPatientSatisfactionEmailEndpoint<T>(followUpId: number, payload: object): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/follow-ups/${followUpId}/patient-satisfaction/send`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.sendPatientSatisfactionEmailEndpoint<T>(followUpId, payload))));
+  }
+
+  getPatientSatisfactionSurveyEndpoint<T>(token: string): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/patient-satisfaction?token=${encodeURIComponent(token)}`).pipe(
+      catchError(error => this.handleError(error, () => this.getPatientSatisfactionSurveyEndpoint<T>(token))));
+  }
+
+  submitPatientSatisfactionEndpoint<T>(token: string, payload: object): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/patient-satisfaction/submit?token=${encodeURIComponent(token)}`, JSON.stringify(payload), this.jsonHeadersWithoutAuth).pipe(
+      catchError(error => this.handleError(error, () => this.submitPatientSatisfactionEndpoint<T>(token, payload))));
+  }
+
+  private get jsonHeadersWithoutAuth(): { headers: HttpHeaders | Record<string, string | string[]> } {
+    return {
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/plain, */*'
+      }
+    };
   }
 }

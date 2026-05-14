@@ -250,11 +250,26 @@ interface AuditLog {
     .page-header { margin-bottom: 20px; }
     .subtitle { color: #666; margin-top: 4px; }
     .tab-content { padding: 16px; }
-    .action-button { margin-bottom: 16px; }
-    .filter-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
-    .table-container { overflow-x: auto; margin: 16px 0; }
-    .audit-table { width: 100%; }
+    .action-button { margin-bottom: 16px; min-height: 44px; }
+    .filter-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+    .table-container { overflow-x: auto; margin: 16px 0; -webkit-overflow-scrolling: touch; }
+    .audit-table { width: 100%; min-width: 680px; }
     .no-data { text-align: center; padding: 40px; color: #999; }
+
+    @media (max-width: 992px) {
+      .audit-trail-page { padding: 16px; }
+      .tab-content { padding: 12px; }
+      .filter-row { align-items: stretch; }
+    }
+
+    @media (max-width: 575.98px) {
+      .audit-trail-page { padding: 12px; }
+      .action-button,
+      .filter-row button,
+      .filter-row .mat-mdc-form-field {
+        width: 100%;
+      }
+    }
   `]
 })
 export class AuditTrailComponent implements OnInit {

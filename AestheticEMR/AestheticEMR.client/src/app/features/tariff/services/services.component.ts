@@ -147,18 +147,27 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
     .tariff-services-container { padding: 20px; display: grid; gap: 12px; }
     .toolbar-grid { display: grid; grid-template-columns: 2fr 2fr auto; gap: 12px; align-items: start; }
     .actions-cell { display: flex; gap: 8px; align-items: center; padding-top: 4px; flex-wrap: wrap; }
-    .table-wrap { overflow: auto; }
-    .tariff-table { width: 100%; }
+    .table-wrap { overflow: auto; -webkit-overflow-scrolling: touch; }
+    .tariff-table { width: 100%; min-width: 620px; }
     .text-end { text-align: right; }
     .empty-text { margin: 12px 0 0; color: #777; }
     .spinner-wrap { display: flex; justify-content: center; padding: 12px 0 4px; }
     .pager-wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
     .pager-text { color: #777; }
     .pager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
     @media (max-width: 992px) {
+      .tariff-services-container { padding: 16px; }
       .toolbar-grid { grid-template-columns: 1fr; }
       .actions-cell { padding-top: 0; }
+      .actions-cell button { flex: 1 1 160px; min-height: 44px; }
       .pager-wrap { flex-direction: column; align-items: stretch; }
+    }
+
+    @media (max-width: 575.98px) {
+      .tariff-services-container { padding: 12px; }
+      .actions-cell button,
+      .pager-actions button { width: 100%; }
     }
   `]
 })

@@ -17,5 +17,9 @@ namespace AestheticEMR.Core.Models.Aesthetic
         public bool RepeatPhotosTaken { get; set; }
         public string? NextTreatmentRecommendation { get; set; }
         public string? Notes { get; set; }
+
+        public string? PatientSatisfactionConsultId { get; set; }
+        public string? PatientSatisfactionPNo { get; set; }
+        public DateTime? PatientSatisfactionSubmittedOn { get; set; }
     }
 }

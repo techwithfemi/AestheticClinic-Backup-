@@ -9,6 +9,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  gap: 8px;
 }
 
 .section-card {
@@ -60,14 +61,18 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .details-table-wrap {
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .details-table {
   width: 100%;
+  min-width: 640px;
 }
 
 .cell-field {
@@ -82,6 +87,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .line-editor-grid {
@@ -102,11 +108,28 @@
 
 @media (max-width: 992px) {
   .context-grid,
-  .grid {
+  .grid,
+  .line-editor-grid {
     grid-template-columns: 1fr;
   }
 
-  .line-editor-grid {
-    grid-template-columns: 1fr;
+  .dialog-shell {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .dialog-shell {
+    padding: 10px;
+  }
+
+  .section-card {
+    padding: 10px;
+  }
+
+  .details-header button,
+  .dialog-actions button {
+    width: 100%;
+    min-height: 44px;
   }
 }

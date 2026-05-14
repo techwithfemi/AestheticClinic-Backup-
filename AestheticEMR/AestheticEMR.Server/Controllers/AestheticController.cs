@@ -4,12 +4,16 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
+using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Aesthetics;
+using AestheticEMR.Server.Configuration;
+using AestheticEMR.Server.Services.Email;
 using AestheticEMR.Server.ViewModels.Aesthetic;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Controllers
 {
@@ -20,18 +24,25 @@ namespace AestheticEMR.Server.Controllers
     {
         private readonly IAestheticService _aestheticService;
         private readonly IWebHostEnvironment _environment;
+        private readonly IEmailSender _emailSender;
+        private readonly AppSettings _appSettings;
         private const string UploadFolder = "uploads/aesthetic";
         private const string ConsentUploadFolder = "uploads/aesthetic/consents";
+        private const string PatientSatisfactionPath = "/aesthetics/satisfaction";
 
         public AestheticController(
             ILogger<AestheticController> logger,
             IMapper mapper,
             IAestheticService aestheticService,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IEmailSender emailSender,
+            IOptions<AppSettings> appSettings)
             : base(logger, mapper)
         {
             _aestheticService = aestheticService;
             _environment = environment;
+            _emailSender = emailSender;
+            _appSettings = appSettings.Value;
         }
 
         [HttpGet("patients")]
@@ -864,6 +875,160 @@ namespace AestheticEMR.Server.Controllers
         private string EnsureUploadFolder()
         {
             return EnsureUploadFolder(UploadFolder);
+        }
+
+        [HttpPost("follow-ups/{followUpId:int}/patient-satisfaction/send")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> SendPatientSatisfactionEmail(int followUpId, [FromBody] SendPatientSatisfactionRequestVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var context = _aestheticService.GetFollowUpSubmissionContext(followUpId);
+                if (string.IsNullOrWhiteSpace(context.consultId) || string.IsNullOrWhiteSpace(context.pNo))
+                {
+                    AddModelError("ConsultId and PNo are required to send patient satisfaction link.");
+                    return BadRequest(ModelState);
+                }
+
+                var expiresOnUtc = DateTime.UtcNow.AddDays(7);
+                var token = _aestheticService.CreatePatientSatisfactionToken(context.followUpId, context.consultId, context.pNo, expiresOnUtc);
+                var surveyUrl = BuildPatientSatisfactionUrl(token);
+                var recipientName = string.IsNullOrWhiteSpace(model.RecipientName) ? context.patientName ?? "Patient" : model.RecipientName;
+                var emailBody = BuildPatientSatisfactionEmailBody(recipientName, surveyUrl, expiresOnUtc);
+
+                var result = await _emailSender.SendEmailAsync(
+                    recipientName,
+                    model.RecipientEmail!,
+                    "Patient Satisfaction Follow-up (1-10)",
+                    emailBody,
+                    true);
+
+                if (!result.success)
+                {
+                    AddModelError(result.errorMsg ?? "Failed to send patient satisfaction email.");
+                    return BadRequest(ModelState);
+                }
+
+                return Ok(new
+                {
+                    followUpId = context.followUpId,
+                    consultationId = context.consultationId,
+                    consultId = context.consultId,
+                    pNo = context.pNo,
+                    expiresOnUtc,
+                    sentTo = model.RecipientEmail
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending patient satisfaction email for follow-up {FollowUpId}", followUpId);
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpGet("patient-satisfaction")]
+        [ProducesResponseType(typeof(PublicPatientSatisfactionSurveyVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult GetPatientSatisfactionSurvey([FromQuery] string token)
+        {
+            try
+            {
+                var tokenContext = _aestheticService.ValidatePatientSatisfactionToken(token);
+                if (!tokenContext.HasValue)
+                {
+                    AddModelError("Invalid or expired patient satisfaction token.");
+                    return BadRequest(ModelState);
+                }
+
+                var context = _aestheticService.GetFollowUpSubmissionContext(tokenContext.Value.followUpId);
+                if (!string.Equals(context.consultId, tokenContext.Value.consultId, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(context.pNo, tokenContext.Value.pNo, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddModelError("Invalid patient satisfaction token context.");
+                    return BadRequest(ModelState);
+                }
+
+                return Ok(new PublicPatientSatisfactionSurveyVM
+                {
+                    FollowUpId = context.followUpId,
+                    ConsultationId = context.consultationId,
+                    ConsultId = context.consultId,
+                    PNo = context.pNo,
+                    PatientName = context.patientName,
+                    ScheduledDate = context.scheduledDate
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading patient satisfaction survey");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("patient-satisfaction/submit")]
+        [ProducesResponseType(typeof(AestheticFollowUpVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult SubmitPatientSatisfaction([FromQuery] string token, [FromBody] SubmitPatientSatisfactionVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var tokenContext = _aestheticService.ValidatePatientSatisfactionToken(token);
+                if (!tokenContext.HasValue)
+                {
+                    AddModelError("Invalid or expired patient satisfaction token.");
+                    return BadRequest(ModelState);
+                }
+
+                var followUp = _aestheticService.SubmitPatientSatisfaction(
+                    tokenContext.Value.followUpId,
+                    tokenContext.Value.consultId,
+                    tokenContext.Value.pNo,
+                    model.PatientSatisfactionScore!.Value,
+                    model.Outcome);
+
+                return Ok(_mapper.Map<AestheticFollowUpVM>(followUp));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting patient satisfaction");
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
+        private string BuildPatientSatisfactionUrl(string token)
+        {
+            var baseUrl = _appSettings.ClientBaseUrl;
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                baseUrl = $"{Request.Scheme}://{Request.Host}";
+            }
+
+            var trimmedBase = baseUrl.TrimEnd('/');
+            return $"{trimmedBase}{PatientSatisfactionPath}?token={Uri.EscapeDataString(token)}";
+        }
+
+        private static string BuildPatientSatisfactionEmailBody(string recipientName, string surveyUrl, DateTime expiresOnUtc)
+        {
+            return $"""
+                <p>Dear {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
+                <p>Please share your treatment satisfaction score on a scale of <strong>1-10</strong>.</p>
+                <p>Click the button below to submit your score:</p>
+                <p><a href=\"{surveyUrl}\" style=\"display:inline-block;padding:10px 16px;background:#1976d2;color:#fff;text-decoration:none;border-radius:4px;\">Submit Satisfaction</a></p>
+                <p>This link expires on <strong>{expiresOnUtc:yyyy-MM-dd HH:mm} UTC</strong>.</p>
+                <p>Thank you.</p>
+                """;
         }
     }
 }

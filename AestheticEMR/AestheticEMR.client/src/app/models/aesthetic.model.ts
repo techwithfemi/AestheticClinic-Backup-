@@ -116,6 +116,25 @@ export interface AestheticConsultation {
   photos?: AestheticPhoto[];
 }
 
+export interface AestheticFollowUp {
+  id: number;
+  consultationId: number;
+  patientId?: number;
+  patientName?: string;
+  scheduledDate?: string;
+  isAutoScheduled?: boolean;
+  isCompleted?: boolean;
+  completedDate?: string;
+  outcome?: string;
+  patientSatisfactionScore?: number;
+  repeatPhotosTaken?: boolean;
+  nextTreatmentRecommendation?: string;
+  notes?: string;
+  patientSatisfactionConsultId?: string;
+  patientSatisfactionPNo?: string;
+  patientSatisfactionSubmittedOn?: string;
+}
+
 export interface AestheticPatient {
   id: number;
   pno?: string; // Patient number from legacy system
@@ -135,4 +154,32 @@ export interface AestheticPatient {
 
 export interface VoidAestheticConsent {
   voidReason: string;
+}
+
+export interface SendPatientSatisfactionRequest {
+  recipientEmail: string;
+  recipientName?: string;
+}
+
+export interface PatientSatisfactionEmailResponse {
+  followUpId: number;
+  consultationId: number;
+  consultId?: string;
+  pNo?: string;
+  expiresOnUtc?: string;
+  sentTo?: string;
+}
+
+export interface PublicPatientSatisfactionSurvey {
+  followUpId: number;
+  consultationId: number;
+  consultId?: string;
+  pNo?: string;
+  patientName?: string;
+  scheduledDate?: string;
+}
+
+export interface SubmitPatientSatisfaction {
+  patientSatisfactionScore: number;
+  outcome?: string;
 }

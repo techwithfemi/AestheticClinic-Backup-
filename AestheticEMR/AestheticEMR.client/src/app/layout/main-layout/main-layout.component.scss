@@ -1,9 +1,11 @@
 .sidenav-container {
   height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidenav {
   width: 240px;
+  max-width: 85vw;
   background-color: #ffffff;
   border-right: 1px solid #e0e4e8;
 }
@@ -379,7 +381,9 @@ mat-panel-title.menu-title {
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 @media (max-width: 991.98px) {
@@ -413,42 +417,33 @@ mat-panel-title.menu-title {
   .main-toolbar {
     min-height: 56px;
     padding: 0 8px;
-  }
-
-  .brand-title {
-    font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: 6px;
   }
 
   .toolbar-actions {
     align-items: center;
     gap: 4px;
-  }
-
-  .toolbar-divider,
-  .action-icon-btn {
-    display: none;
-  }
-
-  .logout-btn {
-    min-width: 40px;
-
-    span {
-      display: none;
-    }
+    margin-left: auto;
   }
 
   .page-content {
     padding: 16px;
     min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
   }
 }
 
 @media (max-width: 575.98px) {
   .brand-title {
-    max-width: 180px;
+    max-width: 150px;
+  }
+
+  .toolbar-avatar-img,
+  .toolbar-avatar-fallback,
+  .menu-avatar-img,
+  .menu-avatar-fallback {
+    width: 30px;
+    height: 30px;
   }
 
   .page-content {

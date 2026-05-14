@@ -117,15 +117,27 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
   `,
   styles: [`
     .page-shell { padding: 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
     .subtitle { color: #666; margin: 4px 0 0; }
     .content-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); gap: 16px; }
-    .data-table { width: 100%; }
+    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .editor-panel { display: flex; flex-direction: column; gap: 12px; }
     .full-width { width: 100%; }
     .actions-row { display: flex; justify-content: flex-end; gap: 12px; }
     .selected-row { background: rgba(25, 118, 210, 0.08); }
-    @media (max-width: 992px) { .content-grid { grid-template-columns: 1fr; } }
+
+    @media (max-width: 992px) {
+      .page-shell { padding: 16px; }
+      .page-header { flex-direction: column; align-items: stretch; }
+      .page-header button { width: 100%; min-height: 44px; }
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 575.98px) {
+      .page-shell { padding: 12px; }
+      .actions-row { flex-direction: column; }
+      .actions-row button { width: 100%; min-height: 44px; }
+    }
   `]
 })
 export class ConsentTemplatesComponent implements OnInit {

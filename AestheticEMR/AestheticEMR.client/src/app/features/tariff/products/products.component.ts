@@ -123,13 +123,21 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
     .tariff-products-page { padding: 20px; display: grid; gap: 12px; }
     .toolbar-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
     .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .table-wrap { overflow: auto; }
-    .products-table { width: 100%; }
+    .table-wrap { overflow: auto; -webkit-overflow-scrolling: touch; }
+    .products-table { width: 100%; min-width: 680px; }
     .text-end { text-align: right; }
     .empty-text { margin: 12px 0 0; color: #777; }
     .spinner-wrap { display: flex; justify-content: center; padding: 12px 0 4px; }
+
     @media (max-width: 992px) {
+      .tariff-products-page { padding: 16px; }
       .toolbar-row { grid-template-columns: 1fr; }
+      .toolbar-actions button { flex: 1 1 160px; min-height: 44px; }
+    }
+
+    @media (max-width: 575.98px) {
+      .tariff-products-page { padding: 12px; }
+      .toolbar-actions button { width: 100%; }
     }
   `]
 })

@@ -124,15 +124,26 @@ import { ImagingDialogComponent, ImagingDialogResult, ImagingPatientOption } fro
   `,
   styles: [`
     .imaging-page { padding: 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; }
     .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
     .search-section { margin-bottom: 16px; }
     .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
-    .data-table { width: 100%; }
+    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .findings-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-name { font-size: 0.82rem; margin-left: 4px; vertical-align: middle; }
     .icon-file { color: #1565c0; font-size: 18px; vertical-align: middle; }
     .empty-state { color: #888; padding: 32px; text-align: center; }
+
+    @media (max-width: 992px) {
+      .imaging-page { padding: 16px; }
+      .page-header { flex-direction: column; align-items: stretch; }
+      .page-header button { width: 100%; min-height: 44px; }
+    }
+
+    @media (max-width: 575.98px) {
+      .imaging-page { padding: 12px; }
+      .findings-cell { max-width: 200px; }
+    }
   `]
 })
 export class ImagingComponent {
