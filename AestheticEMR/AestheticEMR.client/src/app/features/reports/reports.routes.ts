@@ -82,6 +82,16 @@ export const reportsRoutes: Routes = [
       .then(m => m.AestheticsOutcomesReportComponent)
   },
   {
+    path: 'aesthetics-skin-assessment-report',
+    loadComponent: () => import('./aesthetics/aesthetics-skin-assessment-report.component')
+      .then(m => m.AestheticsSkinAssessmentReportComponent)
+  },
+  {
+    path: 'aesthetics-consent-report',
+    loadComponent: () => import('./aesthetics/aesthetics-consent-report.component')
+      .then(m => m.AestheticsConsentReportComponent)
+  },
+  {
     path: 'billing-receipt-report',
     loadComponent: () => import('./billing/billing-receipt-report.component')
       .then(m => m.BillingReceiptReportComponent)

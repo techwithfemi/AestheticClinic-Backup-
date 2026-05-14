@@ -105,6 +105,8 @@
         { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum" },
         { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech" },
         { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up" },
+        { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural" },
+        { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description" },
         { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
         { "label": "Billing Claims Report", "path": "billing-claims-report", "icon": "fact_check" },
         { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },

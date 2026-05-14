@@ -5,14 +5,10 @@
 ## Quick Start
 
 When asking AI to extend QuickApp, include this in your prompt:
-
-```
 Reference the AI rules file: ai-rules/AI_RULES.md
 
 Follow the exact patterns and conventions documented in this file.
 Reference UserAccountController, UserRoleController, and UserVMs.cs for real implementation examples.
-```
-
 ## What QuickApp Provides
 
 QuickApp is a **hardened foundation** that solves the hard problems so AI can focus on features:
@@ -40,8 +36,6 @@ QuickApp is a **hardened foundation** that solves the hard problems so AI can fo
 ## Backend Patterns (ASP.NET Core)
 
 ### Project Structure
-
-```
 QuickApp.Core/
   ├── Models/           # Domain entities
   │   ├── Account/      # User, Role, Permission entities
@@ -54,8 +48,6 @@ QuickApp.Server/
   ├── ViewModels/       # DTOs for API responses/requests
   ├── Authorization/   # Policies, requirements, handlers
   └── Configuration/    # AutoMapper, OIDC config
-```
-
 ### Entity Models
 
 **ALL entities MUST inherit from `BaseEntity`** which provides:
@@ -109,11 +101,7 @@ QuickApp.Server/
 9. ❌ **DO NOT add authorization logic** - that belongs in controllers
 
 **Service Registration** (in `Program.cs`):
-
-```csharp
 builder.Services.AddScoped<IProductService, ProductService>();
-```
-
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -148,16 +136,10 @@ builder.Services.AddScoped<IProductService, ProductService>();
 All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute):
-
-```csharp
 [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
 public async Task<IActionResult> GetUsers() { ... }
-```
-
 2. **Inline authorization checks** (for resource-based authorization):
-
-```csharp
 [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
@@ -166,8 +148,6 @@ public async Task<IActionResult> GetUserById(string id)
         return new ChallengeResult();
     // ... rest of method
 }
-```
-
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -195,8 +175,6 @@ public async Task<IActionResult> GetUserById(string id)
 ### Error Handling
 
 **Error Handling Pattern:**
-
-```csharp
 [HttpDelete("{id}")]
 public async Task<IActionResult> Delete(int id)
 {
@@ -216,8 +194,6 @@ public async Task<IActionResult> Delete(int id)
         return BadRequest(ModelState);
     }
 }
-```
-
 **Error Handling Rules:**
 
 1. ✅ **Use custom exceptions** for domain-specific errors
@@ -231,15 +207,11 @@ public async Task<IActionResult> Delete(int id)
 ## Frontend Patterns (Angular)
 
 ### Project Structure
-
-```
 quickapp.client/src/app/
   ├── components/       # Feature components (lazy-loaded)
   ├── services/         # API services (extend EndpointBase)
   ├── models/           # TypeScript interfaces
   └── app.routes.ts     # Route configuration
-```
-
 ### Components
 
 **Component Rules:**
@@ -302,16 +274,12 @@ quickapp.client/src/app/
 5. ❌ **DO NOT use eager loading** - always lazy load feature components
 
 **Example:**
-
-```typescript
 {
   path: 'products',
   loadComponent: () => import('./components/products/products.component').then(m => m.ProductsComponent),
   canActivate: [AuthGuard],
   title: 'Products'
 }
-```
-
 ### Translation Files
 
 **Important**: When adding new UI text, add translation keys to all locale files.
@@ -320,12 +288,8 @@ quickapp.client/src/app/
 **Files**: `en.json`, `fr.json`, `de.json`, `es.json`, `pt.json`, `zh.json`, `ko.json`, `ar.json`
 
 **Usage in Templates:**
-
-```html
 <h4>{{ 'Products' | translate }}</h4>
 <p>{{ 'Description' | translate }}</p>
-```
-
 **Translation Rules:**
 
 1. ✅ **Add keys to `en.json` first** (primary language)
@@ -337,8 +301,6 @@ quickapp.client/src/app/
 ### Error Handling
 
 **Error Handling Pattern:**
-
-```typescript
 loadData(): void {
   this.alertService.startLoadingMessage();
   this.loadingIndicator = true;
@@ -362,8 +324,6 @@ loadData(): void {
       }
     });
 }
-```
-
 **Error Handling Rules:**
 
 1. ✅ **Use `AlertService.startLoadingMessage()`** before async operations
@@ -394,6 +354,12 @@ For SPA static list dropdown ordering, default behavior should be ascending orde
 ## Patient Satisfaction Scoring
 
 - For patient satisfaction, user prefers patient-submitted scoring via email link: patient clicks done, score is persisted with `ConsultId` and `PNo`.
+
+---
+
+## Report Page Updates
+
+For report page updates, use Spa Services Report page as the default template unless the user specifies otherwise. Report pages should use a 'Select patient' dropdown sourced from attendance (default to today's attendance, include all attendance patients in list), with first option 'Select patient'. Include Angular Material data grid with page size 10, date range pickers defaulting to today (dd-MMM-YYYY), search field, and a button-triggered record load based on date range (except text search). Show patient name and user full name instead of IDs. Add working Run Report/Clear behavior. Add styled non-underlined export links ('Export to Excel CSV PDF') before Refresh, with working downloads (including true .xlsx).
 
 ---
 
