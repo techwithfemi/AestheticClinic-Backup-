@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -16,6 +16,14 @@ import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
+import { ModuleSettingsService } from '../../../services/module-settings.service';
+
+interface FrontdeskModuleSettings {
+  autoFollowUpDays?: number;
+  consentProcedureTypes?: string[];
+}
+
+const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
 
 @Component({
   selector: 'app-consent-form',
@@ -30,21 +38,26 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
         </div>
       </div>
 
-      <mat-card class="selector-card">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Attendance Record</mat-label>
-          <mat-select [value]="selectedConsultId()" (selectionChange)="selectAttendance($event.value)">
-            @for (item of attendanceOptions(); track item.consultId) {
-              <mat-option [value]="item.consultId">{{ item.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </mat-card>
+      <div class="layout-grid">
+        <mat-card>
+          <h3>Header Information</h3>
 
-      @if (selectedAttendance()) {
-        <div class="layout-grid">
-          <mat-card>
-            <h3>Header Information</h3>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Search Patient</mat-label>
+            <input matInput [value]="attendanceSearchText()" (input)="attendanceSearchText.set(($any($event.target).value || '').trim())" placeholder="Search by patient name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Select Patient</mat-label>
+            <mat-select [value]="selectedConsultId()" (selectionChange)="selectAttendance($event.value)">
+              <mat-option value="">Select Patient</mat-option>
+              @for (item of attendanceOptions(); track item.consultId) {
+                <mat-option [value]="item.consultId">{{ item.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (selectedAttendance()) {
             <div class="header-grid">
               <div><span class="label">ConsultId</span><span>{{ selectedAttendance()?.consultId }}</span></div>
               <div><span class="label">PNO</span><span>{{ selectedAttendance()?.pNo }}</span></div>
@@ -53,29 +66,33 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
               <div><span class="label">Clinic</span><span>{{ selectedAttendance()?.clinicType }}</span></div>
               <div><span class="label">Purpose</span><span>{{ selectedAttendance()?.attndStatus || 'NORMAL' }}</span></div>
             </div>
+          }
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Procedure Type</mat-label>
-              <mat-select [value]="selectedProcedureType()" (selectionChange)="changeProcedureType($event.value)">
-                <mat-option value="Botox">Botox</mat-option>
-                <mat-option value="Laser">Laser</mat-option>
-                <mat-option value="Spa">Spa</mat-option>
-                <mat-option value="Procedures">Procedures</mat-option>
-              </mat-select>
-            </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Procedure Type</mat-label>
+            <mat-select [value]="selectedProcedureType()" (selectionChange)="changeProcedureType($event.value)">
+              @for (procedureType of procedureTypes(); track procedureType) {
+                <mat-option [value]="procedureType">{{ procedureType }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Consent Template</mat-label>
-              <mat-select [value]="selectedTemplateId()" (selectionChange)="selectTemplate($event.value)">
-                @for (template of templates(); track template.id) {
-                  <mat-option [value]="template.id">{{ template.title || template.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </mat-card>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Consent Template</mat-label>
+            <mat-select [value]="selectedTemplateId()" (selectionChange)="selectTemplate($event.value)">
+              @for (template of templates(); track template.id) {
+                <mat-option [value]="template.id">{{ template.title || template.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </mat-card>
 
-          <mat-card>
-            <h3>Consent Body</h3>
+        <mat-card>
+          <h3>Consent Body</h3>
+
+          @if (!selectedAttendance()) {
+            <div class="consent-box">Select Patient to load consent content and signature controls.</div>
+          } @else {
             <div class="consent-box">{{ activeTemplate()?.content || 'No active template found for the selected procedure.' }}</div>
 
             <form [formGroup]="form" class="form-stack">
@@ -113,9 +130,9 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
                 </button>
               </div>
             </form>
-          </mat-card>
-        </div>
-      }
+          }
+        </mat-card>
+      </div>
 
       @if (latestSignedConsent()) {
         <mat-card class="summary-card">
@@ -155,13 +172,14 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
     @media (max-width: 992px) { .layout-grid, .header-grid { grid-template-columns: 1fr; } }
   `]
 })
-export class ConsentFormComponent implements OnInit, AfterViewInit {
+export class ConsentFormComponent implements OnInit {
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly aestheticEndpoint = inject(AestheticEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+  private readonly moduleSettingsService = inject(ModuleSettingsService);
 
   loadingIndicator = false;
   readonly attendances = signal<Attendance[]>([]);
@@ -170,10 +188,20 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   readonly status = signal<AestheticConsentStatus | null>(null);
   readonly latestSignedConsent = signal<AestheticSignedConsent | null>(null);
   readonly selectedConsultId = signal<string>('');
-  readonly selectedProcedureType = signal<string>('Laser');
+  readonly selectedProcedureType = signal<string>(DEFAULT_PROCEDURE_TYPES[0]);
   readonly selectedTemplateId = signal<number | null>(null);
+  readonly procedureTypes = signal<string[]>([...DEFAULT_PROCEDURE_TYPES]);
+  readonly attendanceSearchText = signal<string>('');
 
-  @ViewChild('signatureCanvas') signatureCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('signatureCanvas')
+  set signatureCanvas(value: ElementRef<HTMLCanvasElement> | undefined) {
+    this._signatureCanvas = value;
+    if (value) {
+      this.initializeSignaturePad();
+    }
+  }
+
+  private _signatureCanvas?: ElementRef<HTMLCanvasElement>;
   private signaturePad: SignaturePad | null = null;
 
   readonly selectedAttendance = computed(() => this.attendances().find(x => x.consultId === this.selectedConsultId()) ?? null);
@@ -183,10 +211,22 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
     return patient ? `${patient.pSurName} ${patient.pFirstname || ''}`.trim() : (pNo || 'Unknown patient');
   });
   readonly activeTemplate = computed(() => this.templates().find(x => x.id === this.selectedTemplateId()) ?? this.status()?.activeTemplate ?? null);
-  readonly attendanceOptions = computed(() => this.attendances().map(item => ({
-    consultId: item.consultId || '',
-    label: `${item.consultId || 'N/A'} · ${item.pNo} · ${item.clinicType} · ${item.recDate}`
-  })).filter(x => !!x.consultId));
+  readonly attendanceOptions = computed(() => {
+    const term = this.attendanceSearchText().toLowerCase();
+
+    return this.attendances()
+      .filter(item => !!item.consultId?.trim() && !!item.pNo?.trim())
+      .filter(item => this.isToday(item.recDate))
+      .map(item => {
+        const patientName = this.resolvePatientNameByPNo(item.pNo).trim() || 'Unknown patient';
+        return {
+          consultId: item.consultId || '',
+          label: `${patientName} ${this.formatAttendanceDate(item.recDate)} [${item.consultId || 'N/A'}]`
+        };
+      })
+      .filter(item => !term || item.label.toLowerCase().includes(term) || item.consultId.toLowerCase().includes(term))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
 
   readonly form = this.fb.nonNullable.group({
     signatureName: ['', Validators.required],
@@ -196,6 +236,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   });
 
   ngOnInit(): void {
+    this.loadModuleSettings();
     this.loadPatients();
     this.loadAttendance();
 
@@ -207,8 +248,25 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
     });
   }
 
-  ngAfterViewInit(): void {
-    this.initializeSignaturePad();
+  private loadModuleSettings(): void {
+    const defaults: FrontdeskModuleSettings = {
+      autoFollowUpDays: 14,
+      consentProcedureTypes: [...DEFAULT_PROCEDURE_TYPES]
+    };
+
+    this.moduleSettingsService.getModuleSettings<FrontdeskModuleSettings>('frontdesk', defaults)
+      .then(settings => {
+        const configuredTypes = (settings.consentProcedureTypes || []).map(x => (x || '').trim()).filter(Boolean);
+        const effectiveTypes = configuredTypes.length ? configuredTypes : [...DEFAULT_PROCEDURE_TYPES];
+        this.procedureTypes.set(effectiveTypes);
+
+        if (!effectiveTypes.includes(this.selectedProcedureType())) {
+          this.selectedProcedureType.set(effectiveTypes[0]);
+        }
+      })
+      .catch(() => {
+        this.procedureTypes.set([...DEFAULT_PROCEDURE_TYPES]);
+      });
   }
 
   loadPatients(): void {
@@ -226,9 +284,10 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
         this.alertService.stopLoadingMessage();
 
         const requested = this.route.snapshot.queryParamMap.get('consultId');
-        const firstConsultId = requested && records.some(x => x.consultId === requested) ? requested : records[0]?.consultId;
-        if (firstConsultId) {
-          this.selectAttendance(firstConsultId);
+        if (requested && this.attendanceOptions().some(x => x.consultId === requested)) {
+          this.selectAttendance(requested);
+        } else {
+          this.selectAttendance('');
         }
       },
       error: error => {
@@ -244,6 +303,12 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
     this.selectedTemplateId.set(null);
     this.latestSignedConsent.set(null);
     this.clearSignature();
+
+    if (!consultId) {
+      this.status.set(null);
+      return;
+    }
+
     this.loadTemplatesAndStatus();
   }
 
@@ -281,7 +346,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
       latestSignedConsent: undefined
     });
 
-    this.aestheticEndpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>(procedureType).subscribe({
+    this.aestheticEndpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>('', true).subscribe({
       next: templates => {
         const list = templates || [];
         this.templates.set(list);
@@ -348,7 +413,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   }
 
   private initializeSignaturePad(): void {
-    const canvas = this.signatureCanvas?.nativeElement;
+    const canvas = this._signatureCanvas?.nativeElement;
     if (!canvas) {
       return;
     }
@@ -388,7 +453,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   clearSignature(): void {
     if (this.signaturePad) {
       this.signaturePad.clear();
-      const canvas = this.signatureCanvas?.nativeElement;
+      const canvas = this._signatureCanvas?.nativeElement;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
         ctx.fillStyle = '#ffffff';
@@ -408,7 +473,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   }
 
   private getCanvasPoint(event: MouseEvent | TouchEvent): { x: number; y: number } {
-    const canvas = this.signatureCanvas?.nativeElement;
+    const canvas = this._signatureCanvas?.nativeElement;
     const rect = canvas?.getBoundingClientRect();
     if (!rect) {
       return { x: 0, y: 0 };
@@ -424,7 +489,7 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
   }
 
   private clearSignatureCanvas(): void {
-    const canvas = this.signatureCanvas?.nativeElement;
+    const canvas = this._signatureCanvas?.nativeElement;
     if (!canvas || !this.signaturePad) {
       return;
     }
@@ -435,5 +500,51 @@ export class ConsentFormComponent implements OnInit, AfterViewInit {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+  }
+
+  private resolvePatientNameByPNo(pNo?: string): string {
+    const normalized = (pNo ?? '').trim().toLowerCase();
+    if (!normalized) {
+      return 'Unknown patient';
+    }
+
+    const patient = this.patients().find(x => (x.pno ?? '').trim().toLowerCase() === normalized);
+    if (!patient) {
+      return pNo ?? 'Unknown patient';
+    }
+
+    return `${patient.pSurName || ''} ${patient.pFirstname || ''}`.trim() || (pNo ?? 'Unknown patient');
+  }
+
+  private isToday(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const d = new Date(value);
+    if (isNaN(d.getTime())) {
+      return false;
+    }
+
+    const today = new Date();
+    return d.getFullYear() === today.getFullYear()
+      && d.getMonth() === today.getMonth()
+      && d.getDate() === today.getDate();
+  }
+
+  private formatAttendanceDate(value?: string): string {
+    if (!value) {
+      return '';
+    }
+
+    const d = new Date(value);
+    if (isNaN(d.getTime())) {
+      return '';
+    }
+
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleString('en', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
   }
 }

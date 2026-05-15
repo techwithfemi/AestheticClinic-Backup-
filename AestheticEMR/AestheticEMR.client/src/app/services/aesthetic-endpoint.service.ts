@@ -185,6 +185,23 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.deletePhotoEndpoint<T>(photoId))));
   }
 
+  getFollowUpsEndpoint<T>(options?: { patientId?: number; consultationId?: number; isCompleted?: boolean }): Observable<T> {
+    const params = new URLSearchParams();
+    if (options?.patientId !== undefined) params.set('patientId', String(options.patientId));
+    if (options?.consultationId !== undefined) params.set('consultationId', String(options.consultationId));
+    if (options?.isCompleted !== undefined) params.set('isCompleted', String(options.isCompleted));
+    const query = params.toString();
+    const url = query ? `${this.baseUrl}/follow-ups?${query}` : `${this.baseUrl}/follow-ups`;
+
+    return this.http.get<T>(url, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getFollowUpsEndpoint<T>(options))));
+  }
+
+  scheduleFollowUpEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/follow-ups/schedule`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.scheduleFollowUpEndpoint<T>(payload))));
+  }
+
   sendPatientSatisfactionEmailEndpoint<T>(followUpId: number, payload: object): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}/follow-ups/${followUpId}/patient-satisfaction/send`, JSON.stringify(payload), this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.sendPatientSatisfactionEmailEndpoint<T>(followUpId, payload))));

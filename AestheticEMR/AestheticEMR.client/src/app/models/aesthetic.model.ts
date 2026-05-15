@@ -135,6 +135,12 @@ export interface AestheticFollowUp {
   patientSatisfactionSubmittedOn?: string;
 }
 
+export interface ScheduleAestheticFollowUp {
+  consultationId: number;
+  daysAhead: number;
+  notes?: string;
+}
+
 export interface AestheticPatient {
   id: number;
   pno?: string; // Patient number from legacy system

@@ -9,6 +9,7 @@ Reference the AI rules file: ai-rules/AI_RULES.md
 
 Follow the exact patterns and conventions documented in this file.
 Reference UserAccountController, UserRoleController, and UserVMs.cs for real implementation examples.
+
 ## What QuickApp Provides
 
 QuickApp is a **hardened foundation** that solves the hard problems so AI can focus on features:
@@ -48,6 +49,7 @@ QuickApp.Server/
   ├── ViewModels/       # DTOs for API responses/requests
   ├── Authorization/   # Policies, requirements, handlers
   └── Configuration/    # AutoMapper, OIDC config
+
 ### Entity Models
 
 **ALL entities MUST inherit from `BaseEntity`** which provides:
@@ -102,6 +104,7 @@ QuickApp.Server/
 
 **Service Registration** (in `Program.cs`):
 builder.Services.AddScoped<IProductService, ProductService>();
+
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -135,20 +138,16 @@ builder.Services.AddScoped<IProductService, ProductService>();
 
 All endpoints must be protected. Use one of these approaches:
 
-1. **Policy-based authorization** (attribute):
-[HttpGet("users")]
+1. **Policy-based authorization** (attribute):[HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() { ... }
-2. **Inline authorization checks** (for resource-based authorization):
-[HttpGet("users/{id}")]
+public async Task<IActionResult> GetUsers() { ... }2. **Inline authorization checks** (for resource-based authorization):[HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-}
-**Authorization Rules:**
+}**Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
 2. ✅ **Use policy constants** from `AuthPolicies` class
@@ -174,8 +173,7 @@ public async Task<IActionResult> GetUserById(string id)
 
 ### Error Handling
 
-**Error Handling Pattern:**
-[HttpDelete("{id}")]
+**Error Handling Pattern:**[HttpDelete("{id}")]
 public async Task<IActionResult> Delete(int id)
 {
     try
@@ -193,8 +191,7 @@ public async Task<IActionResult> Delete(int id)
         AddModelError(ex.Message);
         return BadRequest(ModelState);
     }
-}
-**Error Handling Rules:**
+}**Error Handling Rules:**
 
 1. ✅ **Use custom exceptions** for domain-specific errors
 2. ✅ **Log errors** using `_logger.LogError()`
@@ -212,6 +209,7 @@ quickapp.client/src/app/
   ├── services/         # API services (extend EndpointBase)
   ├── models/           # TypeScript interfaces
   └── app.routes.ts     # Route configuration
+
 ### Components
 
 **Component Rules:**
@@ -270,11 +268,10 @@ quickapp.client/src/app/
 1. ✅ **Use lazy loading** with `loadComponent`
 2. ✅ **Use `AuthGuard`** for protected routes
 3. ✅ **Set `title`** for each route
-4. ✅ **Use `path: '**'`\*\* for 404 route (must be last)
+4. ✅ **Use `path: '**'` for 404 route (must be last)
 5. ❌ **DO NOT use eager loading** - always lazy load feature components
 
-**Example:**
-{
+**Example:**{
   path: 'products',
   loadComponent: () => import('./components/products/products.component').then(m => m.ProductsComponent),
   canActivate: [AuthGuard],
@@ -287,8 +284,7 @@ quickapp.client/src/app/
 **Location**: `quickapp.client/public/locale/`
 **Files**: `en.json`, `fr.json`, `de.json`, `es.json`, `pt.json`, `zh.json`, `ko.json`, `ar.json`
 
-**Usage in Templates:**
-<h4>{{ 'Products' | translate }}</h4>
+**Usage in Templates:**<h4>{{ 'Products' | translate }}</h4>
 <p>{{ 'Description' | translate }}</p>
 **Translation Rules:**
 
@@ -300,8 +296,7 @@ quickapp.client/src/app/
 
 ### Error Handling
 
-**Error Handling Pattern:**
-loadData(): void {
+**Error Handling Pattern:**loadData(): void {
   this.alertService.startLoadingMessage();
   this.loadingIndicator = true;
 
@@ -418,4 +413,10 @@ When creating a new entity with full CRUD:
 - [ ] Create controller in `QuickApp.Server/Controllers/{EntityName}Controller.cs` inheriting `BaseApiController`
 - [ ] Add authorization (policies or inline checks)
 - [ ] Update `ApplicationDbContext` if new DbSet needed
-- [ ] Create migration: `
+- [ ] Create migration: 
+
+---
+
+## Configuration Management
+
+- Use per-department/module JSON settings files instead of hardcoded values (e.g., configurable automatic appointment scheduling days from JSON).

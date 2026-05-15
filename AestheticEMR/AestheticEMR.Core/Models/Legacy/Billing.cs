@@ -7,7 +7,7 @@ public partial class Billing
 {
     public long ID { get; set; }
 
-    public DateOnly bDate { get; set; }= new DateOnly();
+    public DateOnly bDate { get; set; } = new DateOnly();
 
     //public DateTime? consultDate { get; set; }=
 
@@ -29,31 +29,29 @@ public partial class Billing
 
     public string? AmountBilledInWord { get; set; }// for printing
 
-
     public string? BillingMonth { get; set; }// current month
 
     public int? BillingYear { get; set; }// current year
 
     //public string? diagnosis { get; set; }
 
-    public bool? isPaid { get; set; } =false;
+    public bool? isPaid { get; set; } = false;
 
-    public string? billType { get; set; }=string.Empty;
+    public string? billType { get; set; } = string.Empty;
 
     //public string? InvNo { get; set; }
 
-    public bool? isProcess { get; set; }=false;
+    public bool? isProcess { get; set; } = false;
 
     public DateTime? AdmDate { get; set; } = null;
 
-    public DateTime? DischDate { get; set; }=null;
+    public DateTime? DischDate { get; set; } = null;
 
     public DateTime? timeVal { get; set; } = null;
 
+    public string? ApprvCode { get; set; } = string.Empty;
 
-    public string? ApprvCode { get; set; }=string.Empty;
-
-    //public bool? isSigned { get; set; } = false;    
+    public bool? isSigned { get; set; } = false;
 
     //public decimal? AmountSigned { get; set; }=decimal.Zero;
 

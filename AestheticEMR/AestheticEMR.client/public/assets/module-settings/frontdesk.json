@@ -1,0 +1,9 @@
+{
+  "autoFollowUpDays": 14,
+  "consentProcedureTypes": [
+    "Botox",
+    "Laser",
+    "Spa",
+    "Procedures"
+  ]
+}

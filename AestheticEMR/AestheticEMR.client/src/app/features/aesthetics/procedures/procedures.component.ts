@@ -18,7 +18,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
+import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AestheticConsultation, AestheticPatient, AestheticPhoto } from '../../../models/aesthetic.model';
+import { Attendance } from '../../../models/legacy/attendance.model';
+import { HPatient } from '../../../models/legacy/h-patient.model';
 
 type PhotoTab = 'neuromodulator' | 'dermalFiller' | 'laser';
 type PhotoPhase = 'Before' | 'After';
@@ -147,8 +151,9 @@ interface SafetyAlert {
             <mat-form-field appearance="outline" class="patient-field">
               <mat-label>Patient</mat-label>
               <mat-select formControlName="patientId" (selectionChange)="onPatientChanged()">
-                @for (p of patients(); track p.id) {
-                  <mat-option [value]="p.id">{{ p.firstName }} {{ p.lastName }}{{ p.pno ? ' [' + p.pno + ']' : '' }}</mat-option>
+                <mat-option [value]="0">Select Patient</mat-option>
+                @for (item of patientAttendanceOptions(); track item.trackKey) {
+                  <mat-option [value]="item.patientId" [disabled]="item.disabled">{{ item.label }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
@@ -574,6 +579,8 @@ interface SafetyAlert {
 export class ProceduresComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly endpoint = inject(AestheticEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
+  private readonly hPatientEndpoint = inject(HPatientEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
@@ -593,6 +600,35 @@ export class ProceduresComponent implements OnInit {
   readonly safetyAlerts = signal<SafetyAlert[]>([]);
   readonly showEmergencyProtocols = signal(false);
   readonly reportedComplications = signal<{ tab: string; timestamp: Date }[]>([]);
+  readonly attendanceRecords = signal<Attendance[]>([]);
+  readonly legacyPatients = signal<HPatient[]>([]);
+
+  readonly patientAttendanceOptions = computed<{
+    trackKey: string;
+    patientId: number;
+    label: string;
+    disabled: boolean;
+  }[]>(() => {
+    const todayKey = this.toLocalDateKey(new Date());
+    const patients = this.patients();
+
+    return this.attendanceRecords()
+      .filter(attendance => this.toLocalDateKey(attendance.recDate) === todayKey)
+      .map(attendance => {
+        const patient = this.findPatientByAttendancePno(patients, attendance.pNo);
+        const patientName = this.resolveAttendancePatientName(attendance, patient);
+        const visitDate = this.formatAttendanceDate(attendance.recDate);
+        const consultId = attendance.consultId ?? '';
+
+        return {
+          trackKey: `${consultId}-${attendance.recId ?? attendance.pNo ?? patient?.id ?? 0}`,
+          patientId: patient?.id ?? 0,
+          label: `${patientName} ${visitDate} [${consultId}]`,
+          disabled: !patient
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
 
   // Workflow state signals
   readonly isPregnant = signal(false);
@@ -733,6 +769,8 @@ export class ProceduresComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPatients();
+    this.loadLegacyPatients();
+    this.loadAttendances();
 
     const initialTab = (this.route.snapshot.data?.['initialTab'] || '').toString();
     this.selectedTabIndex.set(this.mapTabToIndex(initialTab));
@@ -741,6 +779,28 @@ export class ProceduresComponent implements OnInit {
       this.neuromodulatorGroup.controls.postCareInstructions.setValue(this.generatedPostCare(), { emitEvent: false });
     });
     this.neuromodulatorGroup.controls.postCareInstructions.setValue(this.generatedPostCare(), { emitEvent: false });
+  }
+
+  private loadAttendances(): void {
+    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
+      next: attendances => {
+        this.attendanceRecords.set(attendances || []);
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Load error', 'Unable to load attendance records.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  private loadLegacyPatients(): void {
+    this.hPatientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({
+      next: patients => {
+        this.legacyPatients.set(patients || []);
+      },
+      error: () => {
+        this.legacyPatients.set([]);
+      }
+    });
   }
 
   onAllergiesChanged(): void {
@@ -1322,6 +1382,88 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     } catch {
       return null;
     }
+  }
+
+  private formatAttendanceDate(value?: string): string {
+    const date = this.parseDate(value);
+    if (!date) {
+      return '';
+    }
+
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const month = date.toLocaleString('en', { month: 'short' });
+    return `${day}-${month}-${date.getFullYear()}`;
+  }
+
+  private toLocalDateKey(value?: string | Date): string {
+    const date = this.parseDate(value);
+    if (!date) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDate(value?: string | Date): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private findPatientByAttendancePno(patients: AestheticPatient[], attendancePno?: string): AestheticPatient | null {
+    const normalizedAttendancePno = this.normalizePno(attendancePno);
+    if (!normalizedAttendancePno) {
+      return null;
+    }
+
+    return patients.find(patient => {
+      const patientPno = this.normalizePno(patient.pno);
+      if (!patientPno) {
+        return false;
+      }
+
+      if (patientPno === normalizedAttendancePno) {
+        return true;
+      }
+
+      const attendanceTail = normalizedAttendancePno.split('-').pop() ?? normalizedAttendancePno;
+      const patientTail = patientPno.split('-').pop() ?? patientPno;
+
+      return attendanceTail === patientTail;
+    }) ?? null;
+  }
+
+  private normalizePno(value?: string): string {
+    return (value ?? '').trim().toLowerCase();
+  }
+
+  private resolveAttendancePatientName(attendance: Attendance, aestheticPatient: AestheticPatient | null): string {
+    if (aestheticPatient) {
+      const name = `${aestheticPatient.firstName ?? ''} ${aestheticPatient.lastName ?? ''}`.trim();
+      if (name) {
+        return name;
+      }
+    }
+
+    const attendancePno = this.normalizePno(attendance.pNo);
+    if (attendancePno) {
+      const legacyPatient = this.legacyPatients().find(p => this.normalizePno(p.pno) === attendancePno);
+      if (legacyPatient) {
+        const legacyName = `${legacyPatient.pSurName ?? ''} ${legacyPatient.pFirstname ?? ''}`.trim();
+        if (legacyName) {
+          return legacyName;
+        }
+      }
+    }
+
+    return attendance.pNo || 'Patient';
   }
 }
 

@@ -10,6 +10,8 @@ import { MatTableModule } from '@angular/material/table';
 import { AestheticSignedConsent, VoidAestheticConsent } from '../../../models/aesthetic.model';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
+import { HPatient } from '../../../models/legacy/h-patient.model';
+import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 
 @Component({
   selector: 'app-view-consent',
@@ -27,7 +29,7 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
       <mat-card>
         <div class="toolbar-grid">
           <mat-form-field appearance="outline">
-            <mat-label>Search by ConsultId / PNO / Procedure</mat-label>
+            <mat-label>Search by Patient / ConsultId / Procedure</mat-label>
             <input matInput [value]="searchText()" (input)="searchText.set(($any($event.target).value || '').trim())" />
           </mat-form-field>
           <button mat-stroked-button type="button" (click)="refresh()">Refresh</button>
@@ -38,9 +40,9 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
             <th mat-header-cell *matHeaderCellDef>ConsultId</th>
             <td mat-cell *matCellDef="let row">{{ row.consultId }}</td>
           </ng-container>
-          <ng-container matColumnDef="pNo">
-            <th mat-header-cell *matHeaderCellDef>PNO</th>
-            <td mat-cell *matCellDef="let row">{{ row.pNo }}</td>
+          <ng-container matColumnDef="patient">
+            <th mat-header-cell *matHeaderCellDef>Patient</th>
+            <td mat-cell *matCellDef="let row">{{ resolvePatientName(row.pNo) }}</td>
           </ng-container>
           <ng-container matColumnDef="procedureType">
             <th mat-header-cell *matHeaderCellDef>Procedure</th>
@@ -120,12 +122,13 @@ export class ViewConsentComponent implements OnInit {
   private readonly endpoint = inject(AestheticEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly fb = inject(FormBuilder);
+  private readonly patientEndpoint = inject(HPatientEndpoint);
 
   loadingIndicator = false;
   readonly consents = signal<AestheticSignedConsent[]>([]);
   readonly selectedConsent = signal<AestheticSignedConsent | null>(null);
   readonly searchText = signal('');
-  readonly displayedColumns = ['consultId', 'pNo', 'procedureType', 'signedDate', 'doctorViewed', 'actions'];
+  readonly displayedColumns = ['consultId', 'patient', 'procedureType', 'signedDate', 'doctorViewed', 'actions'];
 
   readonly filteredConsents = computed(() => {
     const term = this.searchText().toLowerCase();
@@ -133,15 +136,25 @@ export class ViewConsentComponent implements OnInit {
       return this.consents();
     }
 
-    return this.consents().filter(item => `${item.consultId} ${item.pNo} ${item.procedureType}`.toLowerCase().includes(term));
+    return this.consents().filter(item => `${item.consultId} ${item.pNo} ${item.procedureType} ${this.resolvePatientName(item.pNo)}`.toLowerCase().includes(term));
   });
 
   readonly voidForm = this.fb.nonNullable.group({
     voidReason: ['', Validators.required]
   });
 
+  private readonly patients = signal<HPatient[]>([]);
+
   ngOnInit(): void {
+    this.loadPatients();
     this.refresh();
+  }
+
+  private loadPatients(): void {
+    this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({
+      next: patients => this.patients.set(patients || []),
+      error: () => this.patients.set([])
+    });
   }
 
   refresh(): void {
@@ -196,5 +209,19 @@ export class ViewConsentComponent implements OnInit {
         this.alertService.showStickyMessage('Void Error', 'Unable to void consent.', MessageSeverity.error, error);
       }
     });
+  }
+
+  resolvePatientName(pNo?: string): string {
+    const normalized = (pNo ?? '').trim().toLowerCase();
+    if (!normalized) {
+      return 'Unknown patient';
+    }
+
+    const patient = this.patients().find(p => (p.pno ?? '').trim().toLowerCase() === normalized);
+    if (!patient) {
+      return pNo ?? 'Unknown patient';
+    }
+
+    return [patient.pSurName, patient.pFirstname].filter(Boolean).join(' ').trim() || (pNo ?? 'Unknown patient');
   }
 }
