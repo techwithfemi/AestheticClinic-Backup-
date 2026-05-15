@@ -130,24 +130,74 @@ export class HomeComponent implements OnInit {
   }
 
   private isToday(value?: string | null): boolean {
-    if (!value) {
+    const valueKey = this.toLocalDateKey(value);
+    if (!valueKey) {
       return false;
     }
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return false;
-    }
-
-    const today = new Date();
-    return date.getFullYear() === today.getFullYear()
-      && date.getMonth() === today.getMonth()
-      && date.getDate() === today.getDate();
+    return valueKey === this.toLocalDateKey(new Date().toISOString());
   }
 
   private compareDateDesc(a?: string | null, b?: string | null): number {
-    const aTime = a ? new Date(a).getTime() : 0;
-    const bTime = b ? new Date(b).getTime() : 0;
-    return bTime - aTime;
+    return this.toComparableTime(b) - this.toComparableTime(a);
+  }
+
+  private toComparableTime(value?: string | null): number {
+    if (!value) {
+      return 0;
+    }
+
+    const text = value.trim();
+    if (!text) {
+      return 0;
+    }
+
+    const ymdOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (ymdOnly) {
+      const [, y, m, d] = ymdOnly;
+      return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+    }
+
+    const dmyOnly = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (dmyOnly) {
+      const [, d, m, y] = dmyOnly;
+      return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+    }
+
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  }
+
+  private toLocalDateKey(value?: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const text = value.trim();
+    if (!text) {
+      return null;
+    }
+
+    const ymd = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (ymd) {
+      return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+    }
+
+    const dmy = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (dmy) {
+      const day = dmy[1].padStart(2, '0');
+      const month = dmy[2].padStart(2, '0');
+      return `${dmy[3]}-${month}-${day}`;
+    }
+
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

@@ -138,7 +138,7 @@ const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
         <mat-card class="summary-card">
           <h3>Latest Signed Consent</h3>
           <p><strong>Signed:</strong> {{ latestSignedConsent()?.signedDate | date:'medium' }}</p>
-          <p><strong>Signed By:</strong> {{ latestSignedConsent()?.signedBy || latestSignedConsent()?.signatureName }}</p>
+          <p><strong>Signed By:</strong> {{ latestSignedByDisplay() }}</p>
           <p><strong>Witness:</strong> {{ latestSignedConsent()?.witnessedBy || '—' }}</p>
         </mat-card>
       }
@@ -546,5 +546,24 @@ export class ConsentFormComponent implements OnInit {
     const month = d.toLocaleString('en', { month: 'short' });
     const year = d.getFullYear();
     return `${day}-${month}-${year}`;
+  }
+
+  latestSignedByDisplay(): string {
+    const consent = this.latestSignedConsent();
+    if (!consent) {
+      return '—';
+    }
+
+    const signatureName = (consent.signatureName ?? '').trim();
+    if (signatureName) {
+      return signatureName;
+    }
+
+    const patientName = this.resolvePatientNameByPNo(consent.pNo);
+    if (patientName && patientName !== 'Unknown patient') {
+      return patientName;
+    }
+
+    return '—';
   }
 }
