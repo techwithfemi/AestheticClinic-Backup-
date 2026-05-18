@@ -431,3 +431,6 @@ When creating a new entity with full CRUD:
 - Limit changes to audit-log files unless explicitly asked otherwise.
 - Provide a short changed/why/verified summary after each change.
 - **Prioritize small safe edits** to ensure code reliability and avoid destabilizing modifications across the entire project.
+
+/github/copilot-instructions.md
+````````

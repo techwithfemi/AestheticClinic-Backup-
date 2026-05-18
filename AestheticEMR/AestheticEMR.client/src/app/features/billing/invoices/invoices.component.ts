@@ -253,8 +253,8 @@ export class InvoicesComponent implements OnInit {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 992;
 
     const ref = this.dialog.open(BillingInvoiceDialogComponent, {
-      width: isMobile ? '95vw' : '57vw',
-      maxWidth: isMobile ? '95vw' : '780px',
+      width: isMobile ? '98vw' : '1200px', // Increased width for desktop
+      maxWidth: isMobile ? '98vw' : '1200px', // Increased maxWidth for desktop
       disableClose: true,
       data
     });
