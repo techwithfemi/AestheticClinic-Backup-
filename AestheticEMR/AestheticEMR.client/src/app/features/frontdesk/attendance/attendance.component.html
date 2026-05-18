@@ -55,6 +55,9 @@
           </td>
           <td>{{ attendance.attendedTo ? 'Yes' : 'No' }}</td>
           <td class="actions">
+            <button type="button" class="btn btn-sm btn-outline-info icon-btn" (click)="attendPatient(attendance)" title="Attend" aria-label="Attend">
+              <span class="material-icons action-icon" aria-hidden="true">person_add</span>
+            </button>
             <button type="button" class="btn btn-sm btn-outline-success icon-btn" [routerLink]="['/frontdesk/consent-form']" [queryParams]="{ consultId: attendance.consultId }" title="Consent Form" aria-label="Consent form">
               <span class="material-icons action-icon" aria-hidden="true">fact_check</span>
             </button>

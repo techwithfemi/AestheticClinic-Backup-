@@ -45,19 +45,19 @@
             </select>
           </div>
           <div>
-            <label>Patient Category</label>
-            <select class="form-control" formControlName="clientCatId">
-              <option value="">-- Select Patient Category --</option>
-              <option *ngFor="let item of patientCategoryOptions" [value]="item">{{ item }}</option>
-            </select>
-          </div>
-          <div>
             <label>Company Name</label>
             <select class="form-control" formControlName="coyName">
               <option value="">-- Select Company Name --</option>
               <option *ngFor="let company of filteredCompanies" [value]="company.retainId">
                 {{ company.retainName }} [{{ company.retainId }}]
               </option>
+            </select>
+          </div>
+          <div>
+            <label>Patient Category</label>
+            <select class="form-control" formControlName="clientCatId">
+              <option value="">-- Select Patient Category --</option>
+              <option *ngFor="let item of patCatOptions" [value]="item">{{ item }}</option>
             </select>
           </div>
           <div>

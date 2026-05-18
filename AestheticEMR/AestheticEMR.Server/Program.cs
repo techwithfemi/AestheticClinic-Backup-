@@ -189,17 +189,15 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy.RequireClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles))
     .AddPolicy(AuthPolicies.AssignAllowedRolesPolicy,
         policy => policy.Requirements.Add(new AssignRolesAuthorizationRequirement()))
-    .AddPolicy(AuthPolicies.ViewAuditLogsPolicy,
-        policy => policy.RequireClaim(CustomClaims.Permission, ApplicationPermissions.ViewAuditLogs));
+    .AddPolicy(AuthPolicies.ViewAuditLogsPolicy, policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ViewAuditLogs)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)));
 
-// Add cors
 builder.Services.AddCors();
-
 builder.Services.AddControllers();
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = OidcServerConfig.ServerName, Version = "v1" });
@@ -217,12 +215,19 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);//builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+/************* Configurations *************/
+// Add configuration for mapping between the database and the application
+builder.Services.AddAutoMapper(options =>
+{
+    options.AddProfile(new MappingProfile());
+}, typeof(Program).Assembly);
 
 // Configurations
 builder.Services.Configure<AppSettings>(builder.Configuration);
 
-// Business Services
+/************* Business Services *************/
+// Add your business services here
 builder.Services.AddScoped<IUserAccountService, UserAccountService>();
 builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();

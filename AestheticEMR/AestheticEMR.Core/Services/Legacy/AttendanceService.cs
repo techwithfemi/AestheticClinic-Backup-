@@ -3,11 +3,18 @@ using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : IAttendanceService
+public class AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor, ILogger<AttendanceService> logger) : IAttendanceService
 {
+    private readonly ILogger<AttendanceService> _logger;
+
+    public AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : this(context, userIdAccessor, null!)
+    {
+    }
+
     public async Task<IEnumerable<HRecord>> GetAllAsync()
     {
         return await context.HRecords
@@ -28,6 +35,9 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
+        // --- New: Save Debt before attendance/billing ---
+        await SaveDebtAsync(record.PNo);
+
         var existingForDay = await GetExistingAttendanceForPatientDayAsync(record.PNo, record.RecDate);
         if (existingForDay is not null)
         {
@@ -43,6 +53,8 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
             await UpsertAttendanceBillAccumAsync(existingForDay);
             await UpdatePatientLastVisitAsync(existingForDay);
             await context.SaveChangesAsync();
+            // --- New: Save Bill for update path ---
+            await SaveBillAsync(existingForDay);
             return existingForDay;
         }
 
@@ -51,6 +63,8 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         await UpsertAttendanceBillAccumAsync(record);
         await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
+        // --- New: Save Bill for create path ---
+        await SaveBillAsync(record);
         return record;
     }
 
@@ -242,5 +256,89 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         patient.LastClinicVisited = record.ClinicType;
         patient.LastAttndDate = record.EntryDate ?? record.RecDate;
         patient.LastConsultId = record.ConsultId;
+    }
+
+    // --- New: SaveDebtAsync ---
+    private async Task SaveDebtAsync(string pNo)
+    {
+        try
+        {
+            _logger?.LogInformation($"SaveDebtAsync called for patient: {pNo}");
+            var latestBill = await context.Billings
+                .Where(b => b.pNo == pNo)
+                .OrderByDescending(b => b.ID)
+                .FirstOrDefaultAsync();
+
+            decimal openBal = 0;
+            var pat = await context.HPatients.FirstOrDefaultAsync(x => x.Pno == pNo);
+            if (latestBill != null && pat != null)
+            {
+                var isPrivate = (pat.CoyType ?? string.Empty).Trim() == "0001";
+                _logger?.LogInformation($"Patient {pNo} isPrivate: {isPrivate}, CoyType: {pat.CoyType}");
+                if (isPrivate)
+                {
+                    var billed = latestBill.AmountBilled ?? 0;
+                    var debtBf = latestBill.DebtBF ?? 0;
+                    var discount = latestBill.Discount ?? 0;
+                    var paid = latestBill.AmountPaid ?? 0;
+                    openBal = (billed + debtBf) - (discount + paid);
+                    _logger?.LogInformation($"Calculated openBal: {openBal}");
+                }
+            }
+            if (pat != null)
+            {
+                pat.IsRev = true;
+                pat.DebtBf = openBal;
+                pat.Debt = openBal;
+                await context.SaveChangesAsync();
+                _logger?.LogInformation($"Updated DebtBf and Debt for patient {pNo} to {openBal}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Error in SaveDebtAsync for patient {pNo}");
+            throw;
+        }
+    }
+
+    // --- Updated: SaveBillAsync ---
+    private async Task SaveBillAsync(HRecord record)
+    {
+        try
+        {
+            _logger?.LogInformation($"SaveBillAsync called for consultId: {record.ConsultId}, pNo: {record.PNo}");
+            var exists = await context.Billings.AnyAsync(b => b.billNO == record.ConsultId);
+            if (exists)
+            {
+                _logger?.LogWarning($"Billing already exists for consultId: {record.ConsultId}");
+                return;
+            }
+            var pat = await context.HPatients.FirstOrDefaultAsync(x => x.Pno == record.PNo);
+            decimal debtBf = pat?.DebtBf ?? 0;
+            var bill = new Billing
+            {
+                // DO NOT set ID here! Let the database generate it.
+                bDate = DateOnly.FromDateTime(record.EntryDate ?? record.RecDate),
+                billNO = record.ConsultId,
+                pNo = record.PNo,
+                clientID = record.Coyname,
+                AmountBilled = 0,
+                AmountBilledInWord = string.Empty,
+                AmountPaid = 0,
+                Discount = 0,
+                DebtBF = debtBf,
+                BillingMonth = (record.EntryDate ?? record.RecDate).ToString("MMMM"),
+                BillingYear = (record.EntryDate ?? record.RecDate).Year,
+                isProcess = false
+            };
+            context.Billings.Add(bill);
+            await context.SaveChangesAsync();
+            _logger?.LogInformation($"Inserted billing for consultId: {record.ConsultId}, pNo: {record.PNo}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Error in SaveBillAsync for consultId: {record.ConsultId}, pNo: {record.PNo}");
+            throw;
+        }
     }
 }

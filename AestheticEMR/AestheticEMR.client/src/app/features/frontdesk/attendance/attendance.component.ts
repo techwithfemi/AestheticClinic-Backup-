@@ -466,7 +466,11 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
     }, { emitEvent: false });
   }
 
-  private applyPreselectedPatient(pNo?: string | null): void {
+  /**
+   * Preselects a patient and fills related fields. Optionally skips filling the search field.
+   * Only fills coyname and clientCat, not clinicType.
+   */
+  private applyPreselectedPatient(pNo?: string | null, skipSearchField = false): void {
     const patientNo = (pNo ?? '').trim();
     if (!patientNo) {
       return;
@@ -477,15 +481,33 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
 
     const patient = this.patients.find(item => item.pno === patientNo);
     if (patient) {
-      const label = this.getPatientLabel(patient);
-      this.patientSearchText = label;
-      this.patientSearch.set(label);
-    } else {
+      // Fill only coyname and clientCat, not clinicType
+      this.attendanceForm.patchValue({
+        coyname: patient.coyName || '',
+        clientCat: patient.clientCatId || ''
+      });
+      if (!skipSearchField) {
+        const label = this.getPatientLabel(patient);
+        this.patientSearchText = label;
+        this.patientSearch.set(label);
+      } else {
+        this.patientSearchText = '';
+        this.patientSearch.set('');
+      }
+    } else if (!skipSearchField) {
       this.patientSearchText = patientNo;
       this.patientSearch.set(patientNo);
+    } else {
+      this.patientSearchText = '';
+      this.patientSearch.set('');
     }
 
     queueMicrotask(() => this.onPatientChanged());
+  }
+
+  attendPatient(attendance: Attendance): void {
+    this.openCreate(this.attendanceDialog as TemplateRef<unknown>);
+    this.applyPreselectedPatient(attendance.pNo, true); // skip filling search field
   }
 
   private mapFormToAttendance(raw: Record<string, unknown>): Attendance {

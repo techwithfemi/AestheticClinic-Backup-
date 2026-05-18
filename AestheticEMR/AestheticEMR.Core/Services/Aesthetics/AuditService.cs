@@ -21,25 +21,29 @@ namespace AestheticEMR.Core.Services.Aesthetics
         /// <summary>
         /// Log a complication incident.
         /// </summary>
-        Task LogComplicationAsync(int? consultationId, int? patientId, string procedureType, 
-            string complicationTitle, string details, string severity = "Warning");
+        Task LogComplicationAsync(string tranCode, string complicationTitle, string details, string severity = "Warning", string? performedBy = null, string? sourceIp = null);
 
         /// <summary>
         /// Log an allergy-related event.
         /// </summary>
-        Task LogAllergyEventAsync(int? patientId, string allergy, string details, string severity = "Error");
+        Task LogAllergyEventAsync(string tranCode, string allergy, string details, string severity = "Error", string? performedBy = null, string? sourceIp = null);
 
         /// <summary>
         /// Log a safety incident.
         /// </summary>
-        Task LogSafetyIncidentAsync(int? consultationId, int? patientId, string title, string details, 
-            string severity = "Critical", string tags = "");
+        Task LogSafetyIncidentAsync(string tranCode, string title, string details,
+            string severity = "Critical", string tags = "", string? performedBy = null, string? sourceIp = null);
 
         /// <summary>
         /// Log a field change for audit trail tracking.
         /// </summary>
-        Task LogFieldChangeAsync(int? consultationId, int? patientId, string entityType, int entityId,
-            string fieldName, string? oldValue, string? newValue, string? procedureType = null);
+        Task LogFieldChangeAsync(string tranCode, string entityType, int entityId,
+            string fieldName, string? oldValue, string? newValue, string? performedBy = null, string? sourceIp = null);
+
+        /// <summary>
+        /// Get all audit entries for a transaction code.
+        /// </summary>
+        Task<List<AuditLog>> GetAuditTrailByTranCodeAsync(string tranCode);
 
         /// <summary>
         /// Get all audit entries for a consultation.
@@ -64,7 +68,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
         /// <summary>
         /// Mark an incident as reviewed and add resolution notes.
         /// </summary>
-        Task MarkAsReviewedAsync(int auditLogId, string reviewedBy, string resolutionNotes);
+        Task MarkAsReviewedAsync(long auditLogId, string reviewedBy, string resolutionNotes);
 
         /// <summary>
         /// Delete old audit logs (retention policy).
@@ -80,24 +84,29 @@ namespace AestheticEMR.Core.Services.Aesthetics
         {
             if (auditLog == null) return;
 
+            if (string.IsNullOrWhiteSpace(auditLog.TranCode))
+            {
+                auditLog.TranCode = "GENERAL";
+            }
+
             auditLog.EventDateTime = DateTime.UtcNow;
             _dbContext.AuditLogs.Add(auditLog);
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task LogComplicationAsync(int? consultationId, int? patientId, string procedureType,
-            string complicationTitle, string details, string severity = "Warning")
+        public async Task LogComplicationAsync(string tranCode, string complicationTitle, string details, string severity = "Warning", string? performedBy = null, string? sourceIp = null)
         {
             var auditLog = new AuditLog
             {
-                ConsultationId = consultationId,
-                PatientId = patientId,
+                TranCode = string.IsNullOrWhiteSpace(tranCode) ? "GENERAL" : tranCode,
                 EventType = "Complication",
-                ProcedureType = procedureType,
                 Summary = complicationTitle,
                 Details = details,
                 Severity = severity,
                 Tags = "#complication",
+                UserId = performedBy,
+                PerformedBy = performedBy,
+                SourceIp = sourceIp,
                 EventDateTime = DateTime.UtcNow,
                 Status = "Open"
             };
@@ -105,16 +114,19 @@ namespace AestheticEMR.Core.Services.Aesthetics
             await LogEventAsync(auditLog);
         }
 
-        public async Task LogAllergyEventAsync(int? patientId, string allergy, string details, string severity = "Error")
+        public async Task LogAllergyEventAsync(string tranCode, string allergy, string details, string severity = "Error", string? performedBy = null, string? sourceIp = null)
         {
             var auditLog = new AuditLog
             {
-                PatientId = patientId,
+                TranCode = string.IsNullOrWhiteSpace(tranCode) ? "GENERAL" : tranCode,
                 EventType = "Allergy",
                 Summary = $"Allergy Detected: {allergy}",
                 Details = details,
                 Severity = severity,
                 Tags = "#allergy #safety",
+                UserId = performedBy,
+                PerformedBy = performedBy,
+                SourceIp = sourceIp,
                 EventDateTime = DateTime.UtcNow,
                 Status = "Open"
             };
@@ -122,18 +134,20 @@ namespace AestheticEMR.Core.Services.Aesthetics
             await LogEventAsync(auditLog);
         }
 
-        public async Task LogSafetyIncidentAsync(int? consultationId, int? patientId, string title, string details,
-            string severity = "Critical", string tags = "")
+        public async Task LogSafetyIncidentAsync(string tranCode, string title, string details,
+            string severity = "Critical", string tags = "", string? performedBy = null, string? sourceIp = null)
         {
             var auditLog = new AuditLog
             {
-                ConsultationId = consultationId,
-                PatientId = patientId,
+                TranCode = string.IsNullOrWhiteSpace(tranCode) ? "GENERAL" : tranCode,
                 EventType = "Safety Incident",
                 Summary = title,
                 Details = details,
                 Severity = severity,
                 Tags = string.IsNullOrEmpty(tags) ? "#incident #safety" : tags,
+                UserId = performedBy,
+                PerformedBy = performedBy,
+                SourceIp = sourceIp,
                 EventDateTime = DateTime.UtcNow,
                 Status = "Open"
             };
@@ -141,22 +155,27 @@ namespace AestheticEMR.Core.Services.Aesthetics
             await LogEventAsync(auditLog);
         }
 
-        public async Task LogFieldChangeAsync(int? consultationId, int? patientId, string entityType, int entityId,
-            string fieldName, string? oldValue, string? newValue, string? procedureType = null)
+        public async Task LogFieldChangeAsync(string tranCode, string entityType, int entityId,
+            string fieldName, string? oldValue, string? newValue, string? performedBy = null, string? sourceIp = null)
         {
+            var oldDisplay = string.IsNullOrWhiteSpace(oldValue) ? "(empty)" : oldValue;
+            var newDisplay = string.IsNullOrWhiteSpace(newValue) ? "(empty)" : newValue;
+
             var auditLog = new AuditLog
             {
-                ConsultationId = consultationId,
-                PatientId = patientId,
+                TranCode = string.IsNullOrWhiteSpace(tranCode) ? "GENERAL" : tranCode,
                 EventType = "Update",
                 EntityType = entityType,
                 EntityId = entityId,
                 FieldName = fieldName,
                 OldValue = oldValue,
                 NewValue = newValue,
-                ProcedureType = procedureType,
-                Summary = $"{entityType}.{fieldName} updated",
+                Summary = $"{entityType}#{entityId}: {fieldName} changed",
+                Details = $"Changed {fieldName} from '{oldDisplay}' to '{newDisplay}'",
                 Severity = "Info",
+                UserId = performedBy,
+                PerformedBy = performedBy,
+                SourceIp = sourceIp,
                 EventDateTime = DateTime.UtcNow,
                 Status = "Logged"
             };
@@ -164,21 +183,19 @@ namespace AestheticEMR.Core.Services.Aesthetics
             await LogEventAsync(auditLog);
         }
 
-        public async Task<List<AuditLog>> GetConsultationAuditTrailAsync(int consultationId)
+        public async Task<List<AuditLog>> GetAuditTrailByTranCodeAsync(string tranCode)
         {
             return await _dbContext.AuditLogs
-                .Where(a => a.ConsultationId == consultationId)
+                .Where(a => a.TranCode == tranCode)
                 .OrderByDescending(a => a.EventDateTime)
                 .ToListAsync();
         }
 
+        public async Task<List<AuditLog>> GetConsultationAuditTrailAsync(int consultationId)
+            => await GetAuditTrailByTranCodeAsync(consultationId.ToString());
+
         public async Task<List<AuditLog>> GetPatientAuditTrailAsync(int patientId)
-        {
-            return await _dbContext.AuditLogs
-                .Where(a => a.PatientId == patientId)
-                .OrderByDescending(a => a.EventDateTime)
-                .ToListAsync();
-        }
+            => await GetAuditTrailByTranCodeAsync(patientId.ToString());
 
         public async Task<List<AuditLog>> GetOpenIncidentsAsync()
         {
@@ -196,7 +213,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 .ToListAsync();
         }
 
-        public async Task MarkAsReviewedAsync(int auditLogId, string reviewedBy, string resolutionNotes)
+        public async Task MarkAsReviewedAsync(long auditLogId, string reviewedBy, string resolutionNotes)
         {
             var auditLog = await _dbContext.AuditLogs.FindAsync(auditLogId);
             if (auditLog != null)

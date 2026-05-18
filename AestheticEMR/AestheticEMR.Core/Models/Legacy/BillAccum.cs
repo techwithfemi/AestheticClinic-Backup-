@@ -27,7 +27,7 @@ public partial class BillAccum
 
     public string? conID { get; set; }
 
-    public bool? suppres { get; set; } = true;
+    public bool? suppres { get; set; } = false;
 
     public string? Capitated { get; set; } = "NO";
 

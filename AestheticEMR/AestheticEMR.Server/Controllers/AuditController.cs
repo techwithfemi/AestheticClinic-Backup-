@@ -1,6 +1,7 @@
 using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Server.Authorization;
+using AestheticEMR.Server.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -83,7 +84,7 @@ namespace AestheticEMR.Server.Controllers
         {
             try
             {
-                var trail = await _auditService.GetConsultationAuditTrailAsync(consultationId);
+                var trail = await _auditService.GetAuditTrailByTranCodeAsync(consultationId.ToString());
                 return Ok(trail);
             }
             catch (Exception ex)
@@ -104,7 +105,7 @@ namespace AestheticEMR.Server.Controllers
         {
             try
             {
-                var trail = await _auditService.GetPatientAuditTrailAsync(patientId);
+                var trail = await _auditService.GetAuditTrailByTranCodeAsync(patientId.ToString());
                 return Ok(trail);
             }
             catch (Exception ex)
@@ -127,13 +128,16 @@ namespace AestheticEMR.Server.Controllers
                 if (request == null)
                     return BadRequest("Request body is required");
 
+                var performedBy = Utilities.GetUserId(User) ?? User?.Identity?.Name;
+                var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
                 await _auditService.LogComplicationAsync(
-                    request.ConsultationId,
-                    request.PatientId,
-                    request.ProcedureType,
+                    request.TranCode,
                     request.ComplicationTitle,
                     request.Details,
-                    request.Severity ?? "Warning");
+                    request.Severity ?? "Warning",
+                    performedBy,
+                    sourceIp);
 
                 return Ok(new { message = "Complication logged successfully" });
             }
@@ -157,13 +161,17 @@ namespace AestheticEMR.Server.Controllers
                 if (request == null)
                     return BadRequest("Request body is required");
 
+                var performedBy = Utilities.GetUserId(User) ?? User?.Identity?.Name;
+                var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
                 await _auditService.LogSafetyIncidentAsync(
-                    request.ConsultationId,
-                    request.PatientId,
+                    request.TranCode,
                     request.Title,
                     request.Details,
                     request.Severity ?? "Critical",
-                    request.Tags ?? "");
+                    request.Tags ?? "",
+                    performedBy,
+                    sourceIp);
 
                 return Ok(new { message = "Safety incident logged successfully" });
             }
@@ -187,11 +195,16 @@ namespace AestheticEMR.Server.Controllers
                 if (request == null)
                     return BadRequest("Request body is required");
 
+                var performedBy = Utilities.GetUserId(User) ?? User?.Identity?.Name;
+                var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
                 await _auditService.LogAllergyEventAsync(
-                    request.PatientId,
+                    request.TranCode,
                     request.Allergy,
                     request.Details,
-                    request.Severity ?? "Error");
+                    request.Severity ?? "Error",
+                    performedBy,
+                    sourceIp);
 
                 return Ok(new { message = "Allergy event logged successfully" });
             }
@@ -209,16 +222,18 @@ namespace AestheticEMR.Server.Controllers
         [HttpPut("{auditLogId}/review")]
         [Authorize(AuthPolicies.ViewAuditLogsPolicy)]
         [ProducesResponseType(200)]
-        public async Task<IActionResult> MarkAsReviewed(int auditLogId, [FromBody] ReviewRequest request)
+        public async Task<IActionResult> MarkAsReviewed(long auditLogId, [FromBody] ReviewRequest request)
         {
             try
             {
                 if (request == null)
                     return BadRequest("Request body is required");
 
+                var reviewedBy = Utilities.GetUserId(User) ?? User?.Identity?.Name ?? "system";
+
                 await _auditService.MarkAsReviewedAsync(
                     auditLogId,
-                    request.ReviewedBy,
+                    reviewedBy,
                     request.ResolutionNotes);
 
                 return Ok(new { message = "Incident marked as reviewed" });
@@ -235,9 +250,7 @@ namespace AestheticEMR.Server.Controllers
     // Request DTOs
     public class ComplicationLogRequest
     {
-        public int? ConsultationId { get; set; }
-        public int? PatientId { get; set; }
-        public string ProcedureType { get; set; } = string.Empty;
+        public string TranCode { get; set; } = string.Empty;
         public string ComplicationTitle { get; set; } = string.Empty;
         public string Details { get; set; } = string.Empty;
         public string? Severity { get; set; }
@@ -245,8 +258,7 @@ namespace AestheticEMR.Server.Controllers
 
     public class SafetyIncidentRequest
     {
-        public int? ConsultationId { get; set; }
-        public int? PatientId { get; set; }
+        public string TranCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Details { get; set; } = string.Empty;
         public string? Severity { get; set; }
@@ -255,7 +267,7 @@ namespace AestheticEMR.Server.Controllers
 
     public class AllergyLogRequest
     {
-        public int? PatientId { get; set; }
+        public string TranCode { get; set; } = string.Empty;
         public string Allergy { get; set; } = string.Empty;
         public string Details { get; set; } = string.Empty;
         public string? Severity { get; set; }
@@ -263,7 +275,6 @@ namespace AestheticEMR.Server.Controllers
 
     public class ReviewRequest
     {
-        public string ReviewedBy { get; set; } = string.Empty;
         public string ResolutionNotes { get; set; } = string.Empty;
     }
 }

@@ -319,7 +319,7 @@ export class SpaDialogComponent {
   }
 
   private loadServiceTypes(): void {
-    this.http.get<SpaStaticLists>('assets/spa-static-lists.json').subscribe({
+    this.http.get<SpaStaticLists>('assets/module-settings/spa.json').subscribe({
       next: lists => {
         const cleaned = lists.serviceTypes?.filter(x => !!x?.trim()) ?? [];
         const order = (lists.serviceTypesOrder ?? 'ASC').toUpperCase();

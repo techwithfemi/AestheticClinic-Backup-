@@ -1,9 +1,21 @@
 {
-  "autoFollowUpDays": 14,
-  "consentProcedureTypes": [
-    "Botox",
-    "Laser",
-    "Spa",
-    "Procedures"
-  ]
+  "clientType": {
+    "default": [
+      "PRIVATE",
+      "MTHLY",
+      "HMO",
+      "NHIS"
+    ],
+    "PRIVATE": [
+      "PRIVATE",
+      "MTHLY"
+    ],
+    "HMO": [
+      "HMO",
+      "NHIS"
+    ],
+    "RETAINERSHIP": [
+      "MTHLY"
+    ]
+  }
 }

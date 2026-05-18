@@ -5,10 +5,9 @@
 ## Quick Start
 
 When asking AI to extend QuickApp, include this in your prompt:
-Reference the AI rules file: ai-rules/AI_RULES.md
-
-Follow the exact patterns and conventions documented in this file.
-Reference UserAccountController, UserRoleController, and UserVMs.cs for real implementation examples.
+- Reference the AI rules file: ai-rules/AI_RULES.md
+- Follow the exact patterns and conventions documented in this file.
+- Reference UserAccountController, UserRoleController, and UserVMs.cs for real implementation examples.
 
 ## What QuickApp Provides
 
@@ -138,16 +137,17 @@ builder.Services.AddScoped<IProductService, ProductService>();
 
 All endpoints must be protected. Use one of these approaches:
 
-1. **Policy-based authorization** (attribute):[HttpGet("users")]
+1. **Policy-based authorization** (attribute): [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() { ... }2. **Inline authorization checks** (for resource-based authorization):[HttpGet("users/{id}")]
+public async Task<IActionResult> GetUsers() { ... }2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-}**Authorization Rules:**
+}
+**Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
 2. ✅ **Use policy constants** from `AuthPolicies` class
@@ -191,7 +191,8 @@ public async Task<IActionResult> Delete(int id)
         AddModelError(ex.Message);
         return BadRequest(ModelState);
     }
-}**Error Handling Rules:**
+}
+**Error Handling Rules:**
 
 1. ✅ **Use custom exceptions** for domain-specific errors
 2. ✅ **Log errors** using `_logger.LogError()`
@@ -420,3 +421,13 @@ When creating a new entity with full CRUD:
 ## Configuration Management
 
 - Use per-department/module JSON settings files instead of hardcoded values (e.g., configurable automatic appointment scheduling days from JSON).
+
+---
+
+## Development Practices
+
+- Use minimal line-scoped edits (no large block replacements).
+- Validate each change with a build.
+- Limit changes to audit-log files unless explicitly asked otherwise.
+- Provide a short changed/why/verified summary after each change.
+- **Prioritize small safe edits** to ensure code reliability and avoid destabilizing modifications across the entire project.

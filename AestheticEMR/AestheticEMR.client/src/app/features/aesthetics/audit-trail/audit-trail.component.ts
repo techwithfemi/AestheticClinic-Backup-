@@ -1,6 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
@@ -16,13 +15,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 
 interface AuditLog {
   id: number;
-  consultationId?: number;
-  patientId?: number;
+  tranCode: string;
   eventType: string;
-  procedureType?: string;
   summary: string;
   details?: string;
   severity: string;
@@ -31,6 +29,7 @@ interface AuditLog {
   fieldName?: string;
   oldValue?: string;
   newValue?: string;
+  userId?: string;
   performedBy?: string;
   eventDateTime: Date | string;
   sourceIp?: string;
@@ -85,33 +84,47 @@ interface AuditLog {
               <div class="table-container">
                 <table mat-table [dataSource]="openIncidents()" class="audit-table">
                   <ng-container matColumnDef="eventType">
-                    <th mat-header-cell>Event Type</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Event Type</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventType }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="severity">
-                    <th mat-header-cell>Severity</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Severity</th>
+                    <td mat-cell *matCellDef="let item">{{ item.severity }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="summary">
-                    <th mat-header-cell>Summary</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Summary</th>
+                    <td mat-cell *matCellDef="let item">{{ item.summary }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="eventDateTime">
-                    <th mat-header-cell>Date/Time</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventDateTime | date:'dd-MMM-yyyy HH:mm' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="performedBy">
-                    <th mat-header-cell>Reported By</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Reported By</th>
+                    <td mat-cell *matCellDef="let item">{{ item.performedBy || 'System' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="userId">
+                    <th mat-header-cell *matHeaderCellDef>User ID</th>
+                    <td mat-cell *matCellDef="let item">{{ item.userId || item.performedBy || '-' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="actions">
-                    <th mat-header-cell>Actions</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let item">
+                      <button mat-icon-button color="primary" (click)="viewDetails(item)" matTooltip="View details">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                      @if (item.status === 'Open') {
+                        <button mat-icon-button color="accent" (click)="reviewIncident(item)" matTooltip="Mark reviewed">
+                          <mat-icon>done</mat-icon>
+                        </button>
+                      }
+                    </td>
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -151,33 +164,42 @@ interface AuditLog {
               <div class="table-container">
                 <table mat-table [dataSource]="allIncidents()" class="audit-table">
                   <ng-container matColumnDef="eventType">
-                    <th mat-header-cell>Event Type</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Event Type</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventType }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="severity">
-                    <th mat-header-cell>Severity</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Severity</th>
+                    <td mat-cell *matCellDef="let item">{{ item.severity }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="summary">
-                    <th mat-header-cell>Summary</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Summary</th>
+                    <td mat-cell *matCellDef="let item">{{ item.summary }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="status">
-                    <th mat-header-cell>Status</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let item">{{ item.status }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="userId">
+                    <th mat-header-cell *matHeaderCellDef>User ID</th>
+                    <td mat-cell *matCellDef="let item">{{ item.userId || item.performedBy || '-' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="eventDateTime">
-                    <th mat-header-cell>Date/Time</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventDateTime | date:'dd-MMM-yyyy HH:mm' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="actions">
-                    <th mat-header-cell>Actions</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let item">
+                      <button mat-icon-button color="primary" (click)="viewDetails(item)" matTooltip="View details">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumnsAll"></tr>
@@ -211,28 +233,28 @@ interface AuditLog {
               <div class="table-container">
                 <table mat-table [dataSource]="consultationTrail()" class="audit-table">
                   <ng-container matColumnDef="eventType">
-                    <th mat-header-cell>Event Type</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Event Type</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventType }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="fieldName">
-                    <th mat-header-cell>Field</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Field</th>
+                    <td mat-cell *matCellDef="let item">{{ item.fieldName || '-' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="oldValue">
-                    <th mat-header-cell>Old Value</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Old Value</th>
+                    <td mat-cell *matCellDef="let item">{{ item.oldValue || '(empty)' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="newValue">
-                    <th mat-header-cell>New Value</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>New Value</th>
+                    <td mat-cell *matCellDef="let item">{{ item.newValue || '(empty)' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="eventDateTime">
-                    <th mat-header-cell>Date/Time</th>
-                    <td mat-cell></td>
+                    <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+                    <td mat-cell *matCellDef="let item">{{ item.eventDateTime | date:'dd-MMM-yyyy HH:mm' }}</td>
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumnsConsultation"></tr>
@@ -273,7 +295,7 @@ interface AuditLog {
   `]
 })
 export class AuditTrailComponent implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly endpoint = inject(AestheticEndpoint);
   private readonly alertService = inject(AlertService);
 
   readonly loadingIndicator = signal(false);
@@ -284,8 +306,8 @@ export class AuditTrailComponent implements OnInit {
   readonly filterSeverity = signal('');
   readonly consultationIdFilter = signal(0);
 
-  readonly displayedColumns = ['eventType', 'severity', 'summary', 'eventDateTime', 'performedBy', 'actions'];
-  readonly displayedColumnsAll = ['eventType', 'severity', 'summary', 'status', 'eventDateTime', 'actions'];
+  readonly displayedColumns = ['eventType', 'severity', 'summary', 'eventDateTime', 'performedBy', 'userId', 'actions'];
+  readonly displayedColumnsAll = ['eventType', 'severity', 'summary', 'status', 'userId', 'eventDateTime', 'actions'];
   readonly displayedColumnsConsultation = ['eventType', 'fieldName', 'oldValue', 'newValue', 'eventDateTime'];
 
   ngOnInit(): void {
@@ -294,7 +316,7 @@ export class AuditTrailComponent implements OnInit {
 
   loadOpenIncidents(): void {
     this.loadingIndicator.set(true);
-    this.http.get<AuditLog[]>('api/audit/incidents/open').subscribe({
+    this.endpoint.getOpenAuditIncidentsEndpoint<AuditLog[]>().subscribe({
       next: incidents => {
         this.openIncidents.set(incidents || []);
         this.loadingIndicator.set(false);
@@ -313,9 +335,15 @@ export class AuditTrailComponent implements OnInit {
     }
 
     this.loadingIndicator.set(true);
-    const params = { severity: this.filterSeverity() };
 
-    this.http.get<AuditLog[]>('api/audit/incidents', { params }).subscribe({
+    const now = new Date();
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - 1);
+
+    const fromDate = from.toISOString();
+    const toDate = now.toISOString();
+
+    this.endpoint.getAuditIncidentsEndpoint<AuditLog[]>(this.filterSeverity(), fromDate, toDate).subscribe({
       next: incidents => {
         this.allIncidents.set(incidents || []);
         this.loadingIndicator.set(false);
@@ -335,7 +363,7 @@ export class AuditTrailComponent implements OnInit {
     }
 
     this.loadingIndicator.set(true);
-    this.http.get<AuditLog[]>(`api/audit/consultation/${id}`).subscribe({
+    this.endpoint.getConsultationAuditTrailEndpoint<AuditLog[]>(id).subscribe({
       next: trail => {
         this.consultationTrail.set(trail || []);
         this.loadingIndicator.set(false);
@@ -350,7 +378,7 @@ export class AuditTrailComponent implements OnInit {
   reviewIncident(incident: AuditLog): void {
     const notes = prompt('Enter resolution notes:');
     if (notes) {
-      this.http.put(`api/audit/${incident.id}/review`, { resolutionNotes: notes }).subscribe({
+      this.endpoint.reviewAuditIncidentEndpoint(incident.id, { resolutionNotes: notes }).subscribe({
         next: () => {
           this.alertService.showMessage('Success', 'Incident marked as reviewed', MessageSeverity.success);
           this.loadOpenIncidents();
@@ -368,6 +396,7 @@ export class AuditTrailComponent implements OnInit {
       Severity: ${incident.severity}
       Summary: ${incident.summary}
       Details: ${incident.details || 'N/A'}
+      User ID: ${incident.userId || 'N/A'}
       Performed By: ${incident.performedBy || 'N/A'}
       Date: ${incident.eventDateTime}
     `;

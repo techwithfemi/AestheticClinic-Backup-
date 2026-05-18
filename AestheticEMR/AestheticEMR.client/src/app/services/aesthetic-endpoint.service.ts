@@ -18,6 +18,7 @@ export class AestheticEndpoint extends EndpointBase {
   private configurations = inject(ConfigurationService);
 
   private get baseUrl() { return `${this.configurations.baseUrl}/api/aesthetic`; }
+  private get auditUrl() { return `${this.configurations.baseUrl}/api/audit`; }
 
   private get patientsUrl() { return `${this.baseUrl}/patients`; }
   private get consultationsUrl() { return `${this.baseUrl}/consultations`; }
@@ -215,6 +216,34 @@ export class AestheticEndpoint extends EndpointBase {
   submitPatientSatisfactionEndpoint<T>(token: string, payload: object): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}/patient-satisfaction/submit?token=${encodeURIComponent(token)}`, JSON.stringify(payload), this.jsonHeadersWithoutAuth).pipe(
       catchError(error => this.handleError(error, () => this.submitPatientSatisfactionEndpoint<T>(token, payload))));
+  }
+
+  getOpenAuditIncidentsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.auditUrl}/incidents/open`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getOpenAuditIncidentsEndpoint<T>())));
+  }
+
+  getAuditIncidentsEndpoint<T>(severity?: string, fromDate?: string, toDate?: string): Observable<T> {
+    const params = new URLSearchParams();
+    if (severity) params.set('severity', severity);
+    if (fromDate) params.set('fromDate', fromDate);
+    if (toDate) params.set('toDate', toDate);
+
+    const query = params.toString();
+    const url = query ? `${this.auditUrl}/incidents?${query}` : `${this.auditUrl}/incidents`;
+
+    return this.http.get<T>(url, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAuditIncidentsEndpoint<T>(severity, fromDate, toDate))));
+  }
+
+  getConsultationAuditTrailEndpoint<T>(consultationId: number): Observable<T> {
+    return this.http.get<T>(`${this.auditUrl}/consultation/${consultationId}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsultationAuditTrailEndpoint<T>(consultationId))));
+  }
+
+  reviewAuditIncidentEndpoint<T>(auditLogId: number, payload: object): Observable<T> {
+    return this.http.put<T>(`${this.auditUrl}/${auditLogId}/review`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.reviewAuditIncidentEndpoint<T>(auditLogId, payload))));
   }
 
   private get jsonHeadersWithoutAuth(): { headers: HttpHeaders | Record<string, string | string[]> } {

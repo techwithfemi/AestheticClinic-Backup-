@@ -1,5 +1,8 @@
+using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Legacy;
+using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using AestheticEMR.Server.Services;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +12,11 @@ namespace AestheticEMR.Server.Controllers;
 
 [Route("api/[controller]")]
 [Authorize]
-public class AttendanceController(ILogger<AttendanceController> logger, IMapper mapper, IAttendanceService attendanceService)
+public class AttendanceController(
+    ILogger<AttendanceController> logger,
+    IMapper mapper,
+    IAttendanceService attendanceService,
+    IAuditService auditService)
     : BaseApiController(logger, mapper)
 {
     [HttpGet]
@@ -84,6 +91,13 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
             var record = _mapper.Map<HRecord>(model);
             record.ConsultId = string.Empty;
             var created = await attendanceService.CreateAsync(record);
+
+            await LogAttendanceAuditAsync(
+                "Create",
+                "Attendance recorded",
+                $"Attendance created for patient {created.PNo} ({created.ClinicType}).",
+                created);
+
             return CreatedAtAction(nameof(GetById), new { id = created.ConsultId }, _mapper.Map<AttendanceVM>(created));
         }
         catch (Exception ex)
@@ -117,6 +131,13 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
             existing.ConsultId = id;
 
             var updated = await attendanceService.UpdateAsync(existing);
+
+            await LogAttendanceAuditAsync(
+                "Update",
+                "Attendance updated",
+                $"Attendance updated for patient {updated.PNo} ({updated.ClinicType}).",
+                updated);
+
             return Ok(_mapper.Map<AttendanceVM>(updated));
         }
         catch (Exception ex)
@@ -141,6 +162,13 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
             }
 
             await attendanceService.DeleteAsync(id);
+
+            await LogAttendanceAuditAsync(
+                "Delete",
+                "Attendance deleted",
+                $"Attendance deleted for patient {existing.PNo} ({existing.ClinicType}).",
+                existing);
+
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -155,5 +183,29 @@ public class AttendanceController(ILogger<AttendanceController> logger, IMapper 
             AddModelError("Unable to delete attendance record");
             return BadRequest(ModelState);
         }
+    }
+
+    private async Task LogAttendanceAuditAsync(string eventType, string summary, string details, HRecord record)
+    {
+        var performedBy = Utilities.GetUserId(User) ?? User?.Identity?.Name;
+        var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        await auditService.LogEventAsync(new AuditLog
+        {
+            TranCode = string.IsNullOrWhiteSpace(record.ConsultId)
+                ? (string.IsNullOrWhiteSpace(record.PNo) ? "GENERAL" : record.PNo)
+                : record.ConsultId,
+            EventType = eventType,
+            Summary = summary,
+            Details = details,
+            Severity = "Info",
+            EntityType = nameof(HRecord),
+            EntityId = record.RecId,
+            UserId = performedBy,
+            PerformedBy = performedBy,
+            SourceIp = sourceIp,
+            Tags = "#attendance #frontdesk",
+            Status = "Logged"
+        });
     }
 }

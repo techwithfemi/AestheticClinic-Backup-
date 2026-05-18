@@ -7,29 +7,20 @@ namespace AestheticEMR.Core.Models.Aesthetic
     /// </summary>
     public class AuditLog
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
-        /// Reference to the aesthetic consultation (procedure record).
+        /// Transaction code (e.g. ConsultId, BillNo, PNo, LabNo, etc.).
         /// </summary>
-        public int? ConsultationId { get; set; }
-
-        /// <summary>
-        /// Reference to the patient.
-        /// </summary>
-        public int? PatientId { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
+        public string TranCode { get; set; } = string.Empty;
 
         /// <summary>
         /// Type of audit event: Create, Update, Delete, Complication, Allergy, Safety, Incident, etc.
         /// </summary>
         [System.ComponentModel.DataAnnotations.MaxLength(50)]
         public string EventType { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Procedure type: Botox, Laser, Dermal Filler, Consultation, etc.
-        /// </summary>
-        [System.ComponentModel.DataAnnotations.MaxLength(50)]
-        public string? ProcedureType { get; set; }
 
         /// <summary>
         /// High-level summary/title of the event.
@@ -49,7 +40,7 @@ namespace AestheticEMR.Core.Models.Aesthetic
         public string Severity { get; set; } = "Info";
 
         /// <summary>
-        /// Entity type modified (e.g., AestheticConsultation, AestheticPhoto, etc.).
+        /// Entity type modified (e.g., HRecord, Billing, etc.).
         /// </summary>
         [System.ComponentModel.DataAnnotations.MaxLength(100)]
         public string? EntityType { get; set; }
@@ -76,9 +67,15 @@ namespace AestheticEMR.Core.Models.Aesthetic
         public string? NewValue { get; set; }
 
         /// <summary>
+        /// User identifier (subject/ID) who triggered the event.
+        /// </summary>
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
+        public string? UserId { get; set; }
+
+        /// <summary>
         /// User who triggered the event.
         /// </summary>
-        [System.ComponentModel.DataAnnotations.MaxLength(40)]
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
         public string? PerformedBy { get; set; }
 
         /// <summary>
@@ -89,13 +86,13 @@ namespace AestheticEMR.Core.Models.Aesthetic
         /// <summary>
         /// IP address or session identifier for security tracking.
         /// </summary>
-        [System.ComponentModel.DataAnnotations.MaxLength(45)]
+        [System.ComponentModel.DataAnnotations.MaxLength(150)]
         public string? SourceIp { get; set; }
 
         /// <summary>
-        /// Tags for categorization: #allergy, #complication, #vascular, #ptosis, #infection, #incident, etc.
+        /// Tags for categorization.
         /// </summary>
-        [System.ComponentModel.DataAnnotations.MaxLength(500)]
+        [System.ComponentModel.DataAnnotations.MaxLength(1000)]
         public string? Tags { get; set; }
 
         /// <summary>
@@ -107,7 +104,7 @@ namespace AestheticEMR.Core.Models.Aesthetic
         /// <summary>
         /// Who reviewed/addressed this incident.
         /// </summary>
-        [System.ComponentModel.DataAnnotations.MaxLength(40)]
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
         public string? ReviewedBy { get; set; }
 
         /// <summary>

@@ -2,7 +2,7 @@ import { Component, OnInit, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -28,11 +28,14 @@ export class PatientsComponent implements OnInit {
   private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
   private readonly router = inject(Router);
   private readonly modalService = inject(NgbModal);
+  private readonly http = inject(HttpClient);
 
   patients: HPatient[] = [];
   patientsCache: HPatient[] = [];
   filteredPatients: HPatient[] = [];
   companies: HRetainership[] = [];
+  frontdeskSettings: any = null;
+  patCatOptions: string[] = [];
   searchText = '';
   loadingIndicator = false;
   isEditing = false;
@@ -79,8 +82,53 @@ export class PatientsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadFrontdeskSettings();
     this.loadData();
     this.loadCompanies();
+    // Listen for company selection changes
+    this.patientForm.get('coyName')?.valueChanges.subscribe(val => {
+      this.updatePatCatOptions(val ?? '');
+    });
+  }
+
+  loadFrontdeskSettings(): void {
+    this.http.get<any>('assets/module-settings/frontdesk.json').subscribe({
+      next: settings => {
+        this.frontdeskSettings = settings;
+        // Set default options on load
+        this.updatePatCatOptions((this.patientForm.get('coyName')?.value ?? ''));
+      },
+      error: () => {
+        this.frontdeskSettings = null;
+        this.patCatOptions = ['PRIVATE', 'MTHLY', 'HMO', 'NHIS'];
+      }
+    });
+  }
+
+  updatePatCatOptions(selectedCompanyId: string): void {
+    if (!this.frontdeskSettings || !this.frontdeskSettings.clientType) {
+      this.patCatOptions = ['PRIVATE', 'MTHLY', 'HMO', 'NHIS'];
+      return;
+    }
+    let clientType = '';
+    if (selectedCompanyId) {
+      const company = this.companies.find(c => c.retainId === selectedCompanyId);
+      clientType = company?.clientType || '';
+    }
+    let options: string[] = [];
+    if (clientType && this.frontdeskSettings.clientType[clientType]) {
+      options = this.frontdeskSettings.clientType[clientType];
+    } else if (this.frontdeskSettings.clientType.default) {
+      options = this.frontdeskSettings.clientType.default;
+    } else {
+      options = ['PRIVATE', 'MTHLY', 'HMO', 'NHIS'];
+    }
+    this.patCatOptions = options;
+    // Optionally reset patient category if not in new list
+    const currentCat = this.patientForm.get('clientCatId')?.value ?? '';
+    if (!options.includes(currentCat)) {
+      this.patientForm.get('clientCatId')?.setValue('');
+    }
   }
 
   get filteredCompanies(): HRetainership[] {

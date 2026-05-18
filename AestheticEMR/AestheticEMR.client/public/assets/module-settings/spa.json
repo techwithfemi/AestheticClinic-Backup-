@@ -1,3 +1,12 @@
 {
-  "autoFollowUpDays": 14
+  "autoFollowUpDays": 14,
+  "serviceTypes": [
+    "Massage",
+    "Facials",
+    "Body Scrub",
+    "Pedicure / Nails",
+    "Sauna"
+  ],
+  "defaultServiceType": "none",
+  "serviceTypesOrder": "asc"
 }

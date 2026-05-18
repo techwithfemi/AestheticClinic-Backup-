@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { firstValueFrom } from 'rxjs';
+import { NgSelectModule } from '@ng-select/ng-select';
 
 import { Billing, BillingDetail } from '../../../models/legacy/billing.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
@@ -17,7 +18,18 @@ import { HPatient } from '../../../models/legacy/h-patient.model';
 import { BillingEndpoint } from '../../../services/billing-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
+import { ProductEndpoint } from '../../../services/product-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { Product, ProductCategory } from '../../../models/shop/product.model';
+import { hRevenueType } from '../../../models/legacy/h-revenue-type.model';
+import { HRevenueTypeEndpoint } from '../../../services/h-revenue-type-endpoint.service';
+import { HServiceNHIEndpoint } from '../../../services/h-service-nhi-endpoint.service';
+import { DrugNHISEndpoint } from '../../../services/drug-nhis-endpoint.service';
+import { LabServiceNHIEndpoint } from '../../../services/lab-service-nhi-endpoint.service';
+import { hServiceNHI } from '../../../models/legacy/h-service-nhi.model';
+import { LabService } from '../../../models/legacy/lab-service.model';
+import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
+import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
 
 export interface BillingInvoiceDialogData {
   mode: 'create' | 'edit';
@@ -50,7 +62,8 @@ interface AttendanceOption {
     MatButtonModule,
     MatIconModule,
     MatCardModule,
-    MatTableModule
+    MatTableModule,
+    NgSelectModule
   ],
   templateUrl: './billing-invoice-dialog.component.html',
   styleUrl: './billing-invoice-dialog.component.scss'
@@ -60,7 +73,12 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private billingEndpoint = inject(BillingEndpoint);
   private attendanceEndpoint = inject(AttendanceEndpoint);
   private patientEndpoint = inject(HPatientEndpoint);
+  private productEndpoint = inject(ProductEndpoint);
   private alertService = inject(AlertService);
+  private hRevenueTypeEndpoint = inject(HRevenueTypeEndpoint);
+  private hServiceNHIEndpoint = inject(HServiceNHIEndpoint);
+  private drugNHISEndpoint = inject(DrugNHISEndpoint);
+  private labServiceNHIEndpoint = inject(LabServiceNHIEndpoint);
 
   private dialogRef = inject(MatDialogRef<BillingInvoiceDialogComponent>);
   data = inject<BillingInvoiceDialogData>(MAT_DIALOG_DATA);
@@ -73,12 +91,32 @@ export class BillingInvoiceDialogComponent implements OnInit {
   selectedAttendanceKey = '';
   persistedDetails: BillingDetail[] = [];
 
+  productCategories: ProductCategory[] = [];
+  products: Product[] = [];
+  revenueTypes: hRevenueType[] = [];
+
+  itemCategories: string[] = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
+  itemTariffs: (hServiceNHI | DrugNhi | LabServiceNhi)[] = [];
+
   invoiceForm: FormGroup = this.fb.group({
     bDate: [this.today(), Validators.required],
     discount: [0, [Validators.min(0)]],
     amountPaid: [0, [Validators.min(0)]],
     billType: ['', Validators.maxLength(50)],
-    details: this.fb.array([this.createDetailGroup()])
+    // Remove detailsArray and use a single FormGroup for line items
+  });
+
+  // Remove detailsArray, lineItemGroup, and createDetailGroup
+
+  // Use a single FormGroup for line items
+  lineItemForm: FormGroup = this.fb.group({
+    itemCategory: [null, Validators.required],
+    drgName: ['', [Validators.required, Validators.maxLength(200)]],
+    price: [0, [Validators.required, Validators.min(0)]],
+    qty: [1, [Validators.required, Validators.min(1)]],
+    billType: ['', [Validators.maxLength(50)]],
+    conID: ['', [Validators.maxLength(50)]],
+    revenueType: [null, Validators.required] // UI only, not persisted
   });
 
   headerInfo = {
@@ -89,21 +127,39 @@ export class BillingInvoiceDialogComponent implements OnInit {
     coyID: ''
   };
 
-  get detailsArray(): FormArray {
-    return this.invoiceForm.get('details') as FormArray;
-  }
-
-  get lineItemGroup(): FormGroup {
-    return this.detailsArray.at(0) as FormGroup;
-  }
-
   get isEditing(): boolean {
     return this.data.mode === 'edit';
   }
 
   ngOnInit(): void {
     this.loadAttendanceOptions();
-
+    this.loadItemCategories();
+    this.loadProductCategories();
+    this.loadProducts();
+    this.loadRevenueTypes();
+    this.lineItemForm.get('itemCategory')?.valueChanges.subscribe((category: string) => {
+      this.loadTariffsForCategory(category);
+    });
+    this.lineItemForm.get('drgName')?.valueChanges.subscribe((drgName: string) => {
+      const category = (this.lineItemForm?.get('itemCategory')?.value || '').toLowerCase();
+      let selected;
+      if (category === 'service') {
+        selected = this.itemTariffs.find(item => (item as hServiceNHI).service === drgName);
+        if (selected && typeof (selected as hServiceNHI).price !== 'undefined') {
+          this.lineItemForm.get('price')?.setValue((selected as hServiceNHI).price);
+        }
+      } else if (category === 'drug') {
+        selected = this.itemTariffs.find(item => (item as DrugNhi).drgName === drgName);
+        if (selected && typeof (selected as DrugNhi).price !== 'undefined') {
+          this.lineItemForm.get('price')?.setValue((selected as DrugNhi).price);
+        }
+      } else if (category === 'investigation') {
+        selected = this.itemTariffs.find(item => (item as LabServiceNhi).drgName === drgName);
+        if (selected && typeof (selected as LabServiceNhi).price !== 'undefined') {
+          this.lineItemForm.get('price')?.setValue((selected as LabServiceNhi).price);
+        }
+      }
+    });
     if (this.isEditing && this.data.billNo) {
       void this.loadInvoice(this.data.billNo);
       return;
@@ -113,31 +169,17 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   async addToGrid(): Promise<void> {
-    if (this.lineItemGroup.invalid || !this.headerInfo.billNo || !this.headerInfo.pNo) {
-      this.alertService.showStickyMessage('Validation Error', 'Please select Patient [ConsultID] and complete Bill Item, Price and Qty.', MessageSeverity.error);
+    if (this.lineItemForm.invalid || !this.headerInfo.billNo || !this.headerInfo.pNo) {
+      this.alertService.showStickyMessage('Validation Error', 'Please select Patient [ConsultID] and complete all required fields.', MessageSeverity.error);
       return;
     }
-
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Adding bill item...');
-
     try {
       const newDetail = this.mapCurrentLineItem();
-      const existing = await this.getInvoiceByBillNo(this.headerInfo.billNo);
-
-      if (!existing) {
-        const createPayload = this.buildPayload([newDetail]);
-        await firstValueFrom(this.billingEndpoint.getNewInvoiceEndpoint<Billing>(createPayload));
-      } else {
-        const updatedDetails = [...(existing.details ?? []), newDetail];
-        const updatePayload = this.buildPayload(updatedDetails);
-        await firstValueFrom(this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(existing.billNo, updatePayload));
-      }
-
-      await this.refreshPersistedDetails();
-      this.resetLineItemForm();
+      this.persistedDetails = [...this.persistedDetails, newDetail];
+      this.lineItemForm.reset({ qty: 1, price: 0 });
       this.hasChanges = true;
-
       this.alertService.stopLoadingMessage();
       this.loadingIndicator = false;
       this.alertService.showMessage('Success', 'Bill item added to grid.', MessageSeverity.success);
@@ -200,17 +242,35 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   save(): void {
-    this.dialogRef.close(this.hasChanges);
+    // Save all rows in the grid to the db (billingDetail table) at once
+    // Update AmountBilled col in billing table (add to existing value if any)
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Saving invoice...');
+    try {
+      const payload = this.buildPayload(this.persistedDetails);
+      // Call endpoint to save all details and update AmountBilled
+      this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(payload.billNo!, payload).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.dialogRef.close(true);
+        },
+        error: (error) => {
+          this.alertService.stopLoadingMessage();
+          this.loadingIndicator = false;
+          this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error, error);
+        }
+      });
+    } catch (error) {
+      this.alertService.stopLoadingMessage();
+      this.loadingIndicator = false;
+      this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error, error);
+    }
   }
 
-  cancel(): void {
-    this.dialogRef.close(this.hasChanges);
-  }
-
-  computeLineTotal(index: number): number {
-    const group = this.detailsArray.at(index) as FormGroup;
-    const price = Number(group.get('price')?.value ?? 0);
-    const qty = Number(group.get('qty')?.value ?? 0);
+  computeLineTotal(): number {
+    const price = Number(this.lineItemForm.get('price')?.value ?? 0);
+    const qty = Number(this.lineItemForm.get('qty')?.value ?? 0);
     return price * qty;
   }
 
@@ -224,6 +284,10 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   optionKey(option: AttendanceOption): string {
     return `${option.consultId}|${option.pNo}`;
+  }
+
+  cancel(): void {
+    this.dialogRef.close(this.hasChanges);
   }
 
   private applyContextDefaults(): void {
@@ -327,6 +391,71 @@ export class BillingInvoiceDialogComponent implements OnInit {
     });
   }
 
+  private loadProductCategories(): void {
+    this.productEndpoint.getProductCategoriesEndpoint<ProductCategory[]>().subscribe(data => {
+      this.productCategories = data || [];
+    });
+  }
+
+  private loadProducts(): void {
+    this.productEndpoint.getProductsEndpoint<Product[]>().subscribe(data => {
+      this.products = data || [];
+    });
+  }
+
+  private loadRevenueTypes(): void {
+    this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<hRevenueType[]>().subscribe(data => {
+      this.revenueTypes = [{ sno: 0, revType: 'Select Revenue Type', catRemarks: '' }, ...(data || [])];
+    });
+  }
+
+  private loadItemCategories(): void {
+    fetch('assets/module-settings/billing.json')
+      .then(response => response.json())
+      .then(json => {
+        if (json.itemCategories && Array.isArray(json.itemCategories)) {
+          this.itemCategories = json.itemCategories;
+        }
+      })
+      .catch(() => {
+        // fallback to default if not found
+        this.itemCategories = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
+      });
+  }
+
+  // Tariff cache: { [coyID_category]: tariffList }
+  private tariffCache: Record<string, (hServiceNHI | DrugNhi | LabServiceNhi)[]> = {};
+
+  private loadTariffsForCategory(category: string): void {
+    const coyID = this.headerInfo.coyID;
+    const normalized = (category || '').toLowerCase();
+    const cacheKey = `${coyID || ''}_${normalized}`;
+    if (this.tariffCache[cacheKey]) {
+      this.itemTariffs = this.tariffCache[cacheKey];
+      return;
+    }
+    if (normalized === 'service') {
+      this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe(data => {
+        this.tariffCache[cacheKey] = data || [];
+        this.itemTariffs = this.tariffCache[cacheKey];
+      });
+    } else if (normalized === 'drug') {
+      this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe(data => {
+        this.tariffCache[cacheKey] = data || [];
+        this.itemTariffs = this.tariffCache[cacheKey];
+      });
+    } else if (normalized === 'investigation') {
+      this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe(data => {
+        this.tariffCache[cacheKey] = data || [];
+        this.itemTariffs = this.tariffCache[cacheKey];
+      });
+    } else if (normalized === 'product') {
+      this.itemTariffs = [];
+    } else {
+      this.itemTariffs = [];
+    }
+  }
+
   private async refreshPersistedDetails(): Promise<void> {
     if (!this.headerInfo.billNo) {
       this.persistedDetails = [];
@@ -346,7 +475,10 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private resetLineItemForm(): void {
-    this.lineItemGroup.reset({
+    this.lineItemForm.reset({
+      productCategoryId: null,
+      productId: null,
+      revenueTypeId: null,
       drgName: '',
       price: 0,
       qty: 1,
@@ -355,18 +487,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
     });
   }
 
-  private createDetailGroup(item?: BillingDetail): FormGroup {
-    return this.fb.group({
-      drgName: [item?.drgName ?? '', [Validators.required, Validators.maxLength(200)]],
-      price: [item?.price ?? 0, [Validators.required, Validators.min(0)]],
-      qty: [item?.qty ?? 1, [Validators.required, Validators.min(1)]],
-      billType: [item?.billType ?? '', [Validators.maxLength(50)]],
-      conID: [item?.conID ?? '', [Validators.maxLength(50)]]
-    });
-  }
-
   private mapCurrentLineItem(): BillingDetail {
-    const value = this.lineItemGroup.getRawValue();
+    const value = this.lineItemForm.getRawValue();
     return {
       drgName: (value.drgName ?? '').trim(),
       price: Number(value.price ?? 0),
@@ -377,89 +499,49 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private buildPayload(details: BillingDetail[]): Billing {
-    const raw = this.invoiceForm.getRawValue();
-
+    const totalAmountBilled = details.reduce((sum, item) => sum + this.computePersistedLineTotal(item), 0);
     return {
       billNo: this.headerInfo.billNo,
-      bDate: this.normalizeDateInput(raw.bDate),
+      consultId: this.headerInfo.consultId,
       pNo: this.headerInfo.pNo,
-      clientID: this.headerInfo.coyID || undefined,
-      debtBF: Number(0),
-      amountBilled: details.reduce((sum, item) => sum + (Number(item.price ?? 0) * Number(item.qty ?? 0)), 0),
-      discount: Number(raw.discount ?? 0),
-      amountPaid: Number(raw.amountPaid ?? 0),
-      billType: (raw.billType ?? '').trim() || undefined,
-      consultId: this.headerInfo.consultId || undefined,
-      company: undefined,
+      clientID: this.headerInfo.coyID,
+      bDate: this.normalizeDateOutput(this.invoiceForm.get('bDate')?.value),
+      discount: this.invoiceForm.get('discount')?.value ?? 0,
+      amountPaid: this.invoiceForm.get('amountPaid')?.value ?? 0,
+      billType: this.invoiceForm.get('billType')?.value ?? '',
       details
     };
   }
 
-  private normalizeDateInput(value: string | Date | null | undefined): string {
-    if (!value) {
-      return this.today();
-    }
-
-    if (typeof value === 'string') {
-      return value.length >= 10 ? value.substring(0, 10) : this.today();
-    }
-
-    return value.toISOString().substring(0, 10);
-  }
-
-  private today(): string {
-    return new Date().toISOString().substring(0, 10);
-  }
-
-  private isToday(value?: string): boolean {
-    if (!value) {
-      return false;
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return false;
-    }
-
-    const today = new Date();
-    return date.getFullYear() === today.getFullYear()
-      && date.getMonth() === today.getMonth()
-      && date.getDate() === today.getDate();
-  }
-
   private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
     if (typeof error === 'string') {
       return error;
     }
 
-    if (!error || typeof error !== 'object') {
-      return 'Unknown error';
-    }
+    return 'An unknown error occurred.';
+  }
 
-    const source = error as { error?: unknown; message?: unknown };
+  private today(): string {
+    return new Date().toISOString().split('T')[0];
+  }
 
-    if (typeof source.message === 'string' && source.message) {
-      return source.message;
-    }
+  private isToday(dateString: string): boolean {
+    const today = new Date();
+    const date = new Date(dateString);
+    return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
+  }
 
-    if (source.error && typeof source.error === 'object') {
-      const errorBody = source.error as { errors?: Record<string, string[]>; title?: string; message?: string };
-      if (typeof errorBody.message === 'string' && errorBody.message) {
-        return errorBody.message;
-      }
+  private normalizeDateInput(dateString: string): string {
+    const [datePart] = dateString.split('T');
+    return datePart;
+  }
 
-      if (typeof errorBody.title === 'string' && errorBody.title) {
-        return errorBody.title;
-      }
-
-      if (errorBody.errors) {
-        const firstErrorGroup = Object.values(errorBody.errors)[0];
-        if (Array.isArray(firstErrorGroup) && firstErrorGroup.length > 0) {
-          return firstErrorGroup[0];
-        }
-      }
-    }
-
-    return 'Unable to process request';
+  private normalizeDateOutput(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toISOString();
   }
 }

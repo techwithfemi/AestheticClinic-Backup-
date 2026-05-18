@@ -4,6 +4,7 @@ using AestheticEMR.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AestheticEMR.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260516042250_FixOpenIddictColumns")]
+    partial class FixOpenIddictColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1007,10 +1010,7 @@ namespace AestheticEMR.Server.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<long>("ID")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ID"));
 
                     b.Property<DateOnly>("bDate")
                         .HasColumnType("date");
@@ -1050,11 +1050,11 @@ namespace AestheticEMR.Server.Migrations
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.BillingDetail", b =>
                 {
-                    b.Property<long>("ID")
+                    b.Property<long>("SNO")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("SNO"));
 
                     b.Property<string>("AppName")
                         .HasColumnType("nvarchar(max)");
@@ -1109,10 +1109,6 @@ namespace AestheticEMR.Server.Migrations
                     b.Property<bool?>("Reversed")
                         .HasColumnType("bit");
 
-                    b.Property<long>("SNO")
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(0L);
-
                     b.Property<string>("billNO")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1151,7 +1147,7 @@ namespace AestheticEMR.Server.Migrations
                     b.Property<string>("treatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("ID");
+                    b.HasKey("SNO");
 
                     b.ToTable("BillingDetails", (string)null);
                 });

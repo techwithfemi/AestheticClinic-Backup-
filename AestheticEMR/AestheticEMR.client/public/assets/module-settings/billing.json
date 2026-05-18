@@ -1,3 +1,4 @@
 {
-  "autoFollowUpDays": 14
+  "autoFollowUpDays": 14,
+  "itemCategories": ["Service", "Product", "Drug", "Investigation"]
 }

@@ -22,22 +22,22 @@
       </div>
 
       <div class="grid">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="half-width">
           <mat-label>Invoice Date</mat-label>
           <input matInput type="date" formControlName="bDate" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="half-width">
           <mat-label>Discount</mat-label>
           <input matInput type="number" formControlName="discount" min="0" step="0.01" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="half-width">
           <mat-label>Amount Paid</mat-label>
           <input matInput type="number" formControlName="amountPaid" min="0" step="0.01" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="half-width">
           <mat-label>Bill Type</mat-label>
           <input matInput formControlName="billType" />
         </mat-form-field>
@@ -53,28 +53,60 @@
         </button>
       </div>
 
-      <div formArrayName="details" class="single-row-editor">
-        <div [formGroupName]="0" class="line-editor-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Bill Item</mat-label>
-            <input matInput formControlName="drgName" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Price</mat-label>
-            <input matInput type="number" formControlName="price" min="0" step="0.01" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Qty</mat-label>
-            <input matInput type="number" formControlName="qty" min="1" step="1" />
-          </mat-form-field>
-
-          <div class="line-total-box">
-            <label>Line Total</label>
-            <div class="readonly-text">{{ computeLineTotal(0) | number: '1.2-2' }}</div>
+      <div class="single-row-editor">
+        <form [formGroup]="lineItemForm">
+          <div class="tariff-row">
+            <!-- Revenue Type comes before Tariff Category, both on same row -->
+            <ng-select
+              [items]="revenueTypes"
+              bindLabel="revType"
+              bindValue="sno"
+              [searchable]="true"
+              [virtualScroll]="true"
+              [clearable]="true"
+              placeholder="Select Revenue Type"
+              formControlName="revenueType"
+              label="Revenue Type"
+              class="tariff-select half-width">
+            </ng-select>
+            <ng-select
+              [items]="itemCategories"
+              [searchable]="true"
+              [virtualScroll]="true"
+              [clearable]="true"
+              placeholder="Select Tariff Category"
+              formControlName="itemCategory"
+              label="Tariff Category"
+              class="tariff-select half-width">
+            </ng-select>
+            <ng-select
+              [items]="itemTariffs"
+              bindLabel="drgName"
+              bindValue="drgName"
+              [searchable]="true"
+              [virtualScroll]="true"
+              [clearable]="true"
+              placeholder="Select Item"
+              formControlName="drgName"
+              label="Select Item"
+              class="tariff-select half-width">
+            </ng-select>
           </div>
-        </div>
+          <div class="line-editor-grid">
+            <mat-form-field appearance="outline" class="line-field half-width">
+              <mat-label>Price</mat-label>
+              <input matInput type="number" formControlName="price" min="0" step="0.01" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="line-field half-width">
+              <mat-label>Qty</mat-label>
+              <input matInput type="number" formControlName="qty" min="1" step="1" />
+            </mat-form-field>
+            <div class="line-total-box line-field half-width">
+              <label>Total</label>
+              <div class="readonly-text">{{ computeLineTotal() | number: '1.2-2' }}</div>
+            </div>
+          </div>
+        </form>
       </div>
 
       <div class="details-table-wrap">
@@ -120,7 +152,7 @@
 
     <div class="dialog-actions">
       <button mat-stroked-button type="button" (click)="cancel()">Close</button>
-      <button mat-raised-button color="primary" type="button" (click)="save()" [disabled]="loadingIndicator">Done</button>
+      <button mat-raised-button color="primary" type="button" (click)="save()" [disabled]="loadingIndicator">Save</button>
     </div>
   </form>
 </div>
