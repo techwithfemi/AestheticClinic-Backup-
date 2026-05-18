@@ -430,29 +430,36 @@ export class BillingInvoiceDialogComponent implements OnInit {
     const coyID = this.headerInfo.coyID;
     const normalized = (category || '').toLowerCase();
     const cacheKey = `${coyID || ''}_${normalized}`;
+    if (!coyID || !category) {
+      this.itemTariffs = [];
+      return;
+    }
     if (this.tariffCache[cacheKey]) {
       this.itemTariffs = this.tariffCache[cacheKey];
+      if (!this.itemTariffs.length) {
+        this.itemTariffs = [{ drgName: 'No items found' } as any];
+      }
       return;
     }
     if (normalized === 'service') {
       this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe(data => {
         this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey];
+        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
       });
     } else if (normalized === 'drug') {
       this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe(data => {
         this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey];
+        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
       });
     } else if (normalized === 'investigation') {
       this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe(data => {
         this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey];
+        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
       });
     } else if (normalized === 'product') {
-      this.itemTariffs = [];
+      this.itemTariffs = [{ drgName: 'No items found' } as any];
     } else {
-      this.itemTariffs = [];
+      this.itemTariffs = [{ drgName: 'No items found' } as any];
     }
   }
 
