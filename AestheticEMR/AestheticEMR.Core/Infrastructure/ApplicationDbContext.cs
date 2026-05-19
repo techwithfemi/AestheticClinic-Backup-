@@ -35,6 +35,8 @@ namespace AestheticEMR.Core.Infrastructure
             _userIdAccessor = userIdAccessor;
         }
 
+        public DbSet<ProductTariff> ProductTariffs { get; set; }
+
         public DbSet<Customer> Customers { get; set; }
 
         public DbSet<ProductCategory> ProductCategories { get; set; }
@@ -1142,6 +1144,12 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.ID).ValueGeneratedOnAdd(); // Only ID is identity
                 entity.Property(e => e.SNO).HasDefaultValue(0L).ValueGeneratedNever(); // SNO is regular column
             });
+
+            builder.Entity<ProductTariff>().HasKey(x => x.SNO);
+            builder.Entity<ProductTariff>().ToTable("ProductTariffs");
+            builder.Entity<ProductTariff>().Property(x => x.PdtName).IsRequired().HasMaxLength(200);
+            builder.Entity<ProductTariff>().Property(x => x.Price).HasColumnType("decimal(18,2)");
+
 
             builder.Entity<BillsForClient>(entity =>
             {

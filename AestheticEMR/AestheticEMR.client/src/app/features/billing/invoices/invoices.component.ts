@@ -249,20 +249,34 @@ export class InvoicesComponent implements OnInit {
     return `${option.consultId}|${option.pNo}`;
   }
 
-  private openInvoiceDialog(data: BillingInvoiceDialogData): void {
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 992;
-
-    const ref = this.dialog.open(BillingInvoiceDialogComponent, {
-      width: isMobile ? '98vw' : '1200px', // Increased width for desktop
-      maxWidth: isMobile ? '98vw' : '1200px', // Increased maxWidth for desktop
+  private async openInvoiceDialog(data: BillingInvoiceDialogData): Promise<void> {
+    // Fetch dialog dimensions from billing.json
+    let width = '1200px';
+    let maxWidth = '1200px';
+    try {
+      const response = await fetch('/assets/module-settings/billing.json');
+      if (response.ok) {
+        const config = await response.json();
+        const w = window.innerWidth;
+        if (config?.addInvoiceDialogDimensions) {
+          if (w < 600 && config.addInvoiceDialogDimensions.mobile) {
+            width = config.addInvoiceDialogDimensions.mobile.width || width;
+            maxWidth = config.addInvoiceDialogDimensions.mobile.maxWidth || maxWidth;
+          } else if (w >= 600 && w < 992 && config.addInvoiceDialogDimensions.tablet) {
+            width = config.addInvoiceDialogDimensions.tablet.width || width;
+            maxWidth = config.addInvoiceDialogDimensions.tablet.maxWidth || maxWidth;
+          } else if (w >= 992 && config.addInvoiceDialogDimensions.desktop) {
+            width = config.addInvoiceDialogDimensions.desktop.width || width;
+            maxWidth = config.addInvoiceDialogDimensions.desktop.maxWidth || maxWidth;
+          }
+        }
+      }
+    } catch {}
+    this.dialog.open(BillingInvoiceDialogComponent, {
+      width,
+      maxWidth,
       disableClose: true,
       data
-    });
-
-    ref.afterClosed().subscribe((saved: boolean | undefined) => {
-      if (saved) {
-        this.loadData();
-      }
     });
   }
 

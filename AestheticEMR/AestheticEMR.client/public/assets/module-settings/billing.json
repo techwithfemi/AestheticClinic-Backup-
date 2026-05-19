@@ -1,4 +1,9 @@
 {
   "autoFollowUpDays": 14,
-  "itemCategories": ["Service", "Product", "Drug", "Investigation"]
+  "itemCategories": ["Service", "Product", "Drug", "Investigation"],
+  "addInvoiceDialogDimensions": {
+    "desktop": { "width": "1200px", "maxWidth": "1200px" },
+    "tablet": { "width": "900px", "maxWidth": "900px" },
+    "mobile": { "width": "98vw", "maxWidth": "98vw" }
+  }
 }

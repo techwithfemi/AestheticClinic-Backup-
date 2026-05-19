@@ -30,6 +30,8 @@ import { hServiceNHI } from '../../../models/legacy/h-service-nhi.model';
 import { LabService } from '../../../models/legacy/lab-service.model';
 import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
 import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
+import { ProductTariff } from '../../../models/legacy/product-tariff.model';
+import { ProductTariffEndpoint } from '../../../services/product-tariff-endpoint.service';
 
 export interface BillingInvoiceDialogData {
   mode: 'create' | 'edit';
@@ -79,6 +81,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private hServiceNHIEndpoint = inject(HServiceNHIEndpoint);
   private drugNHISEndpoint = inject(DrugNHISEndpoint);
   private labServiceNHIEndpoint = inject(LabServiceNHIEndpoint);
+  private productTariffEndpoint = inject(ProductTariffEndpoint);
 
   private dialogRef = inject(MatDialogRef<BillingInvoiceDialogComponent>);
   data = inject<BillingInvoiceDialogData>(MAT_DIALOG_DATA);
@@ -96,7 +99,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   revenueTypes: hRevenueType[] = [];
 
   itemCategories: string[] = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
-  itemTariffs: (hServiceNHI | DrugNhi | LabServiceNhi)[] = [];
+  itemTariffs: (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff)[] = [];
 
   invoiceForm: FormGroup = this.fb.group({
     bDate: [this.today(), Validators.required],
@@ -157,6 +160,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
         selected = this.itemTariffs.find(item => (item as LabServiceNhi).drgName === drgName);
         if (selected && typeof (selected as LabServiceNhi).price !== 'undefined') {
           this.lineItemForm.get('price')?.setValue((selected as LabServiceNhi).price);
+        }
+      } else if (category === 'product') {
+        selected = this.itemTariffs.find(item => (item as ProductTariff).pdtName === drgName);
+        if (selected && typeof (selected as ProductTariff).price !== 'undefined') {
+          this.lineItemForm.get('price')?.setValue((selected as ProductTariff).price);
         }
       }
     });
@@ -392,72 +400,76 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private loadProductCategories(): void {
-    this.productEndpoint.getProductCategoriesEndpoint<ProductCategory[]>().subscribe(data => {
-      this.productCategories = data || [];
+    if (!this.headerInfo.coyID) {
+      this.productCategories = [];
+      return;
+    }
+    this.productEndpoint.getProductCategoriesEndpoint<ProductCategory[]>().subscribe({
+      next: data => { this.productCategories = data || []; },
+      error: err => { this.alertService.showStickyMessage('Product Categories Error', this.getErrorMessage(err), MessageSeverity.error, err); }
     });
   }
 
   private loadProducts(): void {
-    this.productEndpoint.getProductsEndpoint<Product[]>().subscribe(data => {
-      this.products = data || [];
+    if (!this.headerInfo.coyID) {
+      this.products = [];
+      return;
+    }
+    this.productEndpoint.getProductsEndpoint<Product[]>().subscribe({
+      next: data => { this.products = data || []; },
+      error: err => { this.alertService.showStickyMessage('Products Error', this.getErrorMessage(err), MessageSeverity.error, err); }
     });
   }
 
   private loadRevenueTypes(): void {
-    this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<hRevenueType[]>().subscribe(data => {
-      this.revenueTypes = [{ sno: 0, revType: 'Select Revenue Type', catRemarks: '' }, ...(data || [])];
+    this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<hRevenueType[]>().subscribe({
+      next: data => {
+        this.revenueTypes = [{ sno: 0, revType: 'Select Revenue Type', catRemarks: '' }, ...(data || [])];
+        console.log('Revenue types loaded:', this.revenueTypes);
+      },
+      error: err => {
+        this.alertService.showStickyMessage('Revenue Types Error', this.getErrorMessage(err), MessageSeverity.error, err);
+        console.error('Revenue types load error:', err);
+      }
     });
   }
 
-  private loadItemCategories(): void {
-    fetch('assets/module-settings/billing.json')
-      .then(response => response.json())
-      .then(json => {
-        if (json.itemCategories && Array.isArray(json.itemCategories)) {
-          this.itemCategories = json.itemCategories;
-        }
-      })
-      .catch(() => {
-        // fallback to default if not found
-        this.itemCategories = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
-      });
-  }
-
-  // Tariff cache: { [coyID_category]: tariffList }
-  private tariffCache: Record<string, (hServiceNHI | DrugNhi | LabServiceNhi)[]> = {};
-
+  // Remove tariffCache and always fetch from backend
   private loadTariffsForCategory(category: string): void {
     const coyID = this.headerInfo.coyID;
     const normalized = (category || '').toLowerCase();
-    const cacheKey = `${coyID || ''}_${normalized}`;
     if (!coyID || !category) {
       this.itemTariffs = [];
       return;
     }
-    if (this.tariffCache[cacheKey]) {
-      this.itemTariffs = this.tariffCache[cacheKey];
-      if (!this.itemTariffs.length) {
-        this.itemTariffs = [{ drgName: 'No items found' } as any];
-      }
-      return;
-    }
     if (normalized === 'service') {
-      this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe(data => {
-        this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
+      this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe({
+        next: data => {
+          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+        },
+        error: err => { this.alertService.showStickyMessage('Service Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
       });
     } else if (normalized === 'drug') {
-      this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe(data => {
-        this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
+      this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe({
+        next: data => {
+          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+        },
+        error: err => { this.alertService.showStickyMessage('Drug Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
       });
     } else if (normalized === 'investigation') {
-      this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe(data => {
-        this.tariffCache[cacheKey] = data || [];
-        this.itemTariffs = this.tariffCache[cacheKey].length ? this.tariffCache[cacheKey] : [{ drgName: 'No items found' } as any];
+      this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe({
+        next: data => {
+          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+        },
+        error: err => { this.alertService.showStickyMessage('Lab Service Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
       });
     } else if (normalized === 'product') {
-      this.itemTariffs = [{ drgName: 'No items found' } as any];
+      this.productTariffEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coyID).subscribe({
+        next: data => {
+          this.itemTariffs = data || [{ pdtName: 'No items found' } as any];
+        },
+        error: err => { this.alertService.showStickyMessage('Product Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+      });
     } else {
       this.itemTariffs = [{ drgName: 'No items found' } as any];
     }
@@ -550,5 +562,26 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private normalizeDateOutput(dateString: string): string {
     const date = new Date(dateString);
     return date.toISOString();
+  }
+
+  private loadItemCategories(): void {
+    fetch('public/assets/module-settings/billing.json')
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load billing.json: ' + response.statusText);
+        return response.json();
+      })
+      .then(json => {
+        if (json.itemCategories && Array.isArray(json.itemCategories)) {
+          this.itemCategories = json.itemCategories;
+          console.log('Item categories loaded:', this.itemCategories);
+        } else {
+          throw new Error('itemCategories missing or not an array in billing.json');
+        }
+      })
+      .catch((err) => {
+        this.itemCategories = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
+        this.alertService.showStickyMessage('Tariff Category Error', err.message, MessageSeverity.error, err);
+        console.error('Tariff category load error:', err);
+      });
   }
 }
