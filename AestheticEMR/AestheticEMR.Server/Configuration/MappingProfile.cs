@@ -185,8 +185,22 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<HDentalTreat, DentalChartVM>()
                 .ForMember(d => d.PatientName, map => map.Ignore())
+                // Map new clinical findings fields
+                .ForMember(d => d.InflammationOfGingiva, map => map.MapFrom(s => s.InflammationOfGingiva))
+                .ForMember(d => d.PresenceOfDebris, map => map.MapFrom(s => s.PresenceOfDebris))
+                .ForMember(d => d.PresenceOfCalculus, map => map.MapFrom(s => s.PresenceOfCalculus))
+                .ForMember(d => d.PresenceOfStains, map => map.MapFrom(s => s.PresenceOfStains))
+                .ForMember(d => d.UnderOrthodonticTreatment, map => map.MapFrom(s => s.UnderOrthodonticTreatment))
+                .ForMember(d => d.OtherClinicalFindings, map => map.MapFrom(s => s.OtherClinicalFindings))
                 .ReverseMap()
-                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0))
+                // Map new clinical findings fields
+                .ForMember(d => d.InflammationOfGingiva, map => map.MapFrom(s => s.InflammationOfGingiva))
+                .ForMember(d => d.PresenceOfDebris, map => map.MapFrom(s => s.PresenceOfDebris))
+                .ForMember(d => d.PresenceOfCalculus, map => map.MapFrom(s => s.PresenceOfCalculus))
+                .ForMember(d => d.PresenceOfStains, map => map.MapFrom(s => s.PresenceOfStains))
+                .ForMember(d => d.UnderOrthodonticTreatment, map => map.MapFrom(s => s.UnderOrthodonticTreatment))
+                .ForMember(d => d.OtherClinicalFindings, map => map.MapFrom(s => s.OtherClinicalFindings));
 
             CreateMap<DentalImaging, DentalImagingVM>()
                 .ReverseMap()

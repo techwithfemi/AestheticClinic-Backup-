@@ -96,6 +96,14 @@ public class DentalChartVM
     public string? ConId { get; set; }
 
     public string? PatientName { get; set; }
+
+    // Clinical findings
+    public string? InflammationOfGingiva { get; set; }
+    public string? PresenceOfDebris { get; set; }
+    public string? PresenceOfCalculus { get; set; }
+    public string? PresenceOfStains { get; set; }
+    public string? UnderOrthodonticTreatment { get; set; }
+    public string? OtherClinicalFindings { get; set; }
 }
 
 public class DentalImagingVM

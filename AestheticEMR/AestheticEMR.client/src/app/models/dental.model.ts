@@ -7,6 +7,11 @@ export interface DentalChart {
   tDate: string;
   tTime?: string;
 
+  // Tooth status map: key is FDI number (e.g., '11', '12', ... '48')
+  teethStatus?: { [toothNumber: string]: ToothStatus };
+
+  // Existing quadrant/teeth booleans remain for compatibility
+
   // Adult Upper Left
   auli1?: boolean; auli2?: boolean; aulc?: boolean;
   aulpm1?: boolean; aulpm2?: boolean;
@@ -48,6 +53,21 @@ export interface DentalChart {
   conId?: string;
 
   patientName?: string;
+
+  // New clinical findings fields
+  inflammationOfGingiva?: string;
+  presenceOfDebris?: string;
+  presenceOfCalculus?: string;
+  presenceOfStains?: string;
+  underOrthodonticTreatment?: string;
+  otherClinicalFindings?: string;
+}
+
+export interface ToothStatus {
+  present?: boolean;
+  carious?: boolean;
+  missing?: boolean;
+  filled?: boolean;
 }
 
 export interface DentalImaging {

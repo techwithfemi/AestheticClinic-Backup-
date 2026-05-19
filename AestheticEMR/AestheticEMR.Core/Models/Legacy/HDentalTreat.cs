@@ -126,4 +126,10 @@ public partial class HDentalTreat
     public string? CRem { get; set; }
 
     public string? ConId { get; set; }
+    public string? InflammationOfGingiva { get; set; }
+    public string? PresenceOfDebris { get; set; }
+    public string? PresenceOfCalculus { get; set; }
+    public string? PresenceOfStains { get; set; }
+    public string? UnderOrthodonticTreatment { get; set; }
+    public string? OtherClinicalFindings { get; set; }
 }

@@ -1,0 +1,58 @@
+<div class="dialog-content">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>{{ data.isEdit ? 'Edit Dental Chart' : 'Add Dental Chart' }}</h2>
+    <button mat-icon-button type="button" (click)="dialogRef.close()" class="close-btn" aria-label="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content>
+    <form [formGroup]="form">
+      <!-- Patient picker (add mode only) -->
+      <ng-container *ngIf="!data.isEdit">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Search Patient</mat-label>
+          <input matInput [value]="patientSearchText" (input)="onPatientSearch($event)" placeholder="Type name or PNO" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Patient (ConsultID)</mat-label>
+          <mat-select formControlName="patientKey" required>
+            <mat-option *ngFor="let p of filterPatientOptions()" [value]="p.label">{{ p.label }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </ng-container>
+      <ng-container *ngIf="data.isEdit">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Patient (ConsultID)</mat-label>
+          <input matInput [value]="data.chart?.patientName || data.chart?.pno || ''" readonly />
+        </mat-form-field>
+      </ng-container>
+      <div class="row-2">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Treatment Date</mat-label>
+          <input matInput [matDatepicker]="datePicker" formControlName="tDate" required />
+          <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
+          <mat-datepicker #datePicker></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Treatment Type</mat-label>
+          <mat-select formControlName="dtype">
+            <mat-option value="Extraction">Extraction</mat-option>
+            <mat-option value="Filling">Filling</mat-option>
+            <mat-option value="Root Canal">Root Canal</mat-option>
+            <mat-option value="Crown">Crown</mat-option>
+            <mat-option value="Scaling">Scaling / Cleaning</mat-option>
+            <mat-option value="Denture">Denture</mat-option>
+            <mat-option value="Orthodontic">Orthodontic</mat-option>
+            <mat-option value="Other">Other</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <!-- Add the rest of your odontogram form here -->
+      <div class="actions">
+        <button mat-raised-button color="primary" (click)="onSave()">Save</button>
+        <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
+      </div>
+    </form>
+  </mat-dialog-content>
+</div>
