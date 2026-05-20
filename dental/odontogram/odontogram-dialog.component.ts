@@ -26,6 +26,7 @@ export interface ChartPatientOption {
 
 export interface ChartDialogResult {
   chart: DentalChart;
+  selectedPatient: ChartPatientOption;
 }
 
 @Component({
@@ -50,73 +51,56 @@ export interface ChartDialogResult {
   styleUrls: ['./odontogram-dialog.component.scss']
 })
 export class OdontogramDialogComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private alertService = inject(AlertService);
-  public dialogRef = inject(MatDialogRef<OdontogramDialogComponent>);
-  public data = inject(MAT_DIALOG_DATA);
-
-  form!: FormGroup;
+  form: FormGroup;
   selectedTabIndex = 0;
+  private alertService = inject(AlertService);
   patientSearchText: string = '';
-
-  ngOnInit() {
-    this.initForm();
-    if (this.data?.isEdit && this.data.chart) {
-      this.form.patchValue(this.data.chart);
-      // Pre-fill selection identification token on modification mode safely
-      if (this.data.chart.patientKey) {
-        this.form.get('patientKey')?.setValue(this.data.chart.patientKey);
-      }
-    }
-  }
-
-  private initForm() {
+  constructor(private fb: FormBuilder, public dialogRef: MatDialogRef<OdontogramDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: any) {
     this.form = this.fb.group({
-      patientKey: ['', Validators.required],
-      tDate: [new Date(), Validators.required],
+      tDate: ['', Validators.required],
       dtype: ['', Validators.required],
-
-      // Clinical assessment checkboxes mapping defaults
-      inflammationOfGingiva: ['No', Validators.required],
-      presenceOfDebris: ['No', Validators.required],
-      presenceOfCalculus: ['No', Validators.required],
-      presenceOfStains: ['No', Validators.required],
-      underOrthodonticTreatment: ['No', Validators.required],
+      inflammationOfGingiva: ['', Validators.required],
+      presenceOfDebris: ['', Validators.required],
+      presenceOfCalculus: ['', Validators.required],
+      presenceOfStains: ['', Validators.required],
+      underOrthodonticTreatment: ['', Validators.required],
       otherClinicalFindings: ['', Validators.maxLength(200)],
 
-      // Adult Upper Left (UL Quadrant)
+      // Adult UL
       auli1: [false], auli2: [false], aulc: [false],
       aulpm1: [false], aulpm2: [false],
       aulm1: [false], aulm2: [false], aulm3: [false],
-
-      // Adult Upper Right (UR Quadrant)
+      // Adult UR
       auri1: [false], auri2: [false], aurc: [false],
       aurpm1: [false], aurpm2: [false],
       aurm1: [false], aurm2: [false], aurm3: [false],
-
-      // Adult Lower Left (LL Quadrant)
+      // Adult LL
       alli1: [false], alli2: [false], allc: [false],
       allpm1: [false], allpm2: [false],
       allm1: [false], allm2: [false], allm3: [false],
-
-      // Adult Lower Right (LR Quadrant)
+      // Adult LR
       alri1: [false], alri2: [false], alrc: [false],
       alrpm1: [false], alrpm2: [false],
       alrm1: [false], alrm2: [false], alrm3: [false],
-
+      // Remarks
       aRem: [''],
-      cRem: ['']
+      cRem: [''],
     });
+  }
+
+  ngOnInit() {
+    if (this.data?.isEdit && this.data.chart) {
+      this.form.patchValue(this.data.chart);
+    }
   }
 
   get filteredPatientOptions(): ChartPatientOption[] {
     const term = this.patientSearchText.trim().toLowerCase();
-    if (!term) return this.data.patientOptions || [];
-    return (this.data.patientOptions || []).filter((p: ChartPatientOption) =>
+    if (!term) return this.data.patientOptions;
+    return this.data.patientOptions.filter((p: ChartPatientOption) =>
       p.label.toLowerCase().includes(term) ||
       p.pNo.toLowerCase().includes(term) ||
-      p.consultId.toLowerCase().includes(term)
-    );
+      p.consultId.toLowerCase().includes(term));
   }
 
   onPatientSearch(event: Event): void {
@@ -124,7 +108,6 @@ export class OdontogramDialogComponent implements OnInit {
   }
 
   filterPatientOptions(): ChartPatientOption[] {
-    if (!this.data?.patientOptions) return [];
     return this.data.patientOptions.filter((p: ChartPatientOption) =>
       p.label.toLowerCase().includes(this.patientSearchText.toLowerCase())
     );
@@ -132,11 +115,7 @@ export class OdontogramDialogComponent implements OnInit {
 
   onSave() {
     if (this.form.invalid) {
-      this.alertService.showStickyMessage(
-        'Validation Error',
-        'Please complete all required fields correctly before tracking.',
-        MessageSeverity.error
-      );
+      this.alertService.showStickyMessage('Validation Error', 'Please fill all required fields correctly.', MessageSeverity.error);
       this.form.markAllAsTouched();
       return;
     }

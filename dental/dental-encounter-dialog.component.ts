@@ -8,7 +8,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatRadioModule } from '@angular/material/radio';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging } from '../../models/dental.model';
 
@@ -37,8 +36,7 @@ export interface DentalEncounterDialogData {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
-    MatCheckboxModule,
-    MatRadioModule
+    MatCheckboxModule
   ],
   template: `
     <div class="dialog-header">
@@ -61,69 +59,6 @@ export interface DentalEncounterDialogData {
       </div>
 
       <mat-tab-group [(selectedIndex)]="selectedTabIndex">
-
-        <mat-tab label="Examination">
-          <div class="tab-body">
-            <mat-form-field appearance="outline"><mat-label>Treatment Date</mat-label><input matInput type="date" [(ngModel)]="chartDate" /></mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Treatment Type</mat-label>
-              <mat-select [(ngModel)]="chart.dtype">
-                <mat-option value="Teeth Present">Teeth Present</mat-option>
-                <mat-option value="Carious Teeth">Carious Teeth</mat-option>
-                <mat-option value="Missing Teeth">Missing Teeth</mat-option>
-                <mat-option value="Filled Teeth">Filled Teeth</mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <div class="span-2 radio-row">
-              <div class="radio-group">
-                <span class="radio-label">Inflammation of Gingiva</span>
-                <mat-radio-group [(ngModel)]="chart.inflammationOfGingiva">
-                  <mat-radio-button value="Yes">Yes</mat-radio-button>
-                  <mat-radio-button value="No">No</mat-radio-button>
-                </mat-radio-group>
-              </div>
-              <div class="radio-group">
-                <span class="radio-label">Presence of Debris</span>
-                <mat-radio-group [(ngModel)]="chart.presenceOfDebris">
-                  <mat-radio-button value="Yes">Yes</mat-radio-button>
-                  <mat-radio-button value="No">No</mat-radio-button>
-                </mat-radio-group>
-              </div>
-              <div class="radio-group">
-                <span class="radio-label">Presence of Calculus</span>
-                <mat-radio-group [(ngModel)]="chart.presenceOfCalculus">
-                  <mat-radio-button value="Yes">Yes</mat-radio-button>
-                  <mat-radio-button value="No">No</mat-radio-button>
-                </mat-radio-group>
-              </div>
-              <div class="radio-group">
-                <span class="radio-label">Presence of Stains</span>
-                <mat-radio-group [(ngModel)]="chart.presenceOfStains">
-                  <mat-radio-button value="Yes">Yes</mat-radio-button>
-                  <mat-radio-button value="No">No</mat-radio-button>
-                </mat-radio-group>
-              </div>
-              <div class="radio-group">
-                <span class="radio-label">Under Orthodontic Treatment</span>
-                <mat-radio-group [(ngModel)]="chart.underOrthodonticTreatment">
-                  <mat-radio-button value="Yes">Yes</mat-radio-button>
-                  <mat-radio-button value="No">No</mat-radio-button>
-                </mat-radio-group>
-              </div>
-            </div>
-
-            <mat-form-field appearance="outline" class="span-2">
-              <mat-label>Other Clinical Findings</mat-label>
-              <input matInput [(ngModel)]="chart.otherClinicalFindings" placeholder="Free text observation" />
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="span-2">
-              <mat-label>Clinical Examination Remarks</mat-label>
-              <textarea matInput rows="2" [(ngModel)]="chart.aRem"></textarea>
-            </mat-form-field>
-          </div>
-        </mat-tab>
-
         <mat-tab label="Imaging + Clerking">
           <div class="tab-body">
             <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
@@ -142,6 +77,9 @@ export interface DentalEncounterDialogData {
 
         <mat-tab label="Odontogram">
           <div class="tab-body">
+            <mat-form-field appearance="outline"><mat-label>Treatment Date</mat-label><input matInput type="date" [(ngModel)]="chartDate" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Treatment Type</mat-label><input matInput [(ngModel)]="chart.dtype" /></mat-form-field>
+
             <div class="span-2 chart-section-label">Adult Dentition</div>
             <div class="span-2 quadrant-grid">
               <div class="quadrant">
@@ -247,7 +185,6 @@ export interface DentalEncounterDialogData {
             <mat-form-field appearance="outline" class="span-2"><mat-label>Child Remarks</mat-label><textarea matInput rows="2" [(ngModel)]="chart.cRem"></textarea></mat-form-field>
           </div>
         </mat-tab>
-
       </mat-tab-group>
     </mat-dialog-content>
 
@@ -265,11 +202,6 @@ export interface DentalEncounterDialogData {
     .tab-body { padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .span-2 { grid-column: span 2; }
     mat-form-field { width: 100%; }
-
-    .radio-row { display: flex; flex-wrap: wrap; gap: 16px; }
-    .radio-group { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
-    .radio-label { font-size: 0.82rem; font-weight: 600; color: #aaa; }
-    mat-radio-group { display: inline-flex; gap: 12px; }
 
     .chart-section-label { font-weight: 600; font-size: 0.85rem; color: #1565c0; margin: 6px 0; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }
     .quadrant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; box-sizing: border-box; }

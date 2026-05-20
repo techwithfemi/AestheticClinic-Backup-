@@ -1,0 +1,24 @@
+/* Odontogram Dialog Styles */
+.dialog-content { width: 100%; box-sizing: border-box; padding: 16px; overflow: hidden; }
+.dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.dialog-header h2 { margin: 0; flex: 1; font-size: 1.2rem; }
+.close-btn { position: relative; flex-shrink: 0; }
+.full-width { width: 100%; margin-bottom: 12px; box-sizing: border-box; }
+.half-width { width: calc(50% - 6px); margin-bottom: 12px; box-sizing: border-box; }
+.row-2 { display: flex; gap: 12px; width: 100%; box-sizing: border-box; }
+.chart-section-label { font-weight: 600; font-size: 0.85rem; color: #1565c0; margin: 8px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }
+.quadrant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
+.quadrant { background: #f5f5f5; border-radius: 6px; padding: 8px; box-sizing: border-box; min-width: 0; }
+.quad-label { font-size: 0.72rem; font-weight: 600; color: #555; margin-bottom: 8px; }
+.tooth-row { display: flex; flex-wrap: wrap; gap: 6px 4px; }
+.tooth { display: flex; flex-direction: column; align-items: center; width: 34px; overflow: hidden; }
+.tooth-label { font-size: 0.65rem; font-weight: 600; color: #444; line-height: 1; height: 14px; display: flex; align-items: center; justify-content: center; width: 100%; text-align: center; margin-bottom: 2px; white-space: nowrap; }
+.tooth-box { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.tooth-box mat-checkbox { --mdc-checkbox-state-layer-size: 24px; }
+.tooth-box mat-checkbox ::ng-deep .mdc-checkbox { width: 18px; height: 18px; }
+.tooth-box mat-checkbox ::ng-deep .mdc-checkbox__background { width: 18px; height: 18px; }
+
+/* Tab styles for Examination tab */
+mat-tab-group { width: 100%; }
+mat-tab-body { padding: 0; }
+.actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 18px; }

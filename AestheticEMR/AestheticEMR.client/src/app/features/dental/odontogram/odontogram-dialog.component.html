@@ -7,52 +7,187 @@
   </div>
 
   <mat-dialog-content>
-    <form [formGroup]="form">
-      <!-- Patient picker (add mode only) -->
-      <ng-container *ngIf="!data.isEdit">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Search Patient</mat-label>
-          <input matInput [value]="patientSearchText" (input)="onPatientSearch($event)" placeholder="Type name or PNO" />
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Patient (ConsultID)</mat-label>
-          <mat-select formControlName="patientKey" required>
-            <mat-option *ngFor="let p of filterPatientOptions()" [value]="p.label">{{ p.label }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </ng-container>
-      <ng-container *ngIf="data.isEdit">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Patient (ConsultID)</mat-label>
-          <input matInput [value]="data.chart?.patientName || data.chart?.pno || ''" readonly />
-        </mat-form-field>
-      </ng-container>
-      <div class="row-2">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Treatment Date</mat-label>
-          <input matInput [matDatepicker]="datePicker" formControlName="tDate" required />
-          <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
-          <mat-datepicker #datePicker></mat-datepicker>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Treatment Type</mat-label>
-          <mat-select formControlName="dtype">
-            <mat-option value="Extraction">Extraction</mat-option>
-            <mat-option value="Filling">Filling</mat-option>
-            <mat-option value="Root Canal">Root Canal</mat-option>
-            <mat-option value="Crown">Crown</mat-option>
-            <mat-option value="Scaling">Scaling / Cleaning</mat-option>
-            <mat-option value="Denture">Denture</mat-option>
-            <mat-option value="Orthodontic">Orthodontic</mat-option>
-            <mat-option value="Other">Other</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-      <!-- Add the rest of your odontogram form here -->
-      <div class="actions">
-        <button mat-raised-button color="primary" (click)="onSave()">Save</button>
-        <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
-      </div>
+    <form [formGroup]="form" class="dialog-tab-form">
+      <mat-tab-group [(selectedIndex)]="selectedTabIndex">
+
+        <mat-tab label="Examination">
+          <div class="tab-pane-content">
+            <ng-container *ngIf="!data.isEdit">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Search Patient</mat-label>
+                <input matInput [value]="patientSearchText" (input)="onPatientSearch($event)" placeholder="Type name or PNO" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Patient (ConsultID)</mat-label>
+                <mat-select formControlName="patientKey" required>
+                  <mat-option *ngFor="let p of filterPatientOptions()" [value]="p.label">{{ p.label }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </ng-container>
+
+            <ng-container *ngIf="data.isEdit">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Patient (ConsultID)</mat-label>
+                <input matInput [value]="data.chart?.patientName || data.chart?.pno || ''" readonly placeholder="Patient Name or PNO" />
+              </mat-form-field>
+            </ng-container>
+
+            <div class="row-2">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Treatment Date</mat-label>
+                <input matInput [matDatepicker]="picker" formControlName="tDate" required placeholder="Select treatment date" />
+                <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Treatment Type</mat-label>
+                <mat-select formControlName="dtype" required>
+                  <mat-option value="Teeth Present">Teeth Present</mat-option>
+                  <mat-option value="Carious Teeth">Carious Teeth</mat-option>
+                  <mat-option value="Missing Teeth">Missing Teeth</mat-option>
+                  <mat-option value="Filled Teeth">Filled Teeth</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="row-2 evaluation-radio-row">
+              <div class="half-width custom-radio-wrapper">
+                <span class="radio-section-title">Inflammation of Gingiva</span>
+                <mat-radio-group formControlName="inflammationOfGingiva">
+                  <mat-radio-button value="Yes">Yes</mat-radio-button>
+                  <mat-radio-button value="No">No</mat-radio-button>
+                </mat-radio-group>
+              </div>
+              <div class="half-width custom-radio-wrapper">
+                <span class="radio-section-title">Presence of Debris</span>
+                <mat-radio-group formControlName="presenceOfDebris">
+                  <mat-radio-button value="Yes">Yes</mat-radio-button>
+                  <mat-radio-button value="No">No</mat-radio-button>
+                </mat-radio-group>
+              </div>
+            </div>
+
+            <div class="row-2 evaluation-radio-row">
+              <div class="half-width custom-radio-wrapper">
+                <span class="radio-section-title">Presence of Calculus</span>
+                <mat-radio-group formControlName="presenceOfCalculus">
+                  <mat-radio-button value="Yes">Yes</mat-radio-button>
+                  <mat-radio-button value="No">No</mat-radio-button>
+                </mat-radio-group>
+              </div>
+              <div class="half-width custom-radio-wrapper">
+                <span class="radio-section-title">Presence of Stains</span>
+                <mat-radio-group formControlName="presenceOfStains">
+                  <mat-radio-button value="Yes">Yes</mat-radio-button>
+                  <mat-radio-button value="No">No</mat-radio-button>
+                </mat-radio-group>
+              </div>
+            </div>
+
+            <div class="row-2 evaluation-radio-row">
+              <div class="half-width custom-radio-wrapper">
+                <span class="radio-section-title">Under Orthodontic Treatment</span>
+                <mat-radio-group formControlName="underOrthodonticTreatment">
+                  <mat-radio-button value="Yes">Yes</mat-radio-button>
+                  <mat-radio-button value="No">No</mat-radio-button>
+                </mat-radio-group>
+              </div>
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Other Clinical Findings</mat-label>
+                <input matInput formControlName="otherClinicalFindings" placeholder="Free text observation logs" />
+              </mat-form-field>
+            </div>
+
+            <div class="chart-section-label">Adult Dentition (FDI Two-Digit Notation)</div>
+            <div class="quadrant-grid">
+
+              <div class="quadrant">
+                <div class="quad-label">Quadrant 1: Upper Right (UR)</div>
+                <div class="tooth-row">
+                  <div class="tooth"><span class="tooth-label">18</span><div class="tooth-box"><mat-checkbox formControlName="aurm3"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">17</span><div class="tooth-box"><mat-checkbox formControlName="aurm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">16</span><div class="tooth-box"><mat-checkbox formControlName="aurm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">15</span><div class="tooth-box"><mat-checkbox formControlName="aurpm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">14</span><div class="tooth-box"><mat-checkbox formControlName="aurpm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">13</span><div class="tooth-box"><mat-checkbox formControlName="aurc"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">12</span><div class="tooth-box"><mat-checkbox formControlName="auri2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">11</span><div class="tooth-box"><mat-checkbox formControlName="auri1"></mat-checkbox></div></div>
+                </div>
+              </div>
+
+              <div class="quadrant">
+                <div class="quad-label">Quadrant 2: Upper Left (UL)</div>
+                <div class="tooth-row">
+                  <div class="tooth"><span class="tooth-label">21</span><div class="tooth-box"><mat-checkbox formControlName="auli1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">22</span><div class="tooth-box"><mat-checkbox formControlName="auli2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">23</span><div class="tooth-box"><mat-checkbox formControlName="aulc"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">24</span><div class="tooth-box"><mat-checkbox formControlName="aulpm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">25</span><div class="tooth-box"><mat-checkbox formControlName="aulpm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">26</span><div class="tooth-box"><mat-checkbox formControlName="aulm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">27</span><div class="tooth-box"><mat-checkbox formControlName="aulm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">28</span><div class="tooth-box"><mat-checkbox formControlName="aulm3"></mat-checkbox></div></div>
+                </div>
+              </div>
+
+              <div class="quadrant">
+                <div class="quad-label">Quadrant 4: Lower Right (LR)</div>
+                <div class="tooth-row">
+                  <div class="tooth"><span class="tooth-label">48</span><div class="tooth-box"><mat-checkbox formControlName="alrm3"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">47</span><div class="tooth-box"><mat-checkbox formControlName="alrm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">46</span><div class="tooth-box"><mat-checkbox formControlName="alrm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">45</span><div class="tooth-box"><mat-checkbox formControlName="alrpm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">44</span><div class="tooth-box"><mat-checkbox formControlName="alrpm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">43</span><div class="tooth-box"><mat-checkbox formControlName="alrc"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">42</span><div class="tooth-box"><mat-checkbox formControlName="alri2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">41</span><div class="tooth-box"><mat-checkbox formControlName="alri1"></mat-checkbox></div></div>
+                </div>
+              </div>
+
+              <div class="quadrant">
+                <div class="quad-label">Quadrant 3: Lower Left (LL)</div>
+                <div class="tooth-row">
+                  <div class="tooth"><span class="tooth-label">31</span><div class="tooth-box"><mat-checkbox formControlName="alli1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">32</span><div class="tooth-box"><mat-checkbox formControlName="alli2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">33</span><div class="tooth-box"><mat-checkbox formControlName="allc"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">34</span><div class="tooth-box"><mat-checkbox formControlName="allpm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">35</span><div class="tooth-box"><mat-checkbox formControlName="allpm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">36</span><div class="tooth-box"><mat-checkbox formControlName="allm1"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">37</span><div class="tooth-box"><mat-checkbox formControlName="allm2"></mat-checkbox></div></div>
+                  <div class="tooth"><span class="tooth-label">38</span><div class="tooth-box"><mat-checkbox formControlName="allm3"></mat-checkbox></div></div>
+                </div>
+              </div>
+
+            </div>
+
+            <mat-form-field appearance="outline" class="full-width text-area-container">
+              <mat-label>Clinical Examination Remarks</mat-label>
+              <textarea matInput rows="2" formControlName="aRem" placeholder="Type charting observations here..."></textarea>
+            </mat-form-field>
+
+            <div class="actions">
+              <button mat-raised-button color="primary" type="button" (click)="onSave()">Save Record</button>
+              <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
+            </div>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Imaging + Clerking">
+          <div class="tab-pane-content empty-pane">
+            <mat-icon>photo_library</mat-icon>
+            <p>Imaging uploads, x-rays, and diagnostic paperwork history controls map inside this layout panel.</p>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Odontogram">
+          <div class="tab-pane-content empty-pane">
+            <mat-icon>view_module</mat-icon>
+            <p>Interactive full digital graphic maps of dental conditions viewable here.</p>
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
     </form>
   </mat-dialog-content>
 </div>
