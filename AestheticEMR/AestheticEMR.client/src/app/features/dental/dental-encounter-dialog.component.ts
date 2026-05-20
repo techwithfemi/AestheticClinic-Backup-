@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatIconModule } from '@angular/material/icon';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
 import { DentalEndpoint } from '../../services/dental-endpoint.service';
@@ -40,7 +41,8 @@ export interface DentalEncounterDialogData {
     MatSelectModule,
     MatButtonModule,
     MatCheckboxModule,
-    MatRadioModule
+    MatRadioModule,
+    MatIconModule
   ],
   template: `
     <div class="dialog-header">
@@ -64,7 +66,11 @@ export interface DentalEncounterDialogData {
 
       <mat-tab-group [(selectedIndex)]="selectedTabIndex">
 
-        <mat-tab label="Clerking">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon>assignment</mat-icon>
+            <span>Clerking</span>
+          </ng-template>
           <div class="tab-body">
             <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Imaging Type</mat-label><input matInput [(ngModel)]="imaging.imagingType" /></mat-form-field>
@@ -77,7 +83,11 @@ export interface DentalEncounterDialogData {
           </div>
         </mat-tab>
 
-        <mat-tab label="Treatment">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon>medical_services</mat-icon>
+            <span>Treatment</span>
+          </ng-template>
           <div class="tab-body">
             <div class="span-2 section-title">Dental Health Status (FDI)</div>
 
@@ -171,7 +181,11 @@ export interface DentalEncounterDialogData {
           </div>
         </mat-tab>
 
-        <mat-tab label="Management">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon>manage_accounts</mat-icon>
+            <span>Management</span>
+          </ng-template>
           <div class="tab-body">
             <mat-form-field appearance="outline" class="span-2"><mat-label>Prescription</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.prescription"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Investigations</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.investigate"></textarea></mat-form-field>
@@ -180,7 +194,11 @@ export interface DentalEncounterDialogData {
           </div>
         </mat-tab>
 
-        <mat-tab label="Imaging">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon>image</mat-icon>
+            <span>Imaging</span>
+          </ng-template>
           <div class="tab-body">
             <div class="span-2 section-title">Uploaded Dental Images</div>
 
@@ -247,9 +265,42 @@ export interface DentalEncounterDialogData {
     .section-title { font-weight: 700; font-size: 0.9rem; color: #90caf9; text-transform: uppercase; letter-spacing: 0.04em; }
     .treatment-bottom { margin-top: 12px; }
 
-    .radio-row { display: flex; flex-wrap: wrap; gap: 16px; }
-    .radio-group { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
-    .radio-label { font-size: 0.82rem; font-weight: 600; color: #aaa; }
+    ::ng-deep .mat-mdc-tab .mdc-tab__text-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #b8d7ff;
+      font-weight: 600;
+    }
+    ::ng-deep .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+      color: #4dd0e1;
+    }
+    ::ng-deep .mat-mdc-tab .mdc-tab__text-label .mat-icon {
+      color: #7c4dff;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+    ::ng-deep .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label .mat-icon {
+      color: #00e5ff;
+    }
+
+    mat-checkbox {
+      --mdc-checkbox-unselected-icon-color: #7ea5c7;
+      --mdc-checkbox-selected-icon-color: #00bcd4;
+      --mdc-checkbox-selected-hover-icon-color: #00acc1;
+      --mdc-checkbox-selected-focus-icon-color: #00acc1;
+      --mdc-checkbox-selected-checkmark-color: #ffffff;
+    }
+
+    mat-radio-button {
+      --mdc-radio-unselected-icon-color: #7ea5c7;
+      --mdc-radio-selected-icon-color: #7c4dff;
+      --mdc-radio-selected-hover-icon-color: #651fff;
+      --mdc-radio-selected-focus-icon-color: #651fff;
+    }
+
+    .radio-label { font-size: 0.82rem; font-weight: 600; color: #9fc3e7; }
     mat-radio-group { display: inline-flex; gap: 12px; }
 
     .image-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
@@ -294,6 +345,34 @@ export interface DentalEncounterDialogData {
       .fdi-tooth { font-size: 0.62rem; }
       .fdi-cell mat-checkbox { transform: scale(0.74); }
       .fdi-grid-row { gap: 1px; }
+    }
+
+    @media (max-width: 992px) {
+      mat-dialog-content { width: min(100%, 95vw); }
+      .tab-body { grid-template-columns: 1fr; }
+      .span-2 { grid-column: span 1; }
+      .radio-row { gap: 10px; }
+      .radio-group { min-width: 0; width: 100%; }
+      .image-select { min-width: 0; width: 100%; }
+      .image-actions { justify-content: stretch; }
+      .image-actions button { flex: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .dialog-header h2 { font-size: 1rem; }
+      .fdi-row-title { font-size: 0.72rem; }
+      .fdi-tooth { font-size: 0.56rem; }
+      .fdi-cell mat-checkbox { transform: scale(0.62); margin-top: -4px; }
+      .fdi-grid-row { gap: 0; }
+      .image-toolbar { flex-direction: column; align-items: stretch; }
+      .image-actions { flex-direction: column; }
+    }
+
+    @media (max-width: 480px) {
+      .fdi-tooth { font-size: 0.5rem; }
+      .fdi-cell { padding: 0; }
+      .fdi-cell mat-checkbox { transform: scale(0.54); margin-top: -5px; }
+      .close-btn { width: 30px; height: 30px; }
     }
   `]
 })

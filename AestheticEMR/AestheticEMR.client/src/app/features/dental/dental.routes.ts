@@ -3,19 +3,23 @@ import { Routes } from '@angular/router';
 export const dentalRoutes: Routes = [
   {
     path: '',
-    redirectTo: 'chart',
+    redirectTo: 'clinical-session',
     pathMatch: 'full'
   },
   {
-    path: 'chart',
+    path: 'clinical-session',
     loadComponent: () => import('./dental-page.component')
       .then(m => m.DentalPageComponent),
-    title: 'Dental - Odontogram + Imaging'
+    title: 'Dental - Clinical Session'
+  },
+  {
+    path: 'chart',
+    redirectTo: 'clinical-session',
+    pathMatch: 'full'
   },
   {
     path: 'xray',
-    loadComponent: () => import('./dental-page.component')
-      .then(m => m.DentalPageComponent),
-    title: 'Dental - Imaging'
+    redirectTo: 'clinical-session',
+    pathMatch: 'full'
   }
 ];
