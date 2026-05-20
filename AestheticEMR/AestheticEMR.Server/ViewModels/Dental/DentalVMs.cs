@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace AestheticEMR.Server.ViewModels.Dental;
 
@@ -22,6 +23,8 @@ public class DentalChartVM
     public DateTime TDate { get; set; }
 
     public DateTime TTime { get; set; }
+
+    public Dictionary<string, ToothStatusVM>? TeethStatus { get; set; }
 
     // Adult Upper Left quadrant
     public bool? Auli1 { get; set; }
@@ -106,6 +109,14 @@ public class DentalChartVM
     public string? OtherClinicalFindings { get; set; }
 }
 
+public class ToothStatusVM
+{
+    public bool? Present { get; set; }
+    public bool? Carious { get; set; }
+    public bool? Missing { get; set; }
+    public bool? Filled { get; set; }
+}
+
 public class DentalImagingVM
 {
     public int Id { get; set; }
@@ -182,4 +193,33 @@ public class DentalEncounterVM
     public required DentalChartVM Chart { get; set; }
     public required DentalImagingVM Imaging { get; set; }
     public required DentalConsultingVM Consulting { get; set; }
+}
+
+public class DentalImagingUploadVM
+{
+    public int? Id { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public required string Pno { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public required string ConsultId { get; set; }
+
+    [Required]
+    public IFormFile File { get; set; } = default!;
+
+    public DateTime? ImagingDate { get; set; }
+
+    [StringLength(100)]
+    public string? ImagingType { get; set; }
+
+    [StringLength(200)]
+    public string? ToothRegion { get; set; }
+
+    public string? Findings { get; set; }
+    public string? Impression { get; set; }
+    public string? Recommendations { get; set; }
+    public string? Notes { get; set; }
 }

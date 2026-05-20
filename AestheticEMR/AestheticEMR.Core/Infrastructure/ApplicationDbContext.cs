@@ -500,6 +500,8 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.Id)
                     .ValueGeneratedOnAdd()
                     .HasColumnName("ID");
+                entity.Property(e => e.TeethStatusJson)
+                    .HasColumnName("teethStatusJson");
                 entity.Property(e => e.ARem)
                     .HasMaxLength(2000)
                     .IsUnicode(false)

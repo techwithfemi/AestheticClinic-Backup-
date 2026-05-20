@@ -185,6 +185,7 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<HDentalTreat, DentalChartVM>()
                 .ForMember(d => d.PatientName, map => map.Ignore())
+                .ForMember(d => d.TeethStatus, map => map.Ignore())
                 // Map new clinical findings fields
                 .ForMember(d => d.InflammationOfGingiva, map => map.MapFrom(s => s.InflammationOfGingiva))
                 .ForMember(d => d.PresenceOfDebris, map => map.MapFrom(s => s.PresenceOfDebris))
@@ -194,6 +195,7 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.OtherClinicalFindings, map => map.MapFrom(s => s.OtherClinicalFindings))
                 .ReverseMap()
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0))
+                .ForMember(d => d.TeethStatusJson, map => map.Ignore())
                 // Map new clinical findings fields
                 .ForMember(d => d.InflammationOfGingiva, map => map.MapFrom(s => s.InflammationOfGingiva))
                 .ForMember(d => d.PresenceOfDebris, map => map.MapFrom(s => s.PresenceOfDebris))

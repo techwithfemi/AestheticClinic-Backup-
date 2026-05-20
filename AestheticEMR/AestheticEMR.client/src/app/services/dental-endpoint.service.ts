@@ -15,6 +15,7 @@ export class DentalEndpoint extends EndpointBase {
   private get chartsUrl() { return `${this.baseUrl}/charts`; }
   private get imagingUrl() { return `${this.baseUrl}/imaging`; }
   private get encounterUrl() { return `${this.baseUrl}/encounter`; }
+  private get imagingUploadUrl() { return `${this.imagingUrl}/upload`; }
 
   // Combined encounter
   getEncounterEndpoint<T>(consultId: string, pno: string): Observable<T> {
@@ -67,5 +68,36 @@ export class DentalEndpoint extends EndpointBase {
   deleteImagingEndpoint<T>(id: number): Observable<T> {
     return this.http.delete<T>(`${this.imagingUrl}/${id}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.deleteImagingEndpoint<T>(id))));
+  }
+
+  uploadImagingEndpoint<T>(payload: {
+    file: File;
+    pno: string;
+    consultId: string;
+    id?: number;
+    imagingDate?: string;
+    imagingType?: string;
+    toothRegion?: string;
+    findings?: string;
+    impression?: string;
+    recommendations?: string;
+    notes?: string;
+  }): Observable<T> {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('pno', payload.pno);
+    form.append('consultId', payload.consultId);
+
+    if (payload.id) form.append('id', `${payload.id}`);
+    if (payload.imagingDate) form.append('imagingDate', payload.imagingDate);
+    if (payload.imagingType) form.append('imagingType', payload.imagingType);
+    if (payload.toothRegion) form.append('toothRegion', payload.toothRegion);
+    if (payload.findings) form.append('findings', payload.findings);
+    if (payload.impression) form.append('impression', payload.impression);
+    if (payload.recommendations) form.append('recommendations', payload.recommendations);
+    if (payload.notes) form.append('notes', payload.notes);
+
+    return this.http.post<T>(this.imagingUploadUrl, form, this.uploadHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.uploadImagingEndpoint<T>(payload))));
   }
 }

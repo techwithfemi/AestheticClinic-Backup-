@@ -150,7 +150,7 @@ export class DentalPageComponent implements OnInit {
   }
 
   openAddDialog(): void {
-    const initialTabIndex = this.route.snapshot.routeConfig?.path === 'chart' ? 2 : 0;
+    const initialTabIndex = this.route.snapshot.routeConfig?.path === 'chart' ? 1 : 0;
 
     const ref = this.dialog.open(DentalEncounterDialogComponent, {
       width: '98vw',
@@ -169,7 +169,7 @@ export class DentalPageComponent implements OnInit {
   }
 
   openEditDialog(row: DentalImaging): void {
-    const initialTabIndex = this.route.snapshot.routeConfig?.path === 'chart' ? 2 : 0;
+    const initialTabIndex = this.route.snapshot.routeConfig?.path === 'chart' ? 1 : 0;
 
     this.dentalEndpoint.getEncounterEndpoint<DentalEncounter>(row.consultId, row.pno).subscribe({
       next: encounter => {
@@ -267,7 +267,7 @@ export class DentalPageComponent implements OnInit {
     });
   }
 
-  resolvePatientLabel(pno: string): String {
+  resolvePatientLabel(pno: string): string {
     const p = this.patients().find(x => x.pno === pno);
     return p ? `${p.pSurName} ${p.pFirstname ?? ''} [${pno}]`.trim() : `[${pno}]`;
   }

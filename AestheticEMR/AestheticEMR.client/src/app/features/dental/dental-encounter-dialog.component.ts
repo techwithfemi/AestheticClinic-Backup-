@@ -10,7 +10,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
 
-import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging } from '../../models/dental.model';
+import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
+import { DentalEndpoint } from '../../services/dental-endpoint.service';
+import { AlertService, MessageSeverity } from '../../services/alert.service';
 
 export interface DentalPatientOption {
   pNo: string;
@@ -62,8 +64,57 @@ export interface DentalEncounterDialogData {
 
       <mat-tab-group [(selectedIndex)]="selectedTabIndex">
 
-        <mat-tab label="Examination">
+        <mat-tab label="Clerking">
           <div class="tab-body">
+            <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Imaging Type</mat-label><input matInput [(ngModel)]="imaging.imagingType" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Tooth Region</mat-label><input matInput [(ngModel)]="imaging.toothRegion" /></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Findings</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.findings"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Impression</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.impression"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Recommendations</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.recommendations"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Notes</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.notes"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Treatment">
+          <div class="tab-body">
+            <div class="span-2 section-title">Dental Health Status (FDI)</div>
+
+            <div class="span-2 fdi-matrix-wrap">
+              @for (status of statusRows; track status.key) {
+                <div class="fdi-category">
+                  <div class="fdi-row-title">{{ status.label }}</div>
+
+                  <div class="fdi-grid-row">
+                    @for (tooth of fdiTopRow; track tooth) {
+                      <div class="fdi-cell">
+                        <span class="fdi-tooth">{{ tooth }}</span>
+                        <mat-checkbox
+                          [checked]="isStatusChecked(tooth, status.key)"
+                          (change)="onStatusToggle(tooth, status.key, $event.checked)"></mat-checkbox>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="fdi-grid-row">
+                    @for (tooth of fdiBottomRow; track tooth) {
+                      <div class="fdi-cell">
+                        <span class="fdi-tooth">{{ tooth }}</span>
+                        <mat-checkbox
+                          [checked]="isStatusChecked(tooth, status.key)"
+                          (change)="onStatusToggle(tooth, status.key, $event.checked)"></mat-checkbox>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Adult Remarks</mat-label><textarea matInput rows="2" [(ngModel)]="chart.aRem"></textarea></mat-form-field>
+
+            <div class="span-2 section-title treatment-bottom">Clinical Examination</div>
+
             <mat-form-field appearance="outline"><mat-label>Treatment Date</mat-label><input matInput type="date" [(ngModel)]="chartDate" /></mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Treatment Type</mat-label>
@@ -117,15 +168,48 @@ export interface DentalEncounterDialogData {
               <mat-label>Other Clinical Findings</mat-label>
               <input matInput [(ngModel)]="chart.otherClinicalFindings" placeholder="Free text observation" />
             </mat-form-field>
-            <mat-form-field appearance="outline" class="span-2">
-              <mat-label>Clinical Examination Remarks</mat-label>
-              <textarea matInput rows="2" [(ngModel)]="chart.aRem"></textarea>
-            </mat-form-field>
           </div>
         </mat-tab>
 
-        <mat-tab label="Imaging + Clerking">
+        <mat-tab label="Management">
           <div class="tab-body">
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Prescription</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.prescription"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Investigations</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.investigate"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Services</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.services"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Treatment Plan</mat-label><textarea matInput rows="3" [(ngModel)]="consulting.treatPlan"></textarea></mat-form-field>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Imaging">
+          <div class="tab-body">
+            <div class="span-2 section-title">Uploaded Dental Images</div>
+
+            <div class="span-2 image-toolbar">
+              <button mat-stroked-button type="button" (click)="fileInput.click()">Upload Dental Image</button>
+              <input #fileInput type="file" accept="image/*" (change)="onImageSelected(fileInput.files)" style="display:none" />
+
+              <mat-form-field appearance="outline" class="image-select">
+                <mat-label>Saved Images</mat-label>
+                <mat-select [(ngModel)]="selectedImageId" (selectionChange)="onSelectImage()">
+                  <mat-option [value]="0">Current Draft</mat-option>
+                  @for (img of patientImagingRecords; track img.id) {
+                    <mat-option [value]="img.id">{{ imageOptionLabel(img) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="span-2 image-panel">
+              @if (imagingPreviewUrl) {
+                <img [src]="imagingPreviewUrl" [alt]="imaging.fileName || 'Dental image'" class="dental-image" />
+              } @else {
+                <p class="image-empty">No uploaded dental images for this patient.</p>
+              }
+              @if (imaging.fileName) {
+                <p class="image-name">{{ imaging.fileName }}</p>
+              }
+            </div>
+
             <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Imaging Type</mat-label><input matInput [(ngModel)]="imaging.imagingType" /></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Tooth Region</mat-label><input matInput [(ngModel)]="imaging.toothRegion" /></mat-form-field>
@@ -133,118 +217,12 @@ export interface DentalEncounterDialogData {
             <mat-form-field appearance="outline" class="span-2"><mat-label>Impression</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.impression"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Recommendations</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.recommendations"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Notes</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.notes"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Prescription</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.prescription"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Services</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.services"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Investigation</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.investigate"></textarea></mat-form-field>
-          </div>
-        </mat-tab>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>File Name</mat-label><input matInput [(ngModel)]="imaging.fileName" /></mat-form-field>
 
-        <mat-tab label="Odontogram">
-          <div class="tab-body">
-            <div class="span-2 chart-section-label">Adult Dentition</div>
-            <div class="span-2 quadrant-grid">
-              <div class="quadrant">
-                <div class="quad-label">Upper Left (UL)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.auli1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.auli2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M3</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aulm3" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Upper Right (UR)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.auri1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.auri2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M3</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.aurm3" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Lower Left (LL)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alli1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alli2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M3</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.allm3" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Lower Right (LR)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alri1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alri2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">PM2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M3</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.alrm3" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
+            <div class="span-2 image-actions">
+              <button mat-raised-button color="primary" type="button" (click)="saveImagingRecord()">{{ imaging.id ? 'Update Image Record' : 'Save Image Record' }}</button>
+              <button mat-stroked-button color="warn" type="button" (click)="deleteImagingRecord()" [disabled]="!imaging.id">Delete Image Record</button>
             </div>
-
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Adult Remarks</mat-label><textarea matInput rows="2" [(ngModel)]="chart.aRem"></textarea></mat-form-field>
-
-            <div class="span-2 chart-section-label">Primary (Child) Dentition</div>
-            <div class="span-2 quadrant-grid">
-              <div class="quadrant">
-                <div class="quad-label">Upper Left (UL)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.culi1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.culi2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.culc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.culpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.culpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Upper Right (UR)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.curi1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.curi2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.curc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.curpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.curpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Lower Left (LL)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clli1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clli2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.cllc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.cllpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.cllpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-              <div class="quadrant">
-                <div class="quad-label">Lower Right (LR)</div>
-                <div class="tooth-row">
-                  <div class="tooth"><span class="tooth-label">I1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clri1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">I2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clri2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">C</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clrc" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M1</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clrpm1" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                  <div class="tooth"><span class="tooth-label">M2</span><div class="tooth-box"><mat-checkbox [(ngModel)]="chart.clrpm2" [ngModelOptions]="{standalone: true}"></mat-checkbox></div></div>
-                </div>
-              </div>
-            </div>
-
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Child Remarks</mat-label><textarea matInput rows="2" [(ngModel)]="chart.cRem"></textarea></mat-form-field>
           </div>
         </mat-tab>
 
@@ -266,10 +244,19 @@ export interface DentalEncounterDialogData {
     .span-2 { grid-column: span 2; }
     mat-form-field { width: 100%; }
 
+    .section-title { font-weight: 700; font-size: 0.9rem; color: #90caf9; text-transform: uppercase; letter-spacing: 0.04em; }
+    .treatment-bottom { margin-top: 12px; }
+
     .radio-row { display: flex; flex-wrap: wrap; gap: 16px; }
     .radio-group { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
     .radio-label { font-size: 0.82rem; font-weight: 600; color: #aaa; }
     mat-radio-group { display: inline-flex; gap: 12px; }
+
+    .image-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .image-select { min-width: 280px; }
+    .image-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    .image-panel { border: 1px dashed #4a5568; border-radius: 8px; padding: 16px; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 
     .chart-section-label { font-weight: 600; font-size: 0.85rem; color: #1565c0; margin: 6px 0; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }
     .quadrant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; box-sizing: border-box; }
@@ -282,21 +269,71 @@ export interface DentalEncounterDialogData {
     .tooth-box mat-checkbox { --mdc-checkbox-state-layer-size: 24px; }
     .tooth-box mat-checkbox ::ng-deep .mdc-checkbox { padding: 0; width: 18px; height: 18px; }
     .tooth-box mat-checkbox ::ng-deep .mdc-checkbox__background { width: 18px; height: 18px; top: 0; left: 0; }
+
+    .fdi-matrix-wrap { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+    .fdi-category { display: flex; flex-direction: column; gap: 6px; }
+    .fdi-row-title { font-size: 0.8rem; font-weight: 700; color: #90caf9; text-transform: uppercase; }
+    .fdi-grid-row {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(0, 1fr));
+      gap: 2px;
+      width: 100%;
+    }
+    .fdi-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-width: 0;
+      padding: 2px 0;
+    }
+    .fdi-tooth { font-size: 0.68rem; font-weight: 600; color: #111; line-height: 1; }
+    .fdi-cell mat-checkbox { transform: scale(0.82); margin-top: -2px; }
+
+    @media (max-width: 1200px) {
+      .fdi-tooth { font-size: 0.62rem; }
+      .fdi-cell mat-checkbox { transform: scale(0.74); }
+      .fdi-grid-row { gap: 1px; }
+    }
   `]
 })
 export class DentalEncounterDialogComponent {
   readonly dialogRef = inject(MatDialogRef<DentalEncounterDialogComponent>);
   readonly data = inject<DentalEncounterDialogData>(MAT_DIALOG_DATA);
+  private readonly dentalEndpoint = inject(DentalEndpoint);
+  private readonly alertService = inject(AlertService);
+
+  readonly fdiTopRow = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'] as const;
+  readonly fdiBottomRow = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'] as const;
+  readonly fdiTeethOrder = [...this.fdiTopRow, ...this.fdiBottomRow] as const;
+  readonly statusRows: { key: keyof ToothStatus; label: string }[] = [
+    { key: 'present', label: 'Teeth Present' },
+    { key: 'carious', label: 'Carious Teeth' },
+    { key: 'missing', label: 'Missing Teeth' },
+    { key: 'filled', label: 'Filled Teeth' }
+  ];
+
+  private readonly legacyToothMap: Record<string, keyof DentalChart> = {
+    '18': 'aurm3', '17': 'aurm2', '16': 'aurm1', '15': 'aurpm2', '14': 'aurpm1', '13': 'aurc', '12': 'auri2', '11': 'auri1',
+    '21': 'auli1', '22': 'auli2', '23': 'aulc', '24': 'aulpm1', '25': 'aulpm2', '26': 'aulm1', '27': 'aulm2', '28': 'aulm3',
+    '48': 'alrm3', '47': 'alrm2', '46': 'alrm1', '45': 'alrpm2', '44': 'alrpm1', '43': 'alrc', '42': 'alri2', '41': 'alri1',
+    '31': 'alli1', '32': 'alli2', '33': 'allc', '34': 'allpm1', '35': 'allpm2', '36': 'allm1', '37': 'allm2', '38': 'allm3'
+  };
 
   selectedTabIndex = this.data.initialTabIndex;
   selectedPatientKey = '';
 
-  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString() };
+  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {} };
   imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: new Date().toISOString() };
   consulting: DentalConsulting = { id: 0, consultId: '', pNo: '', clientCat: 'PRIVATE' };
 
   chartDate = this.toDateInput(this.chart.tDate);
   imagingDate = this.toDateInput(this.imaging.imagingDate);
+
+  patientImagingRecords: DentalImaging[] = [];
+  selectedImageId = 0;
+  imagingPreviewUrl = '';
+  selectedImageFile: File | null = null;
 
   get isEdit(): boolean {
     return !!this.data.encounter;
@@ -304,14 +341,101 @@ export class DentalEncounterDialogComponent {
 
   constructor() {
     if (this.data.encounter) {
-      this.chart = { ...this.chart, ...this.data.encounter.chart };
+      this.chart = { ...this.chart, ...this.data.encounter.chart, teethStatus: this.data.encounter.chart.teethStatus || {} };
       this.imaging = { ...this.imaging, ...this.data.encounter.imaging };
       this.consulting = { ...this.consulting, ...this.data.encounter.consulting };
       this.chartDate = this.toDateInput(this.chart.tDate);
       this.imagingDate = this.toDateInput(this.imaging.imagingDate);
+      this.imagingPreviewUrl = this.imaging.filePath || '';
 
       const key = this.data.patientOptions.find(p => p.pNo === this.chart.pno && p.consultId === this.chart.consultId)?.label;
       this.selectedPatientKey = key || '';
+
+      this.loadPatientImagingRecords();
+    }
+
+    this.applyLegacyFlagsToStatusMap();
+  }
+
+  isStatusChecked(tooth: string, key: keyof ToothStatus): boolean {
+    return !!this.chart.teethStatus?.[tooth]?.[key];
+  }
+
+  onStatusToggle(tooth: string, key: keyof ToothStatus, checked: boolean): void {
+    const current = this.chart.teethStatus?.[tooth] || {};
+    const next: ToothStatus = { ...current, [key]: checked };
+
+    if (key === 'missing' && checked) {
+      next.present = false;
+    }
+
+    if (key === 'present' && checked) {
+      next.missing = false;
+    }
+
+    this.chart.teethStatus = {
+      ...(this.chart.teethStatus || {}),
+      [tooth]: next
+    };
+  }
+
+  clearStatusRow(key: keyof ToothStatus): void {
+    const status = this.chart.teethStatus || {};
+    for (const tooth of this.fdiTeethOrder) {
+      if (!status[tooth]) continue;
+      status[tooth] = { ...status[tooth], [key]: false };
+    }
+    this.chart.teethStatus = { ...status };
+  }
+
+  private applyLegacyFlagsToStatusMap(): void {
+    const status = { ...(this.chart.teethStatus || {}) } as Record<string, ToothStatus>;
+    const dtype = (this.chart.dtype || '').toLowerCase();
+
+    const dtypeKey: keyof ToothStatus | null =
+      dtype === 'teeth present' ? 'present'
+        : dtype === 'carious teeth' ? 'carious'
+          : dtype === 'missing teeth' ? 'missing'
+            : dtype === 'filled teeth' ? 'filled'
+              : null;
+
+    if (!dtypeKey) {
+      this.chart.teethStatus = status;
+      return;
+    }
+
+    for (const tooth of this.fdiTeethOrder) {
+      const legacyField = this.legacyToothMap[tooth];
+      const isMarked = !!this.chart[legacyField];
+      if (!status[tooth]) status[tooth] = {};
+      status[tooth][dtypeKey] = isMarked;
+
+      if (dtypeKey === 'missing' && isMarked) {
+        status[tooth].present = false;
+      }
+      if (dtypeKey === 'present' && isMarked) {
+        status[tooth].missing = false;
+      }
+    }
+
+    this.chart.teethStatus = status;
+  }
+
+  private syncLegacyFlagsFromStatusMap(): void {
+    const dtype = (this.chart.dtype || '').toLowerCase();
+    const dtypeKey: keyof ToothStatus | null =
+      dtype === 'teeth present' ? 'present'
+        : dtype === 'carious teeth' ? 'carious'
+          : dtype === 'missing teeth' ? 'missing'
+            : dtype === 'filled teeth' ? 'filled'
+              : null;
+
+    const chartRecord = this.chart as unknown as Record<string, unknown>;
+
+    for (const tooth of this.fdiTeethOrder) {
+      const legacyField = this.legacyToothMap[tooth] as string;
+      const value = dtypeKey ? !!this.chart.teethStatus?.[tooth]?.[dtypeKey] : false;
+      chartRecord[legacyField] = value;
     }
   }
 
@@ -326,6 +450,144 @@ export class DentalEncounterDialogComponent {
     this.consulting.pNo = selected.pNo;
     this.consulting.consultId = selected.consultId;
     this.consulting.clientCat = selected.clientCat || 'PRIVATE';
+
+    this.loadPatientImagingRecords();
+  }
+
+  imageOptionLabel(img: DentalImaging): string {
+    return `${img.fileName || 'Untitled image'} (${this.toDateInput(img.imagingDate) || 'No date'})`;
+  }
+
+  onSelectImage(): void {
+    if (!this.selectedImageId) {
+      this.imaging = {
+        ...this.imaging,
+        id: 0,
+        fileName: undefined,
+        filePath: undefined,
+        imagingType: undefined,
+        toothRegion: undefined,
+        findings: undefined,
+        impression: undefined,
+        recommendations: undefined,
+        notes: undefined
+      };
+      this.imagingDate = this.toDateInput(new Date().toISOString());
+      this.imagingPreviewUrl = '';
+      this.selectedImageFile = null;
+      return;
+    }
+
+    const selected = this.patientImagingRecords.find(x => x.id === this.selectedImageId);
+    if (!selected) return;
+
+    this.imaging = { ...selected };
+    this.imagingDate = this.toDateInput(selected.imagingDate);
+    this.imagingPreviewUrl = selected.filePath || '';
+    this.selectedImageFile = null;
+  }
+
+  onImageSelected(files: FileList | null): void {
+    const file = files?.item(0);
+    if (!file) return;
+
+    this.selectedImageFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = (reader.result as string) || '';
+      this.imagingPreviewUrl = url;
+      this.imaging.fileName = file.name;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  saveImagingRecord(): void {
+    if (!this.imaging.pno || !this.imaging.consultId) {
+      this.alertService.showStickyMessage('Validation', 'Select a patient before saving imaging.', MessageSeverity.warn);
+      return;
+    }
+
+    this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
+
+    const done = (saved: DentalImaging) => {
+      this.imaging = { ...this.imaging, ...saved };
+      this.imagingDate = this.toDateInput(this.imaging.imagingDate);
+      this.imagingPreviewUrl = this.imaging.filePath || this.imagingPreviewUrl;
+      this.selectedImageFile = null;
+      this.alertService.showMessage('Imaging record saved', '', MessageSeverity.success);
+      this.loadPatientImagingRecords(saved.id);
+    };
+
+    if (this.selectedImageFile) {
+      this.dentalEndpoint.uploadImagingEndpoint<DentalImaging>({
+        file: this.selectedImageFile,
+        pno: this.imaging.pno,
+        consultId: this.imaging.consultId,
+        id: this.imaging.id > 0 ? this.imaging.id : undefined,
+        imagingDate: this.imaging.imagingDate,
+        imagingType: this.imaging.imagingType,
+        toothRegion: this.imaging.toothRegion,
+        findings: this.imaging.findings,
+        impression: this.imaging.impression,
+        recommendations: this.imaging.recommendations,
+        notes: this.imaging.notes
+      }).subscribe({
+        next: done,
+        error: error => {
+          this.alertService.showStickyMessage('Upload error', 'Unable to upload and save imaging record.', MessageSeverity.error, error);
+        }
+      });
+      return;
+    }
+
+    const payload = this.withoutDefaults(this.imaging);
+    const request$ = this.imaging.id
+      ? this.dentalEndpoint.updateImagingEndpoint<DentalImaging>(this.imaging.id, payload)
+      : this.dentalEndpoint.createImagingEndpoint<DentalImaging>(payload);
+
+    request$.subscribe({
+      next: done,
+      error: error => {
+        this.alertService.showStickyMessage('Save error', 'Unable to save imaging record.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  deleteImagingRecord(): void {
+    if (!this.imaging.id) return;
+
+    this.dentalEndpoint.deleteImagingEndpoint<void>(this.imaging.id).subscribe({
+      next: () => {
+        this.alertService.showMessage('Imaging record deleted', '', MessageSeverity.success);
+        this.selectedImageId = 0;
+        this.onSelectImage();
+        this.loadPatientImagingRecords();
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Delete error', 'Unable to delete imaging record.', MessageSeverity.error, error);
+      }
+    });
+  }
+
+  private loadPatientImagingRecords(preferredId?: number): void {
+    if (!this.chart.pno || !this.chart.consultId) {
+      this.patientImagingRecords = [];
+      return;
+    }
+
+    this.dentalEndpoint.getImagingEndpoint<DentalImaging[]>().subscribe({
+      next: rows => {
+        this.patientImagingRecords = (rows || []).filter(x => x.pno === this.chart.pno && x.consultId === this.chart.consultId);
+        if (preferredId && this.patientImagingRecords.some(x => x.id === preferredId)) {
+          this.selectedImageId = preferredId;
+          this.onSelectImage();
+        }
+      },
+      error: () => {
+        this.patientImagingRecords = [];
+      }
+    });
   }
 
   save(): void {
@@ -335,11 +597,12 @@ export class DentalEncounterDialogComponent {
 
     this.chart.tDate = this.fromDateInput(this.chartDate, this.chart.tDate);
     this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
+    this.syncLegacyFlagsFromStatusMap();
 
     this.dialogRef.close({
       chart: this.withoutDefaults(this.chart),
       imaging: this.withoutDefaults(this.imaging),
-      consulting: this.withoutDefaults({ ...this.consulting, treatPlan: undefined })
+      consulting: this.withoutDefaults(this.consulting)
     });
   }
 
