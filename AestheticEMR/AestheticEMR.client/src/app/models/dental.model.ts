@@ -9,6 +9,7 @@ export interface DentalChart {
 
   // Tooth status map: key is FDI number (e.g., '11', '12', ... '48')
   teethStatus?: { [toothNumber: string]: ToothStatus };
+  oralExam?: OralExam;
 
   // Existing quadrant/teeth booleans remain for compatibility
 
@@ -66,8 +67,26 @@ export interface DentalChart {
 export interface ToothStatus {
   present?: boolean;
   carious?: boolean;
+  decayed?: boolean;
   missing?: boolean;
   filled?: boolean;
+}
+
+export interface OralExam {
+  caries?: boolean;
+  poorOralHygiene?: boolean;
+  indicatedForRestorationFilling?: boolean;
+  fillingGic?: boolean;
+  fillingComposite?: boolean;
+  fissureSealant?: boolean;
+  indicatedForExtraction?: boolean;
+  gingivalInflammation?: boolean;
+  needsOralProphylaxis?: boolean;
+  needsProsthesisDenture?: boolean;
+  forEndodonticTreatment?: boolean;
+  forOrthodonticConsultation?: boolean;
+  others?: string;
+  noDentalTreatmentNeededAtPresent?: boolean;
 }
 
 export interface DentalImaging {

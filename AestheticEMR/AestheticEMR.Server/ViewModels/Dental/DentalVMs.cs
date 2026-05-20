@@ -25,6 +25,7 @@ public class DentalChartVM
     public DateTime TTime { get; set; }
 
     public Dictionary<string, ToothStatusVM>? TeethStatus { get; set; }
+    public OralExamVM? OralExam { get; set; }
 
     // Adult Upper Left quadrant
     public bool? Auli1 { get; set; }
@@ -113,8 +114,27 @@ public class ToothStatusVM
 {
     public bool? Present { get; set; }
     public bool? Carious { get; set; }
+    public bool? Decayed { get; set; }
     public bool? Missing { get; set; }
     public bool? Filled { get; set; }
+}
+
+public class OralExamVM
+{
+    public bool? Caries { get; set; }
+    public bool? PoorOralHygiene { get; set; }
+    public bool? IndicatedForRestorationFilling { get; set; }
+    public bool? FillingGic { get; set; }
+    public bool? FillingComposite { get; set; }
+    public bool? FissureSealant { get; set; }
+    public bool? IndicatedForExtraction { get; set; }
+    public bool? GingivalInflammation { get; set; }
+    public bool? NeedsOralProphylaxis { get; set; }
+    public bool? NeedsProsthesisDenture { get; set; }
+    public bool? ForEndodonticTreatment { get; set; }
+    public bool? ForOrthodonticConsultation { get; set; }
+    public string? Others { get; set; }
+    public bool? NoDentalTreatmentNeededAtPresent { get; set; }
 }
 
 public class DentalImagingVM

@@ -123,6 +123,33 @@ export interface DentalEncounterDialogData {
 
             <mat-form-field appearance="outline" class="span-2"><mat-label>Adult Remarks</mat-label><textarea matInput rows="2" [(ngModel)]="chart.aRem"></textarea></mat-form-field>
 
+            <div class="span-2 section-title treatment-bottom">Oral Examination & Recommendations</div>
+            <div class="span-2 oral-exam-grid">
+              <mat-checkbox [(ngModel)]="chart.oralExam!.caries">Caries</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.poorOralHygiene">Poor Oral Hygiene</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.indicatedForRestorationFilling">Indicated for Restoration/Filling</mat-checkbox>
+
+              <div class="filling-types">
+                <span class="small-label">Filling Type:</span>
+                <mat-checkbox [(ngModel)]="chart.oralExam!.fillingGic">GIC</mat-checkbox>
+                <mat-checkbox [(ngModel)]="chart.oralExam!.fillingComposite">Composite</mat-checkbox>
+                <mat-checkbox [(ngModel)]="chart.oralExam!.fissureSealant">Fissure Sealant</mat-checkbox>
+              </div>
+
+              <mat-checkbox [(ngModel)]="chart.oralExam!.indicatedForExtraction">Indicated for Extraction</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.gingivalInflammation">Gingival Inflammation</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.needsOralProphylaxis">Needs Oral Prophylaxis</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.needsProsthesisDenture">Needs Prosthesis/Denture</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.forEndodonticTreatment">For Endodontic Treatment</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.forOrthodonticConsultation">For Orthodontic Consultation</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.oralExam!.noDentalTreatmentNeededAtPresent">No Dental Treatment Needed At Present</mat-checkbox>
+            </div>
+
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Others</mat-label>
+              <input matInput [(ngModel)]="chart.oralExam!.others" placeholder="Other oral examination findings/recommendations" />
+            </mat-form-field>
+
             <div class="span-2 section-title treatment-bottom">Clinical Examination</div>
 
             <mat-form-field appearance="outline"><mat-label>Treatment Date</mat-label><input matInput type="date" [(ngModel)]="chartDate" /></mat-form-field>
@@ -131,6 +158,7 @@ export interface DentalEncounterDialogData {
               <mat-select [(ngModel)]="chart.dtype">
                 <mat-option value="Teeth Present">Teeth Present</mat-option>
                 <mat-option value="Carious Teeth">Carious Teeth</mat-option>
+                <mat-option value="Decayed Teeth">Decayed Teeth</mat-option>
                 <mat-option value="Missing Teeth">Missing Teeth</mat-option>
                 <mat-option value="Filled Teeth">Filled Teeth</mat-option>
               </mat-select>
@@ -341,6 +369,27 @@ export interface DentalEncounterDialogData {
     .fdi-tooth { font-size: 0.68rem; font-weight: 600; color: #111; line-height: 1; }
     .fdi-cell mat-checkbox { transform: scale(0.82); margin-top: -2px; }
 
+    .oral-exam-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 16px;
+      align-items: center;
+    }
+    .filling-types {
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 4px 0;
+    }
+    .small-label {
+      font-size: 0.78rem;
+      color: #9fc3e7;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+
     @media (max-width: 1200px) {
       .fdi-tooth { font-size: 0.62rem; }
       .fdi-cell mat-checkbox { transform: scale(0.74); }
@@ -356,6 +405,8 @@ export interface DentalEncounterDialogData {
       .image-select { min-width: 0; width: 100%; }
       .image-actions { justify-content: stretch; }
       .image-actions button { flex: 1; }
+      .oral-exam-grid { grid-template-columns: 1fr; }
+      .filling-types { grid-column: span 1; }
     }
 
     @media (max-width: 768px) {
@@ -388,6 +439,7 @@ export class DentalEncounterDialogComponent {
   readonly statusRows: { key: keyof ToothStatus; label: string }[] = [
     { key: 'present', label: 'Teeth Present' },
     { key: 'carious', label: 'Carious Teeth' },
+    { key: 'decayed', label: 'Decayed Teeth' },
     { key: 'missing', label: 'Missing Teeth' },
     { key: 'filled', label: 'Filled Teeth' }
   ];
@@ -402,7 +454,7 @@ export class DentalEncounterDialogComponent {
   selectedTabIndex = this.data.initialTabIndex;
   selectedPatientKey = '';
 
-  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {} };
+  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {}, oralExam: {} };
   imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: new Date().toISOString() };
   consulting: DentalConsulting = { id: 0, consultId: '', pNo: '', clientCat: 'PRIVATE' };
 
@@ -474,9 +526,10 @@ export class DentalEncounterDialogComponent {
     const dtypeKey: keyof ToothStatus | null =
       dtype === 'teeth present' ? 'present'
         : dtype === 'carious teeth' ? 'carious'
-          : dtype === 'missing teeth' ? 'missing'
-            : dtype === 'filled teeth' ? 'filled'
-              : null;
+          : dtype === 'decayed teeth' ? 'decayed'
+            : dtype === 'missing teeth' ? 'missing'
+              : dtype === 'filled teeth' ? 'filled'
+                : null;
 
     if (!dtypeKey) {
       this.chart.teethStatus = status;
@@ -505,9 +558,10 @@ export class DentalEncounterDialogComponent {
     const dtypeKey: keyof ToothStatus | null =
       dtype === 'teeth present' ? 'present'
         : dtype === 'carious teeth' ? 'carious'
-          : dtype === 'missing teeth' ? 'missing'
-            : dtype === 'filled teeth' ? 'filled'
-              : null;
+          : dtype === 'decayed teeth' ? 'decayed'
+            : dtype === 'missing teeth' ? 'missing'
+              : dtype === 'filled teeth' ? 'filled'
+                : null;
 
     const chartRecord = this.chart as unknown as Record<string, unknown>;
 

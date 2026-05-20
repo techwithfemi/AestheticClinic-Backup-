@@ -396,6 +396,7 @@ public class DentalController(
         {
             "teeth present" => "present",
             "carious teeth" => "carious",
+            "decayed teeth" => "decayed",
             "missing teeth" => "missing",
             "filled teeth" => "filled",
             _ => null
@@ -421,6 +422,9 @@ public class DentalController(
                     break;
                 case "carious":
                     status.Carious = true;
+                    break;
+                case "decayed":
+                    status.Decayed = true;
                     break;
                 case "missing":
                     status.Missing = true;
