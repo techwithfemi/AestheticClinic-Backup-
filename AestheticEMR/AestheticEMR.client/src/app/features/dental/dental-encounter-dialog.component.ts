@@ -73,7 +73,6 @@ export interface DentalEncounterDialogData {
           <div class="meta-item"><span class="label">Patient:</span> <span>{{ selectedPatientInfo?.fullName || '—' }}</span></div>
           <div class="meta-item"><span class="label">Age:</span> <span>{{ selectedPatientAge ?? '—' }}</span></div>
           <div class="meta-item"><span class="label">Company:</span> <span>{{ selectedPatientInfo?.companyName || '—' }}</span></div>
-          <div class="meta-item"><span class="label">CoyID:</span> <span>{{ selectedPatientInfo?.coyId || '—' }}</span></div>
           <div class="meta-item"><span class="label">ConsultID:</span> <span>{{ selectedPatientInfo?.consultId || '—' }}</span></div>
           <div class="meta-item"><span class="label">Clinic:</span> <span>{{ selectedPatientInfo?.clinic || '—' }}</span></div>
         </div>
@@ -443,7 +442,7 @@ export interface DentalEncounterDialogData {
       </mat-tab-group>
     </mat-dialog-content>
 
-    <mat-dialog-actions align="end">
+    <mat-dialog-actions align="end" class="sticky-actions">
       <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
       <button mat-raised-button color="primary" type="button" (click)="save()">Save</button>
     </mat-dialog-actions>
@@ -457,6 +456,15 @@ export interface DentalEncounterDialogData {
     .tab-body { padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .span-2 { grid-column: span 2; }
     mat-form-field { width: 100%; }
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      background: #0b1220;
+      border-top: 1px solid #334155;
+      margin: 0 -24px -24px;
+      padding: 12px 24px;
+    }
 
     .section-title { font-weight: 700; font-size: 0.9rem; color: #90caf9; text-transform: uppercase; letter-spacing: 0.04em; }
     .treatment-bottom { margin-top: 12px; }
@@ -681,15 +689,31 @@ export interface DentalEncounterDialogData {
       .oral-exam-grid { grid-template-columns: 1fr; }
       .ortho-grid { grid-template-columns: 1fr; }
       .filling-types { grid-column: span 1; }
+      .image-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     }
 
     @media (max-width: 768px) {
       .dialog-header h2 { font-size: 1rem; }
+      .patient-header { flex-direction: column; align-items: flex-start; }
+      .patient-photo,
+      .patient-photo.placeholder { width: 56px; height: 56px; min-width: 56px; min-height: 56px; flex-basis: 56px; }
+      .meta-item { font-size: 0.84rem; }
+      .meta-item .label { min-width: 64px; }
+      .meta-item span:last-child { white-space: normal; word-break: break-word; }
+
       .fdi-row-title { font-size: 0.72rem; }
       .fdi-tooth { font-size: 0.56rem; }
       .fdi-cell mat-checkbox { transform: scale(0.62); margin-top: -4px; }
       .fdi-grid-row { gap: 0; }
+
       .image-toolbar { flex-direction: column; align-items: stretch; }
+      .image-toolbar button { min-height: 40px; }
+      .image-item-actions button { width: 32px; height: 32px; }
+      .image-item-actions .mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      .image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      ::ng-deep .mat-mdc-tab-header { overflow-x: auto; }
+      ::ng-deep .mat-mdc-tab .mdc-tab__text-label { font-size: 0.82rem; }
       .image-actions { flex-direction: column; }
     }
 
@@ -698,6 +722,13 @@ export interface DentalEncounterDialogData {
       .fdi-cell { padding: 0; }
       .fdi-cell mat-checkbox { transform: scale(0.54); margin-top: -5px; }
       .close-btn { width: 30px; height: 30px; }
+
+      mat-dialog-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+      mat-dialog-actions button { width: 100%; min-height: 40px; }
+      .sticky-actions {
+        margin: 0 -16px -16px;
+        padding: 10px 16px;
+      }
     }
 
     .patient-header {
