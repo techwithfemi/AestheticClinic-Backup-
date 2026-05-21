@@ -275,6 +275,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.TDate = NormalizeSqlDateTime(chart.TDate, DateTime.UtcNow);
         existing.TTime = NormalizeSqlDateTime(chart.TTime, existing.TDate);
         existing.TeethStatusJson = chart.TeethStatusJson;
+        existing.OrthodonticsJson = chart.OrthodonticsJson;
         existing.ARem = chart.ARem;
         existing.CRem = chart.CRem;
         existing.ConId = chart.ConId;

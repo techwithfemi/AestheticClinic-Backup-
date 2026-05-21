@@ -16,6 +16,12 @@ namespace AestheticEMR.Server.Migrations
                 type: "nvarchar(max)",
                 nullable: true);
 
+            migrationBuilder.AddColumn<string>(
+                name: "orthodonticsJson",
+                table: "hDentalTreat",
+                type: "nvarchar(max)",
+                nullable: true);
+
             migrationBuilder.Sql(
                 """
                 UPDATE h
@@ -87,6 +93,10 @@ namespace AestheticEMR.Server.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "orthodonticsJson",
+                table: "hDentalTreat");
+
             migrationBuilder.DropColumn(
                 name: "teethStatusJson",
                 table: "hDentalTreat");

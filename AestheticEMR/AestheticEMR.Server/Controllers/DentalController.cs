@@ -37,6 +37,7 @@ public class DentalController(
 
         var chartVm = _mapper.Map<DentalChartVM>(encounter.Value.Chart);
         chartVm.TeethStatus = ResolveTeethStatus(encounter.Value.Chart);
+        chartVm.Orthodontics = DeserializeOrthodontics(encounter.Value.Chart.OrthodonticsJson);
 
         return Ok(new DentalEncounterVM
         {
@@ -57,6 +58,7 @@ public class DentalController(
 
         var chart = _mapper.Map<HDentalTreat>(vm.Chart);
         chart.TeethStatusJson = SerializeTeethStatus(vm.Chart.TeethStatus);
+        chart.OrthodonticsJson = SerializeOrthodontics(vm.Chart.Orthodontics);
 
         var imaging = _mapper.Map<DentalImaging>(vm.Imaging);
         var consulting = _mapper.Map<HConsulting>(vm.Consulting);
@@ -72,6 +74,7 @@ public class DentalController(
 
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
             savedChartVm.TeethStatus = ResolveTeethStatus(saved.Chart);
+            savedChartVm.Orthodontics = DeserializeOrthodontics(saved.Chart.OrthodonticsJson);
 
             return Ok(new DentalEncounterVM
             {
@@ -100,6 +103,7 @@ public class DentalController(
         for (var i = 0; i < result.Count && i < chartEntities.Count; i++)
         {
             result[i].TeethStatus = ResolveTeethStatus(chartEntities[i]);
+            result[i].Orthodontics = DeserializeOrthodontics(chartEntities[i].OrthodonticsJson);
         }
 
         return Ok(result);
@@ -115,6 +119,7 @@ public class DentalController(
 
         var vm = _mapper.Map<DentalChartVM>(chart);
         vm.TeethStatus = ResolveTeethStatus(chart);
+        vm.Orthodontics = DeserializeOrthodontics(chart.OrthodonticsJson);
         return Ok(vm);
     }
 
@@ -125,10 +130,12 @@ public class DentalController(
         if (!ModelState.IsValid) return BadRequest(ModelState);
         var entity = _mapper.Map<HDentalTreat>(vm);
         entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
+        entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
         var created = dentalService.AddChart(entity);
 
         var createdVm = _mapper.Map<DentalChartVM>(created);
         createdVm.TeethStatus = ResolveTeethStatus(created);
+        createdVm.Orthodontics = DeserializeOrthodontics(created.OrthodonticsJson);
         return CreatedAtAction(nameof(GetChart), new { id = created.Id }, createdVm);
     }
 
@@ -143,10 +150,12 @@ public class DentalController(
         {
             var entity = _mapper.Map<HDentalTreat>(vm);
             entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
+            entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
             var updated = dentalService.UpdateChart(entity, GetCurrentUserId());
 
             var updatedVm = _mapper.Map<DentalChartVM>(updated);
             updatedVm.TeethStatus = ResolveTeethStatus(updated);
+            updatedVm.Orthodontics = DeserializeOrthodontics(updated.OrthodonticsJson);
             return Ok(updatedVm);
         }
         catch (UnauthorizedAccessException ex)
@@ -479,5 +488,28 @@ public class DentalController(
             "38" => chart.Allm3,
             _ => null
         };
+    }
+
+    private static string? SerializeOrthodontics(OrthodonticFormVM? orthodontics)
+    {
+        if (orthodontics == null)
+            return null;
+
+        return JsonSerializer.Serialize(orthodontics, JsonOptions);
+    }
+
+    private static OrthodonticFormVM? DeserializeOrthodontics(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<OrthodonticFormVM>(json, JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

@@ -69,17 +69,14 @@ export interface DentalEncounterDialogData {
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon>assignment</mat-icon>
-            <span>Clerking</span>
+            <span>History Taking</span>
           </ng-template>
           <div class="tab-body">
-            <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Imaging Type</mat-label><input matInput [(ngModel)]="imaging.imagingType" /></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Tooth Region</mat-label><input matInput [(ngModel)]="imaging.toothRegion" /></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Findings</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.findings"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Impression</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.impression"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Recommendations</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.recommendations"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Notes</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.notes"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.complaints"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>History of Presenting Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.hpc"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Past Medical History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.pmh"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Drug History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.drugHx"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="3" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
           </div>
         </mat-tab>
 
@@ -211,6 +208,145 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
+            <mat-icon>straighten</mat-icon>
+            <span>Orthodontics</span>
+          </ng-template>
+          <div class="tab-body">
+            <div class="span-2 section-title">Orthodontic Assessment</div>
+
+            <div class="span-2 ortho-grid">
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.classI">Class I</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.classII">Class II</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.classIII">Class III</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.crowdingUpper">Crowding (Upper)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.crowdingLower">Crowding (Lower)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.spacingUpper">Spacing (Upper)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.spacingLower">Spacing (Lower)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.crossbiteAnterior">Crossbite (Anterior)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.crossbitePosterior">Crossbite (Posterior)</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.overjetIncreased">Overjet Increased</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.overbiteDeep">Overbite Deep</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.openbite">Open Bite</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.midlineShift">Midline Shift</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.impactedTeeth">Impacted Teeth</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.tmjSymptoms">TMJ Symptoms</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.extractionRequired">Extraction Required</mat-checkbox>
+            </div>
+
+            <div class="span-2 section-title">Overjet / Overbite / Impaction</div>
+            <mat-form-field appearance="outline">
+              <mat-label>Overjet</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.overjet" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Overbite</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.overbite" />
+            </mat-form-field>
+            <div class="span-2 ortho-grid">
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.teethImpaction">Teeth Impaction</mat-checkbox>
+            </div>
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Teeth Impaction Details</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.teethImpactionDetails" />
+            </mat-form-field>
+
+            <div class="span-2 section-title">Molar / Canine Relation</div>
+            <mat-form-field appearance="outline">
+              <mat-label>Molar Relation (R)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.molarRelationRight" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Molar Relation (L)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.molarRelationLeft" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Canine Relation (R)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.canineRelationRight" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Canine Relation (L)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.canineRelationLeft" />
+            </mat-form-field>
+
+            <div class="span-2 section-title">Lips / Habits</div>
+            <div class="span-2 ortho-grid">
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.lipsCompetent">Lips Competent</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.lipsIncompetent">Lips Incompetent</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.thumbSucking">Thumb Sucking</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.tongueThrusting">Tongue Thrusting</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.mouthBreathing">Mouth Breathing</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.nailBiting">Nail Biting</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.lipBiting">Lip Biting</mat-checkbox>
+            </div>
+
+            <div class="span-2 section-title">Skeletal Pattern</div>
+            <mat-form-field appearance="outline">
+              <mat-label>Antero-Posterior</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.skeletalPatternAnteroPosterior" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Vertical</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.skeletalPatternVertical" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Transverse</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.skeletalPatternTransverse" />
+            </mat-form-field>
+
+            <div class="span-2 section-title">Arch / Occlusion</div>
+            <mat-form-field appearance="outline">
+              <mat-label>Arch Width (Upper)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.archWidthUpper" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Arch Width (Lower)</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.archWidthLower" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Curve of Spee</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.curveOfSpee" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Dental Midline</mat-label>
+              <input matInput [(ngModel)]="chart.orthodontics!.dentalMidline" />
+            </mat-form-field>
+
+            <div class="span-2 section-title">Rotations / Tooth Anomalies</div>
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Rotations</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="chart.orthodontics!.rotations"></textarea>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Tooth Anomalies</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="chart.orthodontics!.toothAnomalies"></textarea>
+            </mat-form-field>
+
+            <div class="span-2 section-title">Summary / Investigations</div>
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Summary of Orthodontic Analysis</mat-label>
+              <textarea matInput rows="3" [(ngModel)]="chart.orthodontics!.summaryOfOrthodonticAnalysis"></textarea>
+            </mat-form-field>
+            <div class="span-2 ortho-grid">
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.investigationOpg">Investigation: OPG</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.investigationCeph">Investigation: CEPH</mat-checkbox>
+            </div>
+
+            <div class="span-2 section-title">Records</div>
+            <div class="span-2 ortho-grid">
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.clinicalStudyModel">Clinical Study Model</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.extraoralPhotographs">Extraoral Photographs</mat-checkbox>
+              <mat-checkbox [(ngModel)]="chart.orthodontics!.intraoralPhotographs">Intraoral Photographs</mat-checkbox>
+            </div>
+
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Orthodontic Notes</mat-label>
+              <textarea matInput rows="3" [(ngModel)]="chart.orthodontics!.notes"></textarea>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
             <mat-icon>manage_accounts</mat-icon>
             <span>Management</span>
           </ng-template>
@@ -228,33 +364,7 @@ export interface DentalEncounterDialogData {
             <span>Imaging</span>
           </ng-template>
           <div class="tab-body">
-            <div class="span-2 section-title">Uploaded Dental Images</div>
-
-            <div class="span-2 image-toolbar">
-              <button mat-stroked-button type="button" (click)="fileInput.click()">Upload Dental Image</button>
-              <input #fileInput type="file" accept="image/*" (change)="onImageSelected(fileInput.files)" style="display:none" />
-
-              <mat-form-field appearance="outline" class="image-select">
-                <mat-label>Saved Images</mat-label>
-                <mat-select [(ngModel)]="selectedImageId" (selectionChange)="onSelectImage()">
-                  <mat-option [value]="0">Current Draft</mat-option>
-                  @for (img of patientImagingRecords; track img.id) {
-                    <mat-option [value]="img.id">{{ imageOptionLabel(img) }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="span-2 image-panel">
-              @if (imagingPreviewUrl) {
-                <img [src]="imagingPreviewUrl" [alt]="imaging.fileName || 'Dental image'" class="dental-image" />
-              } @else {
-                <p class="image-empty">No uploaded dental images for this patient.</p>
-              }
-              @if (imaging.fileName) {
-                <p class="image-name">{{ imaging.fileName }}</p>
-              }
-            </div>
+            <div class="span-2 section-title">Imaging Write-up</div>
 
             <mat-form-field appearance="outline"><mat-label>Imaging Date</mat-label><input matInput type="date" [(ngModel)]="imagingDate" /></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Imaging Type</mat-label><input matInput [(ngModel)]="imaging.imagingType" /></mat-form-field>
@@ -263,12 +373,46 @@ export interface DentalEncounterDialogData {
             <mat-form-field appearance="outline" class="span-2"><mat-label>Impression</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.impression"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Recommendations</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.recommendations"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Notes</mat-label><textarea matInput rows="2" [(ngModel)]="imaging.notes"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>File Name</mat-label><input matInput [(ngModel)]="imaging.fileName" /></mat-form-field>
 
-            <div class="span-2 image-actions">
-              <button mat-raised-button color="primary" type="button" (click)="saveImagingRecord()">{{ imaging.id ? 'Update Image Record' : 'Save Image Record' }}</button>
-              <button mat-stroked-button color="warn" type="button" (click)="deleteImagingRecord()" [disabled]="!imaging.id">Delete Image Record</button>
+            <div class="span-2 section-title">Upload Dental Image</div>
+            <div class="span-2 image-toolbar">
+              <button mat-stroked-button type="button" (click)="fileInput.click()">Upload Dental Image</button>
+              <input #fileInput type="file" accept="image/*" multiple (change)="onImageSelected(fileInput.files); fileInput.value = ''" style="display:none" />
+              <span class="image-count" *ngIf="selectedImageFiles.length">{{ selectedImageFiles.length }} image(s) selected</span>
             </div>
+
+            <div class="span-2 image-panel">
+              @if (imagingPreviewUrls.length) {
+                <div class="image-grid">
+                  @for (img of imagingPreviewUrls; track img; let i = $index) {
+                    <div class="image-item">
+                      <img [src]="img" [alt]="'Dental image ' + (i + 1)" class="dental-image" />
+                      <div class="image-item-actions">
+                        <button mat-icon-button type="button" (click)="zoomImage(img)" title="Zoom image">
+                          <mat-icon>zoom_in</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" (click)="removeImageAt(i)" title="Remove image">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="image-empty">No uploaded dental image for this encounter.</p>
+              }
+            </div>
+
+            @if (zoomImageUrl) {
+              <div class="image-zoom-overlay" (click)="closeZoom()">
+                <div class="image-zoom-dialog" (click)="$event.stopPropagation()">
+                  <button mat-icon-button type="button" class="image-zoom-close" (click)="closeZoom()">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                  <img [src]="zoomImageUrl" alt="Dental image zoom" class="image-zoom-img" />
+                </div>
+              </div>
+            }
           </div>
         </mat-tab>
 
@@ -334,8 +478,53 @@ export interface DentalEncounterDialogData {
     .image-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
     .image-select { min-width: 280px; }
     .image-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .image-count { font-size: 0.85rem; color: #9fc3e7; }
 
     .image-panel { border: 1px dashed #4a5568; border-radius: 8px; padding: 16px; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; width: 100%; }
+    .image-item { position: relative; }
+    .image-item-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+    .image-item-actions button { width: 28px; height: 28px; background: rgba(0, 0, 0, 0.55); }
+    .image-item-actions .mat-icon { color: #fff; font-size: 18px; width: 18px; height: 18px; }
+    .dental-image { width: 100%; max-height: 180px; object-fit: cover; border-radius: 6px; border: 1px solid #374151; }
+
+    .image-zoom-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 24px;
+    }
+    .image-zoom-dialog {
+      position: relative;
+      max-width: min(95vw, 1100px);
+      max-height: 92vh;
+      background: #0b1220;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-zoom-img {
+      max-width: 100%;
+      max-height: calc(92vh - 56px);
+      border-radius: 6px;
+      object-fit: contain;
+    }
+    .image-zoom-close {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    .image-zoom-close .mat-icon {
+      color: #fff;
+    }
 
     .chart-section-label { font-weight: 600; font-size: 0.85rem; color: #1565c0; margin: 6px 0; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; }
     .quadrant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; box-sizing: border-box; }
@@ -375,6 +564,12 @@ export interface DentalEncounterDialogData {
       gap: 8px 16px;
       align-items: center;
     }
+    .ortho-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 16px;
+      align-items: center;
+    }
     .filling-types {
       grid-column: span 2;
       display: flex;
@@ -382,12 +577,6 @@ export interface DentalEncounterDialogData {
       gap: 10px;
       flex-wrap: wrap;
       padding: 4px 0;
-    }
-    .small-label {
-      font-size: 0.78rem;
-      color: #9fc3e7;
-      font-weight: 600;
-      margin-right: 4px;
     }
 
     @media (max-width: 1200px) {
@@ -406,6 +595,7 @@ export interface DentalEncounterDialogData {
       .image-actions { justify-content: stretch; }
       .image-actions button { flex: 1; }
       .oral-exam-grid { grid-template-columns: 1fr; }
+      .ortho-grid { grid-template-columns: 1fr; }
       .filling-types { grid-column: span 1; }
     }
 
@@ -454,17 +644,16 @@ export class DentalEncounterDialogComponent {
   selectedTabIndex = this.data.initialTabIndex;
   selectedPatientKey = '';
 
-  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {}, oralExam: {} };
+  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {}, oralExam: {}, orthodontics: {} };
   imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: new Date().toISOString() };
   consulting: DentalConsulting = { id: 0, consultId: '', pNo: '', clientCat: 'PRIVATE' };
 
   chartDate = this.toDateInput(this.chart.tDate);
   imagingDate = this.toDateInput(this.imaging.imagingDate);
 
-  patientImagingRecords: DentalImaging[] = [];
-  selectedImageId = 0;
-  imagingPreviewUrl = '';
-  selectedImageFile: File | null = null;
+  imagingPreviewUrls: string[] = [];
+  selectedImageFiles: File[] = [];
+  zoomImageUrl = '';
 
   get isEdit(): boolean {
     return !!this.data.encounter;
@@ -472,17 +661,21 @@ export class DentalEncounterDialogComponent {
 
   constructor() {
     if (this.data.encounter) {
-      this.chart = { ...this.chart, ...this.data.encounter.chart, teethStatus: this.data.encounter.chart.teethStatus || {} };
+      this.chart = {
+        ...this.chart,
+        ...this.data.encounter.chart,
+        teethStatus: this.data.encounter.chart.teethStatus || {},
+        oralExam: this.data.encounter.chart.oralExam || {},
+        orthodontics: this.data.encounter.chart.orthodontics || {}
+      };
       this.imaging = { ...this.imaging, ...this.data.encounter.imaging };
       this.consulting = { ...this.consulting, ...this.data.encounter.consulting };
       this.chartDate = this.toDateInput(this.chart.tDate);
       this.imagingDate = this.toDateInput(this.imaging.imagingDate);
-      this.imagingPreviewUrl = this.imaging.filePath || '';
+      this.imagingPreviewUrls = this.imaging.filePath ? [this.imaging.filePath] : [];
 
       const key = this.data.patientOptions.find(p => p.pNo === this.chart.pno && p.consultId === this.chart.consultId)?.label;
       this.selectedPatientKey = key || '';
-
-      this.loadPatientImagingRecords();
     }
 
     this.applyLegacyFlagsToStatusMap();
@@ -583,144 +776,53 @@ export class DentalEncounterDialogComponent {
     this.consulting.pNo = selected.pNo;
     this.consulting.consultId = selected.consultId;
     this.consulting.clientCat = selected.clientCat || 'PRIVATE';
-
-    this.loadPatientImagingRecords();
-  }
-
-  imageOptionLabel(img: DentalImaging): string {
-    return `${img.fileName || 'Untitled image'} (${this.toDateInput(img.imagingDate) || 'No date'})`;
-  }
-
-  onSelectImage(): void {
-    if (!this.selectedImageId) {
-      this.imaging = {
-        ...this.imaging,
-        id: 0,
-        fileName: undefined,
-        filePath: undefined,
-        imagingType: undefined,
-        toothRegion: undefined,
-        findings: undefined,
-        impression: undefined,
-        recommendations: undefined,
-        notes: undefined
-      };
-      this.imagingDate = this.toDateInput(new Date().toISOString());
-      this.imagingPreviewUrl = '';
-      this.selectedImageFile = null;
-      return;
-    }
-
-    const selected = this.patientImagingRecords.find(x => x.id === this.selectedImageId);
-    if (!selected) return;
-
-    this.imaging = { ...selected };
-    this.imagingDate = this.toDateInput(selected.imagingDate);
-    this.imagingPreviewUrl = selected.filePath || '';
-    this.selectedImageFile = null;
   }
 
   onImageSelected(files: FileList | null): void {
-    const file = files?.item(0);
-    if (!file) return;
+    if (!files?.length) return;
 
-    this.selectedImageFile = file;
+    for (let i = 0; i < files.length; i++) {
+      const file = files.item(i);
+      if (!file) continue;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = (reader.result as string) || '';
-      this.imagingPreviewUrl = url;
-      this.imaging.fileName = file.name;
-    };
-    reader.readAsDataURL(file);
-  }
+      this.selectedImageFiles.push(file);
 
-  saveImagingRecord(): void {
-    if (!this.imaging.pno || !this.imaging.consultId) {
-      this.alertService.showStickyMessage('Validation', 'Select a patient before saving imaging.', MessageSeverity.warn);
-      return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = (reader.result as string) || '';
+        if (url) this.imagingPreviewUrls = [...this.imagingPreviewUrls, url];
+      };
+      reader.readAsDataURL(file);
     }
 
-    this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
-
-    const done = (saved: DentalImaging) => {
-      this.imaging = { ...this.imaging, ...saved };
-      this.imagingDate = this.toDateInput(this.imaging.imagingDate);
-      this.imagingPreviewUrl = this.imaging.filePath || this.imagingPreviewUrl;
-      this.selectedImageFile = null;
-      this.alertService.showMessage('Imaging record saved', '', MessageSeverity.success);
-      this.loadPatientImagingRecords(saved.id);
-    };
-
-    if (this.selectedImageFile) {
-      this.dentalEndpoint.uploadImagingEndpoint<DentalImaging>({
-        file: this.selectedImageFile,
-        pno: this.imaging.pno,
-        consultId: this.imaging.consultId,
-        id: this.imaging.id > 0 ? this.imaging.id : undefined,
-        imagingDate: this.imaging.imagingDate,
-        imagingType: this.imaging.imagingType,
-        toothRegion: this.imaging.toothRegion,
-        findings: this.imaging.findings,
-        impression: this.imaging.impression,
-        recommendations: this.imaging.recommendations,
-        notes: this.imaging.notes
-      }).subscribe({
-        next: done,
-        error: error => {
-          this.alertService.showStickyMessage('Upload error', 'Unable to upload and save imaging record.', MessageSeverity.error, error);
-        }
-      });
-      return;
-    }
-
-    const payload = this.withoutDefaults(this.imaging);
-    const request$ = this.imaging.id
-      ? this.dentalEndpoint.updateImagingEndpoint<DentalImaging>(this.imaging.id, payload)
-      : this.dentalEndpoint.createImagingEndpoint<DentalImaging>(payload);
-
-    request$.subscribe({
-      next: done,
-      error: error => {
-        this.alertService.showStickyMessage('Save error', 'Unable to save imaging record.', MessageSeverity.error, error);
-      }
-    });
+    this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
   }
 
-  deleteImagingRecord(): void {
-    if (!this.imaging.id) return;
+  removeImageAt(index: number): void {
+    if (index < 0 || index >= this.imagingPreviewUrls.length) return;
 
-    this.dentalEndpoint.deleteImagingEndpoint<void>(this.imaging.id).subscribe({
-      next: () => {
-        this.alertService.showMessage('Imaging record deleted', '', MessageSeverity.success);
-        this.selectedImageId = 0;
-        this.onSelectImage();
-        this.loadPatientImagingRecords();
-      },
-      error: error => {
-        this.alertService.showStickyMessage('Delete error', 'Unable to delete imaging record.', MessageSeverity.error, error);
-      }
-    });
-  }
+    const previewToRemove = this.imagingPreviewUrls[index];
+    this.imagingPreviewUrls = this.imagingPreviewUrls.filter((_, i) => i !== index);
 
-  private loadPatientImagingRecords(preferredId?: number): void {
-    if (!this.chart.pno || !this.chart.consultId) {
-      this.patientImagingRecords = [];
-      return;
+    if (index < this.selectedImageFiles.length) {
+      this.selectedImageFiles = this.selectedImageFiles.filter((_, i) => i !== index);
+      this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
+    } else if (this.imaging.filePath === previewToRemove) {
+      this.imaging.filePath = undefined;
+      this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
     }
 
-    this.dentalEndpoint.getImagingEndpoint<DentalImaging[]>().subscribe({
-      next: rows => {
-        this.patientImagingRecords = (rows || []).filter(x => x.pno === this.chart.pno && x.consultId === this.chart.consultId);
-        if (preferredId && this.patientImagingRecords.some(x => x.id === preferredId)) {
-          this.selectedImageId = preferredId;
-          this.onSelectImage();
-        }
-      },
-      error: () => {
-        this.patientImagingRecords = [];
-      }
-    });
+    if (this.zoomImageUrl === previewToRemove) {
+      this.zoomImageUrl = '';
+    }
+  }
+
+  zoomImage(url: string): void {
+    this.zoomImageUrl = url;
+  }
+
+  closeZoom(): void {
+    this.zoomImageUrl = '';
   }
 
   save(): void {
@@ -732,10 +834,53 @@ export class DentalEncounterDialogComponent {
     this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
     this.syncLegacyFlagsFromStatusMap();
 
-    this.dialogRef.close({
-      chart: this.withoutDefaults(this.chart),
-      imaging: this.withoutDefaults(this.imaging),
-      consulting: this.withoutDefaults(this.consulting)
+    const closeWithPayload = () => {
+      this.dialogRef.close({
+        chart: this.withoutDefaults(this.chart),
+        imaging: this.withoutDefaults(this.imaging),
+        consulting: this.withoutDefaults(this.consulting)
+      });
+    };
+
+    if (this.selectedImageFiles.length) {
+      this.uploadSelectedImages(0, closeWithPayload);
+      return;
+    }
+
+    closeWithPayload();
+  }
+
+  private uploadSelectedImages(index: number, done: () => void): void {
+    const file = this.selectedImageFiles[index];
+    if (!file) {
+      this.selectedImageFiles = [];
+      done();
+      return;
+    }
+
+    this.dentalEndpoint.uploadImagingEndpoint<DentalImaging>({
+      file,
+      pno: this.chart.pno,
+      consultId: this.chart.consultId,
+      imagingDate: this.imaging.imagingDate,
+      imagingType: this.imaging.imagingType,
+      toothRegion: this.imaging.toothRegion,
+      findings: this.imaging.findings,
+      impression: this.imaging.impression,
+      recommendations: this.imaging.recommendations,
+      notes: this.imaging.notes
+    }).subscribe({
+      next: saved => {
+        this.imaging = { ...this.imaging, ...saved };
+        if (saved.filePath) {
+          this.imagingPreviewUrls = [...this.imagingPreviewUrls.filter(x => x !== saved.filePath), saved.filePath];
+        }
+
+        this.uploadSelectedImages(index + 1, done);
+      },
+      error: error => {
+        this.alertService.showStickyMessage('Upload error', 'Unable to upload one or more dental images.', MessageSeverity.error, error);
+      }
     });
   }
 

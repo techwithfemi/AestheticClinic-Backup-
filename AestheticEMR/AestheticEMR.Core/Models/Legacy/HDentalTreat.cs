@@ -18,6 +18,7 @@ public partial class HDentalTreat
     public DateTime TTime { get; set; }
 
     public string? TeethStatusJson { get; set; }
+    public string? OrthodonticsJson { get; set; }
 
     public bool? Auli1 { get; set; }
 

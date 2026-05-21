@@ -26,6 +26,7 @@ public class DentalChartVM
 
     public Dictionary<string, ToothStatusVM>? TeethStatus { get; set; }
     public OralExamVM? OralExam { get; set; }
+    public OrthodonticFormVM? Orthodontics { get; set; }
 
     // Adult Upper Left quadrant
     public bool? Auli1 { get; set; }
@@ -189,6 +190,10 @@ public class DentalConsultingVM
     public required string ClientCat { get; set; }
 
     public string? Diagnosis { get; set; }
+    public string? Complaints { get; set; }
+    public string? Hpc { get; set; }
+    public string? Pmh { get; set; }
+    public string? DrugHx { get; set; }
     public string? Prescription { get; set; }
     public string? Services { get; set; }
     public string? Investigate { get; set; }
@@ -242,4 +247,64 @@ public class DentalImagingUploadVM
     public string? Impression { get; set; }
     public string? Recommendations { get; set; }
     public string? Notes { get; set; }
+}
+
+public class OrthodonticFormVM
+{
+    public bool? ClassI { get; set; }
+    public bool? ClassII { get; set; }
+    public bool? ClassIII { get; set; }
+    public bool? CrowdingUpper { get; set; }
+    public bool? CrowdingLower { get; set; }
+    public bool? SpacingUpper { get; set; }
+    public bool? SpacingLower { get; set; }
+    public bool? CrossbiteAnterior { get; set; }
+    public bool? CrossbitePosterior { get; set; }
+    public bool? OverjetIncreased { get; set; }
+    public bool? OverbiteDeep { get; set; }
+    public bool? Openbite { get; set; }
+    public bool? MidlineShift { get; set; }
+    public bool? ImpactedTeeth { get; set; }
+    public bool? TmjSymptoms { get; set; }
+    public string? OralHabits { get; set; }
+    public string? TreatmentObjective { get; set; }
+    public string? ApplianceSelection { get; set; }
+    public bool? ExtractionRequired { get; set; }
+    public string? Notes { get; set; }
+    public bool? ClinicalStudyModel { get; set; }
+    public bool? ExtraoralPhotographs { get; set; }
+    public bool? IntraoralPhotographs { get; set; }
+
+    public string? Overjet { get; set; }
+    public string? Overbite { get; set; }
+    public bool? TeethImpaction { get; set; }
+    public string? TeethImpactionDetails { get; set; }
+
+    public string? MolarRelationRight { get; set; }
+    public string? MolarRelationLeft { get; set; }
+    public string? CanineRelationRight { get; set; }
+    public string? CanineRelationLeft { get; set; }
+
+    public bool? LipsCompetent { get; set; }
+    public bool? LipsIncompetent { get; set; }
+    public bool? ThumbSucking { get; set; }
+    public bool? TongueThrusting { get; set; }
+    public bool? MouthBreathing { get; set; }
+    public bool? NailBiting { get; set; }
+    public bool? LipBiting { get; set; }
+
+    public string? SkeletalPatternAnteroPosterior { get; set; }
+    public string? SkeletalPatternVertical { get; set; }
+    public string? SkeletalPatternTransverse { get; set; }
+
+    public string? ArchWidthUpper { get; set; }
+    public string? ArchWidthLower { get; set; }
+    public string? CurveOfSpee { get; set; }
+    public string? DentalMidline { get; set; }
+    public string? Rotations { get; set; }
+    public string? ToothAnomalies { get; set; }
+
+    public string? SummaryOfOrthodonticAnalysis { get; set; }
+    public bool? InvestigationOpg { get; set; }
+    public bool? InvestigationCeph { get; set; }
 }

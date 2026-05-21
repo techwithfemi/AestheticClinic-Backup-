@@ -8,8 +8,9 @@ export interface DentalChart {
   tTime?: string;
 
   // Tooth status map: key is FDI number (e.g., '11', '12', ... '48')
-  teethStatus?: { [toothNumber: string]: ToothStatus };
+  teethStatus?: Record<string, ToothStatus>;
   oralExam?: OralExam;
+  orthodontics?: OrthodonticForm;
 
   // Existing quadrant/teeth booleans remain for compatibility
 
@@ -113,6 +114,10 @@ export interface DentalConsulting {
   pNo: string;
   clientCat: string;
   diagnosis?: string;
+  complaints?: string;
+  hpc?: string;
+  pmh?: string;
+  drugHx?: string;
   prescription?: string;
   services?: string;
   investigate?: string;
@@ -129,4 +134,63 @@ export interface DentalEncounterSave {
   chart: DentalChart;
   imaging: DentalImaging;
   consulting: DentalConsulting;
+}
+
+export interface OrthodonticForm {
+  classI?: boolean;
+  classII?: boolean;
+  classIII?: boolean;
+  crowdingUpper?: boolean;
+  crowdingLower?: boolean;
+  spacingUpper?: boolean;
+  spacingLower?: boolean;
+  crossbiteAnterior?: boolean;
+  crossbitePosterior?: boolean;
+  overjetIncreased?: boolean;
+  overbiteDeep?: boolean;
+  openbite?: boolean;
+  midlineShift?: boolean;
+  impactedTeeth?: boolean;
+  tmjSymptoms?: boolean;
+  oralHabits?: string;
+  treatmentObjective?: string;
+  applianceSelection?: string;
+  extractionRequired?: boolean;
+  notes?: string;
+  clinicalStudyModel?: boolean;
+  extraoralPhotographs?: boolean;
+  intraoralPhotographs?: boolean;
+
+  overjet?: string;
+  overbite?: string;
+  teethImpaction?: boolean;
+  teethImpactionDetails?: string;
+
+  molarRelationRight?: string;
+  molarRelationLeft?: string;
+  canineRelationRight?: string;
+  canineRelationLeft?: string;
+
+  lipsCompetent?: boolean;
+  lipsIncompetent?: boolean;
+  thumbSucking?: boolean;
+  tongueThrusting?: boolean;
+  mouthBreathing?: boolean;
+  nailBiting?: boolean;
+  lipBiting?: boolean;
+
+  skeletalPatternAnteroPosterior?: string;
+  skeletalPatternVertical?: string;
+  skeletalPatternTransverse?: string;
+
+  archWidthUpper?: string;
+  archWidthLower?: string;
+  curveOfSpee?: string;
+  dentalMidline?: string;
+  rotations?: string;
+  toothAnomalies?: string;
+
+  summaryOfOrthodonticAnalysis?: string;
+  investigationOpg?: boolean;
+  investigationCeph?: boolean;
 }
