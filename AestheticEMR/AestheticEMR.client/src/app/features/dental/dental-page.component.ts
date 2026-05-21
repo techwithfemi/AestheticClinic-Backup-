@@ -12,8 +12,10 @@ import { AlertService, DialogType, MessageSeverity } from '../../services/alert.
 import { DentalEndpoint } from '../../services/dental-endpoint.service';
 import { AttendanceEndpoint } from '../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../services/h-patient-endpoint.service';
+import { HRetainershipEndpoint } from '../../services/h-retainership-endpoint.service';
 import { Attendance } from '../../models/legacy/attendance.model';
 import { HPatient } from '../../models/legacy/h-patient.model';
+import { HRetainership } from '../../models/legacy/h-retainership.model';
 import { DentalEncounter, DentalImaging } from '../../models/dental.model';
 import { DentalEncounterDialogComponent, DentalPatientOption } from './dental-encounter-dialog.component';
 import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoice-dialog.component';
@@ -120,10 +122,12 @@ export class DentalPageComponent implements OnInit {
   private readonly dentalEndpoint = inject(DentalEndpoint);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
+  private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
 
   readonly imagingRecords = signal<DentalImaging[]>([]);
   readonly attendance = signal<Attendance[]>([]);
   readonly patients = signal<HPatient[]>([]);
+  readonly retainerships = signal<HRetainership[]>([]);
   readonly patientOptions = signal<DentalPatientOption[]>([]);
 
   readonly columns = ['patient', 'consultId', 'imagingDate', 'imagingType', 'findings', 'actions'];
@@ -254,11 +258,13 @@ export class DentalPageComponent implements OnInit {
     Promise.all([
       this.dentalEndpoint.getImagingEndpoint<DentalImaging[]>().toPromise(),
       this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
-      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
-    ]).then(([imaging, attendance, patients]) => {
+      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise(),
+      this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>().toPromise()
+    ]).then(([imaging, attendance, patients, retainerships]) => {
       this.imagingRecords.set(imaging || []);
       this.attendance.set(attendance || []);
       this.patients.set(patients || []);
+      this.retainerships.set(retainerships || []);
       this.patientOptions.set(this.buildPatientOptions());
       this.alertService.stopLoadingMessage();
     }).catch(error => {
@@ -290,13 +296,36 @@ export class DentalPageComponent implements OnInit {
     return Array.from(unique.values()).map(item => {
       const p = this.patients().find(x => x.pno === item.pNo);
       const fullName = `${p?.pSurName ?? 'Unknown'} ${p?.pFirstname ?? ''}`.trim();
+      const attendDate = this.formatAttendDate(item.recDate);
+      const retainership = this.retainerships().find(x => x.retainId === item.coyname);
+      const companyName = retainership?.retainName || p?.coyName || item.coyname;
       return {
         pNo: item.pNo,
         consultId: item.consultId,
         clientCat: item.clientCat,
-        label: `${fullName} [${item.consultId}]`
+        label: `${fullName} ${attendDate} [${item.consultId}]`,
+        fullName,
+        attendDate,
+        photo: p?.patPixBase64,
+        dateOfBirth: p?.dob,
+        companyName,
+        coyId: item.coyname,
+        clinic: item.clinicType
       } as DentalPatientOption;
     }).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private formatAttendDate(value?: string): string {
+    if (!value) return '';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).replace(/ /g, '-');
   }
 
   private isToday(value?: string): boolean {

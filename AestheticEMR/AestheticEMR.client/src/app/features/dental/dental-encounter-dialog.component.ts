@@ -20,6 +20,13 @@ export interface DentalPatientOption {
   consultId: string;
   clientCat?: string;
   label: string;
+  fullName?: string;
+  attendDate?: string;
+  photo?: string;
+  dateOfBirth?: string;
+  companyName?: string;
+  coyId?: string;
+  clinic?: string;
 }
 
 export interface DentalEncounterDialogData {
@@ -53,15 +60,23 @@ export interface DentalEncounterDialogData {
     </div>
 
     <mat-dialog-content>
-      <div class="top-row">
-        <mat-form-field appearance="outline" class="full">
-          <mat-label>Patient (ConsultID)</mat-label>
-          <mat-select [(ngModel)]="selectedPatientKey" (selectionChange)="onPatientSelected()">
-            @for (p of data.patientOptions; track p.label) {
-              <mat-option [value]="p.label">{{ p.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+      <div class="patient-header">
+        @if (selectedPatientInfo?.photo) {
+          <img class="patient-photo" [src]="getPatientPhotoSource(selectedPatientInfo?.photo)" alt="Patient photo" />
+        } @else {
+          <div class="patient-photo placeholder">
+            <mat-icon>person</mat-icon>
+          </div>
+        }
+
+        <div class="patient-meta">
+          <div class="meta-item"><span class="label">Patient:</span> <span>{{ selectedPatientInfo?.fullName || '—' }}</span></div>
+          <div class="meta-item"><span class="label">Age:</span> <span>{{ selectedPatientAge ?? '—' }}</span></div>
+          <div class="meta-item"><span class="label">Company:</span> <span>{{ selectedPatientInfo?.companyName || '—' }}</span></div>
+          <div class="meta-item"><span class="label">CoyID:</span> <span>{{ selectedPatientInfo?.coyId || '—' }}</span></div>
+          <div class="meta-item"><span class="label">ConsultID:</span> <span>{{ selectedPatientInfo?.consultId || '—' }}</span></div>
+          <div class="meta-item"><span class="label">Clinic:</span> <span>{{ selectedPatientInfo?.clinic || '—' }}</span></div>
+        </div>
       </div>
 
       <mat-tab-group [(selectedIndex)]="selectedTabIndex">
@@ -72,6 +87,15 @@ export interface DentalEncounterDialogData {
             <span>History Taking</span>
           </ng-template>
           <div class="tab-body">
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Select patient</mat-label>
+              <mat-select [(ngModel)]="selectedPatientKey" (selectionChange)="onPatientSelected()">
+                <mat-option value="">Select patient</mat-option>
+                @for (p of data.patientOptions; track p.label) {
+                  <mat-option [value]="p.label">{{ p.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.complaints"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>History of Presenting Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.hpc"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Past Medical History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.pmh"></textarea></mat-form-field>
@@ -437,6 +461,65 @@ export interface DentalEncounterDialogData {
     .section-title { font-weight: 700; font-size: 0.9rem; color: #90caf9; text-transform: uppercase; letter-spacing: 0.04em; }
     .treatment-bottom { margin-top: 12px; }
 
+    .patient-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      min-height: 88px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .patient-photo {
+      width: 64px;
+      height: 64px;
+      min-width: 64px;
+      min-height: 64px;
+      max-width: 64px;
+      max-height: 64px;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #111827;
+      border: 1px solid #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      flex: 0 0 64px;
+      overflow: hidden;
+    }
+    .patient-photo.placeholder .mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+    .patient-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      min-width: 0;
+      flex: 1;
+    }
+    .meta-item {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      display: flex;
+      gap: 6px;
+      min-width: 0;
+    }
+    .meta-item span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta-item .label {
+      color: #94a3b8;
+      min-width: 72px;
+    }
+
     ::ng-deep .mat-mdc-tab .mdc-tab__text-label {
       display: inline-flex;
       align-items: center;
@@ -594,6 +677,7 @@ export interface DentalEncounterDialogData {
       .image-select { min-width: 0; width: 100%; }
       .image-actions { justify-content: stretch; }
       .image-actions button { flex: 1; }
+      .patient-meta { grid-template-columns: 1fr; }
       .oral-exam-grid { grid-template-columns: 1fr; }
       .ortho-grid { grid-template-columns: 1fr; }
       .filling-types { grid-column: span 1; }
@@ -614,6 +698,65 @@ export interface DentalEncounterDialogData {
       .fdi-cell { padding: 0; }
       .fdi-cell mat-checkbox { transform: scale(0.54); margin-top: -5px; }
       .close-btn { width: 30px; height: 30px; }
+    }
+
+    .patient-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      min-height: 88px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .patient-photo {
+      width: 64px;
+      height: 64px;
+      min-width: 64px;
+      min-height: 64px;
+      max-width: 64px;
+      max-height: 64px;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #111827;
+      border: 1px solid #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      flex: 0 0 64px;
+      overflow: hidden;
+    }
+    .patient-photo.placeholder .mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+    .patient-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      min-width: 0;
+      flex: 1;
+    }
+    .meta-item {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      display: flex;
+      gap: 6px;
+      min-width: 0;
+    }
+    .meta-item span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta-item .label {
+      color: #94a3b8;
+      min-width: 72px;
     }
   `]
 })
@@ -657,6 +800,31 @@ export class DentalEncounterDialogComponent {
 
   get isEdit(): boolean {
     return !!this.data.encounter;
+  }
+
+  get selectedPatientInfo(): DentalPatientOption | undefined {
+    return this.data.patientOptions.find(x => x.label === this.selectedPatientKey);
+  }
+
+  get selectedPatientAge(): number | null {
+    const dob = this.selectedPatientInfo?.dateOfBirth;
+    if (!dob) return null;
+
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  }
+
+  getPatientPhotoSource(photo?: string): string {
+    if (!photo) return '';
+    return photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`;
   }
 
   constructor() {

@@ -432,5 +432,8 @@ When creating a new entity with full CRUD:
 - Provide a short changed/why/verified summary after each change.
 - **Prioritize small safe edits** to ensure code reliability and avoid destabilizing modifications across the entire project.
 
-/github/copilot-instructions.md
-````````
+---
+
+## UI Enhancements
+
+- In the dental encounter header, patient photo should render as a circular avatar (not oval).
