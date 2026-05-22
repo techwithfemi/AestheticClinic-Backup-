@@ -1,0 +1,17 @@
+<div class="patient-header" [class.compact]="compact">
+  @if (photoSource) {
+    <img class="patient-photo" [src]="photoSource" alt="Patient photo" />
+  } @else {
+    <div class="patient-photo placeholder" aria-hidden="true">
+      <mat-icon>person</mat-icon>
+    </div>
+  }
+
+  <div class="patient-meta">
+    <div class="meta-item"><span class="label">Patient:</span> <span>{{ fullName || '—' }}</span></div>
+    <div class="meta-item"><span class="label">Age:</span> <span>{{ age ?? '—' }}</span></div>
+    <div class="meta-item"><span class="label">Company:</span> <span>{{ companyName || '—' }}</span></div>
+    <div class="meta-item"><span class="label">ConsultID:</span> <span>{{ consultId || '—' }}</span></div>
+    <div class="meta-item"><span class="label">Clinic:</span> <span>{{ clinic || '—' }}</span></div>
+  </div>
+</div>

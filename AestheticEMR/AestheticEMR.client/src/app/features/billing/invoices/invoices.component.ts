@@ -192,7 +192,7 @@ export class InvoicesComponent implements OnInit {
   openCreate(): void {
     const selected = this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
     if (!selected) {
-      this.openInvoiceDialog({ mode: 'create' });
+      this.alertService.showStickyMessage('Validation Error', 'select a patient name', MessageSeverity.error);
       return;
     }
 
@@ -325,13 +325,11 @@ export class InvoicesComponent implements OnInit {
         }
 
         this.attendanceOptions = Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
-
-        if (!this.selectedAttendanceKey && this.attendanceOptions.length > 0) {
-          this.selectedAttendanceKey = this.optionKey(this.attendanceOptions[0]);
-        }
+        this.selectedAttendanceKey = '';
       },
       error: () => {
         this.attendanceOptions = [];
+        this.selectedAttendanceKey = '';
       }
     });
   }

@@ -14,6 +14,10 @@ import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { HRetainership } from '../../../models/legacy/h-retainership.model';
 
+interface FrontdeskSettings {
+  clientType?: Record<string, string[]>;
+}
+
 @Component({
   selector: 'app-patients',
   templateUrl: './patients.component.html',
@@ -34,7 +38,7 @@ export class PatientsComponent implements OnInit {
   patientsCache: HPatient[] = [];
   filteredPatients: HPatient[] = [];
   companies: HRetainership[] = [];
-  frontdeskSettings: any = null;
+  frontdeskSettings: FrontdeskSettings | null = null;
   patCatOptions: string[] = [];
   searchText = '';
   loadingIndicator = false;
@@ -92,7 +96,7 @@ export class PatientsComponent implements OnInit {
   }
 
   loadFrontdeskSettings(): void {
-    this.http.get<any>('assets/module-settings/frontdesk.json').subscribe({
+    this.http.get<FrontdeskSettings>('/assets/module-settings/frontdesk.json').subscribe({
       next: settings => {
         this.frontdeskSettings = settings;
         // Set default options on load
@@ -118,8 +122,8 @@ export class PatientsComponent implements OnInit {
     let options: string[] = [];
     if (clientType && this.frontdeskSettings.clientType[clientType]) {
       options = this.frontdeskSettings.clientType[clientType];
-    } else if (this.frontdeskSettings.clientType.default) {
-      options = this.frontdeskSettings.clientType.default;
+    } else if (this.frontdeskSettings.clientType['default']) {
+      options = this.frontdeskSettings.clientType['default'];
     } else {
       options = ['PRIVATE', 'MTHLY', 'HMO', 'NHIS'];
     }

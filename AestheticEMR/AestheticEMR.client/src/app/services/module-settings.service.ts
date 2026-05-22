@@ -13,7 +13,7 @@ export class ModuleSettingsService {
       return Promise.resolve(cached);
     }
 
-    return firstValueFrom(this.http.get<T>(`assets/module-settings/${moduleName}.json`))
+    return firstValueFrom(this.http.get<T>(`/assets/module-settings/${moduleName}.json`))
       .then(settings => {
         this.cache.set(moduleName, settings as unknown);
         return settings;

@@ -27,11 +27,11 @@ import { HServiceNHIEndpoint } from '../../../services/h-service-nhi-endpoint.se
 import { DrugNHISEndpoint } from '../../../services/drug-nhis-endpoint.service';
 import { LabServiceNHIEndpoint } from '../../../services/lab-service-nhi-endpoint.service';
 import { hServiceNHI } from '../../../models/legacy/h-service-nhi.model';
-import { LabService } from '../../../models/legacy/lab-service.model';
 import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
 import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
 import { ProductTariff } from '../../../models/legacy/product-tariff.model';
 import { ProductTariffEndpoint } from '../../../services/product-tariff-endpoint.service';
+import { PatientSummaryComponent } from '../../../components/patient-summary/patient-summary.component';
 
 export interface BillingInvoiceDialogData {
   mode: 'create' | 'edit';
@@ -49,6 +49,11 @@ interface AttendanceOption {
   patientName: string;
   coyID?: string;
   label: string;
+  fullName?: string;
+  photo?: string;
+  dateOfBirth?: string;
+  companyName?: string;
+  clinic?: string;
 }
 
 @Component({
@@ -65,7 +70,8 @@ interface AttendanceOption {
     MatIconModule,
     MatCardModule,
     MatTableModule,
-    NgSelectModule
+    NgSelectModule,
+    PatientSummaryComponent
   ],
   templateUrl: './billing-invoice-dialog.component.html',
   styleUrl: './billing-invoice-dialog.component.scss'
@@ -98,7 +104,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   products: Product[] = [];
   revenueTypes: hRevenueType[] = [];
 
-  itemCategories: string[] = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
+  itemCategories: string[] = ["Service", "Product", "Drug", "Investigation"];
   itemTariffs: (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff)[] = [];
 
   invoiceForm: FormGroup = this.fb.group({
@@ -129,6 +135,41 @@ export class BillingInvoiceDialogComponent implements OnInit {
     patientName: '',
     coyID: ''
   };
+
+  get selectedPatientInfo(): AttendanceOption | undefined {
+    return this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
+  }
+
+  get selectedPatientAge(): number | null {
+    const dob = this.selectedPatientInfo?.dateOfBirth;
+    if (!dob) {
+      return null;
+    }
+
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) {
+      return null;
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age >= 0 ? age : null;
+  }
+
+  getPatientPhotoSource(photo?: string): string {
+    if (!photo) {
+      return '';
+    }
+
+    return photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`;
+  }
+
+  private hasShownSessionError = false;
 
   get isEditing(): boolean {
     return this.data.mode === 'edit';
@@ -325,7 +366,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
         billType: invoice.billType ?? ''
       });
 
-      this.persistedDetails = [...(invoice.details ?? [])];
+      this.persistedDetails = [...((invoice.details ?? []) as BillingDetail[])];
       this.resetLineItemForm();
 
       if (this.headerInfo.pNo) {
@@ -348,10 +389,10 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   private loadAttendanceOptions(): void {
     Promise.all([
-      this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
-      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
+      firstValueFrom(this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>()),
+      firstValueFrom(this.patientEndpoint.getHPatientsEndpoint<HPatient[]>())
     ]).then(([attendance, patients]) => {
-      const patientMap = new Map((patients ?? []).map(p => [p.pno ?? '', p]));
+      const patientMap = new Map<string, HPatient>((patients ?? []).map(p => [p.pno ?? '', p]));
       const todays = (attendance ?? []).filter(a => this.isToday(a.recDate));
 
       const unique = new Map<string, AttendanceOption>();
@@ -370,7 +411,12 @@ export class BillingInvoiceDialogComponent implements OnInit {
           pNo,
           patientName,
           coyID: company,
-          label: `${patientName} [${consultId}]`
+          label: `${patientName} [${consultId}]`,
+          fullName: patientName,
+          photo: patient?.patPixBase64,
+          dateOfBirth: patient?.dob,
+          companyName: company,
+          clinic: item.clinicType
         };
 
         const key = this.optionKey(option);
@@ -396,6 +442,9 @@ export class BillingInvoiceDialogComponent implements OnInit {
         this.selectedAttendanceKey = this.optionKey(first);
         this.onAttendanceSelectionChanged();
       }
+    }).catch(error => {
+      this.handleLoadError('Attendance Load Error', error);
+      this.attendanceOptions = [];
     });
   }
 
@@ -406,7 +455,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
     this.productEndpoint.getProductCategoriesEndpoint<ProductCategory[]>().subscribe({
       next: data => { this.productCategories = data || []; },
-      error: err => { this.alertService.showStickyMessage('Product Categories Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+      error: err => { this.handleLoadError('Product Categories Error', err); }
     });
   }
 
@@ -417,19 +466,29 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
     this.productEndpoint.getProductsEndpoint<Product[]>().subscribe({
       next: data => { this.products = data || []; },
-      error: err => { this.alertService.showStickyMessage('Products Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+      error: err => { this.handleLoadError('Products Error', err); }
     });
   }
 
   private loadRevenueTypes(): void {
-    this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<hRevenueType[]>().subscribe({
+    this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<unknown[]>().subscribe({
       next: data => {
-        this.revenueTypes = [{ sno: 0, revType: 'Select Revenue Type', catRemarks: '' }, ...(data || [])];
+        const mapped = (data ?? [])
+          .map(item => {
+            const source = item as Record<string, unknown>;
+            return {
+              sno: Number(source['sno'] ?? source['SNO'] ?? 0),
+              revType: String(source['revType'] ?? source['RevType'] ?? ''),
+              catRemarks: String(source['catRemarks'] ?? source['CatRemarks'] ?? '')
+            } as hRevenueType;
+          })
+          .filter(x => x.sno > 0 && !!x.revType);
+
+        this.revenueTypes = mapped;
         console.log('Revenue types loaded:', this.revenueTypes);
       },
       error: err => {
-        this.alertService.showStickyMessage('Revenue Types Error', this.getErrorMessage(err), MessageSeverity.error, err);
-        console.error('Revenue types load error:', err);
+        this.handleLoadError('Revenue Types Error', err);
       }
     });
   }
@@ -445,33 +504,33 @@ export class BillingInvoiceDialogComponent implements OnInit {
     if (normalized === 'service') {
       this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+          this.itemTariffs = data ?? [];
         },
-        error: err => { this.alertService.showStickyMessage('Service Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+        error: err => { this.handleLoadError('Service Tariffs Error', err); }
       });
     } else if (normalized === 'drug') {
       this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+          this.itemTariffs = data ?? [];
         },
-        error: err => { this.alertService.showStickyMessage('Drug Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+        error: err => { this.handleLoadError('Drug Tariffs Error', err); }
       });
     } else if (normalized === 'investigation') {
       this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data || [{ drgName: 'No items found' } as any];
+          this.itemTariffs = data ?? [];
         },
-        error: err => { this.alertService.showStickyMessage('Lab Service Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+        error: err => { this.handleLoadError('Lab Service Tariffs Error', err); }
       });
     } else if (normalized === 'product') {
       this.productTariffEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data || [{ pdtName: 'No items found' } as any];
+          this.itemTariffs = data ?? [];
         },
-        error: err => { this.alertService.showStickyMessage('Product Tariffs Error', this.getErrorMessage(err), MessageSeverity.error, err); }
+        error: err => { this.handleLoadError('Product Tariffs Error', err); }
       });
     } else {
-      this.itemTariffs = [{ drgName: 'No items found' } as any];
+      this.itemTariffs = [];
     }
   }
 
@@ -518,7 +577,6 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private buildPayload(details: BillingDetail[]): Billing {
-    const totalAmountBilled = details.reduce((sum, item) => sum + this.computePersistedLineTotal(item), 0);
     return {
       billNo: this.headerInfo.billNo,
       consultId: this.headerInfo.consultId,
@@ -565,7 +623,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private loadItemCategories(): void {
-    fetch('public/assets/module-settings/billing.json')
+    fetch('/assets/module-settings/billing.json')
       .then(response => {
         if (!response.ok) throw new Error('Failed to load billing.json: ' + response.statusText);
         return response.json();
@@ -579,9 +637,34 @@ export class BillingInvoiceDialogComponent implements OnInit {
         }
       })
       .catch((err) => {
-        this.itemCategories = ["Service", "Product", "DRUG", "INVESTIGATIONS"];
-        this.alertService.showStickyMessage('Tariff Category Error', err.message, MessageSeverity.error, err);
-        console.error('Tariff category load error:', err);
+        this.itemCategories = ["Service", "Product", "Drug", "Investigation"];
+        this.handleLoadError('Tariff Category Error', err);
       });
+  }
+
+  private handleLoadError(title: string, error: unknown): void {
+    if (this.isUnauthorized(error)) {
+      if (!this.hasShownSessionError) {
+        this.hasShownSessionError = true;
+        this.alertService.showStickyMessage(
+          'Session Expired',
+          'Your session has expired. Please sign in again, then reopen Add Invoice.',
+          MessageSeverity.warn,
+          error
+        );
+      }
+      return;
+    }
+
+    this.alertService.showStickyMessage(title, this.getErrorMessage(error), MessageSeverity.error, error);
+  }
+
+  private isUnauthorized(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const source = error as { status?: unknown; error?: { status?: unknown } };
+    return Number(source.status) === 401 || Number(source.error?.status) === 401;
   }
 }

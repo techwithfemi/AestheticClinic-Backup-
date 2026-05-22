@@ -30,6 +30,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*.json",
+                "input": "src/app/assets/module-settings",
+                "output": "assets/module-settings"
               }
             ],
             "styles": [
@@ -173,6 +178,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*.json",
+                "input": "src/app/assets/module-settings",
+                "output": "assets/module-settings"
               }
             ],
             "styles": [

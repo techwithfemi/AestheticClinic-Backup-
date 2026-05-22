@@ -568,3 +568,28 @@ table {
     min-height: 50vh;
   }
 }
+
+.ng-dropdown-panel {
+  z-index: 2200 !important;
+  background-color: #1f2937 !important;
+  border: 1px solid #374151 !important;
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+  color: #e5e7eb !important;
+  background: transparent !important;
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked {
+  background: #374151 !important;
+  color: #ffffff !important;
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-disabled {
+  color: #9ca3af !important;
+}

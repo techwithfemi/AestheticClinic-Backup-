@@ -1,49 +1,22 @@
 <div class="dialog-shell">
   <div class="dialog-header">
     <h3>{{ isEditing ? 'Edit Invoice' : 'Add Invoice' }}</h3>
-    <button mat-icon-button type="button" (click)="cancel()">
+    <button mat-icon-button type="button" class="close-button" (click)="cancel()">
       <mat-icon>close</mat-icon>
     </button>
   </div>
 
+  <app-patient-summary
+    [compact]="true"
+    [photo]="selectedPatientInfo?.photo"
+    [fullName]="selectedPatientInfo?.fullName || selectedPatientInfo?.patientName"
+    [dateOfBirth]="selectedPatientInfo?.dateOfBirth"
+    [companyName]="selectedPatientInfo?.companyName || selectedPatientInfo?.coyID"
+    [consultId]="selectedPatientInfo?.consultId || headerInfo.consultId"
+    [clinic]="selectedPatientInfo?.clinic">
+  </app-patient-summary>
+
   <form [formGroup]="invoiceForm" class="invoice-form">
-    <mat-card class="section-card">
-      <h4 class="section-title">Header</h4>
-
-      <div class="context-grid">
-        <div>
-          <label>ConsultID / BillNo</label>
-          <div class="readonly-text">{{ headerInfo.consultId || headerInfo.billNo || '-' }}</div>
-        </div>
-        <div>
-          <label>Patient</label>
-          <div class="readonly-text">{{ headerInfo.patientName || '-' }} [{{ headerInfo.pNo || '-' }}]</div>
-        </div>
-      </div>
-
-      <div class="grid">
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Invoice Date</mat-label>
-          <input matInput type="date" formControlName="bDate" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Discount</mat-label>
-          <input matInput type="number" formControlName="discount" min="0" step="0.01" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Amount Paid</mat-label>
-          <input matInput type="number" formControlName="amountPaid" min="0" step="0.01" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="half-width">
-          <mat-label>Bill Type</mat-label>
-          <input matInput formControlName="billType" />
-        </mat-form-field>
-      </div>
-    </mat-card>
-
     <mat-card class="section-card">
       <div class="details-header">
         <h4 class="section-title mb-0">Add Bill Details</h4>
@@ -54,7 +27,7 @@
       </div>
 
       <div class="single-row-editor">
-        <form [formGroup]="lineItemForm">
+        <div [formGroup]="lineItemForm">
           <div class="tariff-row">
             <!-- Revenue Type comes before Tariff Category, both on same row -->
             <ng-select
@@ -62,36 +35,55 @@
               bindLabel="revType"
               bindValue="sno"
               [searchable]="true"
-              [virtualScroll]="true"
+              [virtualScroll]="false"
               [clearable]="true"
+              appendTo="body"
               placeholder="Select Revenue Type"
               formControlName="revenueType"
               label="Revenue Type"
               class="tariff-select half-width">
+              <ng-template ng-option-tmp let-item="item">
+                <span style="color:#e5e7eb">{{ item?.revType || item?.RevType || item }}</span>
+              </ng-template>
+              <ng-template ng-label-tmp let-item="item">
+                <span style="color:#e5e7eb">{{ item?.revType || item?.RevType || item }}</span>
+              </ng-template>
             </ng-select>
             <ng-select
               [items]="itemCategories"
               [searchable]="true"
-              [virtualScroll]="true"
+              [virtualScroll]="false"
               [clearable]="true"
+              appendTo="body"
               placeholder="Select Tariff Category"
               formControlName="itemCategory"
               label="Tariff Category"
               class="tariff-select half-width">
+              <ng-template ng-option-tmp let-item="item">
+                <span style="color:#e5e7eb">{{ item }}</span>
+              </ng-template>
+              <ng-template ng-label-tmp let-item="item">
+                <span style="color:#e5e7eb">{{ item }}</span>
+              </ng-template>
             </ng-select>
             <ng-select
               [items]="itemTariffs"
               bindLabel="drgName"
               bindValue="drgName"
               [searchable]="true"
-              [virtualScroll]="true"
+              [virtualScroll]="false"
               [clearable]="true"
+              appendTo="body"
               placeholder="Select Item"
               formControlName="drgName"
               label="Select Item"
               class="tariff-select half-width">
+              <ng-template ng-option-tmp let-item="item">
+                <span style="color:#e5e7eb">{{ item?.drgName || item?.service || item?.pdtName || item }}</span>
+              </ng-template>
             </ng-select>
           </div>
+
           <div class="line-editor-grid">
             <mat-form-field appearance="outline" class="line-field half-width">
               <mat-label>Price</mat-label>
@@ -106,7 +98,7 @@
               <div class="readonly-text">{{ computeLineTotal() | number: '1.2-2' }}</div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
 
       <div class="details-table-wrap">

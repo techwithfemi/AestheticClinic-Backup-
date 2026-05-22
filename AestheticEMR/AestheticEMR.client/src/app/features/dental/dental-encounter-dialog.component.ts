@@ -99,7 +99,6 @@ export interface DentalEncounterDialogData {
             <mat-form-field appearance="outline" class="span-2"><mat-label>History of Presenting Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.hpc"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Past Medical History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.pmh"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Drug History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.drugHx"></textarea></mat-form-field>
-            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="3" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
           </div>
         </mat-tab>
 
@@ -375,6 +374,7 @@ export interface DentalEncounterDialogData {
           </ng-template>
           <div class="tab-body">
             <mat-form-field appearance="outline" class="span-2"><mat-label>Investigations</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.investigate"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Diagnosis</mat-label><textarea matInput rows="3" [(ngModel)]="consulting.diagnosis"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Treatment Plan</mat-label><textarea matInput rows="3" [(ngModel)]="consulting.treatPlan"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Prescription</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.prescription"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Services</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.services"></textarea></mat-form-field>
