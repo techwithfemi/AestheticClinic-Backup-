@@ -34,11 +34,6 @@ namespace AestheticEMR.Core.Infrastructure
                 return;
             }
 
-            if (await dbContext.AestheticConsentTemplates.AnyAsync())
-            {
-                return;
-            }
-
             logger.LogInformation("Seeding aesthetics consent templates");
 
             var templates = new[]
@@ -49,6 +44,16 @@ namespace AestheticEMR.Core.Infrastructure
                     Title = "Botox Treatment Consent",
                     ProcedureType = "Botox",
                     Content = "I confirm that the Botox procedure has been explained to me, including expected benefits, possible risks, side effects, alternatives and after-care instructions. I consent to proceed with treatment.",
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                },
+                new AestheticConsentTemplate
+                {
+                    Name = "Dental Consent",
+                    Title = "Dental Treatment Consent",
+                    ProcedureType = "Dental",
+                    Content = "DENTAL TREATMENT CONSENT FORM\r\n\r\nTREATMENT DETAILS\r\nPROPOSED TREATMENT: _________________________________________________\r\nDENTIST PERFORMING THE TREATMENT: ____________________________________\r\nDATE: ____________________\r\nDESCRIPTION OF PROPOSED TREATMENTS\r\nTHE DENTAL PROCEDURE(S) MAY INCLUDE BUT NOT LIMITED TO:\r\n\r\nI understand that the nature of the treatment, expected benefits, potential risks, and alternatives to the procedure(s) have been explained to me.\r\nI understand that during the course of treatment, unforeseen conditions may require different procedures or additional treatments.\r\nI acknowledge that the following risks are associated with the proposed treatment(s):\r\n• Pain, discomfort, or swelling\r\n• Prolonged numbness or altered sensation\r\n• Need for further treatments, adjustments, or procedures\r\n• Others: _________________________________________________\r\n\r\nNAME & SIGNATURE: _________________________________________________",
                     IsActive = true,
                     CreatedDate = DateTime.UtcNow,
                     UpdatedDate = DateTime.UtcNow
@@ -75,7 +80,25 @@ namespace AestheticEMR.Core.Infrastructure
                 }
             };
 
-            dbContext.AestheticConsentTemplates.AddRange(templates);
+            foreach (var template in templates)
+            {
+                var existing = await dbContext.AestheticConsentTemplates
+                    .FirstOrDefaultAsync(x => x.ProcedureType == template.ProcedureType && x.Title == template.Title);
+
+                if (existing == null)
+                {
+                    dbContext.AestheticConsentTemplates.Add(template);
+                    continue;
+                }
+
+                existing.Name = template.Name;
+                existing.Title = template.Title;
+                existing.ProcedureType = template.ProcedureType;
+                existing.Content = template.Content;
+                existing.IsActive = template.IsActive;
+                existing.UpdatedDate = DateTime.UtcNow;
+            }
+
             await dbContext.SaveChangesAsync();
             logger.LogInformation("Aesthetics consent templates seeded");
         }

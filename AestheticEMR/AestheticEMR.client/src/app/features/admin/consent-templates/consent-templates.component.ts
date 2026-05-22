@@ -14,6 +14,15 @@ import { AestheticConsentTemplate } from '../../../models/aesthetic.model';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 
+const DEFAULT_DENTAL_TEMPLATE: AestheticConsentTemplate = {
+  id: 0,
+  name: 'Dental Consent',
+  title: 'Dental Treatment Consent',
+  procedureType: 'Dental',
+  content: 'DENTAL TREATMENT CONSENT FORM\r\n\r\nTREATMENT DETAILS\r\nPROPOSED TREATMENT: _________________________________________________\r\nDENTIST PERFORMING THE TREATMENT: ____________________________________\r\nDATE: ____________________\r\nDESCRIPTION OF PROPOSED TREATMENTS\r\nTHE DENTAL PROCEDURE(S) MAY INCLUDE BUT NOT LIMITED TO:\r\n\r\nI understand that the nature of the treatment, expected benefits, potential risks, and alternatives to the procedure(s) have been explained to me.\r\nI understand that during the course of treatment, unforeseen conditions may require different procedures or additional treatments.\r\nI acknowledge that the following risks are associated with the proposed treatment(s):\r\n• Pain, discomfort, or swelling\r\n• Prolonged numbness or altered sensation\r\n• Need for further treatments, adjustments, or procedures\r\n• Others: _________________________________________________\r\n\r\nNAME & SIGNATURE: _________________________________________________',
+  isActive: true
+};
+
 @Component({
   selector: 'app-consent-templates',
   standalone: true,
@@ -75,44 +84,53 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
             </table>
           </div>
 
-          <form [formGroup]="form" class="editor-panel">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Name</mat-label>
-              <input matInput formControlName="name" />
-            </mat-form-field>
+          <div class="editor-panel">
+            @if (!isEditorVisible()) {
+              <div class="empty-state editor-empty">
+                No template selected. Click the edit icon to view or modify a record, or click New Template to start a new one.
+              </div>
+            }
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Title</mat-label>
-              <input matInput formControlName="title" />
-            </mat-form-field>
+            <form [formGroup]="form" class="editor-form" [class.hidden-editor]="!isEditorVisible()">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="name" />
+              </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Procedure Type</mat-label>
-              <mat-select formControlName="procedureType">
-                <mat-option value="">General</mat-option>
-                <mat-option value="Botox">Botox</mat-option>
-                <mat-option value="Laser">Laser</mat-option>
-                <mat-option value="Spa">Spa</mat-option>
-                <mat-option value="Procedures">Procedures</mat-option>
-              </mat-select>
-            </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Title</mat-label>
+                <input matInput formControlName="title" />
+              </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Consent Content</mat-label>
-              <textarea matInput rows="12" formControlName="content"></textarea>
-            </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Procedure Type</mat-label>
+                <mat-select formControlName="procedureType">
+                  <mat-option value="">General</mat-option>
+                  <mat-option value="Botox">Botox</mat-option>
+                  <mat-option value="Dental">Dental</mat-option>
+                  <mat-option value="Laser">Laser</mat-option>
+                  <mat-option value="Spa">Spa</mat-option>
+                  <mat-option value="Procedures">Procedures</mat-option>
+                </mat-select>
+              </mat-form-field>
 
-            <mat-checkbox formControlName="isActive">Active template</mat-checkbox>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Consent Content</mat-label>
+                <textarea matInput rows="18" formControlName="content"></textarea>
+              </mat-form-field>
 
-            <div class="actions-row">
-              <button mat-stroked-button type="button" (click)="newTemplate()">Clear</button>
-              <button mat-raised-button color="primary" type="button" (click)="saveTemplate()" [disabled]="loadingIndicator || form.invalid">
-                {{ selectedTemplateId() ? 'Update' : 'Create' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </mat-card>
+              <mat-checkbox formControlName="isActive">Active template</mat-checkbox>
+
+              <div class="actions-row">
+                <button mat-stroked-button type="button" (click)="newTemplate()">Clear</button>
+                <button mat-raised-button color="primary" type="button" (click)="saveTemplate()" [disabled]="loadingIndicator || form.invalid">
+                  {{ selectedTemplateId() ? 'Update' : 'Create' }}
+                </button>
+              </div>
+            </form>
+          </div>
+         </div>
+       </mat-card>
     </div>
   `,
   styles: [`
@@ -120,11 +138,19 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
     .subtitle { color: #666; margin: 4px 0 0; }
     .content-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); gap: 16px; }
-    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .data-table { width: 100%; min-width: 100%; table-layout: fixed; }
+    .data-table .mat-column-name,
+    .data-table .mat-column-procedureType,
+    .data-table .mat-column-active,
+    .data-table .mat-column-actions { width: auto; }
     .editor-panel { display: flex; flex-direction: column; gap: 12px; }
+    .editor-form { display: flex; flex-direction: column; gap: 12px; }
+    .hidden-editor { display: none; }
     .full-width { width: 100%; }
     .actions-row { display: flex; justify-content: flex-end; gap: 12px; }
     .selected-row { background: rgba(25, 118, 210, 0.08); }
+    .editor-empty { min-height: 220px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
 
     @media (max-width: 992px) {
       .page-shell { padding: 16px; }
@@ -148,6 +174,7 @@ export class ConsentTemplatesComponent implements OnInit {
   loadingIndicator = false;
   readonly templates = signal<AestheticConsentTemplate[]>([]);
   readonly selectedTemplateId = signal<number | null>(null);
+  readonly editorMode = signal<'none' | 'create' | 'edit'>('none');
   readonly displayedColumns = ['name', 'procedureType', 'active', 'actions'];
 
   readonly form = this.fb.nonNullable.group({
@@ -169,9 +196,14 @@ export class ConsentTemplatesComponent implements OnInit {
     this.endpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>('', true)
       .subscribe({
         next: templates => {
-          this.templates.set(templates || []);
+          const list = templates || [];
+          this.templates.set(list);
           this.loadingIndicator = false;
           this.alertService.stopLoadingMessage();
+
+          if (!list.some(x => (x.procedureType || '').trim().toLowerCase() === 'dental')) {
+            void this.ensureDentalTemplateExists();
+          }
         },
         error: error => {
           this.loadingIndicator = false;
@@ -181,13 +213,38 @@ export class ConsentTemplatesComponent implements OnInit {
       });
   }
 
+  private ensureDentalTemplateExists(): void {
+    this.endpoint.createConsentTemplateEndpoint<AestheticConsentTemplate>(DEFAULT_DENTAL_TEMPLATE)
+      .subscribe({
+        next: () => this.loadTemplates(),
+        error: error => {
+          this.alertService.showStickyMessage('Seed Error', 'Unable to add the default dental consent template.', MessageSeverity.warn, error);
+        }
+      });
+  }
+
   newTemplate(): void {
     this.selectedTemplateId.set(null);
+    this.editorMode.set('create');
     this.form.reset({ id: 0, name: '', title: '', procedureType: '', content: '', isActive: true });
+  }
+
+  clearSelection(): void {
+    this.selectedTemplateId.set(null);
+    this.editorMode.set('none');
+    this.form.reset({ id: 0, name: '', title: '', procedureType: '', content: '', isActive: true });
+  }
+
+  refreshSelectedTemplate(): void {
+    const selected = this.templates().find(x => x.id === this.selectedTemplateId());
+    if (selected) {
+      this.editTemplate(selected);
+    }
   }
 
   editTemplate(template: AestheticConsentTemplate): void {
     this.selectedTemplateId.set(template.id);
+    this.editorMode.set('edit');
     this.form.reset({
       id: template.id,
       name: template.name || '',
@@ -216,7 +273,7 @@ export class ConsentTemplatesComponent implements OnInit {
         this.loadingIndicator = false;
         this.alertService.stopLoadingMessage();
         this.alertService.showMessage('Success', 'Consent template saved successfully.', MessageSeverity.success);
-        this.newTemplate();
+        this.clearSelection();
         this.loadTemplates();
       },
       error: error => {
@@ -238,7 +295,7 @@ export class ConsentTemplatesComponent implements OnInit {
             this.alertService.stopLoadingMessage();
             this.alertService.showMessage('Deleted', 'Consent template deleted successfully.', MessageSeverity.success);
             if (this.selectedTemplateId() === template.id) {
-              this.newTemplate();
+              this.clearSelection();
             }
             this.loadTemplates();
           },
@@ -249,5 +306,13 @@ export class ConsentTemplatesComponent implements OnInit {
           }
         });
     });
+  }
+
+  hasSelection(): boolean {
+    return this.editorMode() === 'edit';
+  }
+
+  isEditorVisible(): boolean {
+    return this.editorMode() !== 'none';
   }
 }

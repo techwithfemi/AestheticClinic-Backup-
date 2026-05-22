@@ -5,10 +5,12 @@ import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import SignaturePad from 'signature_pad';
 
+import { ConsentTemplateManagerComponent } from './consent-template-manager.component';
 import { AestheticConsentStatus, AestheticConsentTemplate, AestheticSignedConsent, SignAestheticConsent } from '../../../models/aesthetic.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
@@ -23,12 +25,12 @@ interface FrontdeskModuleSettings {
   consentProcedureTypes?: string[];
 }
 
-const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
+const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Dental', 'Laser', 'Spa', 'Procedures'];
 
 @Component({
   selector: 'app-consent-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, ConsentTemplateManagerComponent],
   template: `
     <div class="page-shell">
       <div class="page-header">
@@ -77,14 +79,30 @@ const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Consent Template</mat-label>
-            <mat-select [value]="selectedTemplateId()" (selectionChange)="selectTemplate($event.value)">
-              @for (template of templates(); track template.id) {
-                <mat-option [value]="template.id">{{ template.title || template.name }}</mat-option>
+          <div class="procedure-summary">
+            @switch (selectedProcedureType().toLowerCase()) {
+              @case ('dental') {
+                <strong>Dental workflow</strong>
+                <p>The selected consent template should match the dental treatment being performed.</p>
               }
-            </mat-select>
-          </mat-form-field>
+              @case ('botox') {
+                <strong>Botox workflow</strong>
+                <p>Use a Botox-specific consent template and signature capture.</p>
+              }
+              @case ('laser') {
+                <strong>Laser workflow</strong>
+                <p>Use the laser consent template for the current consultation.</p>
+              }
+              @case ('spa') {
+                <strong>Spa workflow</strong>
+                <p>Use the spa consent template for the current session.</p>
+              }
+              @default {
+                <strong>General workflow</strong>
+                <p>Select the most appropriate template for the visit.</p>
+              }
+            }
+          </div>
         </mat-card>
 
         <mat-card>
@@ -134,6 +152,12 @@ const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
         </mat-card>
       </div>
 
+      <app-consent-template-manager
+        [templates]="templates()"
+        [selectedProcedureType]="selectedProcedureType()"
+        (refreshRequested)="loadTemplates()">
+      </app-consent-template-manager>
+
       @if (latestSignedConsent()) {
         <mat-card class="summary-card">
           <h3>Latest Signed Consent</h3>
@@ -148,14 +172,15 @@ const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
     .page-shell { padding: 20px; }
     .page-header { margin-bottom: 16px; }
     .subtitle { color: #666; margin: 4px 0 0; }
-    .selector-card, .summary-card { margin-bottom: 16px; }
+    .summary-card { margin-top: 16px; }
     .layout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .full-width { width: 100%; }
     .header-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
     .label { display: block; color: #666; font-size: .8rem; margin-bottom: 4px; }
     .consent-box { white-space: pre-wrap; border: 1px solid #ddd; border-radius: 8px; padding: 12px; min-height: 180px; background: #fafafa; margin-bottom: 16px; }
-    .form-stack { display: flex; flex-direction: column; gap: 12px; }
-    .actions-row { display: flex; justify-content: flex-end; }
+    .preview-box { min-height: 140px; margin-bottom: 0; }
+    .form-stack, .editor-panel { display: flex; flex-direction: column; gap: 12px; }
+    .actions-row { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
     .signature-pad-wrap { display: grid; gap: 8px; }
     .signature-pad-header { display: flex; align-items: center; justify-content: space-between; }
     .signature-canvas {
@@ -169,7 +194,23 @@ const DEFAULT_PROCEDURE_TYPES = ['Botox', 'Laser', 'Spa', 'Procedures'];
       cursor: crosshair;
     }
     .signature-hint { color: #667085; font-size: .85rem; }
-    @media (max-width: 992px) { .layout-grid, .header-grid { grid-template-columns: 1fr; } }
+    .procedure-summary {
+      border: 1px solid #dce3ee;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fbff;
+      margin-bottom: 16px;
+    }
+    .procedure-summary p { margin: 4px 0 0; color: #5b6573; }
+    @media (max-width: 992px) {
+      .page-shell { padding: 16px; }
+      .layout-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 575.98px) {
+      .page-shell { padding: 12px; }
+      .actions-row { flex-direction: column; }
+      .actions-row button { width: 100%; min-height: 44px; }
+    }
   `]
 })
 export class ConsentFormComponent implements OnInit {
@@ -210,7 +251,7 @@ export class ConsentFormComponent implements OnInit {
     const patient = this.patients().find(x => x.pno === pNo);
     return patient ? `${patient.pSurName} ${patient.pFirstname || ''}`.trim() : (pNo || 'Unknown patient');
   });
-  readonly activeTemplate = computed(() => this.templates().find(x => x.id === this.selectedTemplateId()) ?? this.status()?.activeTemplate ?? null);
+  readonly activeTemplate = computed(() => this.getSelectedTemplate() ?? this.status()?.activeTemplate ?? null);
   readonly attendanceOptions = computed(() => {
     const term = this.attendanceSearchText().toLowerCase();
 
@@ -237,6 +278,7 @@ export class ConsentFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadModuleSettings();
+    this.loadTemplates();
     this.loadPatients();
     this.loadAttendance();
 
@@ -267,6 +309,24 @@ export class ConsentFormComponent implements OnInit {
       .catch(() => {
         this.procedureTypes.set([...DEFAULT_PROCEDURE_TYPES]);
       });
+  }
+
+  loadTemplates(): void {
+    this.loadingIndicator = true;
+    this.alertService.startLoadingMessage('Loading consent templates...');
+    this.aestheticEndpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>('', true).subscribe({
+      next: templates => {
+        this.templates.set(templates || []);
+        this.loadingIndicator = false;
+        this.alertService.stopLoadingMessage();
+        this.syncTemplateSelection();
+      },
+      error: error => {
+        this.loadingIndicator = false;
+        this.alertService.stopLoadingMessage();
+        this.alertService.showStickyMessage('Load Error', 'Unable to retrieve consent templates.', MessageSeverity.error, error);
+      }
+    });
   }
 
   loadPatients(): void {
@@ -314,12 +374,32 @@ export class ConsentFormComponent implements OnInit {
 
   changeProcedureType(procedureType: string): void {
     this.selectedProcedureType.set(procedureType);
-    this.selectedTemplateId.set(null);
+    this.syncTemplateSelection();
     this.loadTemplatesAndStatus();
   }
 
   selectTemplate(templateId: number): void {
     this.selectedTemplateId.set(templateId);
+  }
+
+  private syncTemplateSelection(): void {
+    const selected = this.resolveTemplateForProcedureType(this.selectedProcedureType(), this.templates());
+    this.selectedTemplateId.set(selected?.id ?? null);
+
+    this.status.update(current => current
+      ? { ...current, activeTemplate: selected ?? undefined, hasValidConsent: !!this.latestSignedConsent() }
+      : current);
+  }
+
+  private getSelectedTemplate(): AestheticConsentTemplate | null {
+    const selectedTemplateId = this.selectedTemplateId();
+    const list = this.templates();
+
+    if (selectedTemplateId) {
+      return list.find(x => x.id === selectedTemplateId) ?? null;
+    }
+
+    return this.resolveTemplateForProcedureType(this.selectedProcedureType(), list);
   }
 
   private loadTemplatesAndStatus(): void {
@@ -334,7 +414,6 @@ export class ConsentFormComponent implements OnInit {
 
     const procedureType = this.selectedProcedureType();
 
-    // Attendance is the entry point for this page, so patient can sign when a valid attendance row is selected.
     this.status.set({
       consultId,
       pNo,
@@ -346,18 +425,11 @@ export class ConsentFormComponent implements OnInit {
       latestSignedConsent: undefined
     });
 
-    this.aestheticEndpoint.getConsentTemplatesEndpoint<AestheticConsentTemplate[]>('', true).subscribe({
-      next: templates => {
-        const list = templates || [];
-        this.templates.set(list);
-        this.selectedTemplateId.set(list[0]?.id ?? null);
-
-        this.status.update(current => current
-          ? { ...current, activeTemplate: list[0], hasValidConsent: !!this.latestSignedConsent() }
-          : current);
-      },
-      error: () => this.templates.set([])
-    });
+    if (!this.templates().length) {
+      this.loadTemplates();
+    } else {
+      this.syncTemplateSelection();
+    }
 
     this.aestheticEndpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ consultId, pNo, procedureType, includeVoided: false }).subscribe({
       next: consents => {
@@ -472,34 +544,23 @@ export class ConsentFormComponent implements OnInit {
     this.form.controls.signatureImageBase64.setValue(this.signaturePad.toDataURL('image/png'), { emitEvent: false });
   }
 
-  private getCanvasPoint(event: MouseEvent | TouchEvent): { x: number; y: number } {
-    const canvas = this._signatureCanvas?.nativeElement;
-    const rect = canvas?.getBoundingClientRect();
-    if (!rect) {
-      return { x: 0, y: 0 };
+  private resolveTemplateForProcedureType(procedureType: string, templates: AestheticConsentTemplate[] = this.templates()): AestheticConsentTemplate | null {
+    const normalizedProcedureType = (procedureType || '').trim().toLowerCase();
+    const list = templates ?? [];
+
+    if (normalizedProcedureType) {
+      const exact = list.find(x => (x.procedureType || '').trim().toLowerCase() === normalizedProcedureType);
+      if (exact) {
+        return exact;
+      }
     }
 
-    if ('touches' in event && event.touches.length > 0) {
-      const touch = event.touches[0];
-      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    const general = list.find(x => !(x.procedureType || '').trim());
+    if (general) {
+      return general;
     }
 
-    const mouse = event as MouseEvent;
-    return { x: mouse.clientX - rect.left, y: mouse.clientY - rect.top };
-  }
-
-  private clearSignatureCanvas(): void {
-    const canvas = this._signatureCanvas?.nativeElement;
-    if (!canvas || !this.signaturePad) {
-      return;
-    }
-
-    this.signaturePad.clear();
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    return list[0] ?? null;
   }
 
   private resolvePatientNameByPNo(pNo?: string): string {
