@@ -210,7 +210,18 @@ export class BillingInvoiceDialogComponent implements OnInit {
     try {
       const newDetail = this.mapCurrentLineItem();
       this.persistedDetails = [...this.persistedDetails, newDetail];
-      this.lineItemForm.reset({ qty: 1, price: 0 });
+
+      const selectedCategory = this.lineItemForm.get('itemCategory')?.value ?? null;
+      this.lineItemForm.reset({
+        itemCategory: selectedCategory,
+        drgName: null,
+        price: 0,
+        qty: 1,
+        billType: '',
+        conID: '',
+        revenueType: null
+      }, { emitEvent: false });
+
       this.hasChanges = true;
       this.alertService.stopLoadingMessage();
       this.loadingIndicator = false;
@@ -587,12 +598,18 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   private mapCurrentLineItem(): BillingDetail {
     const value = this.lineItemForm.getRawValue();
+    const selectedRevenueType = this.revenueTypes.find(x => Number(x.sno) === Number(value.revenueType));
+    const revenueTypeName = selectedRevenueType?.revType?.trim() || undefined;
+    const fallbackRevenueType = String(value.revenueType ?? '').trim();
+
     return {
       drgName: (value.drgName ?? '').trim(),
       price: Number(value.price ?? 0),
       qty: Number(value.qty ?? 1),
       billType: (value.billType ?? '').trim() || undefined,
-      conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined
+      conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined,
+      revenueType: revenueTypeName ?? (fallbackRevenueType || undefined),
+      revenueTypeName
     } as BillingDetail;
   }
 

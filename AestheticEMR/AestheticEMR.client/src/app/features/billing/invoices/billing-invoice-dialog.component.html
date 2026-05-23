@@ -20,10 +20,6 @@
     <mat-card class="section-card">
       <div class="details-header">
         <h4 class="section-title mb-0">Add Bill Details</h4>
-        <button mat-stroked-button color="primary" type="button" (click)="addToGrid()" [disabled]="loadingIndicator">
-          <mat-icon>add</mat-icon>
-          Add to Grid
-        </button>
       </div>
 
       <div class="single-row-editor">
@@ -93,17 +89,23 @@
           </div>
 
           <div class="line-editor-grid">
-            <mat-form-field appearance="outline" class="line-field half-width">
+            <mat-form-field appearance="outline" class="line-field half-width price-qty-field">
               <mat-label>Price</mat-label>
               <input matInput type="number" formControlName="price" min="0" step="0.01" />
             </mat-form-field>
-            <mat-form-field appearance="outline" class="line-field half-width">
+            <mat-form-field appearance="outline" class="line-field half-width price-qty-field">
               <mat-label>Qty</mat-label>
               <input matInput type="number" formControlName="qty" min="1" step="1" />
             </mat-form-field>
-            <div class="line-total-box line-field half-width">
-              <label>Total</label>
-              <div class="readonly-text">{{ computeLineTotal() | number: '1.2-2' }}</div>
+            <mat-form-field appearance="outline" class="line-field half-width total-field">
+              <mat-label>Total</mat-label>
+              <input matInput type="text" [value]="computeLineTotal() | number: '1.2-2'" readonly />
+            </mat-form-field>
+            <div class="add-to-grid-wrap">
+              <button mat-stroked-button color="primary" type="button" (click)="addToGrid()" [disabled]="loadingIndicator">
+                <mat-icon>add</mat-icon>
+                Add to Grid
+              </button>
             </div>
           </div>
         </div>

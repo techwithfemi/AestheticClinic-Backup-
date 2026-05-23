@@ -212,9 +212,9 @@
 .line-editor-grid {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 12px;
+  align-items: flex-end;
   width: 100%;
   min-width: 0;
 }
@@ -225,6 +225,23 @@
   min-width: 0;
   max-width: 50%;
   box-sizing: border-box;
+}
+
+.price-qty-field {
+  flex: 0 0 16%;
+  max-width: 16% !important;
+}
+
+.total-field {
+  flex: 0 0 20%;
+  max-width: 20% !important;
+}
+
+.add-to-grid-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 1.25em;
 }
 
 .tariff-row {

@@ -5,6 +5,8 @@ export interface BillingDetail {
   qty: number;
   billType?: string;
   conID?: string;
+  revenueType?: string;
+  revenueTypeName?: string;
 }
 
 export interface Billing {
