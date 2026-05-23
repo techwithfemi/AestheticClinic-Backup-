@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { firstValueFrom } from 'rxjs';
-import { NgSelectModule } from '@ng-select/ng-select';
+import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 
 import { Billing, BillingDetail } from '../../../models/legacy/billing.model';
 import { Attendance } from '../../../models/legacy/attendance.model';
@@ -105,7 +105,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   revenueTypes: hRevenueType[] = [];
 
   itemCategories: string[] = ["Service", "Product", "Drug", "Investigation"];
-  itemTariffs: (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff)[] = [];
+  itemTariffs: ((hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] = [];
 
   invoiceForm: FormGroup = this.fb.group({
     bDate: [this.today(), Validators.required],
@@ -185,28 +185,9 @@ export class BillingInvoiceDialogComponent implements OnInit {
       this.loadTariffsForCategory(category);
     });
     this.lineItemForm.get('drgName')?.valueChanges.subscribe((drgName: string) => {
-      const category = (this.lineItemForm?.get('itemCategory')?.value || '').toLowerCase();
-      let selected;
-      if (category === 'service') {
-        selected = this.itemTariffs.find(item => (item as hServiceNHI).service === drgName);
-        if (selected && typeof (selected as hServiceNHI).price !== 'undefined') {
-          this.lineItemForm.get('price')?.setValue((selected as hServiceNHI).price);
-        }
-      } else if (category === 'drug') {
-        selected = this.itemTariffs.find(item => (item as DrugNhi).drgName === drgName);
-        if (selected && typeof (selected as DrugNhi).price !== 'undefined') {
-          this.lineItemForm.get('price')?.setValue((selected as DrugNhi).price);
-        }
-      } else if (category === 'investigation') {
-        selected = this.itemTariffs.find(item => (item as LabServiceNhi).drgName === drgName);
-        if (selected && typeof (selected as LabServiceNhi).price !== 'undefined') {
-          this.lineItemForm.get('price')?.setValue((selected as LabServiceNhi).price);
-        }
-      } else if (category === 'product') {
-        selected = this.itemTariffs.find(item => (item as ProductTariff).pdtName === drgName);
-        if (selected && typeof (selected as ProductTariff).price !== 'undefined') {
-          this.lineItemForm.get('price')?.setValue((selected as ProductTariff).price);
-        }
+      const selected = this.itemTariffs.find(item => item.drgName === drgName);
+      if (selected && typeof selected.price !== 'undefined') {
+        this.lineItemForm.get('price')?.setValue(selected.price);
       }
     });
     if (this.isEditing && this.data.billNo) {
@@ -474,18 +455,21 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.hRevenueTypeEndpoint.getRevenueTypesEndpoint<unknown[]>().subscribe({
       next: data => {
         const mapped = (data ?? [])
-          .map(item => {
+          .map((item, index) => {
             const source = item as Record<string, unknown>;
+            const revType = String(source['revType'] ?? source['RevType'] ?? source['revenueType'] ?? '').trim();
+            const snoRaw = source['sno'] ?? source['SNO'] ?? source['id'] ?? source['Id'] ?? index + 1;
+            const sno = Number(snoRaw);
+
             return {
-              sno: Number(source['sno'] ?? source['SNO'] ?? 0),
-              revType: String(source['revType'] ?? source['RevType'] ?? ''),
+              sno: Number.isNaN(sno) ? index + 1 : sno,
+              revType,
               catRemarks: String(source['catRemarks'] ?? source['CatRemarks'] ?? '')
             } as hRevenueType;
           })
-          .filter(x => x.sno > 0 && !!x.revType);
+          .filter(x => !!x.revType);
 
         this.revenueTypes = mapped;
-        console.log('Revenue types loaded:', this.revenueTypes);
       },
       error: err => {
         this.handleLoadError('Revenue Types Error', err);
@@ -504,34 +488,50 @@ export class BillingInvoiceDialogComponent implements OnInit {
     if (normalized === 'service') {
       this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data ?? [];
+          this.itemTariffs = this.normalizeTariffItems(data ?? []);
         },
         error: err => { this.handleLoadError('Service Tariffs Error', err); }
       });
     } else if (normalized === 'drug') {
       this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data ?? [];
+          this.itemTariffs = this.normalizeTariffItems(data ?? []);
         },
         error: err => { this.handleLoadError('Drug Tariffs Error', err); }
       });
     } else if (normalized === 'investigation') {
       this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data ?? [];
+          this.itemTariffs = this.normalizeTariffItems(data ?? []);
         },
         error: err => { this.handleLoadError('Lab Service Tariffs Error', err); }
       });
     } else if (normalized === 'product') {
       this.productTariffEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coyID).subscribe({
         next: data => {
-          this.itemTariffs = data ?? [];
+          this.itemTariffs = this.normalizeTariffItems(data ?? []);
         },
         error: err => { this.handleLoadError('Product Tariffs Error', err); }
       });
     } else {
       this.itemTariffs = [];
     }
+  }
+
+  private normalizeTariffItems(items: (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff)[]): ((hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] {
+    return items
+      .map(item => {
+        const source = item as unknown as Record<string, unknown>;
+        const drgName = String(source['drgName'] ?? source['service'] ?? source['pdtName'] ?? '').trim();
+        const priceValue = source['price'];
+        const price = typeof priceValue === 'number' ? priceValue : Number(priceValue ?? 0);
+        return {
+          ...(item as object),
+          drgName,
+          price: Number.isNaN(price) ? 0 : price
+        } as (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number };
+      })
+      .filter(x => !!x.drgName);
   }
 
   private async refreshPersistedDetails(): Promise<void> {
@@ -666,5 +666,27 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
     const source = error as { status?: unknown; error?: { status?: unknown } };
     return Number(source.status) === 401 || Number(source.error?.status) === 401;
+  }
+
+  onNgSelectMouseDown(event: MouseEvent, select: NgSelectComponent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target || this.shouldIgnoreSelectMouseDown(target)) {
+      return;
+    }
+
+    const host = target.closest('.ng-select');
+    const isOpened = !!host?.classList.contains('ng-select-opened');
+
+    if (!isOpened) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    select.close();
+  }
+
+  private shouldIgnoreSelectMouseDown(target: HTMLElement): boolean {
+    return !!target.closest('.ng-clear-wrapper, .ng-option, .ng-dropdown-panel');
   }
 }

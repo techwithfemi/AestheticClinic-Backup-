@@ -139,7 +139,7 @@ All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute): [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() { ... }2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
+public async Task<IActionResult> GetUsers() {... }2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
@@ -377,6 +377,7 @@ When implementing new features, reference these real implementations:
 - Reference endpoint services in `quickapp.client/src/app/services/`
 - **Use Angular Material components/icons instead of Bootstrap** in the Tariff module UI.
 - **Use Angular Material components/icons throughout the Billing module UI** (including invoice list and add/edit invoice workflows).
+- **In Billing Invoice dialog ng-select dropdowns, set `searchable=true` and enable virtual scrolling.**
 
 ---
 

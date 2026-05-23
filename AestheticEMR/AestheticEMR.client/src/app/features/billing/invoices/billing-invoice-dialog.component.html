@@ -31,55 +31,61 @@
           <div class="tariff-row">
             <!-- Revenue Type comes before Tariff Category, both on same row -->
             <ng-select
+              #revenueTypeSelect
               [items]="revenueTypes"
               bindLabel="revType"
               bindValue="sno"
               [searchable]="true"
-              [virtualScroll]="false"
+              [closeOnSelect]="true"
+              [virtualScroll]="true"
               [clearable]="true"
-              appendTo="body"
               placeholder="Select Revenue Type"
               formControlName="revenueType"
               label="Revenue Type"
-              class="tariff-select half-width">
+              class="tariff-select half-width"
+              (mousedown)="onNgSelectMouseDown($event, revenueTypeSelect)">
               <ng-template ng-option-tmp let-item="item">
-                <span style="color:#e5e7eb">{{ item?.revType || item?.RevType || item }}</span>
+                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
               </ng-template>
               <ng-template ng-label-tmp let-item="item">
-                <span style="color:#e5e7eb">{{ item?.revType || item?.RevType || item }}</span>
+                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
               </ng-template>
             </ng-select>
             <ng-select
+              #itemCategorySelect
               [items]="itemCategories"
               [searchable]="true"
-              [virtualScroll]="false"
+              [closeOnSelect]="true"
+              [virtualScroll]="true"
               [clearable]="true"
-              appendTo="body"
               placeholder="Select Tariff Category"
               formControlName="itemCategory"
               label="Tariff Category"
-              class="tariff-select half-width">
+              class="tariff-select half-width"
+              (mousedown)="onNgSelectMouseDown($event, itemCategorySelect)">
               <ng-template ng-option-tmp let-item="item">
-                <span style="color:#e5e7eb">{{ item }}</span>
+                <span style="color:#111827">{{ item }}</span>
               </ng-template>
               <ng-template ng-label-tmp let-item="item">
-                <span style="color:#e5e7eb">{{ item }}</span>
+                <span style="color:#111827">{{ item }}</span>
               </ng-template>
             </ng-select>
             <ng-select
+              #itemSelect
               [items]="itemTariffs"
               bindLabel="drgName"
               bindValue="drgName"
               [searchable]="true"
-              [virtualScroll]="false"
+              [closeOnSelect]="true"
+              [virtualScroll]="true"
               [clearable]="true"
-              appendTo="body"
               placeholder="Select Item"
               formControlName="drgName"
               label="Select Item"
-              class="tariff-select half-width">
+              class="tariff-select half-width"
+              (mousedown)="onNgSelectMouseDown($event, itemSelect)">
               <ng-template ng-option-tmp let-item="item">
-                <span style="color:#e5e7eb">{{ item?.drgName || item?.service || item?.pdtName || item }}</span>
+                <span style="color:#111827">{{ item?.drgName || item?.service || item?.pdtName || item }}</span>
               </ng-template>
             </ng-select>
           </div>
