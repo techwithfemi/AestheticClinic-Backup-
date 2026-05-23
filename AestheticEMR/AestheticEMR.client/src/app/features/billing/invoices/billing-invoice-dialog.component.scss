@@ -1,8 +1,8 @@
 .dialog-shell {
   box-sizing: border-box;
   padding: 24px;
-  width: 100%;
-  max-width: 100%;
+  width: min(100%, 95vw);
+  max-width: 95vw;
   min-width: 0;
   max-height: calc(100vh - 64px);
   overflow-y: auto;
@@ -42,7 +42,7 @@
 @media (max-width: 900px) {
   .dialog-shell {
     max-width: 99vw;
-    width: 100vw;
+    width: min(99vw, 100%);
     padding: 16px;
   }
 }
@@ -50,7 +50,7 @@
 @media (max-width: 600px) {
   .dialog-shell {
     max-width: 100vw;
-    width: 100vw;
+    width: min(100vw, 100%);
     padding: 8px;
     border-radius: 8px;
   }
@@ -132,7 +132,7 @@
 }
 
 .details-table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -140,15 +140,17 @@
 
 .details-table {
   width: 100%;
-  min-width: 600px; /* allow internal scroll if needed */
-  table-layout: fixed;
+  min-width: 0;
+  table-layout: auto;
 }
 
 .details-table th,
 .details-table td {
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   padding: 4px 8px;
 }
 
@@ -185,14 +187,14 @@
 
 .dialog-shell {
   max-width: 95vw;
-  width: 100%;
+  width: min(100%, 95vw);
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 @media (max-width: 700px) {
   .details-table {
-    min-width: 480px;
+    min-width: 0;
   }
 }
 

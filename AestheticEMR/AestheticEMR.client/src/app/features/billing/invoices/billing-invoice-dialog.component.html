@@ -29,28 +29,7 @@
       <div class="single-row-editor">
         <div [formGroup]="lineItemForm">
           <div class="tariff-row">
-            <!-- Revenue Type comes before Tariff Category, both on same row -->
-            <ng-select
-              #revenueTypeSelect
-              [items]="revenueTypes"
-              bindLabel="revType"
-              bindValue="sno"
-              [searchable]="true"
-              [closeOnSelect]="true"
-              [virtualScroll]="true"
-              [clearable]="true"
-              placeholder="Select Revenue Type"
-              formControlName="revenueType"
-              label="Revenue Type"
-              class="tariff-select half-width"
-              (mousedown)="onNgSelectMouseDown($event, revenueTypeSelect)">
-              <ng-template ng-option-tmp let-item="item">
-                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
-              </ng-template>
-              <ng-template ng-label-tmp let-item="item">
-                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
-              </ng-template>
-            </ng-select>
+            <!-- 1. Tariff Category first — drives the item list -->
             <ng-select
               #itemCategorySelect
               [items]="itemCategories"
@@ -70,6 +49,7 @@
                 <span style="color:#111827">{{ item }}</span>
               </ng-template>
             </ng-select>
+            <!-- 2. Select Item — dynamically filled by selected Tariff Category -->
             <ng-select
               #itemSelect
               [items]="itemTariffs"
@@ -86,6 +66,28 @@
               (mousedown)="onNgSelectMouseDown($event, itemSelect)">
               <ng-template ng-option-tmp let-item="item">
                 <span style="color:#111827">{{ item?.drgName || item?.service || item?.pdtName || item }}</span>
+              </ng-template>
+            </ng-select>
+            <!-- 3. Revenue Type last -->
+            <ng-select
+              #revenueTypeSelect
+              [items]="revenueTypes"
+              bindLabel="revType"
+              bindValue="sno"
+              [searchable]="true"
+              [closeOnSelect]="true"
+              [virtualScroll]="true"
+              [clearable]="true"
+              placeholder="Select Revenue Type"
+              formControlName="revenueType"
+              label="Revenue Type"
+              class="tariff-select half-width"
+              (mousedown)="onNgSelectMouseDown($event, revenueTypeSelect)">
+              <ng-template ng-option-tmp let-item="item">
+                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
+              </ng-template>
+              <ng-template ng-label-tmp let-item="item">
+                <span style="color:#111827">{{ item?.revType || item?.RevType || item }}</span>
               </ng-template>
             </ng-select>
           </div>

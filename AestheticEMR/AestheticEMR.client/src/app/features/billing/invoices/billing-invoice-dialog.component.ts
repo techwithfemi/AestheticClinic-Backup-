@@ -23,10 +23,10 @@ import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { Product, ProductCategory } from '../../../models/shop/product.model';
 import { hRevenueType } from '../../../models/legacy/h-revenue-type.model';
 import { HRevenueTypeEndpoint } from '../../../services/h-revenue-type-endpoint.service';
-import { HServiceNHIEndpoint } from '../../../services/h-service-nhi-endpoint.service';
+import { ServiceTariffEndpoint } from '../../../services/service-tariff-endpoint.service';
 import { DrugNHISEndpoint } from '../../../services/drug-nhis-endpoint.service';
 import { LabServiceNHIEndpoint } from '../../../services/lab-service-nhi-endpoint.service';
-import { hServiceNHI } from '../../../models/legacy/h-service-nhi.model';
+import { ServiceTariff } from '../../../models/legacy/service-tariff.model';
 import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
 import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
 import { ProductTariff } from '../../../models/legacy/product-tariff.model';
@@ -84,7 +84,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private productEndpoint = inject(ProductEndpoint);
   private alertService = inject(AlertService);
   private hRevenueTypeEndpoint = inject(HRevenueTypeEndpoint);
-  private hServiceNHIEndpoint = inject(HServiceNHIEndpoint);
+  private serviceTariffEndpoint = inject(ServiceTariffEndpoint);
   private drugNHISEndpoint = inject(DrugNHISEndpoint);
   private labServiceNHIEndpoint = inject(LabServiceNHIEndpoint);
   private productTariffEndpoint = inject(ProductTariffEndpoint);
@@ -105,7 +105,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   revenueTypes: hRevenueType[] = [];
 
   itemCategories: string[] = ["Service", "Product", "Drug", "Investigation"];
-  itemTariffs: ((hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] = [];
+  itemTariffs: ((ServiceTariff | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] = [];
 
   invoiceForm: FormGroup = this.fb.group({
     bDate: [this.today(), Validators.required],
@@ -182,6 +182,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.loadProducts();
     this.loadRevenueTypes();
     this.lineItemForm.get('itemCategory')?.valueChanges.subscribe((category: string) => {
+      this.lineItemForm.get('drgName')?.setValue(null, { emitEvent: false });
+      this.lineItemForm.get('price')?.setValue(0, { emitEvent: false });
       this.loadTariffsForCategory(category);
     });
     this.lineItemForm.get('drgName')?.valueChanges.subscribe((drgName: string) => {
@@ -479,37 +481,48 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   // Remove tariffCache and always fetch from backend
   private loadTariffsForCategory(category: string): void {
-    const coyID = this.headerInfo.coyID;
+    const coyID = (this.headerInfo.coyID || '').trim();
     const normalized = (category || '').toLowerCase();
-    if (!coyID || !category) {
+    if (!category) {
       this.itemTariffs = [];
       return;
     }
+    console.log(`[BillingInvoice] loadTariffsForCategory: category="${category}", coyID="${coyID}"`);
+
     if (normalized === 'service') {
-      this.hServiceNHIEndpoint.getServiceTariffsEndpoint<hServiceNHI[]>(coyID).subscribe({
+      // Uses ServiceTariffController (/api/servicetariff) which filters by VwServiceNhi.CoyId
+      this.serviceTariffEndpoint.getServiceTariffsEndpoint<ServiceTariff[]>(coyID || undefined).subscribe({
         next: data => {
+          console.log(`[BillingInvoice] Service tariffs raw count=${data?.length ?? 0}`, data?.[0]);
           this.itemTariffs = this.normalizeTariffItems(data ?? []);
+          console.log(`[BillingInvoice] Service tariffs normalized count=${this.itemTariffs.length}`);
         },
         error: err => { this.handleLoadError('Service Tariffs Error', err); }
       });
     } else if (normalized === 'drug') {
-      this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID).subscribe({
+      this.drugNHISEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coyID || undefined).subscribe({
         next: data => {
+          console.log(`[BillingInvoice] Drug tariffs raw count=${data?.length ?? 0}`, data?.[0]);
           this.itemTariffs = this.normalizeTariffItems(data ?? []);
+          console.log(`[BillingInvoice] Drug tariffs normalized count=${this.itemTariffs.length}`);
         },
         error: err => { this.handleLoadError('Drug Tariffs Error', err); }
       });
     } else if (normalized === 'investigation') {
-      this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID).subscribe({
+      this.labServiceNHIEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coyID || undefined).subscribe({
         next: data => {
+          console.log(`[BillingInvoice] Lab tariffs raw count=${data?.length ?? 0}`, data?.[0]);
           this.itemTariffs = this.normalizeTariffItems(data ?? []);
+          console.log(`[BillingInvoice] Lab tariffs normalized count=${this.itemTariffs.length}`);
         },
         error: err => { this.handleLoadError('Lab Service Tariffs Error', err); }
       });
     } else if (normalized === 'product') {
-      this.productTariffEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coyID).subscribe({
+      this.productTariffEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coyID || '').subscribe({
         next: data => {
+          console.log(`[BillingInvoice] Product tariffs raw count=${data?.length ?? 0}`, data?.[0]);
           this.itemTariffs = this.normalizeTariffItems(data ?? []);
+          console.log(`[BillingInvoice] Product tariffs normalized count=${this.itemTariffs.length}`);
         },
         error: err => { this.handleLoadError('Product Tariffs Error', err); }
       });
@@ -518,20 +531,27 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
   }
 
-  private normalizeTariffItems(items: (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff)[]): ((hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] {
+  private normalizeTariffItems(items: (ServiceTariff | DrugNhi | LabServiceNhi | ProductTariff)[]): ((ServiceTariff | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number })[] {
     return items
       .map(item => {
         const source = item as unknown as Record<string, unknown>;
-        const drgName = String(source['drgName'] ?? source['service'] ?? source['pdtName'] ?? '').trim();
-        const priceValue = source['price'];
-        const price = typeof priceValue === 'number' ? priceValue : Number(priceValue ?? 0);
+        // Handle both camelCase and PascalCase (ASP.NET Core System.Text.Json sends PascalCase)
+        const drgName = String(
+          (source['drgName'] ?? source['DrgName']) ||
+          (source['service'] ?? source['Service']) ||
+          (source['pdtName'] ?? source['PdtName']) ||
+          ''
+        ).trim();
+        const priceRaw = source['price'] ?? source['Price'];
+        const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw ?? 0);
         return {
           ...(item as object),
           drgName,
           price: Number.isNaN(price) ? 0 : price
-        } as (hServiceNHI | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number };
+        } as (ServiceTariff | DrugNhi | LabServiceNhi | ProductTariff) & { drgName: string; price?: number };
       })
-      .filter(x => !!x.drgName);
+      .filter(x => !!x.drgName)
+      .sort((a, b) => a.drgName.localeCompare(b.drgName));
   }
 
   private async refreshPersistedDetails(): Promise<void> {
