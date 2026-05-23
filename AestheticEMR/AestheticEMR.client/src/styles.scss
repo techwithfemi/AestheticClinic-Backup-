@@ -4,12 +4,12 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
-@use 'app/assets/styles/custom-variables' as *;
+@use 'assets/styles/custom-variables' as *;
 @use 'bootstrap/scss/bootstrap' as *;
 
-@use 'app/assets/styles/vertical-tabs';
-@use 'app/assets/styles/ngx-datatable';
-@use 'app/assets/styles/styles-vendor';
+@use 'assets/styles/vertical-tabs';
+@use 'assets/styles/ngx-datatable';
+@use 'assets/styles/styles-vendor';
 
 html {
   height: 100%;

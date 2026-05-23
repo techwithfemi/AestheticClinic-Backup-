@@ -33,7 +33,7 @@
               },
               {
                 "glob": "**/*.json",
-                "input": "src/app/assets/module-settings",
+                "input": "src/assets/module-settings",
                 "output": "assets/module-settings"
               }
             ],
@@ -52,55 +52,55 @@
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/cerulean.scss",
+                "input": "src/assets/themes/cerulean.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/cosmo.scss",
+                "input": "src/assets/themes/cosmo.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/flatly.scss",
+                "input": "src/assets/themes/flatly.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/journal.scss",
+                "input": "src/assets/themes/journal.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/lumen.scss",
+                "input": "src/assets/themes/lumen.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/minty.scss",
+                "input": "src/assets/themes/minty.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/pulse.scss",
+                "input": "src/assets/themes/pulse.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/sketchy.scss",
+                "input": "src/assets/themes/sketchy.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/slate.scss",
+                "input": "src/assets/themes/slate.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/solar.scss",
+                "input": "src/assets/themes/solar.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/spacelab.scss",
+                "input": "src/assets/themes/spacelab.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/superhero.scss",
+                "input": "src/assets/themes/superhero.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/united.scss",
+                "input": "src/assets/themes/united.scss",
                 "inject": false
               }
             ],
@@ -113,7 +113,7 @@
               }
             },
             "scripts": [
-              "src/app/assets/scripts/alertify.js"
+              "src/assets/scripts/alertify.js"
             ]
           },
           "configurations": {
@@ -181,7 +181,7 @@
               },
               {
                 "glob": "**/*.json",
-                "input": "src/app/assets/module-settings",
+                "input": "src/assets/module-settings",
                 "output": "assets/module-settings"
               }
             ],
@@ -190,55 +190,55 @@
                 "input": "src/styles.scss"
               },
               {
-                "input": "src/app/assets/themes/cerulean.scss",
+                "input": "src/assets/themes/cerulean.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/cosmo.scss",
+                "input": "src/assets/themes/cosmo.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/flatly.scss",
+                "input": "src/assets/themes/flatly.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/journal.scss",
+                "input": "src/assets/themes/journal.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/lumen.scss",
+                "input": "src/assets/themes/lumen.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/minty.scss",
+                "input": "src/assets/themes/minty.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/pulse.scss",
+                "input": "src/assets/themes/pulse.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/sketchy.scss",
+                "input": "src/assets/themes/sketchy.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/slate.scss",
+                "input": "src/assets/themes/slate.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/solar.scss",
+                "input": "src/assets/themes/solar.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/spacelab.scss",
+                "input": "src/assets/themes/spacelab.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/superhero.scss",
+                "input": "src/assets/themes/superhero.scss",
                 "inject": false
               },
               {
-                "input": "src/app/assets/themes/united.scss",
+                "input": "src/assets/themes/united.scss",
                 "inject": false
               }
             ],

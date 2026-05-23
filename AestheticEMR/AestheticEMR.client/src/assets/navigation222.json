@@ -1,0 +1,124 @@
+{
+  "Static_Top": {
+    "Dashboard": {
+      "route": "dashboard",
+      "icon": "dashboard",
+      "subItems": []
+    }
+  },
+  "Dynamic_Roles": {
+    "Frontdesk": {
+      "route": "frontdesk",
+      "icon": "folder_shared",
+      "subItems": [
+        { "label": "Patients Information", "path": "patients", "icon": "badge" },
+        { "label": "Attendance", "path": "attendance", "icon": "checklist" },
+        { "label": "Appointments", "path": "appointments", "icon": "event" },
+        { "label": "Patient Search", "path": "search", "icon": "search" },
+        { "label": "Recent Charts", "path": "recent", "icon": "history" },
+        { "label": "Company Information", "path": "companies", "icon": "business" }
+      ]
+    },
+    "Spa": {
+      "route": "spa",
+      "icon": "spa",
+      "subItems": [
+        { "label": "Spa session", "path": "services", "icon": "list_alt" }
+      ]
+    },
+    "Dental": {
+      "route": "dental",
+      "icon": "medical_services",
+      "subItems": [
+        { "label": "Odontogram", "path": "chart", "icon": "monitor_heart" },
+        { "label": "Imaging", "path": "xray", "icon": "image" }
+      ]
+    },
+    "Tariff": {
+      "route": "tariff",
+      "icon": "request_quote",
+      "subItems": [
+        { "label": "Stock", "path": "stock", "icon": "inventory_2" },
+        { "label": "Investigations", "path": "investigations", "icon": "science" },
+        { "label": "Services", "path": "services", "icon": "medical_services" }
+      ]
+    },
+    "Inventory": {
+      "route": "inventory",
+      "icon": "inventory",
+      "subItems": [
+        { "label": "Products", "path": "products", "icon": "inventory" },
+        { "label": "Product Category", "path": "product-categories", "icon": "category" }
+      ]
+    },
+    "Aesthetics": {
+      "route": "aesthetics",
+      "icon": "face",
+      "subItems": [
+        { "label": "Procedures", "path": "procedures", "icon": "biotech" }
+      ]
+    },
+    "Billing": {
+      "route": "billing",
+      "icon": "payments",
+      "subItems": [
+        { "label": "Invoices", "path": "invoices", "icon": "receipt_long" },
+        { "label": "Claims", "path": "claims", "icon": "fact_check" }
+      ]
+    },
+    "Management": {
+      "route": "management",
+      "icon": "manage_accounts",
+      "subItems": []
+    },
+    "Admin": {
+      "route": "admin",
+      "icon": "admin_panel_settings",
+      "subItems": [
+        { "label": "User Management", "path": "users", "icon": "group" },
+        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings" },
+        { "label": "Audit Logs", "path": "audit", "icon": "history_edu" }
+      ]
+    }
+  },
+  "Reports": {
+    "Reports": {
+      "route": "reports",
+      "icon": "analytics",
+      "subItems": [
+        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today" },
+        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event" },
+        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report", "icon": "app_registration" },
+        { "label": "Laser Sessions Report", "path": "laser-sessions-report", "icon": "bolt" },
+        { "label": "Laser Safety Report", "path": "laser-safety-report", "icon": "health_and_safety" },
+        { "label": "Laser Utilization Report", "path": "laser-utilization-report", "icon": "insights" },
+        { "label": "Spa Services Report", "path": "spa-services-report", "icon": "spa" },
+        { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement" },
+        { "label": "Spa Packages Report", "path": "spa-packages-report", "icon": "inventory_2" },
+        { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services" },
+        { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image" },
+        { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open" },
+        { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum" },
+        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech" },
+        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up" },
+        { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
+        { "label": "Billing Claims Report", "path": "billing-claims-report", "icon": "fact_check" },
+        { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },
+        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
+        { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule" },
+        { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user" }
+      ]
+    }
+  },
+  "Settings": {
+    "Settings": {
+      "route": "settings",
+      "icon": "settings",
+      "subItems": [
+        { "label": "My Profile", "path": "profile", "icon": "person" },
+        { "label": "Security", "path": "security", "icon": "security" },
+        { "label": "Preferences", "path": "prefs", "icon": "tune" }
+      ]
+    }
+  }
+}

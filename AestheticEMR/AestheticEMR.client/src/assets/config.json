@@ -1,0 +1,13 @@
+{
+  "appName": "Aesthetic EMR",
+  "appVersion": "1.0.0",
+  "apiEndpoint": "https://api.example.com",
+  "maxItemsPerPage": 10,
+  "logLevel": "debug",
+  "screenDisplay": "Good Health ... Good Life",
+  "clientName": "VCP HealthCare",
+  "clientID": "0001",
+  "clientLogo": "public/assets/img/Mars.png",
+  "altClientLogo": "public/assets/img/clientlogo.png",
+  "enableAnalytics": true
+}

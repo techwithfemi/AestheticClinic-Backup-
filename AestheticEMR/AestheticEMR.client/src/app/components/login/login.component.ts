@@ -118,6 +118,9 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   offerBackendDevServer() {
     if (Utilities.checkIsLocalHost(location.origin) && Utilities.checkIsLocalHost(this.configurations.baseUrl)) {
+      if (!this.configurations.fallbackBaseUrl) {
+        return;
+      }
       this.alertService.showDialog(
         'Dear Developer!<br />' +
         'It appears your backend Web API server is inaccessible or not running...<br />' +
