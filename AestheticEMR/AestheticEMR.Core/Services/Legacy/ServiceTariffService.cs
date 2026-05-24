@@ -94,7 +94,7 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         await context.SaveChangesAsync();
     }
 
-    public async Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting)
+    public async Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting, string? category = null)
     {
         var normalizedCoyId = (coyId ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCoyId))
@@ -113,10 +113,14 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             .FirstOrDefaultAsync(x => x.RetainId == normalizedCoyId);
 
         var companyName = retainership?.RetainName ?? normalizedCoyId;
+        var normalizedCategory = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
 
         if (deleteExisting)
         {
-            var existing = context.hServiceNHIs.Where(x => x.Company == normalizedCoyId);
+            // Only delete records for the same category when a category is specified
+            var existing = normalizedCategory is not null
+                ? context.hServiceNHIs.Where(x => x.Company == normalizedCoyId && x.UsersCat == normalizedCategory)
+                : context.hServiceNHIs.Where(x => x.Company == normalizedCoyId);
             context.hServiceNHIs.RemoveRange(existing);
             await context.SaveChangesAsync();
         }
@@ -144,7 +148,8 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
                 CoyName = companyName,
                 Remarks = "HMO",
                 Capitated = "NO",
-                TariffStatus = "FIXED"
+                TariffStatus = "FIXED",
+                UsersCat = normalizedCategory  // stamp with the selected category
             };
 
             NormalizeAndValidate(entity);
@@ -315,10 +320,11 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         serviceTariff.Remarks ??= tariffCompany?.Remarks ?? "HMO";
     }
 
-    public async Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting)
+    public async Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting, string? category = null)
     {
         var normalizedTargetCoyId = (targetCoyId ?? string.Empty).Trim();
         var normalizedSourceCoyId = (sourceCoyId ?? string.Empty).Trim();
+        var normalizedCategory = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
 
         if (string.IsNullOrWhiteSpace(normalizedTargetCoyId))
         {
@@ -335,14 +341,20 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             throw new InvalidOperationException("Source and target company cannot be the same.");
         }
 
-        var sourceTariffs = await context.hServiceNHIs
-            .AsNoTracking()
-            .Where(x => x.Company == normalizedSourceCoyId)
-            .ToListAsync();
+        // Filter source by category when specified
+        var sourceQuery = context.hServiceNHIs.AsNoTracking()
+            .Where(x => x.Company == normalizedSourceCoyId);
+
+        if (normalizedCategory is not null)
+        {
+            sourceQuery = sourceQuery.Where(x => x.UsersCat == normalizedCategory);
+        }
+
+        var sourceTariffs = await sourceQuery.ToListAsync();
 
         if (sourceTariffs.Count == 0)
         {
-            throw new InvalidOperationException("The selected source company has no tariff records.");
+            throw new InvalidOperationException("The selected source company has no tariff records for the specified category.");
         }
 
         var targetCompany = await context.VwCoyAndNhis
@@ -354,7 +366,9 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
 
         if (deleteExisting)
         {
-            var existing = context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId);
+            var existing = normalizedCategory is not null
+                ? context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId && x.UsersCat == normalizedCategory)
+                : context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId);
             context.hServiceNHIs.RemoveRange(existing);
             await context.SaveChangesAsync();
         }
@@ -372,7 +386,7 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
                 Capitated = item.Capitated,
                 TariffStatus = item.TariffStatus,
                 RevType = item.RevType,
-                UsersCat = item.UsersCat
+                UsersCat = normalizedCategory ?? item.UsersCat
             });
         }
 

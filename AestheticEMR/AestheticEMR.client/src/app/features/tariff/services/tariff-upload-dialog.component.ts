@@ -15,6 +15,7 @@ export interface TariffUploadDialogResult {
 
 interface TariffUploadDialogData {
   sourceCompanies: TariffCompany[];
+  category: string;
 }
 
 @Component({
@@ -32,13 +33,18 @@ interface TariffUploadDialogData {
   template: `
     <div class="dialog-content">
       <div class="dialog-header">
-        <h2 mat-dialog-title>Upload Services Tariff from Excel</h2>
+        <h2 mat-dialog-title>Upload Tariff — {{ data.category }}</h2>
         <button mat-icon-button type="button" (click)="dialogRef.close()" aria-label="Close dialog">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
       <mat-dialog-content>
+        <div class="category-badge">
+          <mat-icon class="badge-icon">label</mat-icon>
+          <span>Category: <strong>{{ data.category }}</strong></span>
+        </div>
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Use tariff from existing company</mat-label>
           <mat-select [(ngModel)]="selectedSourceCoyId">
@@ -59,9 +65,9 @@ interface TariffUploadDialogData {
         </div>
 
         <p class="hint">If no file is selected, the tariff from the selected company above will be used.</p>
-        <p class="hint">Re-upload will replace any existing tariff upload for the selected company.</p>
+        <p class="hint">Re-upload will replace any existing <strong>{{ data.category }}</strong> tariff items for the selected company.</p>
         <p class="hint">Supported formats: .xls, .xlsx, .csv</p>
-        <p class="hint">The first row should be a header row. Column 1 = service item, Column 2 = price. Blank rows are ignored.</p>
+        <p class="hint">First row = header. Column 1 = service item, Column 2 = price. Blank rows are ignored.</p>
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
@@ -78,6 +84,8 @@ interface TariffUploadDialogData {
     .file-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
     .file-name { color: #666; font-size: 0.9rem; word-break: break-word; }
     .hint { margin: 12px 0 0; color: #777; font-size: 0.85rem; }
+    .category-badge { display: flex; align-items: center; gap: 6px; background: rgba(25,118,210,0.08); border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 0.95rem; color: #1976d2; }
+    .badge-icon { font-size: 18px; width: 18px; height: 18px; }
   `]
 })
 export class TariffUploadDialogComponent {

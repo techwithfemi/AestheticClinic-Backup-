@@ -438,3 +438,10 @@ When creating a new entity with full CRUD:
 ## UI Enhancements
 
 - In the dental encounter header, patient photo should render as a circular avatar (not oval).
+
+---
+
+## Single Source of Truth Rules
+
+- Use `VwhRecord` model as the single source of truth (SST) for attendance information.
+- Use `VwhPatient` model as the SST for patient information.

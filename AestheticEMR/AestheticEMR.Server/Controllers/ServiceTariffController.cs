@@ -49,7 +49,7 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
     [HttpPost("upload")]
     [ProducesResponseType(200)]
     [ProducesResponseType(400)]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string coyId, [FromForm] bool deleteExisting = false)
+    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string coyId, [FromForm] bool deleteExisting = false, [FromForm] string? category = null)
     {
         if (file is null || file.Length == 0)
         {
@@ -66,7 +66,7 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         try
         {
             await using var stream = file.OpenReadStream();
-            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting);
+            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting, category);
             return Ok(new { inserted });
         }
         catch (Exception ex)
@@ -169,6 +169,31 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         }
     }
 
+    [HttpPost("copy")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> Copy([FromBody] CopyTariffRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.TargetCoyId) || string.IsNullOrWhiteSpace(request.SourceCoyId))
+        {
+            AddModelError("Both source and target company codes are required.");
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var inserted = await serviceTariffService.CopyFromCompanyAsync(
+                request.TargetCoyId, request.SourceCoyId, request.DeleteExisting, request.Category);
+            return Ok(new { inserted });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error copying service tariff from {Source} to {Target}", request.SourceCoyId, request.TargetCoyId);
+            AddModelError(ex.GetBaseException().Message);
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpDelete("{id:long}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
@@ -193,3 +218,5 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         }
     }
 }
+
+public sealed record CopyTariffRequest(string TargetCoyId, string SourceCoyId, bool DeleteExisting, string? Category = null);

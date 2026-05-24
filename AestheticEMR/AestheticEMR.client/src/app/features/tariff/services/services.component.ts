@@ -47,38 +47,71 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
         </mat-card-header>
         <mat-card-content>
           <div class="toolbar-grid">
-            <mat-form-field appearance="outline">
-              <mat-label>Template for</mat-label>
-              <mat-select [(ngModel)]="selectedCoyId" (selectionChange)="loadTariffs()">
-                <mat-option value="">-- Select Company --</mat-option>
-                @for (company of companies; track company.coyId) {
-                  <mat-option [value]="company.coyId">{{ company.company }} [{{ company.coyId }}]</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Quick Search</mat-label>
-              <input matInput placeholder="Service name..." [(ngModel)]="searchText" (input)="onSearchChanged()" />
-            </mat-form-field>
-
-            <div class="actions-cell">
-              <button mat-raised-button type="button" (click)="openUploadDialog()" [disabled]="!selectedCoyId">
-                <mat-icon>upload_file</mat-icon>
-                Upload Data
-              </button>
-
-              <button mat-stroked-button type="button" (click)="loadTariffs()" [disabled]="!selectedCoyId">
-                <mat-icon>refresh</mat-icon>
-                Refresh
-              </button>
+            <!-- Row 1: Quick Search spanning full width -->
+            <div class="search-row">
+              <mat-form-field appearance="outline" class="search-field">
+                <mat-label>Quick Search</mat-label>
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput placeholder="Search service name..." [(ngModel)]="searchText" (input)="onSearchChanged()" />
+              </mat-form-field>
             </div>
+
+            <!-- Row 2: Company | Category | Actions -->
+            <div class="selectors-row">
+              <!-- 1. Company -->
+              <mat-form-field appearance="outline">
+                <mat-label>Template for</mat-label>
+                <mat-select [(ngModel)]="selectedCoyId" (selectionChange)="onCompanyChange()">
+                  <mat-option value="">-- Select Company --</mat-option>
+                  @for (company of companies; track company.coyId) {
+                    <mat-option [value]="company.coyId">{{ company.company }} [{{ company.coyId }}]</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- 2. Tariff Category (ng-select inside mat-form-field outline) -->
+              <mat-form-field appearance="outline" class="category-field">
+                <mat-label>Tariff Category</mat-label>
+                <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
+                  <mat-option value="">-- Select Category --</mat-option>
+                  @for (cat of tariffCategories; track cat) {
+                    <mat-option [value]="cat">{{ cat }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- 3. Actions -->
+              <div class="actions-cell">
+                <span [title]="!selectedCoyId || !selectedCategory ? 'Select a company and category first' : ''"
+                      class="btn-wrap" [class.btn-disabled]="!selectedCoyId || !selectedCategory">
+                  <button mat-raised-button type="button" (click)="openUploadDialog()"
+                          [disabled]="!selectedCoyId || !selectedCategory">
+                    <mat-icon>upload_file</mat-icon>
+                    Upload Data
+                  </button>
+                </span>
+
+                <span [title]="!selectedCoyId || !selectedCategory ? 'Select a company and category first' : ''"
+                      class="btn-wrap" [class.btn-disabled]="!selectedCoyId || !selectedCategory">
+                  <button mat-stroked-button type="button" (click)="loadTariffs()"
+                          [disabled]="!selectedCoyId || !selectedCategory">
+                    <mat-icon>refresh</mat-icon>
+                    Refresh
+                  </button>
+                </span>
+              </div>
+            </div>
+
           </div>
         </mat-card-content>
       </mat-card>
 
       <mat-card class="table-card">
         <mat-card-content>
+          @if (!selectedCoyId || !selectedCategory) {
+            <p class="empty-text">Select a company and tariff category to view records.</p>
+          } @else {
           <div class="table-wrap">
             <table mat-table [dataSource]="pagedTariffs" class="tariff-table">
               <ng-container matColumnDef="service">
@@ -139,14 +172,31 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
               <mat-spinner diameter="32"></mat-spinner>
             </div>
           }
+          }
         </mat-card-content>
       </mat-card>
     </div>
   `,
   styles: [`
     .tariff-services-container { padding: 20px; display: grid; gap: 12px; }
-    .toolbar-grid { display: grid; grid-template-columns: 2fr 2fr auto; gap: 12px; align-items: start; }
+
+    /* Two-row toolbar layout */
+    .toolbar-grid { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Row 1 — full-width search */
+    .search-row { display: flex; width: 100%; }
+    .search-field { width: 100%; }
+
+    /* Row 2 — company | category | actions */
+    .selectors-row { display: grid; grid-template-columns: 2fr 1.5fr auto; gap: 12px; align-items: start; }
+
     .actions-cell { display: flex; gap: 8px; align-items: center; padding-top: 4px; flex-wrap: wrap; }
+
+    /* Disabled button wrapper — shows not-allowed cursor and tooltip */
+    .btn-wrap { display: inline-flex; }
+    .btn-wrap.btn-disabled { cursor: not-allowed; }
+    .btn-wrap.btn-disabled button { pointer-events: none; }
+
     .table-wrap { overflow: auto; -webkit-overflow-scrolling: touch; }
     .tariff-table { width: 100%; min-width: 620px; }
     .text-end { text-align: right; }
@@ -156,17 +206,21 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
     .pager-text { color: #777; }
     .pager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+    .category-field { width: 100%; }
+
     @media (max-width: 992px) {
       .tariff-services-container { padding: 16px; }
-      .toolbar-grid { grid-template-columns: 1fr; }
-      .actions-cell { padding-top: 0; }
-      .actions-cell button { flex: 1 1 160px; min-height: 44px; }
+      .selectors-row { grid-template-columns: 1fr 1fr; }
+      .actions-cell { grid-column: 1 / -1; padding-top: 0; }
+      .actions-cell .btn-wrap { flex: 1 1 160px; }
+      .actions-cell button { width: 100%; min-height: 44px; }
       .pager-wrap { flex-direction: column; align-items: stretch; }
     }
 
     @media (max-width: 575.98px) {
       .tariff-services-container { padding: 12px; }
-      .actions-cell button,
+      .selectors-row { grid-template-columns: 1fr; }
+      .actions-cell .btn-wrap,
       .pager-actions button { width: 100%; }
     }
   `]
@@ -177,13 +231,18 @@ export class TariffServicesComponent {
   private dialog = inject(MatDialog);
 
   companies: TariffCompany[] = [];
-  tariffs: ServiceTariff[] = [];
+  allTariffs: ServiceTariff[] = [];   // full unfiltered set for selected company
+  tariffs: ServiceTariff[] = [];      // displayed (search + category filtered)
+
   selectedCoyId = '';
+  selectedCategory = '';
   searchText = '';
   loadingIndicator = false;
   displayedColumns = ['service', 'price', 'company', 'actions'];
   readonly pageSize = 10;
   currentPage = 1;
+
+  readonly tariffCategories = ['Drug', 'Investigation', 'Service', 'Product'];
 
   get totalPages(): number {
     return Math.max(1, Math.ceil(this.tariffs.length / this.pageSize));
@@ -206,6 +265,37 @@ export class TariffServicesComponent {
     this.currentPage = page;
   }
 
+  onCompanyChange(): void {
+    this.loadTariffs();
+  }
+
+  onCategoryChange(): void {
+    this.applyFilters();
+    this.currentPage = 1;
+  }
+
+  onSearchChanged(): void {
+    this.applyFilters();
+    this.currentPage = 1;
+  }
+
+  private applyFilters(): void {
+    let result = [...this.allTariffs];
+
+    if (this.selectedCategory) {
+      result = result.filter(t =>
+        (t.usersCat ?? '').trim().toLowerCase() === this.selectedCategory.toLowerCase()
+      );
+    }
+
+    const term = this.searchText?.trim().toLowerCase() ?? '';
+    if (term) {
+      result = result.filter(t => (t.service ?? '').toLowerCase().includes(term));
+    }
+
+    this.tariffs = result;
+  }
+
   loadCompanies(): void {
     this.serviceTariffEndpoint.getTariffCompaniesEndpoint<TariffCompany[]>().subscribe({
       next: data => {
@@ -221,6 +311,7 @@ export class TariffServicesComponent {
 
   loadTariffs(): void {
     if (!this.selectedCoyId) {
+      this.allTariffs = [];
       this.tariffs = [];
       this.currentPage = 1;
       return;
@@ -229,11 +320,13 @@ export class TariffServicesComponent {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Loading service tariff...');
 
-    this.serviceTariffEndpoint.getServiceTariffsEndpoint<ServiceTariff[]>(this.selectedCoyId, this.searchText).subscribe({
+    // Load all items for the company — filtering is done client-side
+    this.serviceTariffEndpoint.getServiceTariffsEndpoint<ServiceTariff[]>(this.selectedCoyId).subscribe({
       next: data => {
         this.loadingIndicator = false;
         this.alertService.stopLoadingMessage();
-        this.tariffs = [...data];
+        this.allTariffs = [...data];
+        this.applyFilters();
         this.currentPage = 1;
       },
       error: error => {
@@ -244,17 +337,9 @@ export class TariffServicesComponent {
     });
   }
 
-  onSearchChanged(): void {
-    if (!this.selectedCoyId) {
-      return;
-    }
-
-    this.loadTariffs();
-  }
-
   openEditDialog(item: ServiceTariff): void {
     const dialogRef = this.dialog.open(TariffServiceDialogComponent, {
-      data: { isEdit: true, item },
+      data: { isEdit: true, item, allTariffs: this.allTariffs },
       width: '520px',
       disableClose: true
     });
@@ -270,7 +355,12 @@ export class TariffServicesComponent {
 
   openUploadDialog(): void {
     if (!this.selectedCoyId) {
-      this.alertService.showMessage('Validation', 'Please select company tariff template first.', MessageSeverity.warn);
+      this.alertService.showMessage('Validation', 'Please select a company first.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!this.selectedCategory) {
+      this.alertService.showMessage('Validation', 'Please select a tariff category first.', MessageSeverity.warn);
       return;
     }
 
@@ -280,7 +370,8 @@ export class TariffServicesComponent {
           width: '560px',
           disableClose: true,
           data: {
-            sourceCompanies: sourceCompanies.filter(x => x.coyId !== this.selectedCoyId)
+            sourceCompanies: sourceCompanies.filter(x => x.coyId !== this.selectedCoyId),
+            category: this.selectedCategory
           }
         });
 
@@ -291,16 +382,18 @@ export class TariffServicesComponent {
 
           if (result.file) {
             this.alertService.showDialog(
-              'This will replace any existing tariff records for the selected company with the uploaded file. Do you want to continue?',
+              `This will replace existing [${this.selectedCategory}] tariff records for the selected company with the uploaded file. Continue?`,
               DialogType.confirm,
               () => {
                 this.alertService.startLoadingMessage('Uploading tariff data...');
-                this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(this.selectedCoyId, result.file!, true).subscribe({
+                this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(
+                  this.selectedCoyId, result.file!, true, this.selectedCategory
+                ).subscribe({
                   next: response => {
                     this.alertService.stopLoadingMessage();
                     this.loadTariffs();
                     const inserted = response?.inserted ?? 0;
-                    this.alertService.showMessage('Success', `${inserted} tariff item(s) uploaded successfully. Existing company tariff upload was replaced.`, MessageSeverity.success);
+                    this.alertService.showMessage('Success', `${inserted} tariff item(s) uploaded successfully.`, MessageSeverity.success);
                   },
                   error: error => {
                     this.alertService.stopLoadingMessage();
@@ -317,20 +410,22 @@ export class TariffServicesComponent {
           const sourceLabel = sourceCompany ? `${sourceCompany.company} [${sourceCompany.coyId}]` : result.sourceCoyId;
 
           this.alertService.showDialog(
-            `No file was selected. The tariff for ${sourceLabel} will be used for the selected company. Do you want to continue?`,
+            `The [${this.selectedCategory}] tariff from ${sourceLabel} will be applied to the selected company. Continue?`,
             DialogType.confirm,
             () => {
               this.alertService.startLoadingMessage('Applying tariff from existing company...');
-              this.serviceTariffEndpoint.copyServiceTariffEndpoint<{ inserted: number }>(this.selectedCoyId, result.sourceCoyId!, true).subscribe({
+              this.serviceTariffEndpoint.copyServiceTariffEndpoint<{ inserted: number }>(
+                this.selectedCoyId, result.sourceCoyId!, true, this.selectedCategory
+              ).subscribe({
                 next: response => {
                   this.alertService.stopLoadingMessage();
                   this.loadTariffs();
                   const inserted = response?.inserted ?? 0;
-                  this.alertService.showMessage('Success', `${inserted} tariff item(s) applied successfully from the selected company.`, MessageSeverity.success);
+                  this.alertService.showMessage('Success', `${inserted} tariff item(s) applied successfully.`, MessageSeverity.success);
                 },
                 error: error => {
                   this.alertService.stopLoadingMessage();
-                  this.alertService.showStickyMessage('Copy Error', `Unable to apply tariff from the selected company.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+                  this.alertService.showStickyMessage('Copy Error', `Unable to apply tariff.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
                 }
               });
             }
@@ -398,30 +493,11 @@ export class TariffServicesComponent {
     }
 
     const source = error as { error?: unknown; message?: unknown };
-
-    if (typeof source.message === 'string' && source.message) {
-      return source.message;
-    }
-
     if (source.error && typeof source.error === 'object') {
-      const errorBody = source.error as { errors?: Record<string, string[]>; title?: string; message?: string };
-
-      if (typeof errorBody.message === 'string' && errorBody.message) {
-        return errorBody.message;
-      }
-
-      if (typeof errorBody.title === 'string' && errorBody.title) {
-        return errorBody.title;
-      }
-
-      if (errorBody.errors) {
-        const firstErrorGroup = Object.values(errorBody.errors)[0];
-        if (Array.isArray(firstErrorGroup) && firstErrorGroup.length > 0) {
-          return firstErrorGroup[0];
-        }
-      }
+      const inner = source.error as { title?: unknown; detail?: unknown };
+      return String(inner.title ?? inner.detail ?? JSON.stringify(source.error));
     }
 
-    return 'Unable to process request';
+    return String(source.message ?? JSON.stringify(error));
   }
 }

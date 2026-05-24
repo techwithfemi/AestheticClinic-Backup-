@@ -6,7 +6,6 @@ import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 import { ServiceTariff } from '../models/legacy/service-tariff.model';
-import { TariffCompany } from '../models/legacy/tariff-company.model';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceTariffEndpoint extends EndpointBase {
@@ -70,26 +69,30 @@ export class ServiceTariffEndpoint extends EndpointBase {
     );
   }
 
-  uploadServiceTariffEndpoint<T>(coyId: string, file: File, deleteExisting: boolean): Observable<T> {
+  uploadServiceTariffEndpoint<T>(coyId: string, file: File, deleteExisting: boolean, category?: string): Observable<T> {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('coyId', coyId);
     formData.append('deleteExisting', String(deleteExisting));
+    if (category) {
+      formData.append('category', category);
+    }
 
     return this.http.post<T>(`${this.serviceTariffUrl}/upload`, formData, this.uploadHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting)))
+      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting, category)))
     );
   }
 
-  copyServiceTariffEndpoint<T>(targetCoyId: string, sourceCoyId: string, deleteExisting: boolean): Observable<T> {
+  copyServiceTariffEndpoint<T>(targetCoyId: string, sourceCoyId: string, deleteExisting: boolean, category?: string): Observable<T> {
     const payload = {
       targetCoyId,
       sourceCoyId,
-      deleteExisting
+      deleteExisting,
+      category: category ?? null
     };
 
     return this.http.post<T>(`${this.serviceTariffUrl}/copy`, JSON.stringify(payload), this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.copyServiceTariffEndpoint<T>(targetCoyId, sourceCoyId, deleteExisting)))
+      catchError(error => this.handleError(error, () => this.copyServiceTariffEndpoint<T>(targetCoyId, sourceCoyId, deleteExisting, category)))
     );
   }
 }

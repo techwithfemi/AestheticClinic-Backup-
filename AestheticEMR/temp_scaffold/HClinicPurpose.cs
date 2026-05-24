@@ -1,0 +1,11 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace AestheticEMR.Server;
+
+public partial class HClinicPurpose
+{
+    public string? Purpose { get; set; }
+
+    public long Sno { get; set; }
+}

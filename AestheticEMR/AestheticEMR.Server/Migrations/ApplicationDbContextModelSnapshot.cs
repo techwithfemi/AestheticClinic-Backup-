@@ -2562,6 +2562,10 @@ namespace AestheticEMR.Server.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<string>("OrthodonticsJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("orthodonticsJson");
+
                     b.Property<string>("OtherClinicalFindings")
                         .HasMaxLength(200)
                         .IsUnicode(false)
@@ -2596,6 +2600,10 @@ namespace AestheticEMR.Server.Migrations
                     b.Property<DateTime>("TTime")
                         .HasColumnType("datetime")
                         .HasColumnName("tTime");
+
+                    b.Property<string>("TeethStatusJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("teethStatusJson");
 
                     b.Property<string>("UnderOrthodonticTreatment")
                         .HasMaxLength(100)
@@ -4567,6 +4575,88 @@ namespace AestheticEMR.Server.Migrations
                     b.ToView("qryhFullnameHosp", (string)null);
                 });
 
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.QryhRecordsUnion", b =>
+                {
+                    b.Property<bool?>("AttendedTo")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("AttendedToByDoc")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BillDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClientCat")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClinicType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConsultId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Coyname")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Diagnosis")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DocAssigned")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmpId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ExitDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExitDateComment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Hmoref")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("Htime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mth")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("NextApptDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte?>("PatVal")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("RecDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Referal")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("Suppres")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Yr")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("qryhRecordsUnion", (string)null);
+                });
+
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.QryhVisit", b =>
                 {
                     b.Property<int?>("Age")
@@ -5032,6 +5122,26 @@ namespace AestheticEMR.Server.Migrations
                     b.ToView("qryhvisitsForToday", (string)null);
                 });
 
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwBillsForClientsBatchVal", b =>
+                {
+                    b.Property<string>("BatchNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BatchVal")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoyCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InvNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwBillsForClientsBatchVal", (string)null);
+                });
+
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwCoyAndNhi", b =>
                 {
                     b.Property<string>("Company")
@@ -5050,6 +5160,70 @@ namespace AestheticEMR.Server.Migrations
                     b.ToTable((string)null);
 
                     b.ToView("vwCoyAndNHIS", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwHreferal", b =>
+                {
+                    b.Property<int?>("Age")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ApptDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApptTime")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("AttendedTo")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("AttendedToByRec")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Company")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConsultId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EntryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntryTime")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GivenBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Patient")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pno")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReferTo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Sex")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwHreferal", (string)null);
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwServiceNhi", b =>
@@ -5092,6 +5266,382 @@ namespace AestheticEMR.Server.Migrations
                     b.ToTable((string)null);
 
                     b.ToView("vwServiceNHIS", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhRecord", b =>
+                {
+                    b.Property<string>("AcctId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Age")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("AttendedTo")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("AttendedToByDoc")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("BatchNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BatchVal")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("BillDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("CardRenewAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ClientCat")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientCatId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientCatId2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClinicType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("ConAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ConsultId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoyType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Coyname")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("Debt")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Diagnosis")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("Dob")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocAssigned")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmpId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmpNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ExitDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExitDateComment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Fullname")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("Htime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MonthName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mth")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("NextApptDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OldpNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PCatId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte?>("PatVal")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("PhoneNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PolicyType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RecDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Referal")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("RegAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Sex")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("Suppres")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Yr")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhRecords", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhRetainership", b =>
+                {
+                    b.Property<string>("AccountNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Active")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("BillEndDate")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CardRenewAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Category")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("ConAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Contact")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("Debt")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("ProfFee")
+                        .HasColumnType("float");
+
+                    b.Property<decimal?>("RegAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RetainCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UseTariff")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhRetainership", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhRevenueForAcct", b =>
+                {
+                    b.Property<string>("AccountNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Active")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("AmtDiff")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmtPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("BillDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BillItem")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InvNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("IsPost")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("IsProcess")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("IsRct")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RevType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Serial")
+                        .HasColumnType("int");
+
+                    b.Property<long>("Sno")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("SubTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhRevenueForAccts", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhRevenueForAcctSale", b =>
+                {
+                    b.Property<string>("AcctCredit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AcctDebit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Active")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("AmtDiff")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmtPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BillNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoyId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DrgName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EntryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPost")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RevType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("Reversed")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("ReversedPair")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Sno")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("SubTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool?>("Suppres")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TranId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhRevenueForAcctSales", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhRevenueType", b =>
+                {
+                    b.Property<string>("AccountNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Active")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PatName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RevType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("Sno")
+                        .HasColumnType("bigint");
+
+                    b.Property<double?>("Subtotal")
+                        .HasColumnType("float");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhRevenueType", (string)null);
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.Vwhpatient", b =>
@@ -5289,6 +5839,74 @@ namespace AestheticEMR.Server.Migrations
                     b.ToTable((string)null);
 
                     b.ToView("vwhpatients", (string)null);
+                });
+
+            modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.VwhretainershipAll", b =>
+                {
+                    b.Property<string>("AccountNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Active")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("BillEndDate")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CardRenewAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Category")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("ConAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Contact")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("Debt")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("ProfFee")
+                        .HasColumnType("float");
+
+                    b.Property<decimal?>("RegAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RetainCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RetainName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UseTariff")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vwhretainershipAll", (string)null);
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Legacy.hAppointment", b =>

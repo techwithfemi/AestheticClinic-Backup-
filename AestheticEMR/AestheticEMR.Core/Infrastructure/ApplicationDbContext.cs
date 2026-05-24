@@ -89,6 +89,15 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<QryhvisitsForToday> QryhvisitsForTodays { get; set; }
         public DbSet<VwServiceNhi> VwServiceNhis { get; set; }
         public DbSet<Vwhpatient> Vwhpatients { get; set; }
+        public DbSet<VwhRecord> VwhRecords { get; set; }
+        public DbSet<VwhRevenueType> VwhRevenueTypes { get; set; }
+        public DbSet<VwhRetainership> VwhRetainerships { get; set; }
+        public DbSet<VwhretainershipAll> VwhretainershipAlls { get; set; }
+        public DbSet<VwhRevenueForAcctSale> VwhRevenueForAcctSales { get; set; }
+        public DbSet<QryhRecordsUnion> QryhRecordsUnions { get; set; }
+        public DbSet<VwHreferal> VwHreferals { get; set; }
+        public DbSet<VwBillsForClientsBatchVal> VwBillsForClientsBatchVals { get; set; }
+        public DbSet<VwhRevenueForAcct> VwhRevenueForAccts { get; set; }
 
         public DbSet<Drug> Drugs { get; set; }
         public DbSet<DrugMaster> DrugMasters { get; set; }
@@ -1436,6 +1445,60 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.HasNoKey();
                 entity.ToView("vwEmployees");
             });
+
+            builder.Entity<VwhRecord>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhRecords");
+            });
+
+            builder.Entity<VwhRevenueType>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhRevenueType");
+            });
+
+            builder.Entity<VwhRetainership>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhRetainership");
+            });
+
+            builder.Entity<VwhretainershipAll>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhretainershipAll");
+            });
+
+            builder.Entity<VwhRevenueForAcctSale>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhRevenueForAcctSales");
+            });
+
+            builder.Entity<QryhRecordsUnion>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhRecordsUnion");
+            });
+
+            builder.Entity<VwHreferal>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwHreferal");
+            });
+
+            builder.Entity<VwBillsForClientsBatchVal>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwBillsForClientsBatchVal");
+            });
+
+            builder.Entity<VwhRevenueForAcct>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhRevenueForAccts");
+            });
         }
 
         public override int SaveChanges()
@@ -1710,6 +1773,8 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
 
 
 
