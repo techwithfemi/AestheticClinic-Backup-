@@ -431,12 +431,15 @@ export class TariffServicesComponent {
 
     this.serviceTariffEndpoint.getTariffSourceCompaniesEndpoint<TariffCompany[]>(this.selectedCategory).subscribe({
       next: sourceCompanies => {
+        const selectedCompany = this.companies.find(x => x.coyId === this.selectedCoyId);
         const dialogRef = this.dialog.open(TariffUploadDialogComponent, {
           width: '560px',
           disableClose: true,
           data: {
             sourceCompanies: sourceCompanies.filter(x => x.coyId !== this.selectedCoyId),
-            category: this.selectedCategory
+            category: this.selectedCategory,
+            companyName: selectedCompany?.company ?? this.selectedCoyId,
+            coyId: this.selectedCoyId
           }
         });
 

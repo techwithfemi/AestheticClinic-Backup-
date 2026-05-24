@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { TariffCompany } from '../../../models/legacy/tariff-company.model';
 import * as XLSX from 'xlsx';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 export interface TariffUploadDialogResult {
   file?: File | null;
@@ -18,6 +19,8 @@ export interface TariffUploadDialogResult {
 interface TariffUploadDialogData {
   sourceCompanies: TariffCompany[];
   category: string;
+  companyName: string;
+  coyId: string;
 }
 
 @Component({
@@ -30,7 +33,8 @@ interface TariffUploadDialogData {
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
-    MatSelectModule
+    MatSelectModule,
+    MatTooltipModule
   ],
   template: `
     <div class="dialog-content">
@@ -42,9 +46,15 @@ interface TariffUploadDialogData {
       </div>
 
       <mat-dialog-content>
-        <div class="category-badge">
-          <mat-icon class="badge-icon">label</mat-icon>
-          <span>Category: <strong>{{ data.category }}</strong></span>
+        <div class="info-chips">
+          <div class="chip chip-category">
+            <mat-icon class="chip-icon">label</mat-icon>
+            <span>Category: <strong>{{ data.category }}</strong></span>
+          </div>
+          <div class="chip chip-company">
+            <mat-icon class="chip-icon">business</mat-icon>
+            <span>Company: <strong>{{ data.companyName }}</strong> [{{ data.coyId }}]</span>
+          </div>
         </div>
 
         <mat-form-field appearance="outline" class="full-width">
@@ -85,9 +95,12 @@ interface TariffUploadDialogData {
 
       <mat-dialog-actions align="end">
         <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
-        <button mat-raised-button color="primary" type="button"
-          [disabled]="!canContinue()"
-          (click)="submit()">Continue</button>
+        <span [style.cursor]="canContinue() ? 'default' : 'not-allowed'" [matTooltip]="canContinue() ? '' : 'Select a file or source company' + (sheetNames.length > 1 ? ', then pick a worksheet' : '')">
+          <button mat-raised-button color="primary" type="button"
+            [disabled]="!canContinue()"
+            [style.pointer-events]="canContinue() ? 'auto' : 'none'"
+            (click)="submit()">Continue</button>
+        </span>
       </mat-dialog-actions>
     </div>
   `,
@@ -100,8 +113,11 @@ interface TariffUploadDialogData {
     .file-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
     .file-name { color: #666; font-size: 0.9rem; word-break: break-word; }
     .hint { margin: 12px 0 0; color: #777; font-size: 0.85rem; }
-    .category-badge { display: flex; align-items: center; gap: 6px; background: rgba(25,118,210,0.08); border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 0.95rem; color: #1976d2; }
-    .badge-icon { font-size: 18px; width: 18px; height: 18px; }
+    .info-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: 0.88rem; font-weight: 500; }
+    .chip-icon { font-size: 15px; width: 15px; height: 15px; }
+    .chip-category { background: #e3f0fb; color: #1565c0; border: 1px solid #90caf9; }
+    .chip-company  { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
   `]
 })
 export class TariffUploadDialogComponent {
@@ -136,7 +152,7 @@ export class TariffUploadDialogComponent {
         const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array', bookSheets: true });
         this.sheetNames = wb.SheetNames ?? [];
-        this.selectedSheet = this.sheetNames[0] ?? '';
+        this.selectedSheet = '';   // user must pick
       } catch {
         this.sheetNames = [];
         this.selectedSheet = '';
