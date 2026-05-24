@@ -29,6 +29,23 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         }
     }
 
+    [HttpGet("source-companies")]
+    [ProducesResponseType(typeof(IEnumerable<TariffCompanyVM>), 200)]
+    public IActionResult GetSourceCompanies([FromQuery] string? category = null)
+    {
+        try
+        {
+            var records = serviceTariffService.GetCompaniesWithTariffs(category);
+            return Ok(_mapper.Map<IEnumerable<TariffCompanyVM>>(records));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving source tariff companies");
+            AddModelError("Unable to retrieve source tariff companies");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ServiceTariffVM>), 200)]
     public async Task<IActionResult> GetAll([FromQuery] string? coyId, [FromQuery] string? search)
@@ -49,7 +66,7 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
     [HttpPost("upload")]
     [ProducesResponseType(200)]
     [ProducesResponseType(400)]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string coyId, [FromForm] bool deleteExisting = false, [FromForm] string? category = null)
+    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string coyId, [FromForm] bool deleteExisting = false, [FromForm] string? category = null, [FromForm] string? sheetName = null)
     {
         if (file is null || file.Length == 0)
         {
@@ -66,7 +83,7 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         try
         {
             await using var stream = file.OpenReadStream();
-            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting, category);
+            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting, category, sheetName);
             return Ok(new { inserted });
         }
         catch (Exception ex)

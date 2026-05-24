@@ -1,4 +1,4 @@
-using AestheticEMR.Core.Infrastructure;
+﻿using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -20,8 +20,60 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             .ToList();
     }
 
-    public IEnumerable<VwCoyAndNhi> GetCompaniesWithTariffs()
+    public IEnumerable<VwCoyAndNhi> GetCompaniesWithTariffs(string? category = null)
     {
+        var cat = category?.Trim().ToUpperInvariant();
+
+        // Query the correct table based on category to return companies that have data
+        if (cat == "DRUG")
+        {
+            return context.DrugNhis
+                .AsNoTracking()
+                .GroupBy(x => new { x.Company, x.CoyName })
+                .Select(x => new VwCoyAndNhi
+                {
+                    CoyId = x.Key.Company,
+                    Company = x.Key.CoyName ?? x.Key.Company,
+                    Remarks = "HMO"
+                })
+                .OrderBy(x => x.Company)
+                .ThenBy(x => x.CoyId)
+                .ToList();
+        }
+
+        if (cat == "INVESTIGATION")
+        {
+            return context.LabServiceNhis
+                .AsNoTracking()
+                .GroupBy(x => new { x.Company, x.CoyName })
+                .Select(x => new VwCoyAndNhi
+                {
+                    CoyId = x.Key.Company,
+                    Company = x.Key.CoyName ?? x.Key.Company,
+                    Remarks = "HMO"
+                })
+                .OrderBy(x => x.Company)
+                .ThenBy(x => x.CoyId)
+                .ToList();
+        }
+
+        if (cat == "PRODUCT")
+        {
+            return context.ProductTariffs
+                .AsNoTracking()
+                .GroupBy(x => new { x.Company, x.CoyName })
+                .Select(x => new VwCoyAndNhi
+                {
+                    CoyId = x.Key.Company,
+                    Company = x.Key.CoyName ?? x.Key.Company,
+                    Remarks = "HMO"
+                })
+                .OrderBy(x => x.Company)
+                .ThenBy(x => x.CoyId)
+                .ToList();
+        }
+
+        // Default: SERVICE â€” read from VwServiceNhis
         return context.VwServiceNhis
             .AsNoTracking()
             .GroupBy(x => new { x.CoyId, x.Company, x.Remarks })
@@ -94,75 +146,324 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         await context.SaveChangesAsync();
     }
 
-    public async Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting, string? category = null)
+    public async Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting, string? category = null, string? sheetName = null)
     {
         var normalizedCoyId = (coyId ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCoyId))
-        {
             throw new InvalidOperationException("Company code is required.");
-        }
 
         var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
         if (extension is not ".csv" and not ".xls" and not ".xlsx")
-        {
             throw new InvalidOperationException("Only .xls, .xlsx and .csv files are supported.");
-        }
 
-        var retainership = await context.HRetainerships
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.RetainId == normalizedCoyId);
+        var cat = category?.Trim().ToUpperInvariant() ?? "SERVICE";
+        var companyName = await ResolveCompanyNameAsync(normalizedCoyId);
 
-        var companyName = retainership?.RetainName ?? normalizedCoyId;
-        var normalizedCategory = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+        var items = extension == ".csv" ? ParseCsv(fileStream) : ParseXlsx(fileStream, sheetName);
 
+        if (cat == "DRUG")
+            return await UploadDrugAsync(normalizedCoyId, companyName, items, deleteExisting);
+
+        if (cat == "INVESTIGATION")
+            return await UploadInvestigationAsync(normalizedCoyId, companyName, items, deleteExisting);
+
+        if (cat == "PRODUCT")
+            return await UploadProductAsync(normalizedCoyId, companyName, items, deleteExisting);
+
+        // SERVICE (default)
+        return await UploadServiceAsync(normalizedCoyId, companyName, items, deleteExisting);
+    }
+
+    private async Task<int> UploadDrugAsync(string coyId, string companyName, List<UploadRow> items, bool deleteExisting)
+    {
         if (deleteExisting)
         {
-            // Only delete records for the same category when a category is specified
-            var existing = normalizedCategory is not null
-                ? context.hServiceNHIs.Where(x => x.Company == normalizedCoyId && x.UsersCat == normalizedCategory)
-                : context.hServiceNHIs.Where(x => x.Company == normalizedCoyId);
-            context.hServiceNHIs.RemoveRange(existing);
+            context.DrugNhis.RemoveRange(context.DrugNhis.Where(x => x.Company == coyId));
             await context.SaveChangesAsync();
         }
 
-        var items = extension == ".csv"
-            ? ParseCsv(fileStream)
-            : ParseXlsx(fileStream);
-
         var inserted = 0;
-
         foreach (var row in items)
         {
-            var service = row.Service?.Trim();
-            if (string.IsNullOrWhiteSpace(service))
+            var name = row.Service?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            context.DrugNhis.Add(new DrugNhi
             {
-                continue;
-            }
+                DrgName = name,
+                Company = coyId,
+                CoyName = companyName,
+                Price = row.Price,
+                Remarks = "HMO",
+                Capitated = "NO",
+                TariffStatus = "FIXED"
+            });
+            inserted++;
+        }
+
+        if (inserted > 0) await context.SaveChangesAsync();
+        return inserted;
+    }
+
+    private async Task<int> UploadInvestigationAsync(string coyId, string companyName, List<UploadRow> items, bool deleteExisting)
+    {
+        if (deleteExisting)
+        {
+            context.LabServiceNhis.RemoveRange(context.LabServiceNhis.Where(x => x.Company == coyId));
+            await context.SaveChangesAsync();
+        }
+
+        var inserted = 0;
+        foreach (var row in items)
+        {
+            var name = row.Service?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            context.LabServiceNhis.Add(new LabServiceNhi
+            {
+                DrgName = name,
+                Company = coyId,
+                CoyName = companyName,
+                Price = row.Price,
+                Remarks = "HMO",
+                Capitated = "NO",
+                TariffStatus = "FIXED"
+            });
+            inserted++;
+        }
+
+        if (inserted > 0) await context.SaveChangesAsync();
+        return inserted;
+    }
+
+    private async Task<int> UploadProductAsync(string coyId, string companyName, List<UploadRow> items, bool deleteExisting)
+    {
+        if (deleteExisting)
+        {
+            context.ProductTariffs.RemoveRange(context.ProductTariffs.Where(x => x.Company == coyId));
+            await context.SaveChangesAsync();
+        }
+
+        var inserted = 0;
+        foreach (var row in items)
+        {
+            var name = row.Service?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            context.ProductTariffs.Add(new ProductTariff
+            {
+                PdtName = name,
+                Company = coyId,
+                CoyName = companyName,
+                Price = row.Price,
+                Remarks = "HMO",
+                Capitated = "NO",
+                TariffStatus = "FIXED"
+            });
+            inserted++;
+        }
+
+        if (inserted > 0) await context.SaveChangesAsync();
+        return inserted;
+    }
+
+    private async Task<int> UploadServiceAsync(string coyId, string companyName, List<UploadRow> items, bool deleteExisting)
+    {
+        if (deleteExisting)
+        {
+            context.hServiceNHIs.RemoveRange(context.hServiceNHIs.Where(x => x.Company == coyId));
+            await context.SaveChangesAsync();
+        }
+
+        var inserted = 0;
+        foreach (var row in items)
+        {
+            var name = row.Service?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) continue;
 
             var entity = new hServiceNHI
             {
-                Service = service,
+                Service = name,
                 Price = row.Price,
                 Category = string.IsNullOrWhiteSpace(row.Category) ? null : row.Category.Trim(),
-                Company = normalizedCoyId,
+                Company = coyId,
                 CoyName = companyName,
                 Remarks = "HMO",
                 Capitated = "NO",
                 TariffStatus = "FIXED",
-                UsersCat = normalizedCategory  // stamp with the selected category
+                UsersCat = "SERVICE"
             };
-
             NormalizeAndValidate(entity);
             context.hServiceNHIs.Add(entity);
             inserted++;
         }
 
-        if (inserted > 0)
+        if (inserted > 0) await context.SaveChangesAsync();
+        return inserted;
+    }
+
+    public async Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting, string? category = null)
+    {
+        var normalizedTargetCoyId = (targetCoyId ?? string.Empty).Trim();
+        var normalizedSourceCoyId = (sourceCoyId ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedTargetCoyId))
+            throw new InvalidOperationException("Target company code is required.");
+        if (string.IsNullOrWhiteSpace(normalizedSourceCoyId))
+            throw new InvalidOperationException("Source company code is required.");
+        if (string.Equals(normalizedTargetCoyId, normalizedSourceCoyId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Source and target company cannot be the same.");
+
+        var cat = category?.Trim().ToUpperInvariant() ?? "SERVICE";
+        var targetCompanyName = await ResolveCompanyNameAsync(normalizedTargetCoyId);
+
+        if (cat == "DRUG")
+            return await CopyDrugAsync(normalizedTargetCoyId, normalizedSourceCoyId, targetCompanyName, deleteExisting);
+        if (cat == "INVESTIGATION")
+            return await CopyInvestigationAsync(normalizedTargetCoyId, normalizedSourceCoyId, targetCompanyName, deleteExisting);
+        if (cat == "PRODUCT")
+            return await CopyProductAsync(normalizedTargetCoyId, normalizedSourceCoyId, targetCompanyName, deleteExisting);
+
+        return await CopyServiceAsync(normalizedTargetCoyId, normalizedSourceCoyId, targetCompanyName, deleteExisting);
+    }
+
+    private async Task<int> CopyDrugAsync(string targetCoyId, string sourceCoyId, string targetCompanyName, bool deleteExisting)
+    {
+        var source = await context.DrugNhis.AsNoTracking().Where(x => x.Company == sourceCoyId).ToListAsync();
+        if (source.Count == 0)
+            throw new InvalidOperationException("The selected source company has no Drug tariff records.");
+
+        if (deleteExisting)
         {
+            context.DrugNhis.RemoveRange(context.DrugNhis.Where(x => x.Company == targetCoyId));
             await context.SaveChangesAsync();
         }
 
-        return inserted;
+        foreach (var item in source)
+        {
+            context.DrugNhis.Add(new DrugNhi
+            {
+                DrgName = item.DrgName,
+                Company = targetCoyId,
+                CoyName = targetCompanyName,
+                Price = item.Price,
+                Remarks = item.Remarks ?? "HMO",
+                Capitated = item.Capitated ?? "NO",
+                TariffStatus = item.TariffStatus ?? "FIXED",
+                RevType = item.RevType,
+                PharmCat = item.PharmCat,
+                DrgCatName = item.DrgCatName
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return source.Count;
+    }
+
+    private async Task<int> CopyInvestigationAsync(string targetCoyId, string sourceCoyId, string targetCompanyName, bool deleteExisting)
+    {
+        var source = await context.LabServiceNhis.AsNoTracking().Where(x => x.Company == sourceCoyId).ToListAsync();
+        if (source.Count == 0)
+            throw new InvalidOperationException("The selected source company has no Investigation tariff records.");
+
+        if (deleteExisting)
+        {
+            context.LabServiceNhis.RemoveRange(context.LabServiceNhis.Where(x => x.Company == targetCoyId));
+            await context.SaveChangesAsync();
+        }
+
+        foreach (var item in source)
+        {
+            context.LabServiceNhis.Add(new LabServiceNhi
+            {
+                DrgName = item.DrgName,
+                Company = targetCoyId,
+                CoyName = targetCompanyName,
+                Price = item.Price,
+                Remarks = item.Remarks ?? "HMO",
+                Capitated = item.Capitated ?? "NO",
+                TariffStatus = item.TariffStatus ?? "FIXED",
+                RevType = item.RevType,
+                DrgCatName = item.DrgCatName
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return source.Count;
+    }
+
+    private async Task<int> CopyProductAsync(string targetCoyId, string sourceCoyId, string targetCompanyName, bool deleteExisting)
+    {
+        var source = await context.ProductTariffs.AsNoTracking().Where(x => x.Company == sourceCoyId).ToListAsync();
+        if (source.Count == 0)
+            throw new InvalidOperationException("The selected source company has no Product tariff records.");
+
+        if (deleteExisting)
+        {
+            context.ProductTariffs.RemoveRange(context.ProductTariffs.Where(x => x.Company == targetCoyId));
+            await context.SaveChangesAsync();
+        }
+
+        foreach (var item in source)
+        {
+            context.ProductTariffs.Add(new ProductTariff
+            {
+                PdtName = item.PdtName,
+                Company = targetCoyId,
+                CoyName = targetCompanyName,
+                Price = item.Price,
+                Remarks = item.Remarks ?? "HMO",
+                Capitated = item.Capitated ?? "NO",
+                TariffStatus = item.TariffStatus ?? "FIXED",
+                RevType = item.RevType,
+                Category = item.Category,
+                UsersCat = item.UsersCat
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return source.Count;
+    }
+
+    private async Task<int> CopyServiceAsync(string targetCoyId, string sourceCoyId, string targetCompanyName, bool deleteExisting)
+    {
+        var source = await context.hServiceNHIs.AsNoTracking().Where(x => x.Company == sourceCoyId).ToListAsync();
+        if (source.Count == 0)
+            throw new InvalidOperationException("The selected source company has no Service tariff records.");
+
+        if (deleteExisting)
+        {
+            context.hServiceNHIs.RemoveRange(context.hServiceNHIs.Where(x => x.Company == targetCoyId));
+            await context.SaveChangesAsync();
+        }
+
+        foreach (var item in source)
+        {
+            context.hServiceNHIs.Add(new hServiceNHI
+            {
+                Service = item.Service,
+                Category = item.Category,
+                Company = targetCoyId,
+                Price = item.Price,
+                Remarks = item.Remarks ?? "HMO",
+                CoyName = targetCompanyName,
+                Capitated = item.Capitated ?? "NO",
+                TariffStatus = item.TariffStatus ?? "FIXED",
+                RevType = item.RevType,
+                UsersCat = item.UsersCat ?? "SERVICE"
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return source.Count;
+    }
+
+    private async Task<string> ResolveCompanyNameAsync(string coyId)
+    {
+        var retainership = await context.HRetainerships
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.RetainId == coyId);
+        return retainership?.RetainName ?? coyId;
     }
 
     private static List<UploadRow> ParseCsv(Stream stream)
@@ -206,7 +507,7 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         return rows;
     }
 
-    private static List<UploadRow> ParseXlsx(Stream stream)
+    private static List<UploadRow> ParseXlsx(Stream stream, string? sheetName)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -219,7 +520,13 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             }
         });
 
-        var table = result.Tables.Count > 0 ? result.Tables[0] : null;
+        DataTable? table = null;
+        if (!string.IsNullOrWhiteSpace(sheetName))
+        {
+            table = result.Tables.Cast<DataTable>().FirstOrDefault(x => x.TableName.Equals(sheetName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        table ??= result.Tables.Count > 0 ? result.Tables[0] : null;
         if (table is null)
         {
             return [];
@@ -318,80 +625,6 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
 
         serviceTariff.CoyName = tariffCompany?.Company ?? serviceTariff.Company;
         serviceTariff.Remarks ??= tariffCompany?.Remarks ?? "HMO";
-    }
-
-    public async Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting, string? category = null)
-    {
-        var normalizedTargetCoyId = (targetCoyId ?? string.Empty).Trim();
-        var normalizedSourceCoyId = (sourceCoyId ?? string.Empty).Trim();
-        var normalizedCategory = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
-
-        if (string.IsNullOrWhiteSpace(normalizedTargetCoyId))
-        {
-            throw new InvalidOperationException("Target company code is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(normalizedSourceCoyId))
-        {
-            throw new InvalidOperationException("Source company code is required.");
-        }
-
-        if (string.Equals(normalizedTargetCoyId, normalizedSourceCoyId, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Source and target company cannot be the same.");
-        }
-
-        // Filter source by category when specified
-        var sourceQuery = context.hServiceNHIs.AsNoTracking()
-            .Where(x => x.Company == normalizedSourceCoyId);
-
-        if (normalizedCategory is not null)
-        {
-            sourceQuery = sourceQuery.Where(x => x.UsersCat == normalizedCategory);
-        }
-
-        var sourceTariffs = await sourceQuery.ToListAsync();
-
-        if (sourceTariffs.Count == 0)
-        {
-            throw new InvalidOperationException("The selected source company has no tariff records for the specified category.");
-        }
-
-        var targetCompany = await context.VwCoyAndNhis
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.CoyId == normalizedTargetCoyId);
-
-        var targetCompanyName = targetCompany?.Company ?? normalizedTargetCoyId;
-        var targetRemarks = targetCompany?.Remarks ?? "HMO";
-
-        if (deleteExisting)
-        {
-            var existing = normalizedCategory is not null
-                ? context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId && x.UsersCat == normalizedCategory)
-                : context.hServiceNHIs.Where(x => x.Company == normalizedTargetCoyId);
-            context.hServiceNHIs.RemoveRange(existing);
-            await context.SaveChangesAsync();
-        }
-
-        foreach (var item in sourceTariffs)
-        {
-            context.hServiceNHIs.Add(new hServiceNHI
-            {
-                Service = item.Service,
-                Category = item.Category,
-                Company = normalizedTargetCoyId,
-                Price = item.Price,
-                Remarks = item.Remarks ?? targetRemarks,
-                CoyName = targetCompanyName,
-                Capitated = item.Capitated,
-                TariffStatus = item.TariffStatus,
-                RevType = item.RevType,
-                UsersCat = normalizedCategory ?? item.UsersCat
-            });
-        }
-
-        await context.SaveChangesAsync();
-        return sourceTariffs.Count;
     }
 
     private sealed class UploadRow

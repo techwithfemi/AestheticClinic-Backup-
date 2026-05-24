@@ -20,9 +20,10 @@ export class ServiceTariffEndpoint extends EndpointBase {
     );
   }
 
-  getTariffSourceCompaniesEndpoint<T>(): Observable<T> {
-    return this.http.get<T>(`${this.serviceTariffUrl}/source-companies`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getTariffSourceCompaniesEndpoint<T>()))
+  getTariffSourceCompaniesEndpoint<T>(category?: string): Observable<T> {
+    const params = category ? `?category=${encodeURIComponent(category)}` : '';
+    return this.http.get<T>(`${this.serviceTariffUrl}/source-companies${params}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getTariffSourceCompaniesEndpoint<T>(category)))
     );
   }
 
@@ -69,7 +70,7 @@ export class ServiceTariffEndpoint extends EndpointBase {
     );
   }
 
-  uploadServiceTariffEndpoint<T>(coyId: string, file: File, deleteExisting: boolean, category?: string): Observable<T> {
+  uploadServiceTariffEndpoint<T>(coyId: string, file: File, deleteExisting: boolean, category?: string, sheetName?: string | null): Observable<T> {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('coyId', coyId);
@@ -77,9 +78,12 @@ export class ServiceTariffEndpoint extends EndpointBase {
     if (category) {
       formData.append('category', category);
     }
+    if (sheetName) {
+      formData.append('sheetName', sheetName);
+    }
 
     return this.http.post<T>(`${this.serviceTariffUrl}/upload`, formData, this.uploadHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting, category)))
+      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting, category, sheetName)))
     );
   }
 

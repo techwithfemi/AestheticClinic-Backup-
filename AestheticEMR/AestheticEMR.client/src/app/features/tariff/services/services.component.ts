@@ -15,10 +15,25 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { ServiceTariffEndpoint } from '../../../services/service-tariff-endpoint.service';
+import { DrugNHISEndpoint } from '../../../services/drug-nhis-endpoint.service';
+import { LabServiceNHIEndpoint } from '../../../services/lab-service-nhi-endpoint.service';
+import { ProductTariffEndpoint } from '../../../services/product-tariff-endpoint.service';
 import { ServiceTariff } from '../../../models/legacy/service-tariff.model';
+import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
+import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
+import { ProductTariff } from '../../../models/legacy/product-tariff.model';
 import { TariffCompany } from '../../../models/legacy/tariff-company.model';
 import { TariffServiceDialogComponent } from './tariff-service-dialog.component';
 import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-upload-dialog.component';
+
+/** Normalised row used by the grid regardless of source model */
+interface TariffRow {
+  sno: number;
+  name: string;       // service / drgName / pdtName
+  price: number;
+  company: string;
+  coyName: string;
+}
 
 @Component({
   selector: 'app-tariff-services',
@@ -113,10 +128,10 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
             <p class="empty-text">Select a company and tariff category to view records.</p>
           } @else {
           <div class="table-wrap">
-            <table mat-table [dataSource]="pagedTariffs" class="tariff-table">
-              <ng-container matColumnDef="service">
-                <th mat-header-cell *matHeaderCellDef>Service</th>
-                <td mat-cell *matCellDef="let item">{{ item.service }}</td>
+            <table mat-table [dataSource]="pagedRows" class="tariff-table">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>{{ selectedCategory === 'Drug' ? 'Drug' : selectedCategory === 'Investigation' ? 'Investigation' : selectedCategory === 'Product' ? 'Product' : 'Service' }}</th>
+                <td mat-cell *matCellDef="let item">{{ item.name }}</td>
               </ng-container>
 
               <ng-container matColumnDef="price">
@@ -143,11 +158,11 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
             </table>
           </div>
 
-          @if (tariffs.length > 0) {
+          @if (rows.length > 0) {
             <div class="pager-wrap">
               <small class="pager-text">
                 Showing {{ (currentPage - 1) * pageSize + 1 }}-
-                {{ (currentPage * pageSize) < tariffs.length ? (currentPage * pageSize) : tariffs.length }} of {{ tariffs.length }}
+                {{ (currentPage * pageSize) < rows.length ? (currentPage * pageSize) : rows.length }} of {{ rows.length }}
               </small>
               <div class="pager-actions">
                 <button mat-stroked-button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">
@@ -163,7 +178,7 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
             </div>
           }
 
-          @if (tariffs.length === 0 && !loadingIndicator) {
+          @if (rows.length === 0 && !loadingIndicator) {
             <p class="empty-text">No tariff items found</p>
           }
 
@@ -228,29 +243,32 @@ import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-
 export class TariffServicesComponent {
   private alertService = inject(AlertService);
   private serviceTariffEndpoint = inject(ServiceTariffEndpoint);
+  private drugEndpoint = inject(DrugNHISEndpoint);
+  private labEndpoint = inject(LabServiceNHIEndpoint);
+  private productEndpoint = inject(ProductTariffEndpoint);
   private dialog = inject(MatDialog);
 
   companies: TariffCompany[] = [];
-  allTariffs: ServiceTariff[] = [];   // full unfiltered set for selected company
-  tariffs: ServiceTariff[] = [];      // displayed (search + category filtered)
+  allRows: TariffRow[] = [];    // full set for selected company + category
+  rows: TariffRow[] = [];       // search-filtered, displayed in grid
 
   selectedCoyId = '';
   selectedCategory = '';
   searchText = '';
   loadingIndicator = false;
-  displayedColumns = ['service', 'price', 'company', 'actions'];
+  displayedColumns = ['name', 'price', 'company', 'actions'];
   readonly pageSize = 10;
   currentPage = 1;
 
   readonly tariffCategories = ['Drug', 'Investigation', 'Service', 'Product'];
 
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.tariffs.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.rows.length / this.pageSize));
   }
 
-  get pagedTariffs(): ServiceTariff[] {
+  get pagedRows(): TariffRow[] {
     const start = (this.currentPage - 1) * this.pageSize;
-    return this.tariffs.slice(start, start + this.pageSize);
+    return this.rows.slice(start, start + this.pageSize);
   }
 
   constructor() {
@@ -258,10 +276,7 @@ export class TariffServicesComponent {
   }
 
   goToPage(page: number): void {
-    if (page < 1 || page > this.totalPages) {
-      return;
-    }
-
+    if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
   }
 
@@ -270,30 +285,19 @@ export class TariffServicesComponent {
   }
 
   onCategoryChange(): void {
-    this.applyFilters();
-    this.currentPage = 1;
+    this.loadTariffs();
   }
 
   onSearchChanged(): void {
-    this.applyFilters();
+    this.applySearch();
     this.currentPage = 1;
   }
 
-  private applyFilters(): void {
-    let result = [...this.allTariffs];
-
-    if (this.selectedCategory) {
-      result = result.filter(t =>
-        (t.usersCat ?? '').trim().toLowerCase() === this.selectedCategory.toLowerCase()
-      );
-    }
-
+  private applySearch(): void {
     const term = this.searchText?.trim().toLowerCase() ?? '';
-    if (term) {
-      result = result.filter(t => (t.service ?? '').toLowerCase().includes(term));
-    }
-
-    this.tariffs = result;
+    this.rows = term
+      ? this.allRows.filter(r => r.name.toLowerCase().includes(term))
+      : [...this.allRows];
   }
 
   loadCompanies(): void {
@@ -310,45 +314,106 @@ export class TariffServicesComponent {
   }
 
   loadTariffs(): void {
-    if (!this.selectedCoyId) {
-      this.allTariffs = [];
-      this.tariffs = [];
+    if (!this.selectedCoyId || !this.selectedCategory) {
+      this.allRows = [];
+      this.rows = [];
       this.currentPage = 1;
       return;
     }
 
     this.loadingIndicator = true;
-    this.alertService.startLoadingMessage('Loading service tariff...');
+    this.alertService.startLoadingMessage(`Loading ${this.selectedCategory} tariff...`);
 
-    // Load all items for the company — filtering is done client-side
-    this.serviceTariffEndpoint.getServiceTariffsEndpoint<ServiceTariff[]>(this.selectedCoyId).subscribe({
-      next: data => {
-        this.loadingIndicator = false;
-        this.alertService.stopLoadingMessage();
-        this.allTariffs = [...data];
-        this.applyFilters();
-        this.currentPage = 1;
-      },
-      error: error => {
-        this.loadingIndicator = false;
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage('Load Error', `Unable to retrieve service tariff.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
-      }
-    });
+    const coy = this.selectedCoyId;
+
+    switch (this.selectedCategory) {
+      case 'Drug':
+        this.drugEndpoint.getDrugTariffsEndpoint<DrugNhi[]>(coy).subscribe({
+          next: data => this.setRows(data.map(d => ({
+            sno: d.sno,
+            name: d.drgName,
+            price: d.price ?? 0,
+            company: d.company ?? coy,
+            coyName: d.coyName ?? d.company ?? coy
+          }))) ,
+          error: (err: unknown) => this.handleLoadError(err)
+        });
+        break;
+
+      case 'Investigation':
+        this.labEndpoint.getLabServiceTariffsEndpoint<LabServiceNhi[]>(coy).subscribe({
+          next: data => this.setRows(data.map(d => ({
+            sno: d.sno,
+            name: d.drgName,
+            price: d.price ?? 0,
+            company: d.company ?? coy,
+            coyName: d.coyName ?? d.company ?? coy
+          }))) ,
+          error: (err: unknown) => this.handleLoadError(err)
+        });
+        break;
+
+      case 'Product':
+        this.productEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coy).subscribe({
+          next: data => this.setRows(data.map(d => ({
+            sno: d.sno,
+            name: d.pdtName,
+            price: d.price ?? 0,
+            company: d.company ?? coy,
+            coyName: d.coyName ?? d.company ?? coy
+          }))) ,
+          error: (err: unknown) => this.handleLoadError(err)
+        });
+        break;
+
+      case 'Service':
+      default:
+        this.serviceTariffEndpoint.getServiceTariffsEndpoint<ServiceTariff[]>(coy).subscribe({
+          next: data => this.setRows(data.map(d => ({
+            sno: d.sno ?? 0,
+            name: d.service,
+            price: d.price ?? 0,
+            company: d.coyId ?? d.company ?? coy,
+            coyName: d.coyName ?? d.company ?? coy
+          }))) ,
+          error: (err: unknown) => this.handleLoadError(err)
+        });
+        break;
+    }
   }
 
-  openEditDialog(item: ServiceTariff): void {
+  private setRows(rows: TariffRow[]): void {
+    this.loadingIndicator = false;
+    this.alertService.stopLoadingMessage();
+    this.allRows = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+    this.applySearch();
+    this.currentPage = 1;
+  }
+
+  private handleLoadError(error: unknown): void {
+    this.loadingIndicator = false;
+    this.alertService.stopLoadingMessage();
+    this.alertService.showStickyMessage('Load Error', `Unable to retrieve tariff.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+  }
+
+  openEditDialog(item: TariffRow): void {
+    // Build a minimal ServiceTariff shape for the dialog (edit only used for Service category currently)
+    const tariffItem: ServiceTariff = {
+      sno: item.sno,
+      service: item.name,
+      price: item.price,
+      company: item.company,
+      coyName: item.coyName
+    };
+
     const dialogRef = this.dialog.open(TariffServiceDialogComponent, {
-      data: { isEdit: true, item, allTariffs: this.allTariffs },
+      data: { isEdit: true, item: tariffItem, allTariffs: [] },
       width: '520px',
       disableClose: true
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (!result) {
-        return;
-      }
-
+      if (!result) return;
       this.saveDialogResult(result, item);
     });
   }
@@ -364,7 +429,7 @@ export class TariffServicesComponent {
       return;
     }
 
-    this.serviceTariffEndpoint.getTariffSourceCompaniesEndpoint<TariffCompany[]>().subscribe({
+    this.serviceTariffEndpoint.getTariffSourceCompaniesEndpoint<TariffCompany[]>(this.selectedCategory).subscribe({
       next: sourceCompanies => {
         const dialogRef = this.dialog.open(TariffUploadDialogComponent, {
           width: '560px',
@@ -387,7 +452,7 @@ export class TariffServicesComponent {
               () => {
                 this.alertService.startLoadingMessage('Uploading tariff data...');
                 this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(
-                  this.selectedCoyId, result.file!, true, this.selectedCategory
+                  this.selectedCoyId, result.file!, true, this.selectedCategory, result.sheetName
                 ).subscribe({
                   next: response => {
                     this.alertService.stopLoadingMessage();
@@ -447,7 +512,7 @@ export class TariffServicesComponent {
     revType: string;
     remarks: string;
     usersCat: string;
-  }, currentItem: ServiceTariff): void {
+  }, currentItem: TariffRow): void {
     const selectedCompany = this.companies.find(x => x.coyId === this.selectedCoyId);
 
     const payload: ServiceTariff = {

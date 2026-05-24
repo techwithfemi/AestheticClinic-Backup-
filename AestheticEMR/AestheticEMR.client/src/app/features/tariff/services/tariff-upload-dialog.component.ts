@@ -7,10 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { TariffCompany } from '../../../models/legacy/tariff-company.model';
+import * as XLSX from 'xlsx';
 
 export interface TariffUploadDialogResult {
   file?: File | null;
   sourceCoyId?: string | null;
+  sheetName?: string | null;
 }
 
 interface TariffUploadDialogData {
@@ -64,6 +66,17 @@ interface TariffUploadDialogData {
           <span class="file-name">{{ selectedFile?.name || 'No file selected' }}</span>
         </div>
 
+        @if (sheetNames.length > 1) {
+          <mat-form-field appearance="outline" class="full-width sheet-field">
+            <mat-label>Select Worksheet</mat-label>
+            <mat-select [(ngModel)]="selectedSheet">
+              @for (sheet of sheetNames; track sheet) {
+                <mat-option [value]="sheet">{{ sheet }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+
         <p class="hint">If no file is selected, the tariff from the selected company above will be used.</p>
         <p class="hint">Re-upload will replace any existing <strong>{{ data.category }}</strong> tariff items for the selected company.</p>
         <p class="hint">Supported formats: .xls, .xlsx, .csv</p>
@@ -72,7 +85,9 @@ interface TariffUploadDialogData {
 
       <mat-dialog-actions align="end">
         <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
-        <button mat-raised-button color="primary" type="button" [disabled]="!selectedFile && !selectedSourceCoyId" (click)="submit()">Continue</button>
+        <button mat-raised-button color="primary" type="button"
+          [disabled]="!canContinue()"
+          (click)="submit()">Continue</button>
       </mat-dialog-actions>
     </div>
   `,
@@ -81,6 +96,7 @@ interface TariffUploadDialogData {
     .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .dialog-header h2 { margin: 0; flex: 1; font-size: 1.2rem; }
     .full-width { width: 100%; margin-bottom: 12px; }
+    .sheet-field { margin-top: 4px; }
     .file-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
     .file-name { color: #666; font-size: 0.9rem; word-break: break-word; }
     .hint { margin: 12px 0 0; color: #777; font-size: 0.85rem; }
@@ -97,21 +113,51 @@ export class TariffUploadDialogComponent {
 
   selectedFile: File | null = null;
   selectedSourceCoyId = '';
+  sheetNames: string[] = [];
+  selectedSheet = '';
 
   onFilePicked(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.selectedFile = input.files?.[0] ?? null;
+    const file = input.files?.[0] ?? null;
     input.value = '';
+
+    this.selectedFile = file;
+    this.sheetNames = [];
+    this.selectedSheet = '';
+
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'xls' && ext !== 'xlsx') return;   // CSV has no sheets
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array', bookSheets: true });
+        this.sheetNames = wb.SheetNames ?? [];
+        this.selectedSheet = this.sheetNames[0] ?? '';
+      } catch {
+        this.sheetNames = [];
+        this.selectedSheet = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  canContinue(): boolean {
+    if (!this.selectedFile && !this.selectedSourceCoyId) return false;
+    if (this.selectedFile && this.sheetNames.length > 1 && !this.selectedSheet) return false;
+    return true;
   }
 
   submit(): void {
-    if (!this.selectedFile && !this.selectedSourceCoyId) {
-      return;
-    }
+    if (!this.canContinue()) return;
 
     this.dialogRef.close({
       file: this.selectedFile,
-      sourceCoyId: this.selectedSourceCoyId || null
+      sourceCoyId: this.selectedSourceCoyId || null,
+      sheetName: this.selectedFile ? (this.selectedSheet || null) : null
     } as TariffUploadDialogResult);
   }
 }
