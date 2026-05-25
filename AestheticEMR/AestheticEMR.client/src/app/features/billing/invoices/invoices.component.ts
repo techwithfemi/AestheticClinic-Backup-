@@ -271,12 +271,16 @@ export class InvoicesComponent implements OnInit {
           }
         }
       }
-    } catch {}
+    } catch { /* use defaults */ }
     this.dialog.open(BillingInvoiceDialogComponent, {
       width,
       maxWidth,
       disableClose: true,
       data
+    }).afterClosed().subscribe((changed: boolean) => {
+      if (changed) {
+        this.loadData();
+      }
     });
   }
 

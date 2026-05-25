@@ -7,6 +7,8 @@ export interface BillingDetail {
   conID?: string;
   revenueType?: string;
   revenueTypeName?: string;
+  billTo?: string;
+  coyName?: string;
 }
 
 export interface Billing {

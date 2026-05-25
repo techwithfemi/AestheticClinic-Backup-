@@ -22,6 +22,15 @@ public class BillingDetailVM
 
     [StringLength(50)]
     public string? ConID { get; set; }
+
+    [StringLength(100)]
+    public string? RevenueType { get; set; }
+
+    [StringLength(100)]
+    public string? BillTo { get; set; }
+
+    [StringLength(100)]
+    public string? CoyName { get; set; }
 }
 
 public class BillingVM

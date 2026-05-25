@@ -235,12 +235,18 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<BillingDetail, BillingDetailVM>()
                 .ForMember(d => d.DrgName, map => map.MapFrom(s => s.drgName))
                 .ForMember(d => d.BillType, map => map.MapFrom(s => s.billType))
-                .ForMember(d => d.ConID, map => map.MapFrom(s => s.conID));
+                .ForMember(d => d.ConID, map => map.MapFrom(s => s.conID))
+                .ForMember(d => d.RevenueType, map => map.MapFrom(s => s.revType))
+                .ForMember(d => d.BillTo, map => map.MapFrom(s => s.BillTo))
+                .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
 
             CreateMap<BillingDetailVM, BillingDetail>()
                 .ForMember(d => d.drgName, map => map.MapFrom(s => s.DrgName))
                 .ForMember(d => d.billType, map => map.MapFrom(s => s.BillType))
-                .ForMember(d => d.conID, map => map.MapFrom(s => s.ConID));
+                .ForMember(d => d.conID, map => map.MapFrom(s => s.ConID))
+                .ForMember(d => d.revType, map => map.MapFrom(s => s.RevenueType))
+                .ForMember(d => d.BillTo, map => map.MapFrom(s => s.BillTo))
+                .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
         }
 
         private static string StripBase64Prefix(string base64)

@@ -19,7 +19,7 @@ import { BillingEndpoint } from '../../../services/billing-endpoint.service';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { ProductEndpoint } from '../../../services/product-endpoint.service';
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { Product, ProductCategory } from '../../../models/shop/product.model';
 import { hRevenueType } from '../../../models/legacy/h-revenue-type.model';
 import { HRevenueTypeEndpoint } from '../../../services/h-revenue-type-endpoint.service';
@@ -233,41 +233,16 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
   }
 
-  async deleteDetail(index: number): Promise<void> {
-    if (!this.headerInfo.billNo) {
-      return;
-    }
-
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage('Deleting bill item...');
-
-    try {
-      const existing = await this.getInvoiceByBillNo(this.headerInfo.billNo);
-      if (!existing) {
-        this.alertService.stopLoadingMessage();
-        this.loadingIndicator = false;
-        return;
+  deleteDetail(index: number): void {
+    this.alertService.showDialog(
+      'Are you sure you want to remove this bill item?',
+      DialogType.confirm,
+      () => {
+        this.persistedDetails = this.persistedDetails.filter((_, i) => i !== index);
+        this.hasChanges = true;
+        this.alertService.showMessage('Removed', 'Bill item removed. Click Save to persist changes.', MessageSeverity.info);
       }
-
-      const remaining = (existing.details ?? []).filter((_, i) => i !== index);
-      if (remaining.length === 0) {
-        await firstValueFrom(this.billingEndpoint.getDeleteInvoiceEndpoint<void>(existing.billNo));
-      } else {
-        const updatePayload = this.buildPayload(remaining);
-        await firstValueFrom(this.billingEndpoint.getUpdateInvoiceEndpoint<Billing>(existing.billNo, updatePayload));
-      }
-
-      await this.refreshPersistedDetails();
-      this.hasChanges = true;
-
-      this.alertService.stopLoadingMessage();
-      this.loadingIndicator = false;
-      this.alertService.showMessage('Success', 'Bill item deleted.', MessageSeverity.success);
-    } catch (error) {
-      this.alertService.stopLoadingMessage();
-      this.loadingIndicator = false;
-      this.alertService.showStickyMessage('Delete Error', this.getErrorMessage(error), MessageSeverity.error, error);
-    }
+    );
   }
 
   onAttendanceSelectionChanged(): void {
@@ -609,7 +584,9 @@ export class BillingInvoiceDialogComponent implements OnInit {
       billType: (value.billType ?? '').trim() || undefined,
       conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined,
       revenueType: revenueTypeName ?? (fallbackRevenueType || undefined),
-      revenueTypeName
+      revenueTypeName,
+      billTo: this.headerInfo.coyID || 'Self',
+      coyName: this.headerInfo.coyID || 'Self'
     } as BillingDetail;
   }
 
@@ -656,7 +633,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   private normalizeDateOutput(dateString: string): string {
     const date = new Date(dateString);
-    return date.toISOString();
+    return date.toISOString().split('T')[0];
   }
 
   private loadItemCategories(): void {
