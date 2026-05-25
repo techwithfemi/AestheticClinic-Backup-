@@ -38,6 +38,7 @@ public class DentalController(
         var chartVm = _mapper.Map<DentalChartVM>(encounter.Value.Chart);
         chartVm.TeethStatus = ResolveTeethStatus(encounter.Value.Chart);
         chartVm.Orthodontics = DeserializeOrthodontics(encounter.Value.Chart.OrthodonticsJson);
+        chartVm.OralExam = DeserializeOralExam(encounter.Value.Chart.OralExamJson);
 
         return Ok(new DentalEncounterVM
         {
@@ -54,11 +55,10 @@ public class DentalController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        vm.Consulting.TreatPlan = null;
-
         var chart = _mapper.Map<HDentalTreat>(vm.Chart);
         chart.TeethStatusJson = SerializeTeethStatus(vm.Chart.TeethStatus);
         chart.OrthodonticsJson = SerializeOrthodontics(vm.Chart.Orthodontics);
+        chart.OralExamJson = SerializeOralExam(vm.Chart.OralExam);
 
         var imaging = _mapper.Map<DentalImaging>(vm.Imaging);
         var consulting = _mapper.Map<HConsulting>(vm.Consulting);
@@ -75,6 +75,7 @@ public class DentalController(
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
             savedChartVm.TeethStatus = ResolveTeethStatus(saved.Chart);
             savedChartVm.Orthodontics = DeserializeOrthodontics(saved.Chart.OrthodonticsJson);
+            savedChartVm.OralExam = DeserializeOralExam(saved.Chart.OralExamJson);
 
             return Ok(new DentalEncounterVM
             {
@@ -104,6 +105,7 @@ public class DentalController(
         {
             result[i].TeethStatus = ResolveTeethStatus(chartEntities[i]);
             result[i].Orthodontics = DeserializeOrthodontics(chartEntities[i].OrthodonticsJson);
+            result[i].OralExam = DeserializeOralExam(chartEntities[i].OralExamJson);
         }
 
         return Ok(result);
@@ -120,6 +122,7 @@ public class DentalController(
         var vm = _mapper.Map<DentalChartVM>(chart);
         vm.TeethStatus = ResolveTeethStatus(chart);
         vm.Orthodontics = DeserializeOrthodontics(chart.OrthodonticsJson);
+        vm.OralExam = DeserializeOralExam(chart.OralExamJson);
         return Ok(vm);
     }
 
@@ -131,11 +134,13 @@ public class DentalController(
         var entity = _mapper.Map<HDentalTreat>(vm);
         entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
         entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
+        entity.OralExamJson = SerializeOralExam(vm.OralExam);
         var created = dentalService.AddChart(entity);
 
         var createdVm = _mapper.Map<DentalChartVM>(created);
         createdVm.TeethStatus = ResolveTeethStatus(created);
         createdVm.Orthodontics = DeserializeOrthodontics(created.OrthodonticsJson);
+        createdVm.OralExam = DeserializeOralExam(created.OralExamJson);
         return CreatedAtAction(nameof(GetChart), new { id = created.Id }, createdVm);
     }
 
@@ -151,11 +156,13 @@ public class DentalController(
             var entity = _mapper.Map<HDentalTreat>(vm);
             entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
             entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
+            entity.OralExamJson = SerializeOralExam(vm.OralExam);
             var updated = dentalService.UpdateChart(entity, GetCurrentUserId());
 
             var updatedVm = _mapper.Map<DentalChartVM>(updated);
             updatedVm.TeethStatus = ResolveTeethStatus(updated);
             updatedVm.Orthodontics = DeserializeOrthodontics(updated.OrthodonticsJson);
+            updatedVm.OralExam = DeserializeOralExam(updated.OralExamJson);
             return Ok(updatedVm);
         }
         catch (UnauthorizedAccessException ex)
@@ -506,6 +513,29 @@ public class DentalController(
         try
         {
             return JsonSerializer.Deserialize<OrthodonticFormVM>(json, JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? SerializeOralExam(OralExamVM? oralExam)
+    {
+        if (oralExam == null)
+            return null;
+
+        return JsonSerializer.Serialize(oralExam, JsonOptions);
+    }
+
+    private static OralExamVM? DeserializeOralExam(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<OralExamVM>(json, JsonOptions);
         }
         catch
         {

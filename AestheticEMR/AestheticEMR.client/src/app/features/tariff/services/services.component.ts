@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ActivatedRoute } from '@angular/router';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -247,6 +248,7 @@ export class TariffServicesComponent {
   private labEndpoint = inject(LabServiceNHIEndpoint);
   private productEndpoint = inject(ProductTariffEndpoint);
   private dialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
 
   companies: TariffCompany[] = [];
   allRows: TariffRow[] = [];    // full set for selected company + category
@@ -272,6 +274,13 @@ export class TariffServicesComponent {
   }
 
   constructor() {
+    this.route.data.subscribe(data => {
+      const routeCategory = (data?.['category'] as string | undefined) ?? '';
+      if (routeCategory && this.tariffCategories.includes(routeCategory)) {
+        this.selectedCategory = routeCategory;
+      }
+    });
+
     this.loadCompanies();
   }
 

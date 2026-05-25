@@ -117,6 +117,7 @@ export interface DentalConsulting {
   complaints?: string;
   hpc?: string;
   pmh?: string;
+  dentHist?: string;
   drugHx?: string;
   prescription?: string;
   services?: string;

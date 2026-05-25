@@ -193,6 +193,7 @@ public class DentalConsultingVM
     public string? Complaints { get; set; }
     public string? Hpc { get; set; }
     public string? Pmh { get; set; }
+    public string? DentHist { get; set; }
     public string? DrugHx { get; set; }
     public string? Prescription { get; set; }
     public string? Services { get; set; }

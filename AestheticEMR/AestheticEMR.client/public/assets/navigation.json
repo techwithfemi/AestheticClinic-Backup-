@@ -38,9 +38,10 @@
       "route": "tariff",
       "icon": "request_quote",
       "subItems": [
-        { "label": "Stock", "path": "stock", "icon": "inventory_2" },
-        { "label": "Investigations", "path": "investigations", "icon": "science" },
-        { "label": "Services", "path": "services", "icon": "medical_services" }
+        { "label": "Product", "path": "products", "icon": "inventory_2" },
+        { "label": "Service", "path": "services", "icon": "medical_services" },
+        { "label": "Investigation", "path": "investigations", "icon": "science" },
+        { "label": "Drug", "path": "stock", "icon": "inventory_2" }
       ]
     },
     "Inventory": {

@@ -7,24 +7,31 @@ export const tariffRoutes: Routes = [
     pathMatch: 'full'
   },
   {
-    path: 'stock',
-    redirectTo: 'services',
-    pathMatch: 'full'
-  },
-  {
-    path: 'investigations',
-    redirectTo: 'services',
-    pathMatch: 'full'
-  },
-  {
     path: 'services',
     loadComponent: () => import('./services/services.component')
       .then(m => m.TariffServicesComponent),
-    title: 'Tariff - Services'
+    title: 'Tariff - Service',
+    data: { category: 'Service' }
+  },
+  {
+    path: 'investigations',
+    loadComponent: () => import('./services/services.component')
+      .then(m => m.TariffServicesComponent),
+    title: 'Tariff - Investigation',
+    data: { category: 'Investigation' }
+  },
+  {
+    path: 'stock',
+    loadComponent: () => import('./services/services.component')
+      .then(m => m.TariffServicesComponent),
+    title: 'Tariff - Drug',
+    data: { category: 'Drug' }
   },
   {
     path: 'products',
-    redirectTo: '/inventory/products',
-    pathMatch: 'full'
+    loadComponent: () => import('./services/services.component')
+      .then(m => m.TariffServicesComponent),
+    title: 'Tariff - Product',
+    data: { category: 'Product' }
   }
 ];

@@ -185,17 +185,20 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         var existingConsulting = dbContext.HConsultings
             .FirstOrDefault(x => x.ConsultId == chart.ConsultId && x.PNo == chart.Pno);
 
-        var treatPlan = BuildTreatPlan(consulting.Prescription, consulting.Services, consulting.Investigate);
-
         HConsulting persistedConsulting;
         if (existingConsulting != null)
         {
             persistedConsulting = existingConsulting;
             persistedConsulting.Diagnosis = consulting.Diagnosis;
+            persistedConsulting.Complaints = consulting.Complaints;
+            persistedConsulting.Hpc = consulting.Hpc;
+            persistedConsulting.Pmh = consulting.Pmh;
+            persistedConsulting.DentHist = consulting.DentHist;
+            persistedConsulting.DrugHx = consulting.DrugHx;
             persistedConsulting.Prescription = consulting.Prescription;
             persistedConsulting.Services = consulting.Services;
             persistedConsulting.Investigate = consulting.Investigate;
-            persistedConsulting.TreatPlan = treatPlan;
+            persistedConsulting.TreatPlan = consulting.TreatPlan;
             persistedConsulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? persistedConsulting.ClientCat : consulting.ClientCat;
             persistedConsulting.EditDate = now;
             persistedConsulting.EditTime = now;
@@ -210,7 +213,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
             consulting.CTime = now;
             consulting.TreatedBy = string.IsNullOrWhiteSpace(currentUserId) ? "SYSTEM" : currentUserId;
             consulting.Diagnosis = consulting.Diagnosis;
-            consulting.TreatPlan = treatPlan;
+            consulting.TreatPlan = consulting.TreatPlan;
 
             dbContext.HConsultings.Add(consulting);
             persistedConsulting = consulting;
@@ -276,6 +279,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.TTime = NormalizeSqlDateTime(chart.TTime, existing.TDate);
         existing.TeethStatusJson = chart.TeethStatusJson;
         existing.OrthodonticsJson = chart.OrthodonticsJson;
+        existing.OralExamJson = chart.OralExamJson;
         existing.ARem = chart.ARem;
         existing.CRem = chart.CRem;
         existing.ConId = chart.ConId;

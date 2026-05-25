@@ -19,6 +19,7 @@ public partial class HDentalTreat
 
     public string? TeethStatusJson { get; set; }
     public string? OrthodonticsJson { get; set; }
+    public string? OralExamJson { get; set; }
 
     public bool? Auli1 { get; set; }
 

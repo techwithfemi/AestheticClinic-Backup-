@@ -98,6 +98,7 @@ export interface DentalEncounterDialogData {
             <mat-form-field appearance="outline" class="span-2"><mat-label>Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.complaints"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>History of Presenting Complaints</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.hpc"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Past Medical History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.pmh"></textarea></mat-form-field>
+            <mat-form-field appearance="outline" class="span-2"><mat-label>Past Dental History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.dentHist"></textarea></mat-form-field>
             <mat-form-field appearance="outline" class="span-2"><mat-label>Drug History</mat-label><textarea matInput rows="2" [(ngModel)]="consulting.drugHx"></textarea></mat-form-field>
           </div>
         </mat-tab>

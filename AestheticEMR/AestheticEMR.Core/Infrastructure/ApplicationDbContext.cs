@@ -513,6 +513,8 @@ namespace AestheticEMR.Core.Infrastructure
                     .HasColumnName("teethStatusJson");
                 entity.Property(e => e.OrthodonticsJson)
                     .HasColumnName("orthodonticsJson");
+                entity.Property(e => e.OralExamJson)
+                    .HasColumnName("oralExamJson");
                 entity.Property(e => e.ARem)
                     .HasMaxLength(2000)
                     .IsUnicode(false)
