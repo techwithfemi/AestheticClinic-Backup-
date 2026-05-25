@@ -3,10 +3,14 @@ using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class BillingService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : IBillingService
+public class BillingService(
+    ApplicationDbContext context,
+    IUserIdAccessor userIdAccessor,
+    IBillingCrossDatabaseSyncService billingCrossDatabaseSyncService) : IBillingService
 {
     public async Task<IEnumerable<Billing>> GetAllAsync()
     {
@@ -59,6 +63,13 @@ public class BillingService(ApplicationDbContext context, IUserIdAccessor userId
             }
 
             await context.SaveChangesAsync();
+
+            await billingCrossDatabaseSyncService.SyncCreateOrUpdateAsync(
+                context.Database.GetDbConnection(),
+                transaction.GetDbTransaction(),
+                normalizedBilling,
+                normalizedDetails);
+
             await transaction.CommitAsync();
 
             return (normalizedBilling, normalizedDetails);
@@ -96,6 +107,13 @@ public class BillingService(ApplicationDbContext context, IUserIdAccessor userId
             }
 
             await context.SaveChangesAsync();
+
+            await billingCrossDatabaseSyncService.SyncCreateOrUpdateAsync(
+                context.Database.GetDbConnection(),
+                transaction.GetDbTransaction(),
+                normalizedBilling,
+                normalizedDetails);
+
             await transaction.CommitAsync();
 
             return (normalizedBilling, normalizedDetails);
@@ -124,6 +142,13 @@ public class BillingService(ApplicationDbContext context, IUserIdAccessor userId
             context.Billings.Remove(billing);
 
             await context.SaveChangesAsync();
+
+            await billingCrossDatabaseSyncService.SyncDeleteAsync(
+                context.Database.GetDbConnection(),
+                transaction.GetDbTransaction(),
+                normalizedBillNo,
+                billing.pNo);
+
             await transaction.CommitAsync();
         }
         catch

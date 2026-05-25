@@ -9,7 +9,11 @@ namespace AestheticEMR.Server.Controllers;
 
 [Route("api/[controller]")]
 [Authorize]
-public class BillingController(ILogger<BillingController> logger, IMapper mapper, IBillingService billingService)
+public class BillingController(
+    ILogger<BillingController> logger,
+    IMapper mapper,
+    IBillingService billingService,
+    IBillingCrossDatabaseSyncStrategyProvider billingSyncStrategyProvider)
     : BaseApiController(logger, mapper)
 {
     [HttpGet]
@@ -143,5 +147,21 @@ public class BillingController(ILogger<BillingController> logger, IMapper mapper
             AddModelError("Unable to delete invoice");
             return BadRequest(ModelState);
         }
+    }
+
+    [HttpGet("sync-status")]
+    [ProducesResponseType(typeof(BillingSyncStatusVM), 200)]
+    public IActionResult GetSyncStatus()
+    {
+        var status = billingSyncStrategyProvider.CurrentStatus;
+
+        return Ok(new BillingSyncStatusVM
+        {
+            EffectiveMode = status.EffectiveMode,
+            PrimaryDataSource = status.PrimaryDataSource,
+            PrimaryDatabase = status.PrimaryDatabase,
+            IncludedDatabases = status.IncludedDatabases.ToList(),
+            Warnings = status.Warnings.ToList()
+        });
     }
 }

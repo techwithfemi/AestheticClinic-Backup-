@@ -241,6 +241,8 @@ builder.Services.AddScoped<IHPatientService, HPatientService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IServiceTariffService, ServiceTariffService>();
+builder.Services.AddSingleton<IBillingCrossDatabaseSyncStrategyProvider, BillingCrossDatabaseSyncStrategyProvider>();
+builder.Services.AddScoped<IBillingCrossDatabaseSyncService, SqlServerSameInstanceBillingCrossDatabaseSyncService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 
 // Other Services
@@ -307,6 +309,11 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapFallbackToFile("/index.html");
+
+/************* STRATEGY INITIALIZATION *************/
+
+await app.Services.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>()
+    .InitializeAsync();
 
 /************* SEED DATABASE *************/
 
