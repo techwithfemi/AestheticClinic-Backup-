@@ -1512,6 +1512,7 @@ namespace AestheticEMR.Core.Infrastructure
 
         public override int SaveChanges()
         {
+            ValidateLegacyBillingImmutability();
             AddAuditInfo();
             AddAutomaticAuditLogs();
             return base.SaveChanges();
@@ -1519,6 +1520,7 @@ namespace AestheticEMR.Core.Infrastructure
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
+            ValidateLegacyBillingImmutability();
             AddAuditInfo();
             AddAutomaticAuditLogs();
             return base.SaveChanges(acceptAllChangesOnSuccess);
@@ -1526,6 +1528,7 @@ namespace AestheticEMR.Core.Infrastructure
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            ValidateLegacyBillingImmutability();
             AddAuditInfo();
             AddAutomaticAuditLogs();
             return base.SaveChangesAsync(cancellationToken);
@@ -1534,11 +1537,162 @@ namespace AestheticEMR.Core.Infrastructure
         public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
             CancellationToken cancellationToken = default)
         {
+            ValidateLegacyBillingImmutability();
             AddAuditInfo();
             AddAutomaticAuditLogs();
             return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
 
+        private void ValidateLegacyBillingImmutability()
+        {
+            var restrictedEntries = ChangeTracker.Entries()
+                .Where(e => (e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+                    && (e.Entity is Billing || e.Entity is BillingDetail || e.Entity is Payment || e.Entity is PaymentDetail))
+                .ToList();
+
+            foreach (var entry in restrictedEntries)
+            {
+                var billNo = GetEntryStringValue(entry, "billNO");
+                if (string.IsNullOrWhiteSpace(billNo))
+                {
+                    continue;
+                }
+
+                var billingSnapshot = ResolveBillingSnapshot(entry, billNo);
+                if (billingSnapshot is null)
+                {
+                    continue;
+                }
+
+                var latest = ResolveLatestBillingSnapshot(billingSnapshot.PatientNo);
+                if (latest is null)
+                {
+                    continue;
+                }
+
+                var isOlderBill = billingSnapshot.BillDate < latest.BillDate
+                    || (billingSnapshot.BillDate == latest.BillDate
+                        && string.Compare(billingSnapshot.BillNo, latest.BillNo, StringComparison.OrdinalIgnoreCase) < 0);
+
+                if (isOlderBill)
+                {
+                    throw new InvalidOperationException($"BillNo '{billingSnapshot.BillNo}' belongs to a previous visit and cannot be modified. View is allowed, but inserts, updates, and deletes must be done only on the latest billNo for patient '{billingSnapshot.PatientNo}'.");
+                }
+            }
+        }
+
+        private BillingSnapshot? ResolveBillingSnapshot(EntityEntry entry, string billNo)
+        {
+            if (entry.Entity is Billing)
+            {
+                var patientNo = GetEntryStringValue(entry, "pNo");
+                return string.IsNullOrWhiteSpace(patientNo)
+                    ? null
+                    : new BillingSnapshot(billNo, patientNo, GetEntryDateOnlyValue(entry, "bDate"));
+            }
+
+            if (entry.Entity is Payment)
+            {
+                var patientNo = GetEntryStringValue(entry, "pNO");
+                var bill = ResolveTrackedOrPersistedBilling(billNo);
+                return string.IsNullOrWhiteSpace(patientNo) || bill is null
+                    ? null
+                    : new BillingSnapshot(billNo, patientNo, bill.BillDate);
+            }
+
+            return ResolveTrackedOrPersistedBilling(billNo);
+        }
+
+        private BillingSnapshot? ResolveLatestBillingSnapshot(string patientNo)
+        {
+            var trackedSnapshots = ChangeTracker.Entries<Billing>()
+                .Where(e => e.State != EntityState.Unchanged && e.State != EntityState.Detached)
+                .Select(e =>
+                {
+                    var billNo = GetEntryStringValue(e, "billNO");
+                    var trackedPatientNo = GetEntryStringValue(e, "pNo");
+                    return string.IsNullOrWhiteSpace(billNo) || string.IsNullOrWhiteSpace(trackedPatientNo)
+                        ? null
+                        : new BillingSnapshot(billNo, trackedPatientNo, GetEntryDateOnlyValue(e, "bDate"));
+                })
+                .Where(x => x is not null && string.Equals(x.PatientNo, patientNo, StringComparison.OrdinalIgnoreCase))
+                .Cast<BillingSnapshot>()
+                .ToList();
+
+            var persisted = Billings
+                .AsNoTracking()
+                .Where(x => x.pNo == patientNo)
+                .OrderByDescending(x => x.bDate)
+                .ThenByDescending(x => x.billNO)
+                .Select(x => new BillingSnapshot(x.billNO, x.pNo, x.bDate))
+                .FirstOrDefault();
+
+            if (persisted is not null)
+            {
+                trackedSnapshots.Add(persisted);
+            }
+
+            return trackedSnapshots
+                .OrderByDescending(x => x.BillDate)
+                .ThenByDescending(x => x.BillNo)
+                .FirstOrDefault();
+        }
+
+        private BillingSnapshot? ResolveTrackedOrPersistedBilling(string billNo)
+        {
+            var tracked = ChangeTracker.Entries<Billing>()
+                .Where(e => e.State != EntityState.Unchanged && e.State != EntityState.Detached)
+                .Select(e =>
+                {
+                    var trackedBillNo = GetEntryStringValue(e, "billNO");
+                    var patientNo = GetEntryStringValue(e, "pNo");
+                    return string.IsNullOrWhiteSpace(trackedBillNo) || string.IsNullOrWhiteSpace(patientNo)
+                        ? null
+                        : new BillingSnapshot(trackedBillNo, patientNo, GetEntryDateOnlyValue(e, "bDate"));
+                })
+                .FirstOrDefault(x => x is not null && string.Equals(x.BillNo, billNo, StringComparison.OrdinalIgnoreCase));
+
+            return tracked ?? Billings
+                .AsNoTracking()
+                .Where(x => x.billNO == billNo)
+                .Select(x => new BillingSnapshot(x.billNO, x.pNo, x.bDate))
+                .FirstOrDefault();
+        }
+
+        private static string? GetEntryStringValue(EntityEntry entry, string propertyName)
+        {
+            var property = entry.Properties.FirstOrDefault(p =>
+                string.Equals(p.Metadata.Name, propertyName, StringComparison.OrdinalIgnoreCase));
+
+            if (property is null)
+            {
+                return null;
+            }
+
+            var value = entry.State == EntityState.Deleted ? property.OriginalValue : property.CurrentValue;
+            return value?.ToString()?.Trim();
+        }
+
+        private static DateOnly GetEntryDateOnlyValue(EntityEntry entry, string propertyName)
+        {
+            var property = entry.Properties.FirstOrDefault(p =>
+                string.Equals(p.Metadata.Name, propertyName, StringComparison.OrdinalIgnoreCase));
+
+            if (property is null)
+            {
+                return default;
+            }
+
+            var value = entry.State == EntityState.Deleted ? property.OriginalValue : property.CurrentValue;
+            return value switch
+            {
+                DateOnly dateOnly => dateOnly,
+                DateTime dateTime => DateOnly.FromDateTime(dateTime),
+                _ => default
+            };
+        }
+
+        private sealed record BillingSnapshot(string BillNo, string PatientNo, DateOnly BillDate);
         private void AddAuditInfo()
         {
             var currentUserId = _userIdAccessor.GetCurrentUserId();
@@ -1782,6 +1936,7 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
 
 
 

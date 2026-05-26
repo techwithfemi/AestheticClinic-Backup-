@@ -57,9 +57,9 @@ public partial class BillingDetail
 
     public bool? isOLD { get; set; } = false;
 
-    //public DateTime? EntryDate { get; set; }
+    public DateTime? EntryDate { get; set; }
 
-    //public DateTime? EntryTime { get; set; }
+    public DateTime? EntryTime { get; set; }
 
     public string? ClientName { get; set; } // device name that posted the billing detail, for audit trail
 
@@ -67,7 +67,7 @@ public partial class BillingDetail
 
     public string? RevClinic { get; set; } // for revenue clinic
 
-    //public decimal? AmtPaid { get; set; } = 0;
+    public decimal? AmtPaid { get; set; } = 0;
 
     public bool? Reversed { get; set; } = false;
 
@@ -77,7 +77,7 @@ public partial class BillingDetail
 
     public int? AppVersion { get; set; } = 1;
 
-    //public string? TranID { get; set; }
+    public string? TranID { get; set; }
 
-    //public long? ReversedPair { get; set; }
+    public long? ReversedPair { get; set; }
 }

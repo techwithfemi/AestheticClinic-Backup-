@@ -50,6 +50,7 @@ public class BillingService(
 
         EnsureNoDuplicateItems(normalizedDetails);
         await EnsurePatientExistsAsync(normalizedBilling.pNo);
+        await EnsureBillCanBeModifiedAsync(normalizedBilling, "created");
 
         RecalculateTotals(normalizedBilling, normalizedDetails);
 
@@ -88,6 +89,8 @@ public class BillingService(
 
         var existing = await context.Billings.FirstOrDefaultAsync(x => x.billNO == normalizedBillNo)
             ?? throw new InvalidOperationException($"Invoice '{normalizedBillNo}' was not found.");
+
+        await EnsureBillCanBeModifiedAsync(existing, "updated");
 
         var normalizedBilling = PrepareBillingForUpdate(existing, billing, normalizedBillNo);
         var normalizedDetails = PrepareDetails(normalizedBilling, details).ToList();
@@ -134,6 +137,8 @@ public class BillingService(
         {
             return;
         }
+
+        await EnsureBillCanBeModifiedAsync(billing, "deleted");
 
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -268,6 +273,38 @@ public class BillingService(
         {
             throw new InvalidOperationException($"Patient '{pNo}' was not found.");
         }
+    }
+
+    private async Task EnsureBillCanBeModifiedAsync(Billing billing, string operation)
+    {
+        var latestInvoice = await context.Billings
+            .AsNoTracking()
+            .Where(x => x.pNo == billing.pNo)
+            .OrderByDescending(x => x.bDate)
+            .ThenByDescending(x => x.billNO)
+            .FirstOrDefaultAsync();
+
+        if (latestInvoice is null)
+        {
+            return;
+        }
+
+        if (IsOlderInvoice(billing, latestInvoice))
+        {
+            throw new InvalidOperationException(
+                $"Invoice '{billing.billNO}' cannot be {operation} because it belongs to a previous visit. Only the latest billNo for patient '{billing.pNo}' can be modified.");
+        }
+    }
+
+    private static bool IsOlderInvoice(Billing candidate, Billing latest)
+    {
+        var dateComparison = candidate.bDate.CompareTo(latest.bDate);
+        if (dateComparison != 0)
+        {
+            return dateComparison < 0;
+        }
+
+        return string.Compare(candidate.billNO, latest.billNO, StringComparison.OrdinalIgnoreCase) < 0;
     }
 
     private static string NormalizeRequired(string? value, string errorMessage)

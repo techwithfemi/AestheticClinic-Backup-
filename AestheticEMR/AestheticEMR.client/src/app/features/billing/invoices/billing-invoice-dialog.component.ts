@@ -95,6 +95,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
   readonly detailsColumns = ['drgName', 'price', 'qty', 'lineTotal', 'actions'];
   loadingIndicator = false;
   hasChanges = false;
+  isReadOnly = false;
+  readOnlyReason = '';
 
   attendanceOptions: AttendanceOption[] = [];
   selectedAttendanceKey = '';
@@ -175,6 +177,14 @@ export class BillingInvoiceDialogComponent implements OnInit {
     return this.data.mode === 'edit';
   }
 
+  get dialogTitle(): string {
+    if (this.isReadOnly) {
+      return 'View Invoice';
+    }
+
+    return this.isEditing ? 'Edit Invoice' : 'Add Invoice';
+  }
+
   ngOnInit(): void {
     this.loadAttendanceOptions();
     this.loadItemCategories();
@@ -198,9 +208,15 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
 
     this.applyContextDefaults();
+    void this.evaluateReadOnlyState(this.headerInfo.pNo, this.headerInfo.billNo);
   }
 
   async addToGrid(): Promise<void> {
+    if (this.isReadOnly) {
+      this.alertService.showStickyMessage('View Only', this.readOnlyReason, MessageSeverity.warn);
+      return;
+    }
+
     if (this.lineItemForm.invalid || !this.headerInfo.billNo || !this.headerInfo.pNo) {
       this.alertService.showStickyMessage('Validation Error', 'Please select Patient [ConsultID] and complete all required fields.', MessageSeverity.error);
       return;
@@ -234,6 +250,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   deleteDetail(index: number): void {
+    if (this.isReadOnly) {
+      this.alertService.showStickyMessage('View Only', this.readOnlyReason, MessageSeverity.warn);
+      return;
+    }
+
     this.alertService.showDialog(
       'Are you sure you want to remove this bill item?',
       DialogType.confirm,
@@ -260,6 +281,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   save(): void {
+    if (this.isReadOnly) {
+      this.alertService.showStickyMessage('View Only', this.readOnlyReason, MessageSeverity.warn);
+      return;
+    }
+
     // Save all rows in the grid to the db (billingDetail table) at once
     // Update AmountBilled col in billing table (add to existing value if any)
     this.loadingIndicator = true;
@@ -337,6 +363,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
       this.persistedDetails = [...((invoice.details ?? []) as BillingDetail[])];
       this.resetLineItemForm();
+      await this.evaluateReadOnlyState(this.headerInfo.pNo, this.headerInfo.billNo);
 
       if (this.headerInfo.pNo) {
         const option = this.attendanceOptions.find(x => x.pNo === this.headerInfo.pNo && x.consultId === this.headerInfo.consultId);
@@ -702,5 +729,69 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   private shouldIgnoreSelectMouseDown(target: HTMLElement): boolean {
     return !!target.closest('.ng-clear-wrapper, .ng-option, .ng-dropdown-panel');
+  }
+
+  private async evaluateReadOnlyState(pNo?: string, billNo?: string): Promise<void> {
+    const targetPNo = (pNo ?? '').trim();
+    const targetBillNo = (billNo ?? '').trim();
+
+    if (!targetPNo || !targetBillNo) {
+      this.setReadOnlyMode(false);
+      return;
+    }
+
+    try {
+      const invoices = await firstValueFrom(this.billingEndpoint.getInvoicesEndpoint<Billing[]>());
+      const patientInvoices = (invoices ?? []).filter(x => (x.pNo ?? '').trim() === targetPNo);
+
+      if (patientInvoices.length === 0) {
+        this.setReadOnlyMode(false);
+        return;
+      }
+
+      const latestInvoice = [...patientInvoices].sort((a, b) => this.compareInvoicesDesc(a, b))[0];
+      const latestBillNo = (latestInvoice?.billNo ?? '').trim();
+      const isLatest = !latestBillNo || latestBillNo === targetBillNo;
+
+      this.setReadOnlyMode(!isLatest);
+    } catch {
+      this.setReadOnlyMode(false);
+    }
+  }
+
+  private compareInvoicesDesc(a: Billing, b: Billing): number {
+    const dateA = this.parseSortableDate(a.bDate);
+    const dateB = this.parseSortableDate(b.bDate);
+
+    if (dateA !== dateB) {
+      return dateB - dateA;
+    }
+
+    return (b.billNo ?? '').localeCompare(a.billNo ?? '');
+  }
+
+  private parseSortableDate(value?: string): number {
+    if (!value) {
+      return 0;
+    }
+
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  private setReadOnlyMode(readOnly: boolean): void {
+    this.isReadOnly = readOnly;
+    this.readOnlyReason = readOnly
+      ? 'This invoice belongs to a previous visit and is view-only. Add, update, and delete actions are allowed only on the latest bill for the patient.'
+      : '';
+
+    if (readOnly) {
+      this.invoiceForm.disable({ emitEvent: false });
+      this.lineItemForm.disable({ emitEvent: false });
+      return;
+    }
+
+    this.invoiceForm.enable({ emitEvent: false });
+    this.lineItemForm.enable({ emitEvent: false });
   }
 }

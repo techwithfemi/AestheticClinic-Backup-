@@ -359,6 +359,12 @@ For report page updates, use Spa Services Report page as the default template un
 
 ---
 
+## Billing Module Business Rules
+
+- Once a new attendance is taken for a patient and debt is updated for the new billNo, previous transaction records in billing-related tables (e.g., billing, billingdetails, payments) must become immutable—no inserts, updates, or deletes; any modifications must be done only on the new billNo for the fresh attendance/visit.
+
+---
+
 ## Reference Implementations
 
 When implementing new features, reference these real implementations:
