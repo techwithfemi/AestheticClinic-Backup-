@@ -146,7 +146,7 @@ public async Task<IActionResult> GetUserById(string id)
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-}
+   }
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -362,6 +362,7 @@ For report page updates, use Spa Services Report page as the default template un
 ## Billing Module Business Rules
 
 - Once a new attendance is taken for a patient and debt is updated for the new billNo, previous transaction records in billing-related tables (e.g., billing, billingdetails, payments) must become immutable—no inserts, updates, or deletes; any modifications must be done only on the new billNo for the fresh attendance/visit.
+- **Do not implement LockOldVersion enforcement or Voucher module activation parity in Billing LoadAppDefaults conversion.**
 
 ---
 

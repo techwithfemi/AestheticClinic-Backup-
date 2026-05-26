@@ -1,5 +1,6 @@
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using AestheticEMR.Server.Services;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +14,8 @@ public class BillingController(
     ILogger<BillingController> logger,
     IMapper mapper,
     IBillingService billingService,
-    IBillingCrossDatabaseSyncStrategyProvider billingSyncStrategyProvider)
+    IBillingCrossDatabaseSyncStrategyProvider billingSyncStrategyProvider,
+    BillingAppDefaultsStartupService billingDefaultsStartupService)
     : BaseApiController(logger, mapper)
 {
     [HttpGet]
@@ -164,6 +166,18 @@ public class BillingController(
             SameInstanceDatabases = status.SameInstanceDatabases.ToList(),
             CrossInstanceDatabases = status.CrossInstanceDatabases.ToList(),
             Warnings = status.Warnings.ToList()
+        });
+    }
+
+    [HttpGet("defaults-status")]
+    [ProducesResponseType(typeof(BillingDefaultsStatusVM), 200)]
+    public IActionResult GetDefaultsStatus()
+    {
+        return Ok(new BillingDefaultsStatusVM
+        {
+            Loaded = billingDefaultsStartupService.Loaded,
+            Error = billingDefaultsStartupService.LastError,
+            LastCheckedAtUtc = billingDefaultsStartupService.LastCheckedAtUtc
         });
     }
 }
