@@ -19,6 +19,7 @@ using AestheticEMR.Server.Authorization.Requirements;
 using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.Services.Email;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -31,6 +32,8 @@ using Quartz;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using AestheticEMR.Core.Services.Legacy.Messaging;
+using AestheticEMR.Core.Services.Legacy.Messaging.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
@@ -242,8 +245,52 @@ builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IServiceTariffService, ServiceTariffService>();
 builder.Services.AddSingleton<IBillingCrossDatabaseSyncStrategyProvider, BillingCrossDatabaseSyncStrategyProvider>();
-builder.Services.AddScoped<IBillingCrossDatabaseSyncService, SqlServerSameInstanceBillingCrossDatabaseSyncService>();
+
+// Register both sync implementations; the factory chooses at runtime based on startup strategy
+builder.Services.AddScoped<SqlServerSameInstanceBillingCrossDatabaseSyncService>();
+builder.Services.AddScoped<MassTransitBillingCrossDatabaseSyncService>();
+builder.Services.AddScoped<BillingEventPublisher>();
+
+builder.Services.AddScoped<IBillingCrossDatabaseSyncService>(sp =>
+{
+    var provider = sp.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>();
+    return provider.CurrentStatus.EffectiveMode == "MessageBusEventualSync"
+        ? sp.GetRequiredService<MassTransitBillingCrossDatabaseSyncService>()
+        : sp.GetRequiredService<SqlServerSameInstanceBillingCrossDatabaseSyncService>();
+});
+
 builder.Services.AddScoped<IBillingService, BillingService>();
+
+// MassTransit – always registered; only used when strategy resolves to MessageBusEventualSync
+var rabbitMqHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
+var rabbitMqUser = builder.Configuration["RabbitMQ:Username"] ?? "guest";
+var rabbitMqPass = builder.Configuration["RabbitMQ:Password"] ?? "guest";
+
+builder.Services.AddMassTransit(x =>
+{
+    // EF Core Outbox: messages are persisted atomically with the billing save
+    x.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
+    {
+        o.UseSqlServer();
+        o.UseBusOutbox();
+    });
+
+    x.AddConsumer<SmartHRBillingUpsertedConsumer>();
+    x.AddConsumer<AccountingBillingUpsertedConsumer>();
+    x.AddConsumer<SmartHRBillingDeletedConsumer>();
+    x.AddConsumer<AccountingBillingDeletedConsumer>();
+
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host(rabbitMqHost, h =>
+        {
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
+        });
+
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();
@@ -312,8 +359,20 @@ app.MapFallbackToFile("/index.html");
 
 /************* STRATEGY INITIALIZATION *************/
 
-await app.Services.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>()
-    .InitializeAsync();
+var strategyProvider = app.Services.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>();
+await strategyProvider.InitializeAsync();
+
+// Switch sync service implementation based on startup-resolved topology
+var effectiveMode = strategyProvider.CurrentStatus.EffectiveMode;
+
+if (effectiveMode == "MessageBusEventualSync")
+{
+    // Separate-machines: MassTransit Outbox + consumers
+    // Re-create a fresh scope to register scoped services post-build is not possible;
+    // instead, the conditional registration is deferred to a keyed factory.
+    // MassTransit is registered only once at startup.
+    // The scoped factory below resolves the correct implementation.
+}
 
 /************* SEED DATABASE *************/
 

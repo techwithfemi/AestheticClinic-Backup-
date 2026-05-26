@@ -1,10 +1,12 @@
-// ---------------------------------------
+﻿// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
 using AestheticEMR.Core.Models;
+using MassTransit;
+
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Dental;
@@ -126,6 +128,11 @@ namespace AestheticEMR.Core.Infrastructure
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // MassTransit EF Core Outbox tables
+            builder.AddInboxStateEntity();
+            builder.AddOutboxStateEntity();
+            builder.AddOutboxMessageEntity();
             const string priceDecimalType = "decimal(18,2)";
             const string tablePrefix = "App";
             const string appNameSql = "(app_name())";
@@ -1775,6 +1782,8 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
 
 
 
