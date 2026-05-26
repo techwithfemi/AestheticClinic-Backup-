@@ -10,7 +10,8 @@ public class BillingCrossDatabaseSyncStrategyProvider(
     ILogger<BillingCrossDatabaseSyncStrategyProvider> logger) : IBillingCrossDatabaseSyncStrategyProvider
 {
     private static readonly StringComparer NameComparer = StringComparer.OrdinalIgnoreCase;
-    private static readonly IReadOnlyList<string> SecondaryConnectionNames = ["SmartHRConnection", "AccountingConnection"];
+    // Accounting first (99.9% of deployments); SmartHR is secondary/optional
+    private static readonly IReadOnlyList<string> SecondaryConnectionNames = ["AccountingConnection", "SmartHRConnection"];
 
     private readonly SemaphoreSlim initializeLock = new(1, 1);
     private BillingCrossDatabaseSyncStatus status = new();
@@ -52,7 +53,8 @@ public class BillingCrossDatabaseSyncStrategyProvider(
     private async Task<BillingCrossDatabaseSyncStatus> BuildStatusAsync(CancellationToken cancellationToken)
     {
         var warnings = new List<string>();
-        var includedDatabases = new HashSet<string>(NameComparer);
+        var sameInstanceDatabases = new HashSet<string>(NameComparer);
+        var crossInstanceDatabases = new HashSet<string>(NameComparer);
 
         var primaryConnection = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(primaryConnection))
@@ -80,13 +82,9 @@ public class BillingCrossDatabaseSyncStrategyProvider(
 
         var primaryServerName = await TryGetServerNameAsync(primaryConnection, cancellationToken);
         if (!string.IsNullOrWhiteSpace(primaryServerName))
-        {
             warnings.Add($"Primary server verified as '{primaryServerName}'.");
-        }
         else
-        {
             warnings.Add("Could not verify primary SQL server name using @@SERVERNAME.");
-        }
 
         var primaryDataSource = NormalizeDataSource(primaryBuilder.DataSource);
 
@@ -95,7 +93,7 @@ public class BillingCrossDatabaseSyncStrategyProvider(
             var candidateConnectionString = configuration.GetConnectionString(key);
             if (string.IsNullOrWhiteSpace(candidateConnectionString))
             {
-                warnings.Add($"{key} is not configured.");
+                warnings.Add($"{key} is not configured; skipped.");
                 continue;
             }
 
@@ -106,46 +104,81 @@ public class BillingCrossDatabaseSyncStrategyProvider(
             }
             catch
             {
-                warnings.Add($"{key} is invalid and was skipped.");
-                continue;
-            }
-
-            if (!NameComparer.Equals(primaryDataSource, NormalizeDataSource(candidateBuilder.DataSource)))
-            {
-                warnings.Add($"{key} points to a different SQL Server instance and was skipped.");
+                warnings.Add($"{key} is invalid; skipped.");
                 continue;
             }
 
             if (string.IsNullOrWhiteSpace(candidateBuilder.InitialCatalog))
             {
-                warnings.Add($"{key} has no database/catalog configured and was skipped.");
+                warnings.Add($"{key} has no database/catalog configured; skipped.");
                 continue;
             }
 
             if (NameComparer.Equals(primaryBuilder.InitialCatalog, candidateBuilder.InitialCatalog))
             {
-                warnings.Add($"{key} points to the same database as DefaultConnection and was skipped.");
+                warnings.Add($"{key} points to the same database as DefaultConnection; skipped.");
                 continue;
             }
 
-            var candidateServerName = await TryGetServerNameAsync(candidateConnectionString, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(primaryServerName) &&
-                !string.IsNullOrWhiteSpace(candidateServerName) &&
-                !NameComparer.Equals(primaryServerName, candidateServerName))
+            var isDifferentServer = !NameComparer.Equals(primaryDataSource, NormalizeDataSource(candidateBuilder.DataSource));
+
+            if (isDifferentServer)
             {
-                warnings.Add($"{key} server verification mismatch ({candidateServerName}) and was skipped.");
-                continue;
+                // Cross-instance: verify with @@SERVERNAME if reachable
+                var candidateServerName = await TryGetServerNameAsync(candidateConnectionString, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(primaryServerName) &&
+                    !string.IsNullOrWhiteSpace(candidateServerName) &&
+                    NameComparer.Equals(primaryServerName, candidateServerName))
+                {
+                    // DataSource string differed but @@SERVERNAME matched — treat as same instance
+                    sameInstanceDatabases.Add(candidateBuilder.InitialCatalog);
+                    warnings.Add($"{key} ({candidateBuilder.InitialCatalog}) resolved as same-instance via @@SERVERNAME.");
+                }
+                else
+                {
+                    // Genuinely on a different server — message bus path
+                    crossInstanceDatabases.Add(candidateBuilder.InitialCatalog);
+                    warnings.Add($"{key} ({candidateBuilder.InitialCatalog}) is on a different SQL Server instance — will use message bus sync.");
+                }
             }
-
-            includedDatabases.Add(candidateBuilder.InitialCatalog);
+            else
+            {
+                // Same server/instance — atomic SQL path
+                var candidateServerName = await TryGetServerNameAsync(candidateConnectionString, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(primaryServerName) &&
+                    !string.IsNullOrWhiteSpace(candidateServerName) &&
+                    !NameComparer.Equals(primaryServerName, candidateServerName))
+                {
+                    warnings.Add($"{key} server verification mismatch ({candidateServerName}); treated as cross-instance.");
+                    crossInstanceDatabases.Add(candidateBuilder.InitialCatalog);
+                }
+                else
+                {
+                    sameInstanceDatabases.Add(candidateBuilder.InitialCatalog);
+                }
+            }
         }
+
+        // Determine effective mode
+        string effectiveMode;
+        if (crossInstanceDatabases.Count > 0)
+            effectiveMode = "MessageBusEventualSync";
+        else if (sameInstanceDatabases.Count > 0)
+            effectiveMode = "SameInstanceAtomicSync";
+        else
+            effectiveMode = "HospitalOnly";
+
+        // IncludedDatabases = all secondaries regardless of path (for status reporting)
+        var allIncluded = sameInstanceDatabases.Union(crossInstanceDatabases, NameComparer).ToList();
 
         return new BillingCrossDatabaseSyncStatus
         {
-            EffectiveMode = includedDatabases.Count > 0 ? "SameInstanceAtomicSync" : "HospitalOnly",
+            EffectiveMode = effectiveMode,
             PrimaryDataSource = primaryBuilder.DataSource,
             PrimaryDatabase = primaryBuilder.InitialCatalog,
-            IncludedDatabases = includedDatabases.ToList(),
+            IncludedDatabases = allIncluded,
+            SameInstanceDatabases = sameInstanceDatabases.ToList(),
+            CrossInstanceDatabases = crossInstanceDatabases.ToList(),
             Warnings = warnings
         };
     }

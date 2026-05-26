@@ -6,5 +6,7 @@ public class BillingSyncStatusVM
     public string? PrimaryDataSource { get; set; }
     public string? PrimaryDatabase { get; set; }
     public List<string> IncludedDatabases { get; set; } = [];
+    public List<string> SameInstanceDatabases { get; set; } = [];
+    public List<string> CrossInstanceDatabases { get; set; } = [];
     public List<string> Warnings { get; set; } = [];
 }

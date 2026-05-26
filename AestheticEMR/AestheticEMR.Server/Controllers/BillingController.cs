@@ -161,6 +161,8 @@ public class BillingController(
             PrimaryDataSource = status.PrimaryDataSource,
             PrimaryDatabase = status.PrimaryDatabase,
             IncludedDatabases = status.IncludedDatabases.ToList(),
+            SameInstanceDatabases = status.SameInstanceDatabases.ToList(),
+            CrossInstanceDatabases = status.CrossInstanceDatabases.ToList(),
             Warnings = status.Warnings.ToList()
         });
     }
