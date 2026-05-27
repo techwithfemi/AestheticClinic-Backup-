@@ -15,7 +15,7 @@ public class BillingController(
     IMapper mapper,
     IBillingService billingService,
     IBillingCrossDatabaseSyncStrategyProvider billingSyncStrategyProvider,
-    BillingAppDefaultsStartupService billingDefaultsStartupService)
+    EmrAppDefaultsStartupService emrDefaultsStartupService)
     : BaseApiController(logger, mapper)
 {
     [HttpGet]
@@ -175,9 +175,9 @@ public class BillingController(
     {
         return Ok(new BillingDefaultsStatusVM
         {
-            Loaded = billingDefaultsStartupService.Loaded,
-            Error = billingDefaultsStartupService.LastError,
-            LastCheckedAtUtc = billingDefaultsStartupService.LastCheckedAtUtc
+            Loaded = emrDefaultsStartupService.Loaded,
+            Error = emrDefaultsStartupService.LastError,
+            LastCheckedAtUtc = emrDefaultsStartupService.LastCheckedAtUtc
         });
     }
 }

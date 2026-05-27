@@ -3,9 +3,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace AestheticEMR.Server.Services;
 
-public class BillingAppDefaultsStartupService(
+public class EmrAppDefaultsStartupService(
     IServiceScopeFactory scopeFactory,
-    ILogger<BillingAppDefaultsStartupService> logger) : IHostedService
+    ILogger<EmrAppDefaultsStartupService> logger) : IHostedService
 {
     public bool Loaded { get; private set; }
     public string? LastError { get; private set; }
@@ -14,7 +14,7 @@ public class BillingAppDefaultsStartupService(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
-        var defaultsService = scope.ServiceProvider.GetRequiredService<IBillingAppDefaultsService>();
+        var defaultsService = scope.ServiceProvider.GetRequiredService<IEmrAppDefaultsService>();
 
         try
         {
@@ -24,7 +24,7 @@ public class BillingAppDefaultsStartupService(
             LastCheckedAtUtc = DateTimeOffset.UtcNow;
 
             logger.LogInformation(
-                "Billing defaults loaded at startup. App={AppName}, EntryDate={EntryDate}, DefaultCount={Count}",
+                "EMR defaults loaded at startup. App={AppName}, EntryDate={EntryDate}, DefaultCount={Count}",
                 defaults.AppName,
                 defaults.EntryDate,
                 defaults.Values.Count);
@@ -34,7 +34,7 @@ public class BillingAppDefaultsStartupService(
             Loaded = false;
             LastError = ex.GetBaseException().Message;
             LastCheckedAtUtc = DateTimeOffset.UtcNow;
-            logger.LogError(ex, "Billing defaults failed to load at startup");
+            logger.LogError(ex, "EMR defaults failed to load at startup");
         }
     }
 

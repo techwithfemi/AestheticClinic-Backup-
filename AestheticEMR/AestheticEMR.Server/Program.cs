@@ -244,9 +244,9 @@ builder.Services.AddScoped<IHPatientService, HPatientService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IServiceTariffService, ServiceTariffService>();
-builder.Services.AddSingleton<IBillingAppDefaultsService, BillingAppDefaultsService>();
-builder.Services.AddSingleton<BillingAppDefaultsStartupService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<BillingAppDefaultsStartupService>());
+builder.Services.AddSingleton<IEmrAppDefaultsService, EmrAppDefaultsService>();
+builder.Services.AddSingleton<EmrAppDefaultsStartupService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EmrAppDefaultsStartupService>());
 builder.Services.AddSingleton<IBillingCrossDatabaseSyncStrategyProvider, BillingCrossDatabaseSyncStrategyProvider>();
 
 // Register both sync implementations; the factory chooses at runtime based on startup strategy
