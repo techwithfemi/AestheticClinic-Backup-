@@ -1,5 +1,5 @@
 {
-  "AppName": "Billing",
+  "AppName": "AestheticENR",
   "ClientCategoryPrivate": "PRIVATE",
   "EntryDate": "2026-05-27",
   "PriceColumnIndex": 3,
@@ -7,7 +7,8 @@
     "BillHead": "VCP Aesthetic Clinic",
     "BillHead2": "292B Ajose Adeogun St",
     "BillHead3": "VI, Lagos",
-    "BillHead4": "Tel: 08033452113",
+    "BillHead4": "Tel: 080334
+      52113",
     "LabHead": "VCP Aesthetic Clinic",
     "LabHead2": "292B Ajose Adeogun St",
     "LabHead3": "VI, Lagos",
@@ -214,7 +215,7 @@
     "FinYear_Create_StartDate": "01-Jan-21",
     "Use_Receivable_Invoice_Value_For_Payment_Manual_Tick": "NO",
     "Use_Payable_Invoice_Value_For_Voucher_Start_Date": "01-Jan-21",
-    "Coy_Code": "SHORT",
+    "Coy_CODE": "SHORT",
     "Private_Client_Only": "NO",
     "Enforce_Lock_Bill_After_24hrs": "NO"
   }
