@@ -104,8 +104,8 @@ public class EmrAppDefaultsService(
             var publicVariables = new Dictionary<string, string>(snapshot.PublicVariables ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
             var values = new Dictionary<string, string>(snapshot.Values ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
 
-            var entryDate = DateOnly.TryParse(snapshot.EntryDate, out var parsedDate)
-                ? parsedDate
+            var entryDate = !string.IsNullOrWhiteSpace(snapshot.EntryDate)
+                ? (DateOnly.TryParse(snapshot.EntryDate, out var parsedDate) ? parsedDate : DateOnly.FromDateTime(DateTime.Today))
                 : DateOnly.FromDateTime(DateTime.Today);
 
             return new EmrAppDefaults

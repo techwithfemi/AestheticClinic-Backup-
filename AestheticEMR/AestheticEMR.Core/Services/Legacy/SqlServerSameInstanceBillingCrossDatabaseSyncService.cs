@@ -1,16 +1,30 @@
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Data.Common;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class SqlServerSameInstanceBillingCrossDatabaseSyncService(
-    IBillingCrossDatabaseSyncStrategyProvider strategyProvider,
-    ILogger<SqlServerSameInstanceBillingCrossDatabaseSyncService> logger) : IBillingCrossDatabaseSyncService
+public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCrossDatabaseSyncService
 {
+    private readonly IBillingCrossDatabaseSyncStrategyProvider strategyProvider;
+    private readonly ILogger<SqlServerSameInstanceBillingCrossDatabaseSyncService> logger;
+    private readonly IServiceProvider serviceProvider;
+
+    public SqlServerSameInstanceBillingCrossDatabaseSyncService(
+        IBillingCrossDatabaseSyncStrategyProvider strategyProvider,
+        ILogger<SqlServerSameInstanceBillingCrossDatabaseSyncService> logger,
+        IServiceProvider serviceProvider)
+    {
+        this.strategyProvider = strategyProvider;
+        this.logger = logger;
+        this.serviceProvider = serviceProvider;
+    }
+
     public BillingCrossDatabaseSyncStatus GetStatus(string primaryConnectionString)
     {
         return strategyProvider.CurrentStatus;
@@ -23,26 +37,38 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService(
         IReadOnlyCollection<BillingDetail> details,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(connection);
-        ArgumentNullException.ThrowIfNull(transaction);
-        ArgumentNullException.ThrowIfNull(billing);
-        ArgumentNullException.ThrowIfNull(details);
-
-        if (connection is not SqlConnection sqlConnection || transaction is not SqlTransaction sqlTransaction)
-        {
-            return;
-        }
-
+        using var scope = serviceProvider.CreateScope();
+        var appDefaultsService = scope.ServiceProvider.GetRequiredService<IEmrAppDefaultsService>();
+        var appDefaults = await appDefaultsService.GetAsync(cancellationToken);
+        var values = appDefaults.Values;
+        var accountingDb = values["DbName_Acct"];
+        var hospitalDb = values["DbName"];
         var targetDatabases = strategyProvider.CurrentStatus.IncludedDatabases;
         if (targetDatabases.Count == 0)
         {
             return;
         }
-
         foreach (var databaseName in targetDatabases)
         {
-            await UpsertBillingAsync(sqlConnection, sqlTransaction, databaseName, billing, cancellationToken);
-            await ReplaceBillingDetailsAsync(sqlConnection, sqlTransaction, databaseName, billing.billNO, details, cancellationToken);
+            // Skip SmartHR for all direct table operations
+            if (string.Equals(databaseName, "SmartHR", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (string.Equals(databaseName, accountingDb, StringComparison.OrdinalIgnoreCase))
+            {
+                // Only post to accounting via stored procs
+                await PostToAccountingDbAsync(billing, details, cancellationToken);
+            }
+            else if (string.Equals(databaseName, hospitalDb, StringComparison.OrdinalIgnoreCase))
+            {
+                // Only upsert to hospital DB with Billing tables
+                if (connection is SqlConnection sqlConnection && transaction is SqlTransaction sqlTransaction)
+                {
+                    await UpsertBillingAsync(sqlConnection, sqlTransaction, databaseName, billing, cancellationToken);
+                    await ReplaceBillingDetailsAsync(sqlConnection, sqlTransaction, databaseName, billing.billNO, details, cancellationToken);
+                }
+            }
+            // else: skip all other DBs
         }
     }
 
@@ -53,32 +79,44 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService(
         string patientNo,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(billNo);
-        ArgumentException.ThrowIfNullOrWhiteSpace(patientNo);
-        ArgumentNullException.ThrowIfNull(connection);
-        ArgumentNullException.ThrowIfNull(transaction);
-
-        if (connection is not SqlConnection sqlConnection || transaction is not SqlTransaction sqlTransaction)
-        {
-            return;
-        }
-
+        using var scope = serviceProvider.CreateScope();
+        var appDefaultsService = scope.ServiceProvider.GetRequiredService<IEmrAppDefaultsService>();
+        var appDefaults = await appDefaultsService.GetAsync(cancellationToken);
+        var values = appDefaults.Values;
+        var accountingDb = values["DbName_Acct"];
+        var hospitalDb = values["DbName"];
         var targetDatabases = strategyProvider.CurrentStatus.IncludedDatabases;
         if (targetDatabases.Count == 0)
         {
             return;
         }
-
         foreach (var databaseName in targetDatabases)
         {
-            var detailsDelete = $"DELETE FROM {QualifyTable(databaseName, "BillingDetails")} WHERE billNO = @billNo;";
-            await ExecuteNonQueryAsync(sqlConnection, sqlTransaction, detailsDelete, cancellationToken,
-                CreateParameter("@billNo", billNo, SqlDbType.NVarChar, 50));
+            // Skip SmartHR for all direct table operations
+            if (string.Equals(databaseName, "SmartHR", StringComparison.OrdinalIgnoreCase))
+                continue;
 
-            var billingDelete = $"DELETE FROM {QualifyTable(databaseName, "Billing")} WHERE billNO = @billNo AND pNo = @pNo;";
-            await ExecuteNonQueryAsync(sqlConnection, sqlTransaction, billingDelete, cancellationToken,
-                CreateParameter("@billNo", billNo, SqlDbType.NVarChar, 50),
-                CreateParameter("@pNo", patientNo, SqlDbType.NVarChar, 50));
+            if (string.Equals(databaseName, accountingDb, StringComparison.OrdinalIgnoreCase))
+            {
+                // Only delete from accounting via stored procs
+                await DeleteFromAccountingDbAsync(billNo, cancellationToken);
+            }
+            else if (string.Equals(databaseName, hospitalDb, StringComparison.OrdinalIgnoreCase))
+            {
+                // Only delete from hospital DB with Billing tables
+                if (connection is SqlConnection sqlConnection && transaction is SqlTransaction sqlTransaction)
+                {
+                    var detailsDelete = $"DELETE FROM {QualifyTable(databaseName, "BillingDetails")} WHERE billNO = @billNo;";
+                    await ExecuteNonQueryAsync(sqlConnection, sqlTransaction, detailsDelete, cancellationToken,
+                        CreateParameter("@billNo", billNo, SqlDbType.NVarChar, 50));
+
+                    var billingDelete = $"DELETE FROM {QualifyTable(databaseName, "Billing")} WHERE billNO = @billNo AND pNo = @pNo;";
+                    await ExecuteNonQueryAsync(sqlConnection, sqlTransaction, billingDelete, cancellationToken,
+                        CreateParameter("@billNo", billNo, SqlDbType.NVarChar, 50),
+                        CreateParameter("@pNo", patientNo, SqlDbType.NVarChar, 50));
+                }
+            }
+            // else: skip all other DBs
         }
     }
 
@@ -227,5 +265,144 @@ VALUES
     private static string EscapeIdentifier(string value)
     {
         return value.Replace("]", "]]", StringComparison.Ordinal);
+    }
+
+    private async Task PostToAccountingDbAsync(Billing billing, IReadOnlyCollection<BillingDetail> details, CancellationToken cancellationToken)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var appDefaultsService = scope.ServiceProvider.GetRequiredService<IEmrAppDefaultsService>();
+        var appDefaults = await appDefaultsService.GetAsync(cancellationToken);
+        var values = appDefaults.Values;
+        var accountingDb = values["DbName_Acct"];
+        var coyID = billing.clientID ?? values["CoyID"];
+        var billNo = billing.billNO;
+        var pNo = billing.pNo;
+        var acctPostOn = values.GetValueOrDefault("AcctPostOn", "false").ToLower() == "true";
+        var acctPostType = values.GetValueOrDefault("AcctPostType", "AUTO");
+        var acctPostTypeCash = values.GetValueOrDefault("AcctPostType_Cash", "AUTO");
+        var acctPostTypeReceivable = values.GetValueOrDefault("AcctPostType_Receivable", "AUTO");
+        var strPrivate = values.GetValueOrDefault("PRIVATE", "0001");
+        if (!acctPostOn) return;
+        if (coyID == strPrivate)
+        {
+            if (acctPostTypeCash != "AUTO") return;
+        }
+        else
+        {
+            if (acctPostTypeReceivable != "AUTO") return;
+        }
+        // Now connect to Accounting DB and call stored procs as per VB6 logic
+        var accountingConnStr = GetAccountingConnectionString();
+        await using var conn = new SqlConnection(accountingConnStr);
+        await conn.OpenAsync(cancellationToken);
+        await using var tran = await conn.BeginTransactionAsync(cancellationToken) as SqlTransaction;
+        try
+        {
+            // Example: call stored proc InsertTranxaction for each detail (simplified)
+            foreach (var detail in details)
+            {
+                if (detail.subTotal == null || detail.subTotal == 0) continue;
+                // Call InsertTranxaction for debit (ASSET/RECEIVABLE)
+                await CallInsertTranxactionAsync(conn, tran, billing, detail, true, values, cancellationToken);
+                // Call InsertTranxaction for credit (SALES)
+                await CallInsertTranxactionAsync(conn, tran, billing, detail, false, values, cancellationToken);
+            }
+            await tran.CommitAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await tran.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Accounting posting failed for BillNo {BillNo}", billNo);
+            throw;
+        }
+    }
+
+    private async Task DeleteFromAccountingDbAsync(string billNo, CancellationToken cancellationToken)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var appDefaultsService = scope.ServiceProvider.GetRequiredService<IEmrAppDefaultsService>();
+        var appDefaults = await appDefaultsService.GetAsync(cancellationToken);
+        var values = appDefaults.Values;
+        var accountingDb = values["DbName_Acct"];
+        var accountingConnStr = GetAccountingConnectionString();
+        await using var conn = new SqlConnection(accountingConnStr);
+        await conn.OpenAsync(cancellationToken);
+        await using var tran = await conn.BeginTransactionAsync(cancellationToken) as SqlTransaction;
+        try
+        {
+            // Call DeleteTranxaction stored proc for the billNo
+            await CallDeleteTranxactionAsync(conn, tran, billNo, values, cancellationToken);
+            await tran.CommitAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await tran.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Accounting delete failed for BillNo {BillNo}", billNo);
+            throw;
+        }
+    }
+
+    private string GetAccountingConnectionString()
+    {
+        // TODO: Read from config or connection string provider
+        // For now, assume it's in appsettings.json as "AccountingConnection"
+        var config = serviceProvider.GetRequiredService<IConfiguration>();
+        return config.GetConnectionString("AccountingConnection");
+    }
+
+    private async Task CallInsertTranxactionAsync(SqlConnection conn, SqlTransaction tran, Billing billing, BillingDetail detail, bool isDebit, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+    {
+        // Determine account numbers based on revType, billType, or config
+        string acctNo = null;
+        if (isDebit)
+        {
+            acctNo = values.GetValueOrDefault("AcctNo_Receivable") ?? values.GetValueOrDefault("ACCTNo_SUSP_ASSET");
+        }
+        else
+        {
+            acctNo = values.GetValueOrDefault("AcctNoSales") ?? values.GetValueOrDefault("ACCTNo_SUSP_SALES");
+        }
+        if (string.IsNullOrEmpty(acctNo))
+            acctNo = isDebit ? values.GetValueOrDefault("ACCTNo_SUSP_ASSET") : values.GetValueOrDefault("ACCTNo_SUSP_SALES");
+
+        var cmd = conn.CreateCommand();
+        cmd.Transaction = tran;
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandText = values.GetValueOrDefault("AcctPostType", "AUTO") == "AUTO" ? "InsertTranxaction" : "InsertTranxactionJournal";
+        // Generate period string in MM/YYYY format
+        var period = billing.bDate.Month.ToString("D2") + "/" + billing.bDate.Year.ToString();
+        // Add parameters in the exact order and names as the sproc
+        cmd.Parameters.AddWithValue("@TranID", detail.TranID ?? Guid.NewGuid().ToString());
+        cmd.Parameters.AddWithValue("@AccountNo", acctNo);
+        cmd.Parameters.AddWithValue("@TranNo", detail.TranID ?? Guid.NewGuid().ToString());
+        cmd.Parameters.AddWithValue("@TranDate", billing.bDate.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddWithValue("@CostCenterID", values["AcctCostCenter"]);
+        cmd.Parameters.AddWithValue("@Amount", isDebit ? detail.subTotal.GetValueOrDefault() : -detail.subTotal.GetValueOrDefault());
+        cmd.Parameters.AddWithValue("@Description", detail.revType + " (" + detail.drgName + ") (BillNo: " + billing.billNO + ")");
+        cmd.Parameters.AddWithValue("@TranCat", "b");
+        cmd.Parameters.AddWithValue("@EntryDate", DateTime.Now);
+        cmd.Parameters.AddWithValue("@Period", period);
+        cmd.Parameters.AddWithValue("@CoyID2", billing.clientID ?? values.GetValueOrDefault("CoyID", "0001"));
+        cmd.Parameters.AddWithValue("@UserName", "system"); // TODO: get current user
+        cmd.Parameters.AddWithValue("@SNoID", detail.SNO);
+        cmd.Parameters.AddWithValue("@BillNO", billing.billNO);
+        cmd.Parameters.AddWithValue("@Reversed", detail.Reversed ?? false);
+        cmd.Parameters.AddWithValue("@ReversedPair", detail.ReversedPair ?? 0);
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task CallDeleteTranxactionAsync(SqlConnection conn, SqlTransaction tran, string billNo, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+    {
+        // Call DeleteTranxaction stored proc
+        var cmd = conn.CreateCommand();
+        cmd.Transaction = tran;
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandText = "DeleteTranxaction";
+        // Add parameters (simplified, add all as needed)
+        cmd.Parameters.AddWithValue("@Period", ""); // TODO: getPeriod logic
+        cmd.Parameters.AddWithValue("@CoyID", values["CoyID"]);
+        cmd.Parameters.AddWithValue("@TranNo", billNo); // or TranID if available
+        cmd.Parameters.AddWithValue("@userName", "system"); // TODO: get current user
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 }
