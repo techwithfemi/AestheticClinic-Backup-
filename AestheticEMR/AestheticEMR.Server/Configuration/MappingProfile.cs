@@ -233,6 +233,7 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.ID, opt => opt.Ignore()); // Prevent mapping ID
 
             CreateMap<BillingDetail, BillingDetailVM>()
+                .ForMember(d => d.TranID, map => map.MapFrom(s => s.TranID))
                 .ForMember(d => d.DrgName, map => map.MapFrom(s => s.drgName))
                 .ForMember(d => d.BillType, map => map.MapFrom(s => s.billType))
                 .ForMember(d => d.ConID, map => map.MapFrom(s => s.conID))
@@ -241,6 +242,7 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
 
             CreateMap<BillingDetailVM, BillingDetail>()
+                .ForMember(d => d.TranID, map => map.MapFrom(s => s.TranID))
                 .ForMember(d => d.drgName, map => map.MapFrom(s => s.DrgName))
                 .ForMember(d => d.billType, map => map.MapFrom(s => s.BillType))
                 .ForMember(d => d.conID, map => map.MapFrom(s => s.ConID))

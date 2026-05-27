@@ -33,6 +33,7 @@ public class BillingEventPublisher(IPublishEndpoint publishEndpoint)
             {
                 BillNo = d.billNO,
                 SNO = d.SNO,
+                TranID = d.TranID,
                 DtDate = d.dtDate,
                 DrgName = d.drgName,
                 Price = d.Price,
@@ -53,12 +54,14 @@ public class BillingEventPublisher(IPublishEndpoint publishEndpoint)
     public async Task PublishDeletedAsync(
         string billNo,
         string pNo,
+        IReadOnlyCollection<string> tranIds,
         CancellationToken cancellationToken = default)
     {
         await publishEndpoint.Publish(new BillingDeletedEvent
         {
             BillNo = billNo,
-            PNo = pNo
+            PNo = pNo,
+            TranIds = tranIds
         }, cancellationToken);
     }
 }

@@ -92,8 +92,6 @@
     "COY_REGFEE_SNO": "95",
     "CoyID": "0001",
     "Database_Upgraded": "YES",
-    "DbName": "Hospital",
-    "DbName_Acct": "Accounting",
     "Designation_Lab_Scientist": "22",
     "EnableDOBExport": "NO",
     "ENCOUNTER": "0077",

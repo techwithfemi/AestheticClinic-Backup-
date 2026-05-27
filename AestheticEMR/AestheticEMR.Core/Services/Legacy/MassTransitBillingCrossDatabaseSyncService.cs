@@ -35,8 +35,10 @@ public class MassTransitBillingCrossDatabaseSyncService(
         DbTransaction transaction,
         string billNo,
         string pNo,
+        IReadOnlyCollection<string> tranIds,
         CancellationToken cancellationToken = default)
     {
-        await publisher.PublishDeletedAsync(billNo, pNo, cancellationToken);
+        // Pass persisted TranIDs into the delete sync contract from the billing sync service implementation
+        await publisher.PublishDeletedAsync(billNo, pNo, tranIds, cancellationToken);
     }
 }

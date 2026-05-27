@@ -25,6 +25,7 @@ public record BillingDetailPayload
 {
     public required string BillNo { get; init; }
     public long SNO { get; init; }
+    public string? TranID { get; init; }
     public DateTime DtDate { get; init; }
     public required string DrgName { get; init; }
     public double Price { get; init; }

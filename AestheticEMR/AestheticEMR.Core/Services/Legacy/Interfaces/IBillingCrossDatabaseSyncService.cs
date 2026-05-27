@@ -20,5 +20,6 @@ public interface IBillingCrossDatabaseSyncService
         DbTransaction transaction,
         string billNo,
         string patientNo,
+        IReadOnlyCollection<string> tranIds,
         CancellationToken cancellationToken = default);
 }

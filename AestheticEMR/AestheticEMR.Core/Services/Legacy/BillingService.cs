@@ -139,6 +139,12 @@ public class BillingService(
         }
 
         await EnsureBillCanBeModifiedAsync(billing, "deleted");
+        var tranIds = await context.BillingDetails
+            .AsNoTracking()
+            .Where(x => x.billNO == normalizedBillNo && x.TranID != null)
+            .Select(x => x.TranID!)
+            .Distinct()
+            .ToListAsync();
 
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -152,7 +158,9 @@ public class BillingService(
                 context.Database.GetDbConnection(),
                 transaction.GetDbTransaction(),
                 normalizedBillNo,
-                billing.pNo);
+                billing.pNo,
+                tranIds,
+                CancellationToken.None);
 
             await transaction.CommitAsync();
         }
@@ -217,10 +225,15 @@ public class BillingService(
     private IEnumerable<BillingDetail> PrepareDetails(Billing billing, IEnumerable<BillingDetail> details)
     {
         var now = DateTime.Now;
+        var billTranId = details?
+            .Select(x => NormalizeOptional(x.TranID))
+            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+            ?? Guid.NewGuid().ToString();
 
         foreach (var detail in details ?? [])
         {
             detail.billNO = billing.billNO;
+            detail.TranID = billTranId;
             detail.drgName = NormalizeRequired(detail.drgName, "Bill item is required.");
             detail.Price = detail.Price < 0 ? 0 : detail.Price;
             detail.Qty = detail.Qty <= 0 ? 1 : detail.Qty;

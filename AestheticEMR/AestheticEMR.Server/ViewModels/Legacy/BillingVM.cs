@@ -7,6 +7,9 @@ public class BillingDetailVM
 {
     public long SNO { get; set; }
 
+    [StringLength(100)]
+    public string? TranID { get; set; }
+
     [Required]
     [StringLength(200)]
     public string DrgName { get; set; } = null!;

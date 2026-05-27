@@ -104,6 +104,8 @@ public class EmrAppDefaultsService(
             var publicVariables = new Dictionary<string, string>(snapshot.PublicVariables ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
             var values = new Dictionary<string, string>(snapshot.Values ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
 
+            ApplyConnectionStringDatabaseNames(values);
+
             var entryDate = !string.IsNullOrWhiteSpace(snapshot.EntryDate)
                 ? (DateOnly.TryParse(snapshot.EntryDate, out var parsedDate) ? parsedDate : DateOnly.FromDateTime(DateTime.Today))
                 : DateOnly.FromDateTime(DateTime.Today);
@@ -147,6 +149,7 @@ public class EmrAppDefaultsService(
         await MergeAccountingDefaultsAsync(values, cancellationToken);
 
         ApplyDefaults(values);
+        ApplyConnectionStringDatabaseNames(values);
         ValidateRequired(values);
 
         var billSetting = await context.AppSettings
@@ -208,6 +211,34 @@ public class EmrAppDefaultsService(
         });
 
         await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
+    }
+
+    private void ApplyConnectionStringDatabaseNames(IDictionary<string, string> values)
+    {
+        void SetDatabaseName(string key, string? connectionString)
+        {
+            var databaseName = GetDatabaseName(connectionString);
+            if (string.IsNullOrWhiteSpace(databaseName))
+            {
+                return;
+            }
+
+            values[key] = databaseName;
+        }
+
+        SetDatabaseName("DbName", configuration.GetConnectionString("DefaultConnection"));
+        SetDatabaseName("DbName_Acct", configuration.GetConnectionString("AccountingConnection"));
+    }
+
+    private static string GetDatabaseName(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return string.Empty;
+        }
+
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        return builder.InitialCatalog?.Trim() ?? string.Empty;
     }
 
     private static string GetOrDefault(IReadOnlyDictionary<string, string> source, string key)

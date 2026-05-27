@@ -139,7 +139,7 @@ All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute): [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() {... }2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
+public async Task<IActionResult> GetUsers() {...}2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
@@ -362,7 +362,9 @@ For report page updates, use Spa Services Report page as the default template un
 ## Billing Module Business Rules
 
 - Once a new attendance is taken for a patient and debt is updated for the new billNo, previous transaction records in billing-related tables (e.g., billing, billingdetails, payments) must become immutable—no inserts, updates, or deletes; any modifications must be done only on the new billNo for the fresh attendance/visit.
+- **In billing, all BillingDetail rows for the same billNo should share one TranID, and each billNo should have a unique TranID distinct from other billNos.**
 - **Do not implement LockOldVersion enforcement or Voucher module activation parity in Billing LoadAppDefaults conversion.**
+- **Use GUID-based TranID generation** in billing, because TranID is used to delete matching accounting records for a hospital billing transaction.
 
 ---
 

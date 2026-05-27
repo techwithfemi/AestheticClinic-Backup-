@@ -603,8 +603,10 @@ export class BillingInvoiceDialogComponent implements OnInit {
     const selectedRevenueType = this.revenueTypes.find(x => Number(x.sno) === Number(value.revenueType));
     const revenueTypeName = selectedRevenueType?.revType?.trim() || undefined;
     const fallbackRevenueType = String(value.revenueType ?? '').trim();
+    const existingTranId = this.persistedDetails.find(x => !!x.tranID)?.tranID;
 
     return {
+      tranID: existingTranId,
       drgName: (value.drgName ?? '').trim(),
       price: Number(value.price ?? 0),
       qty: Number(value.qty ?? 1),

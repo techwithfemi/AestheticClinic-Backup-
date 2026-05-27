@@ -22,6 +22,17 @@ public class AccountingBillingDeletedConsumer(
         await using var conn = new SqlConnection(connStr);
         await conn.OpenAsync(context.CancellationToken);
 
+        foreach (var tranId in context.Message.TranIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            await using var cmd = new SqlCommand("DeleteTranxaction", conn);
+            cmd.CommandType = System.Data.CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@Period", "");
+            cmd.Parameters.AddWithValue("@CoyID", "0001");
+            cmd.Parameters.AddWithValue("@TranNo", tranId);
+            cmd.Parameters.AddWithValue("@userName", "system");
+            await cmd.ExecuteNonQueryAsync(context.CancellationToken);
+        }
+
         await using var del = new SqlCommand("DELETE FROM [dbo].[BillingDetail] WHERE billNO = @BillNo", conn);
         del.Parameters.AddWithValue("@BillNo", context.Message.BillNo);
         await del.ExecuteNonQueryAsync(context.CancellationToken);

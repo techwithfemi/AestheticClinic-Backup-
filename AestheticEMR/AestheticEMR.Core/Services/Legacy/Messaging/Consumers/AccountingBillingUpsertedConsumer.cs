@@ -84,13 +84,14 @@ public class AccountingBillingUpsertedConsumer(
         {
             const string ins = """
                 INSERT INTO [dbo].[BillingDetail]
-                    (billNO, SNO, dtDate, drgName, Price, Qty, subTotal, billType, conID, revType, BillTo, CoyName, BillBy)
+                    (billNO, SNO, TranID, dtDate, drgName, Price, Qty, subTotal, billType, conID, revType, BillTo, CoyName, BillBy)
                 VALUES
-                    (@BillNo, @SNO, @DtDate, @DrgName, @Price, @Qty, @SubTotal, @BillType, @ConId, @RevType, @BillTo, @CoyName, @BillBy);
+                    (@BillNo, @SNO, @TranID, @DtDate, @DrgName, @Price, @Qty, @SubTotal, @BillType, @ConId, @RevType, @BillTo, @CoyName, @BillBy);
                 """;
             await using var ins_cmd = new SqlCommand(ins, conn);
             ins_cmd.Parameters.AddWithValue("@BillNo", d.BillNo);
             ins_cmd.Parameters.AddWithValue("@SNO", d.SNO);
+            ins_cmd.Parameters.AddWithValue("@TranID", (object?)d.TranID ?? DBNull.Value);
             ins_cmd.Parameters.AddWithValue("@DtDate", d.DtDate);
             ins_cmd.Parameters.AddWithValue("@DrgName", d.DrgName);
             ins_cmd.Parameters.AddWithValue("@Price", d.Price);

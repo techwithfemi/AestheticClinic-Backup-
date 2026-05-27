@@ -77,6 +77,7 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCros
         DbTransaction transaction,
         string billNo,
         string patientNo,
+        IReadOnlyCollection<string> tranIds,
         CancellationToken cancellationToken = default)
     {
         using var scope = serviceProvider.CreateScope();
@@ -92,18 +93,15 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCros
         }
         foreach (var databaseName in targetDatabases)
         {
-            // Skip SmartHR for all direct table operations
             if (string.Equals(databaseName, "SmartHR", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             if (string.Equals(databaseName, accountingDb, StringComparison.OrdinalIgnoreCase))
             {
-                // Only delete from accounting via stored procs
-                await DeleteFromAccountingDbAsync(billNo, cancellationToken);
+                await DeleteFromAccountingDbAsync(tranIds, values, cancellationToken);
             }
             else if (string.Equals(databaseName, hospitalDb, StringComparison.OrdinalIgnoreCase))
             {
-                // Only delete from hospital DB with Billing tables
                 if (connection is SqlConnection sqlConnection && transaction is SqlTransaction sqlTransaction)
                 {
                     var detailsDelete = $"DELETE FROM {QualifyTable(databaseName, "BillingDetails")} WHERE billNO = @billNo;";
@@ -192,9 +190,9 @@ WHEN NOT MATCHED THEN
 
         var insertSql = $"""
 INSERT INTO {QualifyTable(databaseName, "BillingDetails")}
-    (billNO, SNO, dtDate, drgName, Price, Qty, subTotal, billType, conID, revType, BillTo, CoyName, BillBy)
+    (billNO, SNO, dtDate, drgName, Price, Qty, subTotal, billType, conID, revType, BillTo, CoyName, BillBy, TranID)
 VALUES
-    (@billNO, @sno, @dtDate, @drgName, @price, @qty, @subTotal, @billType, @conID, @revType, @billTo, @coyName, @billBy);
+    (@billNO, @sno, @dtDate, @drgName, @price, @qty, @subTotal, @billType, @conID, @revType, @billTo, @coyName, @billBy, @tranId);
 """;
 
         foreach (var detail in details)
@@ -212,7 +210,8 @@ VALUES
                 CreateParameter("@revType", detail.revType, SqlDbType.NVarChar, 100),
                 CreateParameter("@billTo", detail.BillTo, SqlDbType.NVarChar, 100),
                 CreateParameter("@coyName", detail.CoyName, SqlDbType.NVarChar, 100),
-                CreateParameter("@billBy", detail.BillBy, SqlDbType.NVarChar, 50));
+                CreateParameter("@billBy", detail.BillBy, SqlDbType.NVarChar, 50),
+                CreateParameter("@tranId", detail.TranID, SqlDbType.NVarChar, 100));
         }
     }
 
@@ -365,6 +364,7 @@ VALUES
         if (string.IsNullOrEmpty(acctNo))
             acctNo = isDebit ? values.GetValueOrDefault("ACCTNo_SUSP_ASSET") : values.GetValueOrDefault("ACCTNo_SUSP_SALES");
 
+        var tranId = detail.TranID ?? throw new InvalidOperationException($"Billing detail TranID is required for billNo '{billing.billNO}'.");
         var cmd = conn.CreateCommand();
         cmd.Transaction = tran;
         cmd.CommandType = CommandType.StoredProcedure;
@@ -372,9 +372,9 @@ VALUES
         // Generate period string in MM/YYYY format
         var period = billing.bDate.Month.ToString("D2") + "/" + billing.bDate.Year.ToString();
         // Add parameters in the exact order and names as the sproc
-        cmd.Parameters.AddWithValue("@TranID", detail.TranID ?? Guid.NewGuid().ToString());
+        cmd.Parameters.AddWithValue("@TranID", tranId);
         cmd.Parameters.AddWithValue("@AccountNo", acctNo);
-        cmd.Parameters.AddWithValue("@TranNo", detail.TranID ?? Guid.NewGuid().ToString());
+        cmd.Parameters.AddWithValue("@TranNo", tranId);
         cmd.Parameters.AddWithValue("@TranDate", billing.bDate.ToDateTime(TimeOnly.MinValue));
         cmd.Parameters.AddWithValue("@CostCenterID", values["AcctCostCenter"]);
         cmd.Parameters.AddWithValue("@Amount", isDebit ? detail.subTotal.GetValueOrDefault() : -detail.subTotal.GetValueOrDefault());
@@ -383,7 +383,7 @@ VALUES
         cmd.Parameters.AddWithValue("@EntryDate", DateTime.Now);
         cmd.Parameters.AddWithValue("@Period", period);
         cmd.Parameters.AddWithValue("@CoyID2", billing.clientID ?? values.GetValueOrDefault("CoyID", "0001"));
-        cmd.Parameters.AddWithValue("@UserName", "system"); // TODO: get current user
+        cmd.Parameters.AddWithValue("@UserName", "system");
         cmd.Parameters.AddWithValue("@SNoID", detail.SNO);
         cmd.Parameters.AddWithValue("@BillNO", billing.billNO);
         cmd.Parameters.AddWithValue("@Reversed", detail.Reversed ?? false);
@@ -391,18 +391,38 @@ VALUES
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private async Task CallDeleteTranxactionAsync(SqlConnection conn, SqlTransaction tran, string billNo, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+    private async Task DeleteFromAccountingDbAsync(IReadOnlyCollection<string> tranIds, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
     {
-        // Call DeleteTranxaction stored proc
+        var accountingConnStr = GetAccountingConnectionString();
+        await using var conn = new SqlConnection(accountingConnStr);
+        await conn.OpenAsync(cancellationToken);
+        await using var tran = await conn.BeginTransactionAsync(cancellationToken) as SqlTransaction;
+        try
+        {
+            foreach (var tranId in tranIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                await CallDeleteTranxactionAsync(conn, tran, tranId, values, cancellationToken);
+            }
+            await tran.CommitAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await tran.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Accounting delete failed for TranIDs belonging to billing sync.");
+            throw;
+        }
+    }
+
+    private async Task CallDeleteTranxactionAsync(SqlConnection conn, SqlTransaction tran, string tranId, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+    {
         var cmd = conn.CreateCommand();
         cmd.Transaction = tran;
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.CommandText = "DeleteTranxaction";
-        // Add parameters (simplified, add all as needed)
-        cmd.Parameters.AddWithValue("@Period", ""); // TODO: getPeriod logic
+        cmd.Parameters.AddWithValue("@Period", "");
         cmd.Parameters.AddWithValue("@CoyID", values["CoyID"]);
-        cmd.Parameters.AddWithValue("@TranNo", billNo); // or TranID if available
-        cmd.Parameters.AddWithValue("@userName", "system"); // TODO: get current user
+        cmd.Parameters.AddWithValue("@TranNo", tranId);
+        cmd.Parameters.AddWithValue("@userName", "system");
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 }

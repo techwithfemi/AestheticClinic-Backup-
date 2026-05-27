@@ -1,5 +1,6 @@
 export interface BillingDetail {
   sno?: number;
+  tranID?: string;
   drgName: string;
   price: number;
   qty: number;
