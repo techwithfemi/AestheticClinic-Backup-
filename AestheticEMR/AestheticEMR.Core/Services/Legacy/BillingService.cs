@@ -10,7 +10,8 @@ namespace AestheticEMR.Core.Services.Legacy;
 public class BillingService(
     ApplicationDbContext context,
     IUserIdAccessor userIdAccessor,
-    IBillingCrossDatabaseSyncService billingCrossDatabaseSyncService) : IBillingService
+    IBillingCrossDatabaseSyncService billingCrossDatabaseSyncService,
+    IEmrAppDefaultsService emrAppDefaultsService) : IBillingService
 {
     public async Task<IEnumerable<Billing>> GetAllAsync()
     {
@@ -52,7 +53,7 @@ public class BillingService(
         await EnsurePatientExistsAsync(normalizedBilling.pNo);
         await EnsureBillCanBeModifiedAsync(normalizedBilling, "created");
 
-        RecalculateTotals(normalizedBilling, normalizedDetails);
+        await RecalculateTotalsAsync(normalizedBilling, normalizedDetails);
 
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -98,7 +99,7 @@ public class BillingService(
         EnsureNoDuplicateItems(normalizedDetails);
         await EnsurePatientExistsAsync(normalizedBilling.pNo);
 
-        RecalculateTotals(normalizedBilling, normalizedDetails);
+        await RecalculateTotalsAsync(normalizedBilling, normalizedDetails);
 
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -190,6 +191,7 @@ public class BillingService(
         billing.Discount ??= 0;
         billing.AmountPaid ??= 0;
         billing.AmountBilled ??= 0;
+        billing.Tax ??= 0;
         billing.isPaid ??= false;
         billing.isProcess ??= false;
         billing.isPost ??= false;
@@ -207,6 +209,7 @@ public class BillingService(
         target.AmountBilled = source.AmountBilled ?? 0;
         target.Discount = source.Discount ?? 0;
         target.AmountPaid = source.AmountPaid ?? 0;
+        target.Tax = source.Tax ?? 0;
         target.AmountBilledInWord = NormalizeOptional(source.AmountBilledInWord);
         target.BillingMonth = NormalizeOptional(source.BillingMonth) ?? target.bDate.ToString("MMMM");
         target.BillingYear = source.BillingYear ?? target.bDate.Year;
@@ -266,7 +269,7 @@ public class BillingService(
         }
     }
 
-    private void RecalculateTotals(Billing billing, IEnumerable<BillingDetail> details)
+    private async Task RecalculateTotalsAsync(Billing billing, IEnumerable<BillingDetail> details)
     {
         var itemsTotal = details.Sum(x => x.subTotal ?? 0m);
         billing.AmountBilled = itemsTotal;
@@ -274,9 +277,28 @@ public class BillingService(
         var debt = billing.DebtBF ?? 0;
         var discount = billing.Discount ?? 0;
         var paid = billing.AmountPaid ?? 0;
-        var due = itemsTotal + debt - discount;
+
+        var taxableAmount = Math.Max(0m, itemsTotal - discount);
+        var taxPercent = await GetConfiguredTaxPercentAsync();
+        var taxAmount = taxableAmount * (taxPercent / 100m);
+        billing.Tax = Convert.ToDouble(Math.Round(taxAmount, 2, MidpointRounding.AwayFromZero));
+
+        var tax = Convert.ToDecimal(billing.Tax ?? 0d);
+        var due = itemsTotal + debt + tax - discount;
 
         billing.isPaid = paid >= due && due > 0;
+    }
+
+    private async Task<decimal> GetConfiguredTaxPercentAsync()
+    {
+        var defaults = await emrAppDefaultsService.GetAsync();
+        var taxPercent = defaults.Taxes.Pcent;
+        if (taxPercent < 0)
+        {
+            return 0;
+        }
+
+        return Convert.ToDecimal(taxPercent);
     }
 
     private async Task EnsurePatientExistsAsync(string pNo)

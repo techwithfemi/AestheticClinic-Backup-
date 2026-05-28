@@ -1,9 +1,11 @@
 .invoices-page {
   padding: 20px;
+  overflow-x: hidden;
 }
 
 .page-card {
   padding: 16px;
+  overflow-x: hidden;
 }
 
 .page-header {
@@ -40,17 +42,24 @@
 }
 
 .table-wrap {
-  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
 .list-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1080px;
 }
 
 .actions-cell {
   white-space: nowrap;
+}
+
+.actions-cell .mat-mdc-icon-button {
+  margin-inline: auto;
 }
 
 .empty {

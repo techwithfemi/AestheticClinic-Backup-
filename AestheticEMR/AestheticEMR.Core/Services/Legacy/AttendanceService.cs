@@ -35,12 +35,11 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
-        // --- New: Save Debt before attendance/billing ---
-        await SaveDebtAsync(record.PNo);
-
         var existingForDay = await GetExistingAttendanceForPatientDayAsync(record.PNo, record.RecDate);
         if (existingForDay is not null)
         {
+            await SaveDebtAsync(record.PNo, existingForDay.ConsultId);
+
             existingForDay.ClinicType = record.ClinicType;
             existingForDay.AttndStatus = record.AttndStatus;
             existingForDay.ClientCat = record.ClientCat;
@@ -53,17 +52,17 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
             await UpsertAttendanceBillAccumAsync(existingForDay);
             await UpdatePatientLastVisitAsync(existingForDay);
             await context.SaveChangesAsync();
-            // --- New: Save Bill for update path ---
             await SaveBillAsync(existingForDay);
             return existingForDay;
         }
 
         record.ConsultId = await GenerateConsultIdAsync();
+        await SaveDebtAsync(record.PNo, record.ConsultId);
+
         context.HRecords.Add(record);
         await UpsertAttendanceBillAccumAsync(record);
         await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
-        // --- New: Save Bill for create path ---
         await SaveBillAsync(record);
         return record;
     }
@@ -259,44 +258,56 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
     }
 
     // --- New: SaveDebtAsync ---
-    private async Task SaveDebtAsync(string pNo)
+    private async Task SaveDebtAsync(string pNo, string? currentBillNo = null)
     {
         try
         {
-            _logger?.LogInformation($"SaveDebtAsync called for patient: {pNo}");
-            var latestBill = await context.Billings
-                .Where(b => b.pNo == pNo)
-                .OrderByDescending(b => b.ID)
+            _logger?.LogInformation("SaveDebtAsync called for patient: {PatientNo}, currentBillNo: {CurrentBillNo}", pNo, currentBillNo);
+
+            var normalizedCurrentBillNo = NormalizeText(currentBillNo);
+            var previousBillQuery = context.Billings.Where(b => b.pNo == pNo);
+
+            if (!string.IsNullOrWhiteSpace(normalizedCurrentBillNo))
+            {
+                previousBillQuery = previousBillQuery.Where(b => b.billNO != normalizedCurrentBillNo);
+            }
+
+            var previousBill = await previousBillQuery
+                .OrderByDescending(b => b.bDate)
+                .ThenByDescending(b => b.billNO)
+                .ThenByDescending(b => b.ID)
                 .FirstOrDefaultAsync();
 
             decimal openBal = 0;
             var pat = await context.HPatients.FirstOrDefaultAsync(x => x.Pno == pNo);
-            if (latestBill != null && pat != null)
+            if (previousBill != null && pat != null)
             {
                 var isPrivate = (pat.CoyType ?? string.Empty).Trim() == "0001";
-                _logger?.LogInformation($"Patient {pNo} isPrivate: {isPrivate}, CoyType: {pat.CoyType}");
+                _logger?.LogInformation("Patient {PatientNo} isPrivate: {IsPrivate}, CoyType: {CoyType}", pNo, isPrivate, pat.CoyType);
                 if (isPrivate)
                 {
-                    var billed = latestBill.AmountBilled ?? 0;
-                    var debtBf = latestBill.DebtBF ?? 0;
-                    var discount = latestBill.Discount ?? 0;
-                    var paid = latestBill.AmountPaid ?? 0;
-                    openBal = (billed + debtBf) - (discount + paid);
-                    _logger?.LogInformation($"Calculated openBal: {openBal}");
+                    var billed = previousBill.AmountBilled ?? 0;
+                    var debtBf = previousBill.DebtBF ?? 0;
+                    var discount = previousBill.Discount ?? 0;
+                    var paid = previousBill.AmountPaid ?? 0;
+                    var tax = Convert.ToDecimal(previousBill.Tax ?? 0d);
+                    openBal = ((billed - discount) + debtBf + tax) - paid;
+                    _logger?.LogInformation("Calculated carry-forward debt for patient {PatientNo} from bill {BillNo}: {OpenBal}", pNo, previousBill.billNO, openBal);
                 }
             }
+
             if (pat != null)
             {
                 pat.IsRev = true;
                 pat.DebtBf = openBal;
                 pat.Debt = openBal;
                 await context.SaveChangesAsync();
-                _logger?.LogInformation($"Updated DebtBf and Debt for patient {pNo} to {openBal}");
+                _logger?.LogInformation("Updated DebtBf and Debt for patient {PatientNo} to {OpenBal}", pNo, openBal);
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"Error in SaveDebtAsync for patient {pNo}");
+            _logger?.LogError(ex, "Error in SaveDebtAsync for patient {PatientNo}", pNo);
             throw;
         }
     }

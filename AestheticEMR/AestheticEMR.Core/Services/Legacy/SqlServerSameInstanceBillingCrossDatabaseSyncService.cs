@@ -127,8 +127,8 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCros
     {
         var sql = $"""
 MERGE {QualifyTable(databaseName, "Billing")} AS target
-USING (VALUES (@billNO, @bDate, @pNo, @clientID, @debtBF, @amountBilled, @discount, @amountPaid, @billType, @isPaid, @isProcess, @admDate, @dischDate, @timeVal, @apprvCode, @isPost))
-       AS source (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
+USING (VALUES (@billNO, @bDate, @pNo, @clientID, @debtBF, @amountBilled, @discount, @amountPaid, @tax, @billType, @isPaid, @isProcess, @admDate, @dischDate, @timeVal, @apprvCode, @isPost))
+       AS source (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, Tax, billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
 ON target.billNO = source.billNO
 WHEN MATCHED THEN
     UPDATE SET
@@ -139,6 +139,7 @@ WHEN MATCHED THEN
         AmountBilled = source.AmountBilled,
         Discount = source.Discount,
         AmountPaid = source.AmountPaid,
+        Tax = source.Tax,
         billType = source.billType,
         isPaid = source.isPaid,
         isProcess = source.isProcess,
@@ -148,8 +149,8 @@ WHEN MATCHED THEN
         ApprvCode = source.ApprvCode,
         isPost = source.isPost
 WHEN NOT MATCHED THEN
-    INSERT (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
-    VALUES (source.billNO, source.bDate, source.pNo, source.clientID, source.DebtBF, source.AmountBilled, source.Discount, source.AmountPaid, source.billType, source.isPaid, source.isProcess, source.AdmDate, source.DischDate, source.timeVal, source.ApprvCode, source.isPost);
+    INSERT (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, Tax, billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
+    VALUES (source.billNO, source.bDate, source.pNo, source.clientID, source.DebtBF, source.AmountBilled, source.Discount, source.AmountPaid, source.Tax, source.billType, source.isPaid, source.isProcess, source.AdmDate, source.DischDate, source.timeVal, source.ApprvCode, source.isPost);
 """;
 
         await ExecuteNonQueryAsync(connection, transaction, sql, cancellationToken,
@@ -161,6 +162,7 @@ WHEN NOT MATCHED THEN
             CreateParameter("@amountBilled", billing.AmountBilled, SqlDbType.Decimal),
             CreateParameter("@discount", billing.Discount, SqlDbType.Decimal),
             CreateParameter("@amountPaid", billing.AmountPaid, SqlDbType.Decimal),
+            CreateParameter("@tax", billing.Tax, SqlDbType.Float),
             CreateParameter("@billType", billing.billType, SqlDbType.NVarChar, 50),
             CreateParameter("@isPaid", billing.isPaid, SqlDbType.Bit),
             CreateParameter("@isProcess", billing.isProcess, SqlDbType.Bit),

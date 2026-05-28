@@ -35,22 +35,22 @@ public class AccountingBillingUpsertedConsumer(
     {
         const string sql = """
             MERGE [dbo].[Billing] AS tgt
-            USING (SELECT @BillNo, @BDate, @PNo, @ClientId, @DebtBF, @AmountBilled, @Discount, @AmountPaid,
+            USING (SELECT @BillNo, @BDate, @PNo, @ClientId, @DebtBF, @AmountBilled, @Discount, @AmountPaid, @Tax,
                           @BillType, @IsPaid, @IsProcess, @AdmDate, @DischDate, @TimeVal, @ApprvCode, @IsPost)
-                  AS src (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid,
+                  AS src (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, Tax,
                            billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
             ON tgt.billNO = src.billNO
             WHEN MATCHED THEN UPDATE SET
                 bDate=src.bDate, pNo=src.pNo, clientID=src.clientID,
-                DebtBF=src.DebtBF, AmountBilled=src.AmountBilled, Discount=src.Discount, AmountPaid=src.AmountPaid,
+                DebtBF=src.DebtBF, AmountBilled=src.AmountBilled, Discount=src.Discount, AmountPaid=src.AmountPaid, Tax=src.Tax,
                 billType=src.billType, isPaid=src.isPaid, isProcess=src.isProcess,
                 AdmDate=src.AdmDate, DischDate=src.DischDate, timeVal=src.timeVal,
                 ApprvCode=src.ApprvCode, isPost=src.isPost
             WHEN NOT MATCHED THEN INSERT
-                (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid,
+                (billNO, bDate, pNo, clientID, DebtBF, AmountBilled, Discount, AmountPaid, Tax,
                  billType, isPaid, isProcess, AdmDate, DischDate, timeVal, ApprvCode, isPost)
             VALUES (src.billNO, src.bDate, src.pNo, src.clientID, src.DebtBF, src.AmountBilled,
-                    src.Discount, src.AmountPaid, src.billType, src.isPaid, src.isProcess,
+                    src.Discount, src.AmountPaid, src.Tax, src.billType, src.isPaid, src.isProcess,
                     src.AdmDate, src.DischDate, src.timeVal, src.ApprvCode, src.isPost);
             """;
 
@@ -63,6 +63,7 @@ public class AccountingBillingUpsertedConsumer(
         cmd.Parameters.AddWithValue("@AmountBilled", msg.AmountBilled);
         cmd.Parameters.AddWithValue("@Discount", msg.Discount);
         cmd.Parameters.AddWithValue("@AmountPaid", msg.AmountPaid);
+        cmd.Parameters.AddWithValue("@Tax", msg.Tax);
         cmd.Parameters.AddWithValue("@BillType", (object?)msg.BillType ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@IsPaid", msg.IsPaid);
         cmd.Parameters.AddWithValue("@IsProcess", msg.IsProcess);

@@ -124,6 +124,12 @@ public class EmrAppDefaultsService(
                 LabHead2 = GetOrDefault(publicVariables, "LabHead2"),
                 LabHead3 = GetOrDefault(publicVariables, "LabHead3"),
                 LabAcctNo = GetOrDefault(publicVariables, "LabAcctNo"),
+                Taxes = new TaxDefaults
+                {
+                    TaxName = snapshot.Taxes?.TaxName?.Trim() ?? "VAT",
+                    Pcent = snapshot.Taxes?.Pcent ?? 0,
+                    Desc = snapshot.Taxes?.Desc?.Trim() ?? string.Empty
+                },
                 Values = values
             };
         }
@@ -174,6 +180,12 @@ public class EmrAppDefaultsService(
             LabHead2 = labSetting?.Idval2?.Trim() ?? string.Empty,
             LabHead3 = labSetting?.Idval3?.Trim() ?? string.Empty,
             LabAcctNo = labSetting?.Idval5?.Trim() ?? string.Empty,
+            Taxes = new TaxDefaults
+            {
+                TaxName = "VAT",
+                Pcent = 0,
+                Desc = "Value Added Tax"
+            },
             Values = new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase)
         };
     }
@@ -201,6 +213,12 @@ public class EmrAppDefaultsService(
                 ["LabHead2"] = defaults.LabHead2,
                 ["LabHead3"] = defaults.LabHead3,
                 ["LabAcctNo"] = defaults.LabAcctNo
+            },
+            Taxes = new TaxDefaultsSnapshot
+            {
+                TaxName = defaults.Taxes.TaxName,
+                Pcent = defaults.Taxes.Pcent,
+                Desc = defaults.Taxes.Desc
             },
             Values = filteredValues
         };
@@ -253,7 +271,15 @@ public class EmrAppDefaultsService(
         public string? EntryDate { get; set; }
         public int PriceColumnIndex { get; set; }
         public Dictionary<string, string>? PublicVariables { get; set; }
+        public TaxDefaultsSnapshot? Taxes { get; set; }
         public Dictionary<string, string>? Values { get; set; }
+    }
+
+    private sealed class TaxDefaultsSnapshot
+    {
+        public string? TaxName { get; set; }
+        public double Pcent { get; set; }
+        public string? Desc { get; set; }
     }
 
     private async Task MergeAccountingDefaultsAsync(IDictionary<string, string> values, CancellationToken cancellationToken)

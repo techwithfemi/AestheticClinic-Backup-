@@ -37,11 +37,6 @@
 
     <div class="table-wrap">
       <table mat-table [dataSource]="pagedInvoices" class="list-table">
-        <ng-container matColumnDef="billNo">
-          <th mat-header-cell *matHeaderCellDef>Bill No</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.billNo }}</td>
-        </ng-container>
-
         <ng-container matColumnDef="bDate">
           <th mat-header-cell *matHeaderCellDef>Date</th>
           <td mat-cell *matCellDef="let invoice">{{ invoice.bDate | date: 'mediumDate' }}</td>
@@ -49,60 +44,61 @@
 
         <ng-container matColumnDef="patient">
           <th mat-header-cell *matHeaderCellDef>Patient</th>
-          <td mat-cell *matCellDef="let invoice">{{ getPatientName(invoice.pNo) }} [{{ invoice.pNo }}]</td>
+          <td mat-cell *matCellDef="let invoice">{{ getPatientName(invoice.pNo) }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="clientID">
-          <th mat-header-cell *matHeaderCellDef>Client</th>
-          <td mat-cell *matCellDef="let invoice">{{ invoice.clientID || 'N/A' }}</td>
+        <ng-container matColumnDef="clinic">
+          <th mat-header-cell *matHeaderCellDef>Clinic</th>
+          <td mat-cell *matCellDef="let invoice">{{ getClinic(invoice) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="debtBF">
-          <th mat-header-cell *matHeaderCellDef class="figure-col">Debt BF</th>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Debt</th>
           <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.debtBF ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="amountBilled">
-          <th mat-header-cell *matHeaderCellDef class="figure-col">Amount Billed</th>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Curr Bill</th>
           <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.amountBilled ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="discount">
-          <th mat-header-cell *matHeaderCellDef class="figure-col">Discount</th>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Disc</th>
           <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.discount ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="tax">
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Tax</th>
+          <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.tax ?? 0 | number: '1.2-2' }}</td>
+        </ng-container>
+
         <ng-container matColumnDef="amountPaid">
-          <th mat-header-cell *matHeaderCellDef class="figure-col">Amount Paid</th>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Amt Pd</th>
           <td mat-cell *matCellDef="let invoice" class="figure-col">{{ invoice.amountPaid ?? 0 | number: '1.2-2' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="balance">
-          <th mat-header-cell *matHeaderCellDef class="figure-col">Balance</th>
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Bal</th>
           <td mat-cell *matCellDef="let invoice" class="figure-col">{{ getBalance(invoice) | number: '1.2-2' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="coyID">
-          <th mat-header-cell *matHeaderCellDef class="hidden-column">Coy ID</th>
-          <td mat-cell *matCellDef="let invoice" class="hidden-column">{{ invoice.clientID || '' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="pNo">
-          <th mat-header-cell *matHeaderCellDef class="hidden-column">PNO</th>
-          <td mat-cell *matCellDef="let invoice" class="hidden-column">{{ invoice.pNo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Actions</th>
           <td mat-cell *matCellDef="let invoice" class="actions-cell">
-            <button mat-button type="button" (click)="openAddBill(invoice)">Add Bill</button>
             <button mat-icon-button type="button" (click)="openEdit(invoice)" title="Edit">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button type="button" (click)="deleteInvoice(invoice)" title="Delete">
-              <mat-icon>delete</mat-icon>
-            </button>
           </td>
+        </ng-container>
+
+        <ng-container matColumnDef="clientID">
+          <th mat-header-cell *matHeaderCellDef>Client</th>
+          <td mat-cell *matCellDef="let invoice">{{ getClientDisplay(invoice) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="billNo">
+          <th mat-header-cell *matHeaderCellDef>Bill No</th>
+          <td mat-cell *matCellDef="let invoice">{{ invoice.billNo }}</td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="listColumns"></tr>

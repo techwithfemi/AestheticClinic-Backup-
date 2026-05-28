@@ -21,6 +21,7 @@ export interface Billing {
   amountBilled?: number;
   discount?: number;
   amountPaid?: number;
+  tax?: number;
   billType?: string;
   isPaid?: boolean;
   details: BillingDetail[];

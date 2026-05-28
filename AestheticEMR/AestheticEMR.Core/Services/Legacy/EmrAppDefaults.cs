@@ -15,10 +15,19 @@ public sealed class EmrAppDefaults
     public string LabHead3 { get; init; } = string.Empty;
     public string LabAcctNo { get; init; } = string.Empty;
 
+    public TaxDefaults Taxes { get; init; } = new();
+
     public IReadOnlyDictionary<string, string> Values { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     public string Get(string key, string defaultValue = "")
     {
         return Values.TryGetValue(key, out var value) ? value : defaultValue;
     }
+}
+
+public sealed class TaxDefaults
+{
+    public string TaxName { get; init; } = "VAT";
+    public double Pcent { get; init; } = 0;
+    public string Desc { get; init; } = string.Empty;
 }

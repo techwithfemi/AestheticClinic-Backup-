@@ -64,6 +64,9 @@ public class BillingVM
     [Range(0, (double)decimal.MaxValue)]
     public decimal? AmountPaid { get; set; } = 0;
 
+    [Range(0, double.MaxValue)]
+    public double? Tax { get; set; } = 0;
+
     [StringLength(50)]
     public string? BillType { get; set; }
 

@@ -21,6 +21,7 @@ public class BillingEventPublisher(IPublishEndpoint publishEndpoint)
             AmountBilled = billing.AmountBilled ?? 0,
             Discount = billing.Discount ?? 0,
             AmountPaid = billing.AmountPaid ?? 0,
+            Tax = billing.Tax ?? 0,
             BillType = billing.billType,
             IsPaid = billing.isPaid ?? false,
             IsProcess = billing.isProcess ?? false,

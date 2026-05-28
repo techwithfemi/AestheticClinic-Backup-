@@ -23,6 +23,8 @@ public partial class Billing
 
     public decimal? AmountPaid { get; set; }
 
+    public double? Tax { get; set; } = 0;
+
     //public decimal? profFee { get; set; } = 0;
 
     //public decimal? AmtBF { get; set; } = 0;

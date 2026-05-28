@@ -2,6 +2,11 @@
   "AppName": "AestheticENR",
   "ClientCategoryPrivate": "PRIVATE",
   "PriceColumnIndex": 3,
+  "Taxes": {
+    "TaxName": "VAT",
+    "Pcent": 7.5,
+    "Desc": "Value Added Tax"
+  },
   "PublicVariables": {
     "BillHead": "VCP Aesthetic Clinic",
     "BillHead2": "292B Ajose Adeogun St",

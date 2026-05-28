@@ -21,12 +21,15 @@ import { HPatient } from '../../../models/legacy/h-patient.model';
 import { BillingInvoiceDialogComponent, BillingInvoiceDialogData } from './billing-invoice-dialog.component';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { Attendance } from '../../../models/legacy/attendance.model';
+import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
+import { HRetainership } from '../../../models/legacy/h-retainership.model';
 
 interface InvoiceAttendanceOption {
   consultId: string;
   pNo: string;
   patientName: string;
   coyID?: string;
+  clinicType?: string;
   label: string;
 }
 
@@ -55,6 +58,7 @@ export class InvoicesComponent implements OnInit {
   private billingEndpoint = inject(BillingEndpoint);
   private patientEndpoint = inject(HPatientEndpoint);
   private attendanceEndpoint = inject(AttendanceEndpoint);
+  private hRetainershipEndpoint = inject(HRetainershipEndpoint);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
 
@@ -67,12 +71,15 @@ export class InvoicesComponent implements OnInit {
   searchText = '';
   currentPage = 1;
   readonly pageSize = 10;
-  readonly listColumns = ['billNo', 'bDate', 'patient', 'clientID', 'debtBF', 'amountBilled', 'discount', 'amountPaid', 'balance', 'coyID', 'pNo', 'actions'];
+  readonly listColumns = ['bDate', 'patient', 'clinic', 'debtBF', 'amountBilled', 'discount', 'tax', 'amountPaid', 'balance', 'actions', 'clientID', 'billNo'];
   selectedAttendanceKey = '';
+  private attendanceByConsultId = new Map<string, Attendance>();
+  private retainershipByCode = new Map<string, string>();
 
   ngOnInit(): void {
     this.loadPatients();
     this.loadAttendanceOptions();
+    this.loadRetainerships();
 
     this.route.queryParamMap.subscribe(query => {
       const action = (query.get('action') ?? '').toLowerCase();
@@ -144,9 +151,10 @@ export class InvoicesComponent implements OnInit {
 
     this.filteredInvoices = this.invoicesCache.filter(item => {
       const patientName = this.getPatientName(item.pNo).toLowerCase();
+      const clientName = this.getClientDisplay(item).toLowerCase();
       return patientName.includes(term)
+        || clientName.includes(term)
         || (item.billNo ?? '').toLowerCase().includes(term)
-        || (item.clientID ?? '').toLowerCase().includes(term)
         || (item.billType ?? '').toLowerCase().includes(term);
     });
 
@@ -172,7 +180,8 @@ export class InvoicesComponent implements OnInit {
   }
 
   getPatientName(pNo: string): string {
-    const patient = this.patients.find(x => x.pno === pNo);
+    const patientNo = (pNo ?? '').trim().toLowerCase();
+    const patient = this.patients.find(x => (x.pno ?? '').trim().toLowerCase() === patientNo);
     if (!patient) {
       return 'Unknown Patient';
     }
@@ -185,8 +194,41 @@ export class InvoicesComponent implements OnInit {
     const amountBilled = invoice.amountBilled ?? 0;
     const discount = invoice.discount ?? 0;
     const amountPaid = invoice.amountPaid ?? 0;
+    const tax = invoice.tax ?? 0;
 
-    return debtBF + amountBilled - discount - amountPaid;
+    return debtBF + amountBilled + tax - discount - amountPaid;
+  }
+
+  getClinic(invoice: Billing): string {
+    const consultId = invoice.consultId ?? invoice.billNo;
+    const attendance = consultId ? this.attendanceByConsultId.get(consultId) : undefined;
+    return attendance?.clinicType?.trim() || 'N/A';
+  }
+
+  getClientDisplay(invoice: Billing): string {
+    const patientNo = (invoice.pNo ?? '').trim().toLowerCase();
+    const patient = this.patients.find(x => (x.pno ?? '').trim().toLowerCase() === patientNo);
+    const consultId = invoice.consultId ?? invoice.billNo;
+    const attendanceCompany = consultId ? this.attendanceByConsultId.get(consultId)?.coyname?.trim() : '';
+
+    const candidates = [
+      invoice.company?.trim(),
+      patient?.coyName?.trim(),
+      attendanceCompany,
+      this.lookupRetainershipName(invoice.clientID)
+    ];
+
+    const companyName = candidates.find(x => !!x && !this.isLikelyClientCode(x));
+    return companyName || this.lookupRetainershipName(invoice.clientID) || 'N/A';
+  }
+
+  private isLikelyClientCode(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const normalized = value.trim();
+    return /^\d+$/.test(normalized) || /^[A-Z]{1,6}\d+$/.test(normalized);
   }
 
   openCreate(): void {
@@ -300,6 +342,15 @@ export class InvoicesComponent implements OnInit {
   private loadAttendanceOptions(): void {
     this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
       next: attendance => {
+        for (const item of attendance ?? []) {
+          const consultId = item.consultId ?? '';
+          if (!consultId || this.attendanceByConsultId.has(consultId)) {
+            continue;
+          }
+
+          this.attendanceByConsultId.set(consultId, item);
+        }
+
         const todays = (attendance ?? []).filter(a => this.isToday(a.recDate));
         const unique = new Map<string, InvoiceAttendanceOption>();
 
@@ -319,6 +370,7 @@ export class InvoicesComponent implements OnInit {
             pNo,
             patientName,
             coyID,
+            clinicType: item.clinicType,
             label: `${patientName} [${consultId}]`
           };
 
@@ -336,6 +388,42 @@ export class InvoicesComponent implements OnInit {
         this.selectedAttendanceKey = '';
       }
     });
+  }
+
+  private loadRetainerships(): void {
+    this.hRetainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>().subscribe({
+      next: retainerships => {
+        const map = new Map<string, string>();
+        for (const item of retainerships ?? []) {
+          const name = item.retainName?.trim();
+          if (!name) {
+            continue;
+          }
+
+          const keys = [item.retainCode, item.retainId, item.clientCatId]
+            .map(x => (x ?? '').trim())
+            .filter(x => !!x);
+
+          for (const key of keys) {
+            map.set(key.toLowerCase(), name);
+          }
+        }
+
+        this.retainershipByCode = map;
+      },
+      error: () => {
+        this.retainershipByCode = new Map<string, string>();
+      }
+    });
+  }
+
+  private lookupRetainershipName(clientId?: string): string {
+    const key = (clientId ?? '').trim().toLowerCase();
+    if (!key) {
+      return '';
+    }
+
+    return this.retainershipByCode.get(key) ?? '';
   }
 
   private isToday(value?: string): boolean {

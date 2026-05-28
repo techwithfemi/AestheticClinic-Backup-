@@ -10,6 +10,7 @@ public record BillingUpsertedEvent
     public decimal AmountBilled { get; init; }
     public decimal Discount { get; init; }
     public decimal AmountPaid { get; init; }
+    public double Tax { get; init; }
     public string? BillType { get; init; }
     public bool IsPaid { get; init; }
     public bool IsProcess { get; init; }
