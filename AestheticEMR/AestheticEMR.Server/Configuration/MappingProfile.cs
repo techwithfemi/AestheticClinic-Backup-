@@ -241,6 +241,7 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.ConID, map => map.MapFrom(s => s.conID))
                 .ForMember(d => d.RevenueType, map => map.MapFrom(s => s.revType))
                 .ForMember(d => d.Category, map => map.MapFrom(s => s.Category))
+                .ForMember(d => d.RevClinic, map => map.MapFrom(s => s.RevClinic))
                 .ForMember(d => d.BillTo, map => map.MapFrom(s => s.BillTo))
                 .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
 
@@ -251,6 +252,7 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.conID, map => map.MapFrom(s => s.ConID))
                 .ForMember(d => d.revType, map => map.MapFrom(s => s.RevenueType))
                 .ForMember(d => d.Category, map => map.MapFrom(s => s.Category))
+                .ForMember(d => d.RevClinic, map => map.MapFrom(s => s.RevClinic))
                 .ForMember(d => d.BillTo, map => map.MapFrom(s => s.BillTo))
                 .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
         }

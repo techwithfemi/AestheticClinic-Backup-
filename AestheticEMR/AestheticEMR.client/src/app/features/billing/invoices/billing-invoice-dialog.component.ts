@@ -632,7 +632,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       price: 0,
       qty: 1,
       billType: '',
-      conID: this.headerInfo.consultId ?? ''
+      conID: null
     });
   }
 
@@ -649,11 +649,12 @@ export class BillingInvoiceDialogComponent implements OnInit {
       drgName: (value.drgName ?? '').trim(),
       price: Number(value.price ?? 0),
       qty: Number(value.qty ?? 1),
-      billType: (value.billType ?? '').trim() || undefined,
-      conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined,
+      billType: category,
+      conID: undefined,
       revenueType: revenueTypeName ?? (fallbackRevenueType || undefined),
       revenueTypeName,
       category,
+      revClinic: this.attendanceSummary.clinicType?.trim() || undefined,
       billTo: this.headerInfo.coyID || 'Self',
       coyName: this.headerInfo.coyID || 'Self'
     } as BillingDetail;
