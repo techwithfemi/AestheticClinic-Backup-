@@ -1,0 +1,18 @@
+<div class="attendance-header" [class.compact]="compact">
+  @if (photoSource) {
+    <img class="attendance-photo" [src]="photoSource" alt="Patient photo" />
+  } @else {
+    <div class="attendance-photo placeholder" aria-hidden="true">
+      <mat-icon>person</mat-icon>
+    </div>
+  }
+
+  <div class="attendance-meta">
+    <div class="meta-item"><span class="label">Patient:</span> <span>{{ attendance?.fullname || '—' }}</span></div>
+    <div class="meta-item"><span class="label">Age:</span> <span>{{ age ?? '—' }}</span></div>
+    <div class="meta-item"><span class="label">Company:</span> <span>{{ companyName }}</span></div>
+    <div class="meta-item"><span class="label">BillCat:</span> <span>{{ attendance?.clientCat || '—' }}</span></div>
+    <div class="meta-item"><span class="label">ConsultID:</span> <span>{{ attendance?.consultId || '—' }}</span></div>
+    <div class="meta-item"><span class="label">Clinic:</span> <span>{{ attendance?.clinicType || '—' }}</span></div>
+  </div>
+</div>

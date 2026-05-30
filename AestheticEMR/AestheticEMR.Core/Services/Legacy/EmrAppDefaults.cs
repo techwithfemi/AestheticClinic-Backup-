@@ -30,4 +30,5 @@ public sealed class TaxDefaults
     public string TaxName { get; init; } = "VAT";
     public double Pcent { get; init; } = 0;
     public string Desc { get; init; } = string.Empty;
+    public string TIN { get; init; } = string.Empty;
 }

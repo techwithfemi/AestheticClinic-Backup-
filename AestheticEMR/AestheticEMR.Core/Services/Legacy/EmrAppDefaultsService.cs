@@ -128,7 +128,8 @@ public class EmrAppDefaultsService(
                 {
                     TaxName = snapshot.Taxes?.TaxName?.Trim() ?? "VAT",
                     Pcent = snapshot.Taxes?.Pcent ?? 0,
-                    Desc = snapshot.Taxes?.Desc?.Trim() ?? string.Empty
+                    Desc = snapshot.Taxes?.Desc?.Trim() ?? string.Empty,
+                    TIN = snapshot.Taxes?.TIN?.Trim() ?? string.Empty
                 },
                 Values = values
             };
@@ -184,7 +185,8 @@ public class EmrAppDefaultsService(
             {
                 TaxName = "VAT",
                 Pcent = 0,
-                Desc = "Value Added Tax"
+                Desc = "Value Added Tax",
+                TIN = string.Empty
             },
             Values = new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase)
         };
@@ -218,7 +220,8 @@ public class EmrAppDefaultsService(
             {
                 TaxName = defaults.Taxes.TaxName,
                 Pcent = defaults.Taxes.Pcent,
-                Desc = defaults.Taxes.Desc
+                Desc = defaults.Taxes.Desc,
+                TIN = defaults.Taxes.TIN
             },
             Values = filteredValues
         };
@@ -280,6 +283,7 @@ public class EmrAppDefaultsService(
         public string? TaxName { get; set; }
         public double Pcent { get; set; }
         public string? Desc { get; set; }
+        public string? TIN { get; set; }
     }
 
     private async Task MergeAccountingDefaultsAsync(IDictionary<string, string> values, CancellationToken cancellationToken)

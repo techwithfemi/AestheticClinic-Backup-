@@ -6,15 +6,11 @@
     </button>
   </div>
 
-  <app-patient-summary
+  <app-attendance-summary
     [compact]="true"
-    [photo]="selectedPatientInfo?.photo"
-    [fullName]="selectedPatientInfo?.fullName || selectedPatientInfo?.patientName"
-    [dateOfBirth]="selectedPatientInfo?.dateOfBirth"
-    [companyName]="selectedPatientInfo?.companyName || selectedPatientInfo?.coyID"
-    [consultId]="selectedPatientInfo?.consultId || headerInfo.consultId"
-    [clinic]="selectedPatientInfo?.clinic">
-  </app-patient-summary>
+    [attendance]="attendanceSummary"
+    [photo]="selectedPatientPhoto">
+  </app-attendance-summary>
 
   <form [formGroup]="invoiceForm" class="invoice-form">
     <mat-card class="section-card">
@@ -117,6 +113,11 @@
 
       <div class="details-table-wrap">
         <table mat-table [dataSource]="persistedDetails" class="details-table">
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef class="item-col">TariffCat</th>
+            <td mat-cell *matCellDef="let row" class="item-col">{{ row.category || '-' }}</td>
+          </ng-container>
+
           <ng-container matColumnDef="drgName">
             <th mat-header-cell *matHeaderCellDef class="item-col">Bill Item</th>
             <td mat-cell *matCellDef="let row" class="item-col">{{ row.drgName }}</td>
@@ -151,8 +152,8 @@
             </td>
           </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="['drgName','price','qty','lineTotal','revenueType','actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['drgName','price','qty','lineTotal','revenueType','actions'];"></tr>
+          <tr mat-header-row *matHeaderRowDef="detailsColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: detailsColumns;"></tr>
         </table>
       </div>
 

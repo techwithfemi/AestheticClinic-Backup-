@@ -30,6 +30,9 @@ public class BillingDetailVM
     public string? RevenueType { get; set; }
 
     [StringLength(100)]
+    public string? Category { get; set; }
+
+    [StringLength(100)]
     public string? BillTo { get; set; }
 
     [StringLength(100)]

@@ -2,22 +2,26 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { Vwhpatient } from '../../models/legacy/vwhpatient.model';
+import { VwhRecord } from '../../models/legacy/vwh-record.model';
 
 @Component({
-  selector: 'app-patient-summary',
+  selector: 'app-attendance-summary',
   standalone: true,
   imports: [CommonModule, MatIconModule],
-  templateUrl: './patient-summary.component.html',
-  styleUrl: './patient-summary.component.scss'
+  templateUrl: './attendance-summary.component.html',
+  styleUrl: './attendance-summary.component.scss'
 })
-export class PatientSummaryComponent {
-  @Input() patient?: Vwhpatient;
+export class AttendanceSummaryComponent {
+  @Input() attendance?: VwhRecord;
   @Input() photo?: string;
   @Input() compact = false;
 
   get age(): number | null {
-    const dob = this.patient?.dob;
+    if (typeof this.attendance?.age === 'number' && this.attendance.age >= 0) {
+      return this.attendance.age;
+    }
+
+    const dob = this.attendance?.dob;
     if (!dob) {
       return null;
     }
@@ -36,6 +40,10 @@ export class PatientSummaryComponent {
     }
 
     return age >= 0 ? age : null;
+  }
+
+  get companyName(): string {
+    return this.attendance?.retainName?.trim() || this.attendance?.coyname?.trim() || '—';
   }
 
   get photoSource(): string {

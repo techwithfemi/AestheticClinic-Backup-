@@ -1,0 +1,37 @@
+export interface VwhRecord {
+  recId?: number;
+  recDate?: string;
+  consultId: string;
+  pNo: string;
+  clientCat?: string;
+  remarks?: string;
+  empId?: string;
+  clinicType: string;
+  nextApptDate?: string;
+  htime?: string;
+  attendedTo?: boolean;
+  referal?: string;
+  docAssigned?: string;
+  attendedToByDoc?: boolean;
+  patVal?: number;
+  suppres?: boolean;
+  exitDate?: string;
+  exitDateComment?: string;
+  diagnosis?: string;
+  coyname?: string;
+  billDate?: string;
+  retainCode?: string;
+  retainName?: string;
+  clientCatId?: string;
+  clientType?: string;
+  fullname: string;
+  acctId?: string;
+  dob?: string;
+  sex?: string;
+  age?: number;
+  retainId?: string;
+  phoneNo?: string;
+  debt?: number;
+  policyType?: string;
+  empNo?: string;
+}

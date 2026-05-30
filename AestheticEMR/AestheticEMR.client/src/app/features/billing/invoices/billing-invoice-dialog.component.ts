@@ -31,7 +31,10 @@ import { DrugNhi } from '../../../models/legacy/drug-nhi.model';
 import { LabServiceNhi } from '../../../models/legacy/lab-service-nhi.model';
 import { ProductTariff } from '../../../models/legacy/product-tariff.model';
 import { ProductTariffEndpoint } from '../../../services/product-tariff-endpoint.service';
-import { PatientSummaryComponent } from '../../../components/patient-summary/patient-summary.component';
+import { HRetainership } from '../../../models/legacy/h-retainership.model';
+import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
+import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
+import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 
 export interface BillingInvoiceDialogData {
   mode: 'create' | 'edit';
@@ -54,6 +57,8 @@ interface AttendanceOption {
   dateOfBirth?: string;
   companyName?: string;
   clinic?: string;
+  age?: number;
+  clientCat?: string;
 }
 
 @Component({
@@ -71,7 +76,7 @@ interface AttendanceOption {
     MatCardModule,
     MatTableModule,
     NgSelectModule,
-    PatientSummaryComponent
+    AttendanceSummaryComponent
   ],
   templateUrl: './billing-invoice-dialog.component.html',
   styleUrl: './billing-invoice-dialog.component.scss'
@@ -88,11 +93,12 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private drugNHISEndpoint = inject(DrugNHISEndpoint);
   private labServiceNHIEndpoint = inject(LabServiceNHIEndpoint);
   private productTariffEndpoint = inject(ProductTariffEndpoint);
+  private hRetainershipEndpoint = inject(HRetainershipEndpoint);
 
   private dialogRef = inject(MatDialogRef<BillingInvoiceDialogComponent>);
   data = inject<BillingInvoiceDialogData>(MAT_DIALOG_DATA);
 
-  readonly detailsColumns = ['drgName', 'price', 'qty', 'lineTotal', 'actions'];
+  readonly detailsColumns = ['category', 'drgName', 'price', 'qty', 'lineTotal', 'revenueType', 'actions'];
   loadingIndicator = false;
   hasChanges = false;
   isReadOnly = false;
@@ -137,6 +143,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
     patientName: '',
     coyID: ''
   };
+
+  private retainershipByCode = new Map<string, string>();
 
   get selectedPatientInfo(): AttendanceOption | undefined {
     return this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
@@ -185,8 +193,36 @@ export class BillingInvoiceDialogComponent implements OnInit {
     return this.isEditing ? 'Edit Invoice' : 'Add Invoice';
   }
 
+  get attendanceSummary(): VwhRecord {
+    const selected = this.selectedPatientInfo;
+    const companyName = this.resolveCompanyName();
+
+    return {
+      consultId: selected?.consultId || this.headerInfo.consultId,
+      pNo: selected?.pNo || this.headerInfo.pNo,
+      clientCat: selected?.clientCat,
+      clinicType: selected?.clinic || '',
+      fullname: selected?.fullName || selected?.patientName || this.headerInfo.patientName || '—',
+      dob: selected?.dateOfBirth,
+      age: selected?.age ?? this.selectedPatientAge ?? undefined,
+      coyname: selected?.companyName || selected?.coyID || this.headerInfo.coyID || undefined,
+      retainCode: this.headerInfo.coyID || this.data.coyID || this.data.clientID || undefined,
+      retainId: this.headerInfo.coyID || this.data.coyID || this.data.clientID || undefined,
+      retainName: companyName !== '—' ? companyName : undefined
+    };
+  }
+
+  get selectedPatientPhoto(): string | undefined {
+    return this.selectedPatientInfo?.photo;
+  }
+
+  get displayedCompanyName(): string {
+    return this.resolveCompanyName();
+  }
+
   ngOnInit(): void {
     this.loadAttendanceOptions();
+    this.loadRetainerships();
     this.loadItemCategories();
     this.loadProductCategories();
     this.loadProducts();
@@ -299,7 +335,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.loadingIndicator = false;
           this.dialogRef.close(true);
         },
-        error: (error) => {
+        error: (error: unknown) => {
           this.alertService.stopLoadingMessage();
           this.loadingIndicator = false;
           this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error, error);
@@ -412,7 +448,9 @@ export class BillingInvoiceDialogComponent implements OnInit {
           photo: patient?.patPixBase64,
           dateOfBirth: patient?.dob,
           companyName: company,
-          clinic: item.clinicType
+          clinic: item.clinicType,
+          age: this.getAgeFromDateOfBirth(patient?.dob),
+          clientCat: item.clientCat
         };
 
         const key = this.optionKey(option);
@@ -604,6 +642,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     const revenueTypeName = selectedRevenueType?.revType?.trim() || undefined;
     const fallbackRevenueType = String(value.revenueType ?? '').trim();
     const existingTranId = this.persistedDetails.find(x => !!x.tranID)?.tranID;
+    const category = String(value.itemCategory ?? '').trim() || undefined;
 
     return {
       tranID: existingTranId,
@@ -614,6 +653,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       conID: (value.conID ?? '').trim() || this.headerInfo.consultId || undefined,
       revenueType: revenueTypeName ?? (fallbackRevenueType || undefined),
       revenueTypeName,
+      category,
       billTo: this.headerInfo.coyID || 'Self',
       coyName: this.headerInfo.coyID || 'Self'
     } as BillingDetail;
@@ -795,5 +835,84 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
     this.invoiceForm.enable({ emitEvent: false });
     this.lineItemForm.enable({ emitEvent: false });
+  }
+
+  private loadRetainerships(): void {
+    this.hRetainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>().subscribe({
+      next: retainerships => {
+        const map = new Map<string, string>();
+        for (const item of retainerships ?? []) {
+          const name = item.retainName?.trim();
+          if (!name) {
+            continue;
+          }
+
+          const keys = [item.retainCode, item.retainId, item.clientCatId]
+            .map(x => (x ?? '').trim())
+            .filter(x => !!x);
+
+          for (const key of keys) {
+            map.set(key.toLowerCase(), name);
+          }
+        }
+
+        this.retainershipByCode = map;
+      },
+      error: err => {
+        this.retainershipByCode = new Map<string, string>();
+        this.handleLoadError('Retainership Error', err);
+      }
+    });
+  }
+
+  private lookupRetainershipName(clientId?: string): string {
+    const key = (clientId ?? '').trim().toLowerCase();
+    if (!key) {
+      return '';
+    }
+
+    return this.retainershipByCode.get(key) ?? '';
+  }
+
+  private resolveCompanyName(): string {
+    const candidates = [
+      this.selectedPatientInfo?.companyName,
+      this.data.company,
+      this.lookupRetainershipName(this.selectedPatientInfo?.coyID),
+      this.lookupRetainershipName(this.headerInfo.coyID),
+      this.lookupRetainershipName(this.data.clientID),
+      this.lookupRetainershipName(this.data.coyID)
+    ];
+
+    return candidates.find(x => !!x && !this.isLikelyClientCode(x)) || '—';
+  }
+
+  private isLikelyClientCode(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const normalized = value.trim();
+    return /^\d+$/.test(normalized) || /^[A-Z]{1,6}\d+$/.test(normalized);
+  }
+
+  private getAgeFromDateOfBirth(dateOfBirth?: string): number | undefined {
+    if (!dateOfBirth) {
+      return undefined;
+    }
+
+    const birthDate = new Date(dateOfBirth);
+    if (Number.isNaN(birthDate.getTime())) {
+      return undefined;
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age >= 0 ? age : undefined;
   }
 }

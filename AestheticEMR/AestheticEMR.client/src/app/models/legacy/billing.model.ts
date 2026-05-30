@@ -8,6 +8,7 @@ export interface BillingDetail {
   conID?: string;
   revenueType?: string;
   revenueTypeName?: string;
+  category?: string;
   billTo?: string;
   coyName?: string;
 }
