@@ -5,7 +5,8 @@
   "Taxes": {
     "TaxName": "VAT",
     "Pcent": 7.5,
-    "Desc": "Value Added Tax"
+    "Desc": "Value Added Tax",
+    "TIN": "000012345"
   },
   "PublicVariables": {
     "BillHead": "VCP Aesthetic Clinic",
