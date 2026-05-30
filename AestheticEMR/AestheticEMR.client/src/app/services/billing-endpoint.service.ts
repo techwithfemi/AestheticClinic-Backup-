@@ -7,6 +7,23 @@ import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 import { Billing } from '../models/legacy/billing.model';
 
+export interface SaveReceiptRequest {
+  payType: string;
+  accountNo?: string;
+  chequeNo?: string;
+  bankCode?: string;
+  valueDate?: string;   // ISO date string
+  remarks?: string;
+  receivedBy?: string;
+}
+
+export interface ReceiptSaved {
+  receiptNo: string;
+  receiptDate: string;
+  amountPaid: number;
+  payType: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BillingEndpoint extends EndpointBase {
   private http = inject(HttpClient);
@@ -41,6 +58,32 @@ export class BillingEndpoint extends EndpointBase {
   getDeleteInvoiceEndpoint<T>(billNo: string): Observable<T> {
     return this.http.delete<T>(`${this.billingsUrl}/${encodeURIComponent(billNo)}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getDeleteInvoiceEndpoint<T>(billNo)))
+    );
+  }
+
+  getInvoicePrintDataEndpoint<T>(billNo: string): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/${encodeURIComponent(billNo)}/print-data`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getInvoicePrintDataEndpoint<T>(billNo)))
+    );
+  }
+
+  getUpdateDiscountEndpoint<T>(billNo: string, discount: number): Observable<T> {
+    return this.http.patch<T>(
+      `${this.billingsUrl}/${encodeURIComponent(billNo)}/discount`,
+      JSON.stringify({ discount }),
+      this.requestHeaders
+    ).pipe(
+      catchError(error => this.handleError(error, () => this.getUpdateDiscountEndpoint<T>(billNo, discount)))
+    );
+  }
+
+  getSaveReceiptEndpoint<T>(billNo: string, payload: SaveReceiptRequest): Observable<T> {
+    return this.http.post<T>(
+      `${this.billingsUrl}/${encodeURIComponent(billNo)}/receipt`,
+      JSON.stringify(payload),
+      this.requestHeaders
+    ).pipe(
+      catchError(error => this.handleError(error, () => this.getSaveReceiptEndpoint<T>(billNo, payload)))
     );
   }
 }

@@ -1,0 +1,195 @@
+/* ===== Dialog toolbar (not printed) ===== */
+.dialog-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #1976d2;
+  color: #fff;
+
+  .toolbar-title { font-size: 1rem; font-weight: 600; }
+  .toolbar-actions { display: flex; gap: 8px; align-items: center; }
+  button[mat-raised-button] { color: #fff; border-color: rgba(255,255,255,.4); }
+}
+
+/* ===== A4 page container ===== */
+.a4-page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 18mm 18mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #1a1a1a;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 9.5pt;
+  box-sizing: border-box;
+  box-shadow: 0 2px 16px rgba(0,0,0,.15);
+}
+
+/* ===== Header ===== */
+.inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6mm;
+}
+
+.clinic-name {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #1565c0;
+  margin: 0 0 2px;
+}
+
+.clinic-addr {
+  margin: 1px 0;
+  color: #444;
+  font-size: 9pt;
+}
+
+.inv-label-area {
+  text-align: right;
+}
+
+.inv-label-box {
+  border: 2px solid #1565c0;
+  padding: 4px 18px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.inv-title {
+  font-size: 18pt;
+  font-weight: 700;
+  color: #1565c0;
+  letter-spacing: 2px;
+}
+
+.divider {
+  border: none;
+  border-top: 1.5px solid #1565c0;
+  margin: 4mm 0;
+}
+
+/* ===== Meta row ===== */
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10mm;
+  margin: 4mm 0;
+}
+
+.meta-block {
+  flex: 1;
+}
+
+.meta-right {
+  flex: 0 0 auto;
+}
+
+.section-label {
+  font-size: 8pt;
+  text-transform: uppercase;
+  color: #888;
+  margin: 0 0 3px;
+  letter-spacing: .5px;
+}
+
+.meta-value {
+  margin: 1px 0;
+  font-size: 9.5pt;
+  &.bold { font-weight: 700; }
+}
+
+.meta-table {
+  border-collapse: collapse;
+  td { padding: 2px 6px 2px 0; font-size: 9.5pt; }
+  .meta-key { color: #555; white-space: nowrap; }
+  .meta-val { font-weight: 500; }
+  .bold { font-weight: 700; }
+}
+
+/* ===== Items table ===== */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 5mm 0 2mm;
+
+  th {
+    background: #1565c0;
+    color: #fff;
+    padding: 5px 8px;
+    text-align: left;
+    font-size: 8.5pt;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 4px 8px;
+    border-bottom: .5px solid #e0e0e0;
+    font-size: 9pt;
+    vertical-align: top;
+  }
+
+  tbody tr:nth-child(even) td { background: #f5f7fc; }
+
+  .text-right { text-align: right; }
+  .col-sno  { width: 28px; text-align: center; }
+  .col-qty  { width: 42px; }
+  .col-price, .col-total { width: 80px; }
+  .col-cat  { width: 90px; }
+}
+
+/* ===== Summary ===== */
+.summary-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4mm 0;
+}
+
+.summary-table {
+  border-collapse: collapse;
+  min-width: 200px;
+
+  td { padding: 3px 8px; font-size: 9.5pt; }
+
+  .sum-key { color: #444; }
+  .sum-val { text-align: right; white-space: nowrap; }
+  .bold     { font-weight: 700; }
+
+  .balance-row td {
+    border-top: 1.5px solid #1565c0;
+    padding-top: 5px;
+    font-size: 10.5pt;
+  }
+
+  .credit { color: #2e7d32; } /* green for credit balance */
+}
+
+/* ===== Footer ===== */
+.inv-footer {
+  margin-top: 10mm;
+  border-top: .5px solid #ccc;
+  padding-top: 4mm;
+  text-align: center;
+
+  .footer-note { margin: 2px 0; color: #555; font-size: 8.5pt; }
+  .small { font-size: 8pt; color: #888; }
+}
+
+/* ===== Print rules ===== */
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+
+  body { margin: 0; background: #fff !important; }
+
+  .no-print { display: none !important; }
+
+  .a4-page {
+    width: 210mm;
+    min-height: 297mm;
+    box-shadow: none;
+    margin: 0;
+  }
+}
