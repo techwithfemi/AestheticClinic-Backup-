@@ -542,34 +542,51 @@ public class BillingController(
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /// <summary>List all receipts (Payments records).</summary>
+    /// <summary>
+    /// List receipts sourced from QryhBillingIncome.
+    /// By default returns current-date records unless includeAll=true.
+    /// </summary>
     [HttpGet("receipts")]
-    [ProducesResponseType(typeof(IEnumerable<ReceiptListVM>), 200)]
-    public async Task<IActionResult> GetReceipts()
+    [ProducesResponseType(typeof(IEnumerable<QryhBillingIncomeVM>), 200)]
+    public async Task<IActionResult> GetReceipts([FromQuery] bool includeAll = false)
     {
         try
         {
-            var payments = await context.Payments
+            var query = context.QryhBillingIncomes
                 .AsNoTracking()
-                .Where(p => p.suppres != true)
-                .OrderByDescending(p => p.ReceiptDate)
+                .Where(x => x.Suppres != true);
+
+            if (!includeAll)
+            {
+                var today = DateTime.Today;
+                query = query.Where(x => x.ReceiptDate.Date == today);
+            }
+
+            var rows = await query
+                .OrderByDescending(x => x.ReceiptDate)
+                .ThenByDescending(x => x.RTime)
                 .ToListAsync();
 
-            var vms = payments.Select(p => new ReceiptListVM
+            var vms = rows.Select(x => new QryhBillingIncomeVM
             {
-                ReceiptNo    = p.ReceiptNo,
-                ReceiptDate  = p.ReceiptDate,
-                BillNo       = p.billNO,
-                PatientNo    = p.pNO,
-                PatientName  = p.ClientName,
-                AmountBilled = p.AmountBilled,
-                AmountPaid   = p.AmountPaid,
-                PayType      = p.payType,
-                ReceivedBy   = p.Receivedby,
-                Remarks      = p.Remarks,
-                ChequeNo     = p.ChequeNo,
-                BankCode     = p.BankCode,
-                ValueDate    = p.ValueDate
+                ReceiptDate = x.ReceiptDate,
+                RTime = x.RTime,
+                ReceiptNo = x.ReceiptNo,
+                PNo = x.Pno,
+                PaymentFor = x.PaymentFor,
+                AmountBilled = x.AmountBilled,
+                AmountPaid = x.AmountPaid,
+                Balance = x.Balance,
+                PayType = x.PayType,
+                ClinicId = x.ClinicId,
+                Fullname = x.Fullname,
+                PatNo = x.PatNo,
+                ReceivedBy = x.Receivedby,
+                BillNo = x.BillNo,
+                CoyName = x.Coyname,
+                IsPost = x.IsPost,
+                Remarks = x.Remarks,
+                Suppres = x.Suppres
             });
 
             return Ok(vms);
@@ -605,6 +622,44 @@ public class BillingController(
         {
             _logger.LogError(ex, "Error deleting receipt {ReceiptNo}", receiptNo);
             AddModelError("Unable to delete receipt");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("vwh-record/{consultId}")]
+    [ProducesResponseType(typeof(VwhRecordSummaryVM), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetVwhRecordSummary(string consultId)
+    {
+        try
+        {
+            var record = await context.VwhRecords
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ConsultId == consultId);
+
+            if (record is null)
+                return NotFound(consultId);
+
+            return Ok(new VwhRecordSummaryVM
+            {
+                ConsultId = record.ConsultId,
+                PNo = record.PNo,
+                ClientCat = record.ClientCat,
+                ClinicType = record.ClinicType,
+                Coyname = record.Coyname,
+                RetainName = record.RetainName,
+                Fullname = record.Fullname,
+                Dob = record.Dob,
+                Age = record.Age,
+                PhoneNo = record.PhoneNo,
+                RetainCode = record.RetainCode,
+                RetainId = record.RetainId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving VwhRecord summary for {ConsultId}", consultId);
+            AddModelError("Unable to retrieve attendance summary");
             return BadRequest(ModelState);
         }
     }

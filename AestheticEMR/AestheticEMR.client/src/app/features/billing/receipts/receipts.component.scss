@@ -28,8 +28,18 @@
 .header-actions {
   display: flex;
   gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  margin-left: auto;
+}
+
+.header-actions > button {
+  margin-top: 0;
+}
+
+.attendance-select-field {
+  width: 300px;
+  max-width: 300px;
 }
 
 .toolbar-row {
@@ -39,6 +49,11 @@
 .search-field {
   width: 100%;
   max-width: 400px;
+}
+
+.search-inline-field {
+  width: 300px;
+  max-width: 300px;
 }
 
 .table-wrap {
@@ -84,4 +99,18 @@
 @media (max-width: 575.98px) {
   .receipts-page { padding: 12px; }
   .page-card { padding: 12px; }
+}
+
+@media (max-width: 1200px) {
+  .header-actions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .attendance-select-field,
+  .search-inline-field {
+    width: 100%;
+    max-width: 100%;
+  }
 }

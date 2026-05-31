@@ -1,4 +1,4 @@
-﻿// ---------------------------------------
+// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -100,6 +100,9 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<VwHreferal> VwHreferals { get; set; }
         public DbSet<VwBillsForClientsBatchVal> VwBillsForClientsBatchVals { get; set; }
         public DbSet<VwhRevenueForAcct> VwhRevenueForAccts { get; set; }
+        public DbSet<VwAccountsInfo> VwAccountsInfos { get; set; }
+        public DbSet<QryBillingBalance> QryBillingBalances { get; set; }
+        public DbSet<QryhBillingIncome> QryhBillingIncomes { get; set; }
 
         public DbSet<Drug> Drugs { get; set; }
         public DbSet<DrugMaster> DrugMasters { get; set; }
@@ -1503,10 +1506,29 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.ToView("vwBillsForClientsBatchVal");
             });
 
+            builder.Entity<VwAccountsInfo>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwAccountsInfo");
+            });
+
             builder.Entity<VwhRevenueForAcct>(entity =>
             {
                 entity.HasNoKey();
                 entity.ToView("vwhRevenueForAccts");
+            });
+        
+
+            builder.Entity<QryBillingBalance>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryBillingBalance");
+            });
+
+            builder.Entity<QryhBillingIncome>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhBillingIncome");
             });
         }
 

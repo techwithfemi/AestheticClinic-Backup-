@@ -87,9 +87,9 @@ export class BillingEndpoint extends EndpointBase {
     );
   }
 
-  getReceiptsEndpoint<T>(): Observable<T> {
-    return this.http.get<T>(`${this.billingsUrl}/receipts`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getReceiptsEndpoint<T>()))
+  getReceiptsEndpoint<T>(includeAll = false): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/receipts?includeAll=${includeAll}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getReceiptsEndpoint<T>(includeAll)))
     );
   }
 
@@ -99,6 +99,12 @@ export class BillingEndpoint extends EndpointBase {
       this.requestHeaders
     ).pipe(
       catchError(error => this.handleError(error, () => this.getDeleteReceiptEndpoint<T>(receiptNo)))
+    );
+  }
+
+  getVwhRecordSummaryEndpoint<T>(consultId: string): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/vwh-record/${encodeURIComponent(consultId)}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getVwhRecordSummaryEndpoint<T>(consultId)))
     );
   }
 }

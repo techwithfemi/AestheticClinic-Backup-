@@ -10,7 +10,28 @@
     <span class="meta-item" *ngIf="data.balance != null"><strong>Balance:</strong> {{ data.balance | number:'1.2-2' }}</span>
   </div>
 
+  <app-attendance-summary
+    [compact]="true"
+    [attendance]="attendanceSummary"
+    [photo]="selectedPatientPhoto">
+  </app-attendance-summary>
+
   <form [formGroup]="form" class="receipt-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Select Patient</mat-label>
+      <mat-select [(value)]="selectedAttendanceKey" (selectionChange)="onAttendanceSelectionChange()">
+        <mat-option value="">Select patient name</mat-option>
+        <mat-option *ngFor="let option of attendanceOptions" [value]="optionKey(option)">
+          {{ option.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Bill No</mat-label>
+      <input matInput formControlName="billNo" placeholder="e.g. CONSULT ID" />
+    </mat-form-field>
+
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Payment Type</mat-label>
       <mat-select formControlName="payType">
@@ -51,15 +72,15 @@
       <mat-label>Remarks</mat-label>
       <textarea matInput formControlName="remarks" rows="2"></textarea>
     </mat-form-field>
+
+    <div class="dialog-actions">
+      <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+      <button mat-raised-button color="primary" type="button"
+              [disabled]="form.invalid || isSaving"
+              (click)="save()">
+        <mat-icon>save</mat-icon>
+        {{ isSaving ? 'Saving…' : 'Save Receipt' }}
+      </button>
+    </div>
   </form>
 </mat-dialog-content>
-
-<mat-dialog-actions align="end">
-  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
-  <button mat-raised-button color="primary" type="button"
-          [disabled]="form.invalid || isSaving"
-          (click)="save()">
-    <mat-icon>save</mat-icon>
-    {{ isSaving ? 'Saving…' : 'Save Receipt' }}
-  </button>
-</mat-dialog-actions>

@@ -1,15 +1,20 @@
 export interface Receipt {
-  receiptNo: string;
   receiptDate: string;
-  billNo: string;
-  patientNo: string;
-  patientName?: string;
+  rTime?: string;
+  receiptNo: string;
+  pNo: string;
+  paymentFor: string;
   amountBilled: number;
   amountPaid: number;
+  balance?: number;
   payType: string;
+  clinicId?: string;
+  fullname: string;
+  patNo: string;
   receivedBy?: string;
+  billNo: string;
+  coyName?: string;
+  isPost?: boolean;
   remarks?: string;
-  chequeNo?: string;
-  bankCode?: string;
-  valueDate?: string;
+  suppres?: boolean;
 }
