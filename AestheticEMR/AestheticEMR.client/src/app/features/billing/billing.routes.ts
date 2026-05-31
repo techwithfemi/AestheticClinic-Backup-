@@ -12,8 +12,8 @@ export const billingRoutes: Routes = [
       .then(m => m.InvoicesComponent)
   },
   {
-    path: 'claims',
-    loadComponent: () => import('./claims/claims.component')
-      .then(m => m.ClaimsComponent)
+    path: 'receipts',
+    loadComponent: () => import('./receipts/receipts.component')
+      .then(m => m.ReceiptsComponent)
   }
 ];

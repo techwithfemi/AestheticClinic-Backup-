@@ -86,4 +86,19 @@ export class BillingEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getSaveReceiptEndpoint<T>(billNo, payload)))
     );
   }
+
+  getReceiptsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/receipts`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getReceiptsEndpoint<T>()))
+    );
+  }
+
+  getDeleteReceiptEndpoint<T>(receiptNo: string): Observable<T> {
+    return this.http.delete<T>(
+      `${this.billingsUrl}/receipts/${encodeURIComponent(receiptNo)}`,
+      this.requestHeaders
+    ).pipe(
+      catchError(error => this.handleError(error, () => this.getDeleteReceiptEndpoint<T>(receiptNo)))
+    );
+  }
 }

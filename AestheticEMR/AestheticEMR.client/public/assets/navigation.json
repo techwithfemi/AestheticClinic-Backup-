@@ -66,7 +66,7 @@
       "icon": "payments",
       "subItems": [
         { "label": "Invoices", "path": "invoices", "icon": "receipt_long" },
-        { "label": "Claims", "path": "claims", "icon": "fact_check" }
+        { "label": "Receipts", "path": "receipts", "icon": "receipt" }
       ]
     },
     "Management": {

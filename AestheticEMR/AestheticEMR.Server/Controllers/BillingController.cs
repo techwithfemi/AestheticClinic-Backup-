@@ -542,6 +542,73 @@ public class BillingController(
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /// <summary>List all receipts (Payments records).</summary>
+    [HttpGet("receipts")]
+    [ProducesResponseType(typeof(IEnumerable<ReceiptListVM>), 200)]
+    public async Task<IActionResult> GetReceipts()
+    {
+        try
+        {
+            var payments = await context.Payments
+                .AsNoTracking()
+                .Where(p => p.suppres != true)
+                .OrderByDescending(p => p.ReceiptDate)
+                .ToListAsync();
+
+            var vms = payments.Select(p => new ReceiptListVM
+            {
+                ReceiptNo    = p.ReceiptNo,
+                ReceiptDate  = p.ReceiptDate,
+                BillNo       = p.billNO,
+                PatientNo    = p.pNO,
+                PatientName  = p.ClientName,
+                AmountBilled = p.AmountBilled,
+                AmountPaid   = p.AmountPaid,
+                PayType      = p.payType,
+                ReceivedBy   = p.Receivedby,
+                Remarks      = p.Remarks,
+                ChequeNo     = p.ChequeNo,
+                BankCode     = p.BankCode,
+                ValueDate    = p.ValueDate
+            });
+
+            return Ok(vms);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving receipts");
+            AddModelError("Unable to retrieve receipts");
+            return BadRequest(ModelState);
+        }
+    }
+
+    /// <summary>Delete (suppress) a receipt.</summary>
+    [HttpDelete("receipts/{receiptNo}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeleteReceipt(string receiptNo)
+    {
+        try
+        {
+            var payment = await context.Payments.FirstOrDefaultAsync(p => p.ReceiptNo == receiptNo);
+            if (payment is null)
+                return NotFound(receiptNo);
+
+            // Soft-delete: set suppres flag
+            payment.suppres = true;
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Receipt {ReceiptNo} suppressed", receiptNo);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting receipt {ReceiptNo}", receiptNo);
+            AddModelError("Unable to delete receipt");
+            return BadRequest(ModelState);
+        }
+    }
+
     private static string AmountToWords(decimal amount)
     {
         // Simple implementation: "{amount:N2} only"

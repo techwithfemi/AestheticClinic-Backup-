@@ -1,0 +1,112 @@
+<div [@fadeInOut] class="receipts-page">
+  <mat-card class="page-card">
+    <div class="page-header">
+      <div>
+        <h2>Receipts</h2>
+        <p class="subtitle">View and manage payment receipts.</p>
+      </div>
+      <div class="header-actions">
+        <button mat-raised-button color="primary" type="button" (click)="openNewReceipt()">
+          <mat-icon>add</mat-icon>
+          New Receipt
+        </button>
+        <button mat-stroked-button type="button" (click)="refresh()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search</mat-label>
+        <input matInput [(ngModel)]="searchText" (input)="onSearch()"
+               placeholder="Search by receipt no, bill no, patient or pay type" />
+      </mat-form-field>
+    </div>
+
+    <div class="table-wrap">
+      <table mat-table [dataSource]="pagedReceipts" class="list-table">
+
+        <ng-container matColumnDef="receiptDate">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let r">{{ r.receiptDate | date: 'mediumDate' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="receiptNo">
+          <th mat-header-cell *matHeaderCellDef>Receipt No</th>
+          <td mat-cell *matCellDef="let r">{{ r.receiptNo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="billNo">
+          <th mat-header-cell *matHeaderCellDef>Bill No</th>
+          <td mat-cell *matCellDef="let r">{{ r.billNo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="patientName">
+          <th mat-header-cell *matHeaderCellDef>Patient</th>
+          <td mat-cell *matCellDef="let r">{{ r.patientName ?? r.patientNo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="payType">
+          <th mat-header-cell *matHeaderCellDef>Pay Type</th>
+          <td mat-cell *matCellDef="let r">{{ r.payType }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amountBilled">
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Billed</th>
+          <td mat-cell *matCellDef="let r" class="figure-col">{{ r.amountBilled | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amountPaid">
+          <th mat-header-cell *matHeaderCellDef class="figure-col">Paid</th>
+          <td mat-cell *matCellDef="let r" class="figure-col">{{ r.amountPaid | number: '1.2-2' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="receivedBy">
+          <th mat-header-cell *matHeaderCellDef>Received By</th>
+          <td mat-cell *matCellDef="let r">{{ r.receivedBy }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let r" class="actions-cell">
+            <button mat-icon-button type="button" color="primary"
+                    title="Add receipt for this bill"
+                    (click)="openReceiptEntry(r)">
+              <mat-icon>add_circle_outline</mat-icon>
+            </button>
+            <button mat-icon-button type="button" color="warn"
+                    title="Delete receipt"
+                    (click)="deleteReceipt(r)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="listColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: listColumns;"></tr>
+
+        <tr class="mat-row no-data-row" *matNoDataRow>
+          <td [attr.colspan]="listColumns.length" class="no-data-cell">
+            <span *ngIf="loadingIndicator">Loading…</span>
+            <span *ngIf="!loadingIndicator && !searchText">No receipts found.</span>
+            <span *ngIf="!loadingIndicator && searchText">No results for "{{ searchText }}".</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-row" *ngIf="filteredReceipts.length > pageSize">
+      <button mat-icon-button (click)="prevPage()" [disabled]="currentPage === 1">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
+      <button mat-icon-button (click)="nextPage()" [disabled]="currentPage === totalPages">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+  </mat-card>
+</div>

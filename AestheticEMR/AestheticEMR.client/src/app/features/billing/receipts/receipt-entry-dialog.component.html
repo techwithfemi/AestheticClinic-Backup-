@@ -1,0 +1,65 @@
+<h2 mat-dialog-title>
+  <mat-icon>receipt</mat-icon>
+  Manual Receipt Entry
+</h2>
+
+<mat-dialog-content>
+  <div class="receipt-meta" *ngIf="data.patientName || data.billNo">
+    <span class="meta-item"><strong>Bill No:</strong> {{ data.billNo }}</span>
+    <span class="meta-item" *ngIf="data.patientName"><strong>Patient:</strong> {{ data.patientName }}</span>
+    <span class="meta-item" *ngIf="data.balance != null"><strong>Balance:</strong> {{ data.balance | number:'1.2-2' }}</span>
+  </div>
+
+  <form [formGroup]="form" class="receipt-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Payment Type</mat-label>
+      <mat-select formControlName="payType">
+        <mat-option *ngFor="let pt of payTypes" [value]="pt">{{ pt }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Account / Revenue Code</mat-label>
+      <input matInput formControlName="accountNo" placeholder="e.g. CASH" />
+    </mat-form-field>
+
+    <ng-container *ngIf="showChequeFields">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Cheque No</mat-label>
+        <input matInput formControlName="chequeNo" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Bank Code</mat-label>
+        <input matInput formControlName="bankCode" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Value / Clearing Date</mat-label>
+        <input matInput [matDatepicker]="valuePicker" formControlName="valueDate" />
+        <mat-datepicker-toggle matSuffix [for]="valuePicker"></mat-datepicker-toggle>
+        <mat-datepicker #valuePicker></mat-datepicker>
+      </mat-form-field>
+    </ng-container>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Received By</mat-label>
+      <input matInput formControlName="receivedBy" placeholder="Cashier name (optional)" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Remarks</mat-label>
+      <textarea matInput formControlName="remarks" rows="2"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-raised-button color="primary" type="button"
+          [disabled]="form.invalid || isSaving"
+          (click)="save()">
+    <mat-icon>save</mat-icon>
+    {{ isSaving ? 'Saving…' : 'Save Receipt' }}
+  </button>
+</mat-dialog-actions>

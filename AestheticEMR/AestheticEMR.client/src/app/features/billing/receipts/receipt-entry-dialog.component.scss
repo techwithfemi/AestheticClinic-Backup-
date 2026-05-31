@@ -1,0 +1,33 @@
+h2[mat-dialog-title] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receipt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.receipt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 400px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+@media (max-width: 575.98px) {
+  .receipt-form {
+    min-width: unset;
+  }
+}
