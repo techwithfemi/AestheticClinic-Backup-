@@ -412,9 +412,10 @@ public class BillingController(
             if (collision)
                 receiptNo = $"RCT-{billNo}-{now:yyyyMMddHHmmssfff}";
 
-            // ── Amount being paid = full balance ─────────────────────────────
-            // "Clicking Generate Receipt means patient is paying full amount"
-            var payAmount = balance; // positive = amount due; could be negative (credit)
+            // ── Amount being paid: use provided amount or fall back to full balance ──
+            var payAmount = (model.AmountToPay.HasValue && model.AmountToPay.Value > 0)
+                ? model.AmountToPay.Value
+                : balance;
 
             // ── Patient info for denormalised columns ────────────────────────
             var patient     = await patientService.GetByIdAsync(billing.pNo);
@@ -567,26 +568,61 @@ public class BillingController(
                 .ThenByDescending(x => x.RTime)
                 .ToListAsync();
 
+            // Collect all distinct billNos for a single batch reference check
+            var billNos = rows.Select(x => x.BillNo).Distinct().ToList();
+
+            var referencedBillNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (billNos.Count > 0)
+            {
+                // A billNo is "in use" if it is referenced in any of:
+                // HRecords (attendance), Billings, HDental, HConsulting
+                // (Payments table itself is OK to have — that's the receipt data)
+                var inHRecords    = await context.HRecords.AsNoTracking()
+                    .Where(x => billNos.Contains(x.ConsultId) && x.Suppres != true)
+                    .Select(x => x.ConsultId)
+                    .ToListAsync();
+
+                var inBillings    = await context.Billings.AsNoTracking()
+                    .Where(x => billNos.Contains(x.billNO))
+                    .Select(x => x.billNO)
+                    .ToListAsync();
+
+                var inDental      = await context.HDentals.AsNoTracking()
+                    .Where(x => billNos.Contains(x.ConsultId))
+                    .Select(x => x.ConsultId)
+                    .ToListAsync();
+
+                var inConsulting  = await context.HConsultings.AsNoTracking()
+                    .Where(x => billNos.Contains(x.ConsultId))
+                    .Select(x => x.ConsultId)
+                    .ToListAsync();
+
+                foreach (var id in inHRecords.Concat(inBillings).Concat(inDental).Concat(inConsulting))
+                    referencedBillNos.Add(id);
+            }
+
             var vms = rows.Select(x => new QryhBillingIncomeVM
             {
                 ReceiptDate = x.ReceiptDate,
-                RTime = x.RTime,
-                ReceiptNo = x.ReceiptNo,
-                PNo = x.Pno,
-                PaymentFor = x.PaymentFor,
-                AmountBilled = x.AmountBilled,
-                AmountPaid = x.AmountPaid,
-                Balance = x.Balance,
-                PayType = x.PayType,
-                ClinicId = x.ClinicId,
-                Fullname = x.Fullname,
-                PatNo = x.PatNo,
-                ReceivedBy = x.Receivedby,
-                BillNo = x.BillNo,
-                CoyName = x.Coyname,
-                IsPost = x.IsPost,
-                Remarks = x.Remarks,
-                Suppres = x.Suppres
+                RTime       = x.RTime,
+                ReceiptNo   = x.ReceiptNo,
+                PNo         = x.Pno,
+                PaymentFor  = x.PaymentFor,
+                AmountBilled= x.AmountBilled,
+                AmountPaid  = x.AmountPaid,
+                Balance     = x.Balance,
+                PayType     = x.PayType,
+                ClinicId    = x.ClinicId,
+                Fullname    = x.Fullname,
+                PatNo       = x.PatNo,
+                ReceivedBy  = x.Receivedby,
+                BillNo      = x.BillNo,
+                CoyName     = x.Coyname,
+                IsPost      = x.IsPost,
+                Remarks     = x.Remarks,
+                Suppres     = x.Suppres,
+                CanDelete   = !referencedBillNos.Contains(x.BillNo)
             });
 
             return Ok(vms);
@@ -599,10 +635,54 @@ public class BillingController(
         }
     }
 
-    /// <summary>Delete (suppress) a receipt.</summary>
+    /// <summary>Update mutable fields of an existing receipt.</summary>
+    [HttpPut("receipts/{receiptNo}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> UpdateReceipt(string receiptNo, [FromBody] UpdateReceiptVM model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var payment = await context.Payments.FirstOrDefaultAsync(p => p.ReceiptNo == receiptNo);
+            if (payment is null)
+                return NotFound(receiptNo);
+
+            payment.payType    = model.PayType;
+            payment.Remarks    = model.Remarks;
+            payment.Receivedby = model.ReceivedBy;
+            payment.ChequeNo   = model.ChequeNo;
+            payment.BankCode   = model.BankCode;
+            payment.ValueDate  = model.ValueDate;
+            payment.ChequeDate = model.ValueDate;
+
+            // Mirror update into PaymentTypes row for this receipt
+            var payType = await context.PaymentTypes.FirstOrDefaultAsync(pt => pt.ReceiptNo == receiptNo);
+            if (payType is not null)
+                payType.PayType = model.PayType;
+
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Receipt {ReceiptNo} updated", receiptNo);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating receipt {ReceiptNo}", receiptNo);
+            AddModelError("Unable to update receipt");
+            return BadRequest(ModelState);
+        }
+    }
+
+    /// <summary>Delete (suppress) a receipt — blocked when billNo is still referenced in operational tables.</summary>
     [HttpDelete("receipts/{receiptNo}")]
     [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> DeleteReceipt(string receiptNo)
     {
         try
@@ -611,8 +691,31 @@ public class BillingController(
             if (payment is null)
                 return NotFound(receiptNo);
 
-            // Soft-delete: set suppres flag
+            var billNo = payment.billNO;
+
+            // Reference guard: block deletion when consultId is in use
+            var isReferenced =
+                await context.HRecords.AnyAsync(x => x.ConsultId == billNo && x.Suppres != true) ||
+                await context.Billings.AnyAsync(x => x.billNO == billNo) ||
+                await context.HDentals.AnyAsync(x => x.ConsultId == billNo) ||
+                await context.HConsultings.AnyAsync(x => x.ConsultId == billNo);
+
+            if (isReferenced)
+            {
+                AddModelError($"Receipt cannot be deleted: Bill No '{billNo}' is still referenced in operational records (attendance, billing, dental, or consulting).");
+                return UnprocessableEntity(ModelState);
+            }
+
+            // Soft-delete
             payment.suppres = true;
+
+            // Also suppress linked PaymentTypes rows
+            var payTypes = await context.PaymentTypes
+                .Where(pt => pt.ReceiptNo == receiptNo)
+                .ToListAsync();
+            foreach (var pt in payTypes)
+                pt.suppres = true;
+
             await context.SaveChangesAsync();
 
             _logger.LogInformation("Receipt {ReceiptNo} suppressed", receiptNo);

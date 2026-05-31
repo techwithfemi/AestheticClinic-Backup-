@@ -9,30 +9,43 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
 
-import { BillingEndpoint, SaveReceiptRequest } from '../../../services/billing-endpoint.service';
+import { BillingEndpoint, SaveReceiptRequest, UpdateReceiptRequest } from '../../../services/billing-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
-import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
-import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
-import { Attendance } from '../../../models/legacy/attendance.model';
-import { HPatient } from '../../../models/legacy/h-patient.model';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
+import { Billing } from '../../../models/legacy/billing.model';
 
 export interface ReceiptEntryDialogData {
-  billNo?: string;
+  billNo: string;
   patientName?: string;
   balance?: number;
   pNo?: string;
-  consultId?: string;
+  /** When set, the dialog is in edit/update mode for this receipt */
+  receiptNo?: string;
+  payType?: string;
+  accountNo?: string;
+  chequeNo?: string;
+  bankCode?: string;
+  valueDate?: string;
+  remarks?: string;
+  receivedBy?: string;
 }
 
-interface AttendanceOption {
-  consultId: string;
-  pNo: string;
+/** Live financial summary loaded from the billing record */
+interface BillingSummary {
+  debtBF: number;
+  amountBilled: number;
+  discount: number;
+  tax: number;
+  totalBill: number;   // debtBF + amountBilled + tax - discount
+  amountPaid: number;
+  balance: number;     // totalBill - amountPaid
+  bDate: string;
   patientName: string;
-  label: string;
-  photo?: string;
 }
 
 @Component({
@@ -49,6 +62,9 @@ interface AttendanceOption {
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
+    MatDividerModule,
     AttendanceSummaryComponent
   ],
   templateUrl: './receipt-entry-dialog.component.html',
@@ -59,211 +75,128 @@ export class ReceiptEntryDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<ReceiptEntryDialogComponent>);
   private readonly fb = inject(FormBuilder);
   private readonly billingEndpoint = inject(BillingEndpoint);
-  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
-  private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly alertService = inject(AlertService);
 
   form!: FormGroup;
   isSaving = false;
+  isLoadingBilling = false;
 
-  patients: HPatient[] = [];
-  attendanceOptions: AttendanceOption[] = [];
-  selectedAttendanceKey = '';
   attendanceSummary?: VwhRecord;
+  billingSummary?: BillingSummary;
 
   readonly payTypes = ['Cash', 'Cheque', 'Transfer', 'POS'];
+
+  get isEditMode(): boolean { return !!this.data.receiptNo; }
+  get dialogTitle(): string { return this.isEditMode ? 'Update Receipt' : 'New Receipt Entry'; }
 
   get showChequeFields(): boolean {
     const payType = (this.form?.get('payType')?.value ?? '').toString().toUpperCase();
     return ['CHEQUE', 'TRANSFER'].includes(payType);
   }
 
-  get selectedPatientInfo(): AttendanceOption | undefined {
-    return this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
-  }
-
-  get selectedPatientPhoto(): string | undefined {
-    return this.selectedPatientInfo?.photo;
-  }
+  get selectedPatientPhoto(): string | undefined { return undefined; }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      billNo: [this.data.billNo ?? '', Validators.required],
-      payType: ['Cash', Validators.required],
-      accountNo: [''],
-      chequeNo: [''],
-      bankCode: [''],
-      valueDate: [null],
-      remarks: [''],
-      receivedBy: ['']
+      payType:     [this.data.payType ?? 'Cash', Validators.required],
+      amountToPay: [null],   // null = pay full balance (resolved on save)
+      accountNo:   [this.data.accountNo ?? ''],
+      chequeNo:    [this.data.chequeNo ?? ''],
+      bankCode:    [this.data.bankCode ?? ''],
+      valueDate:   [this.data.valueDate ? new Date(this.data.valueDate) : null],
+      remarks:     [this.data.remarks ?? ''],
+      receivedBy:  [this.data.receivedBy ?? '']
     });
 
-    this.loadPatients();
-
-    const initialConsultId = this.data.consultId ?? this.data.billNo;
-    if (initialConsultId) {
-      this.loadAttendanceSummary(initialConsultId);
-    }
+    this.loadAttendanceSummary(this.data.billNo);
+    this.loadBillingSummary(this.data.billNo);
   }
 
-  optionKey(option: AttendanceOption): string {
-    return `${option.consultId}|${option.pNo}`;
-  }
-
-  onAttendanceSelectionChange(): void {
-    const selected = this.selectedPatientInfo;
-    if (!selected) {
-      this.attendanceSummary = undefined;
-      return;
-    }
-
-    this.form.patchValue({ billNo: selected.consultId });
-    this.loadAttendanceSummary(selected.consultId);
-  }
-
-  private loadPatients(): void {
-    this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({
-      next: patients => {
-        this.patients = patients ?? [];
-        this.loadAttendanceOptions();
-      },
-      error: () => {
-        this.patients = [];
-        this.loadAttendanceOptions();
-      }
+  private loadAttendanceSummary(billNo: string): void {
+    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(billNo).subscribe({
+      next: summary => { this.attendanceSummary = summary; },
+      error: () => { this.attendanceSummary = undefined; }
     });
   }
 
-  private loadAttendanceOptions(): void {
-    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
-      next: attendance => {
-        const todays = (attendance ?? []).filter(a => this.isToday(a.recDate));
-        const unique = new Map<string, AttendanceOption>();
-
-        for (const item of todays) {
-          const consultId = item.consultId ?? '';
-          const pNo = item.pNo ?? '';
-          if (!consultId || !pNo) {
-            continue;
-          }
-
-          const patient = this.patients.find(p => p.pno === pNo);
-          const patientName = `${patient?.pSurName ?? 'Unknown'} ${patient?.pFirstname ?? ''}`.trim();
-
-          const option: AttendanceOption = {
-            consultId,
-            pNo,
-            patientName,
-            label: `${patientName} [${consultId}]`,
-            photo: patient?.patPixBase64
-          };
-
-          const key = this.optionKey(option);
-          if (!unique.has(key)) {
-            unique.set(key, option);
-          }
-        }
-
-        this.attendanceOptions = Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
-        this.applyContextDefaultSelection();
+  private loadBillingSummary(billNo: string): void {
+    this.isLoadingBilling = true;
+    this.billingSummary = undefined;
+    this.billingEndpoint.getInvoiceByBillNoEndpoint<Billing>(billNo).subscribe({
+      next: billing => {
+        this.isLoadingBilling = false;
+        if (!billing) return;
+        const debtBF       = billing.debtBF      ?? 0;
+        const amountBilled = billing.amountBilled ?? 0;
+        const discount     = billing.discount     ?? 0;
+        const tax          = billing.tax          ?? 0;
+        const amountPaid   = billing.amountPaid   ?? 0;
+        const totalBill    = debtBF + amountBilled + tax - discount;
+        const balance      = totalBill - amountPaid;
+        this.billingSummary = {
+          debtBF, amountBilled, discount, tax, totalBill, amountPaid, balance,
+          bDate: billing.bDate ?? '',
+          patientName: billing.patientName ?? ''
+        };
       },
-      error: () => {
-        this.attendanceOptions = [];
-        this.applyContextDefaultSelection();
-      }
-    });
-  }
-
-  private applyContextDefaultSelection(): void {
-    const dataConsultId = this.data.consultId ?? this.data.billNo;
-    const dataPNo = this.data.pNo;
-
-    if (dataConsultId && dataPNo) {
-      const matched = this.attendanceOptions.find(x => x.consultId === dataConsultId && x.pNo === dataPNo);
-      if (matched) {
-        this.selectedAttendanceKey = this.optionKey(matched);
-        this.form.patchValue({ billNo: matched.consultId });
-        this.loadAttendanceSummary(matched.consultId);
-        return;
-      }
-    }
-
-    if (dataConsultId) {
-      this.form.patchValue({ billNo: dataConsultId });
-      this.loadAttendanceSummary(dataConsultId);
-    }
-  }
-
-  private loadAttendanceSummary(consultId: string): void {
-    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(consultId).subscribe({
-      next: summary => {
-        this.attendanceSummary = summary;
-      },
-      error: () => {
-        this.attendanceSummary = undefined;
-      }
+      error: () => { this.isLoadingBilling = false; this.billingSummary = undefined; }
     });
   }
 
   save(): void {
     if (this.form.invalid) {
-      this.alertService.showStickyMessage('Validation Error', 'Bill No and payment type are required.', MessageSeverity.error);
+      this.alertService.showStickyMessage('Validation Error', 'Payment type is required.', MessageSeverity.error);
       return;
     }
-
-    const v = this.form.getRawValue();
-    const billNo = (v.billNo ?? '').toString().trim();
-    if (!billNo) {
-      this.alertService.showStickyMessage('Validation Error', 'Bill No is required.', MessageSeverity.error);
-      return;
-    }
-
-    const payload: SaveReceiptRequest = {
-      payType: v.payType,
-      accountNo: v.accountNo || undefined,
-      chequeNo: v.chequeNo || undefined,
-      bankCode: v.bankCode || undefined,
-      valueDate: v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
-      remarks: v.remarks || undefined,
-      receivedBy: v.receivedBy || undefined
-    };
 
     this.isSaving = true;
-    this.billingEndpoint.getSaveReceiptEndpoint(billNo, payload).subscribe({
-      next: result => {
-        this.isSaving = false;
-        this.dialogRef.close(result);
-      },
-      error: (error: unknown) => {
-        this.isSaving = false;
-        this.alertService.showStickyMessage(
-          'Save Error',
-          `Unable to save receipt.\r\nError: "${this.getErrorMessage(error)}"`,
-          MessageSeverity.error,
-          error
-        );
-      }
-    });
+    const v = this.form.getRawValue();
+
+    if (this.isEditMode) {
+      const payload: UpdateReceiptRequest = {
+        payType:    v.payType,
+        accountNo:  v.accountNo || undefined,
+        chequeNo:   v.chequeNo || undefined,
+        bankCode:   v.bankCode || undefined,
+        valueDate:  v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
+        remarks:    v.remarks || undefined,
+        receivedBy: v.receivedBy || undefined
+      };
+      this.billingEndpoint.getUpdateReceiptEndpoint(this.data.receiptNo!, payload).subscribe({
+        next: () => { this.isSaving = false; this.dialogRef.close(true); },
+        error: (error: unknown) => {
+          this.isSaving = false;
+          this.alertService.showStickyMessage('Update Error', 'Unable to update receipt. Error: ' + this.getErrorMessage(error), MessageSeverity.error, error);
+        }
+      });
+    } else {
+      const payload: SaveReceiptRequest = {
+        payType:      v.payType,
+        amountToPay:  v.amountToPay ? Number(v.amountToPay) : undefined,
+        accountNo:    v.accountNo || undefined,
+        chequeNo:     v.chequeNo || undefined,
+        bankCode:     v.bankCode || undefined,
+        valueDate:    v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
+        remarks:      v.remarks || undefined,
+        receivedBy:   v.receivedBy || undefined
+      };
+      this.billingEndpoint.getSaveReceiptEndpoint(this.data.billNo, payload).subscribe({
+        next: result => { this.isSaving = false; this.dialogRef.close(result); },
+        error: (error: unknown) => {
+          this.isSaving = false;
+          this.alertService.showStickyMessage('Save Error', 'Unable to save receipt. Error: ' + this.getErrorMessage(error), MessageSeverity.error, error);
+        }
+      });
+    }
   }
 
   cancel(): void {
     this.dialogRef.close();
   }
 
-  private isToday(dateValue?: string): boolean {
-    if (!dateValue) {
-      return false;
-    }
-
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) {
-      return false;
-    }
-
-    const today = new Date();
-    return date.getFullYear() === today.getFullYear()
-      && date.getMonth() === today.getMonth()
-      && date.getDate() === today.getDate();
+  fmt(val: number): string {
+    if (val < 0) return `(${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+    return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   private getErrorMessage(error: unknown): string {
@@ -271,7 +204,6 @@ export class ReceiptEntryDialogComponent implements OnInit {
       const e = error as { error?: { title?: string }; message?: string };
       return e.error?.title ?? e.message ?? 'Unknown error';
     }
-
     return 'Unknown error';
   }
 }

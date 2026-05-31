@@ -17,4 +17,5 @@ export interface Receipt {
   isPost?: boolean;
   remarks?: string;
   suppres?: boolean;
+  canDelete?: boolean;
 }

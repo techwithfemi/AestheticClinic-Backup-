@@ -10,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -42,7 +43,8 @@ interface ReceiptAttendanceOption {
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatSelectModule
+    MatSelectModule,
+    MatTooltipModule
   ],
   animations: [fadeInOut],
   templateUrl: './receipts.component.html',
@@ -138,31 +140,19 @@ export class ReceiptsComponent implements OnInit {
         for (const item of todays) {
           const consultId = item.consultId ?? '';
           const pNo = item.pNo ?? '';
-          if (!consultId || !pNo) {
-            continue;
-          }
+          if (!consultId || !pNo) continue;
 
           const patient = this.patients.find(p => p.pno === pNo);
           const patientName = `${patient?.pSurName ?? 'Unknown'} ${patient?.pFirstname ?? ''}`.trim();
 
-          const option: ReceiptAttendanceOption = {
-            consultId,
-            pNo,
-            patientName,
-            label: `${patientName} [${consultId}]`
-          };
-
+          const option: ReceiptAttendanceOption = { consultId, pNo, patientName, label: `${patientName} [${consultId}]` };
           const key = this.optionKey(option);
-          if (!unique.has(key)) {
-            unique.set(key, option);
-          }
+          if (!unique.has(key)) unique.set(key, option);
         }
 
         this.attendanceOptions = Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
       },
-      error: () => {
-        this.attendanceOptions = [];
-      }
+      error: () => { this.attendanceOptions = []; }
     });
   }
 
@@ -188,27 +178,19 @@ export class ReceiptsComponent implements OnInit {
     );
   }
 
-  prevPage(): void {
-    if (this.currentPage > 1) this.currentPage--;
-  }
+  prevPage(): void { if (this.currentPage > 1) this.currentPage--; }
+  nextPage(): void { if (this.currentPage < this.totalPages) this.currentPage++; }
 
-  nextPage(): void {
-    if (this.currentPage < this.totalPages) this.currentPage++;
-  }
-
-  optionKey(option: ReceiptAttendanceOption): string {
-    return `${option.consultId}|${option.pNo}`;
-  }
+  optionKey(option: ReceiptAttendanceOption): string { return `${option.consultId}|${option.pNo}`; }
 
   openNewReceipt(): void {
     const selected = this.attendanceOptions.find(x => this.optionKey(x) === this.selectedAttendanceKey);
     if (!selected) {
-      this.alertService.showStickyMessage('Validation Error', 'Please select a patient name.', MessageSeverity.error);
+      this.alertService.showStickyMessage('Validation Error', 'Please select a patient from today\'s attendance.', MessageSeverity.error);
       return;
     }
 
     const data: ReceiptEntryDialogData = {
-      consultId: selected.consultId,
       billNo: selected.consultId,
       pNo: selected.pNo,
       patientName: selected.patientName
@@ -216,7 +198,7 @@ export class ReceiptsComponent implements OnInit {
 
     this.dialog.open(ReceiptEntryDialogComponent, {
       data,
-      width: '840px',
+      width: '760px',
       disableClose: true
     }).afterClosed().subscribe(result => {
       if (result) {
@@ -226,29 +208,35 @@ export class ReceiptsComponent implements OnInit {
     });
   }
 
-  openReceiptEntry(receipt: Receipt): void {
+  openEditReceipt(receipt: Receipt): void {
     const data: ReceiptEntryDialogData = {
-      billNo: receipt.billNo,
+      receiptNo:   receipt.receiptNo,
+      billNo:      receipt.billNo,
+      pNo:         receipt.pNo,
       patientName: receipt.fullname,
-      balance: receipt.balance,
-      pNo: receipt.pNo,
-      consultId: receipt.billNo
+      balance:     receipt.balance,
+      payType:     receipt.payType,
+      remarks:     receipt.remarks,
+      receivedBy:  receipt.receivedBy
     };
+
     this.dialog.open(ReceiptEntryDialogComponent, {
       data,
       width: '840px',
       disableClose: true
     }).afterClosed().subscribe(result => {
       if (result) {
-        this.alertService.showMessage('Success', 'Receipt saved successfully.', MessageSeverity.success);
+        this.alertService.showMessage('Success', 'Receipt updated successfully.', MessageSeverity.success);
         this.loadData();
       }
     });
   }
 
   deleteReceipt(receipt: Receipt): void {
+    if (receipt.canDelete === false) return;
+
     this.alertService.showDialog(
-      `Delete receipt ${receipt.receiptNo}?`,
+      `Delete receipt ${receipt.receiptNo}?\n\nThis action cannot be undone.`,
       DialogType.confirm,
       () => this.confirmDelete(receipt)
     );
@@ -272,27 +260,21 @@ export class ReceiptsComponent implements OnInit {
     });
   }
 
+  private isToday(dateValue?: string): boolean {
+    if (!dateValue) return false;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return false;
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error && typeof error === 'object') {
       const e = error as { error?: { title?: string }; message?: string };
       return e.error?.title ?? e.message ?? 'Unknown error';
     }
     return 'Unknown error';
-  }
-
-  private isToday(dateValue?: string): boolean {
-    if (!dateValue) {
-      return false;
-    }
-
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) {
-      return false;
-    }
-
-    const today = new Date();
-    return date.getFullYear() === today.getFullYear()
-      && date.getMonth() === today.getMonth()
-      && date.getDate() === today.getDate();
   }
 }

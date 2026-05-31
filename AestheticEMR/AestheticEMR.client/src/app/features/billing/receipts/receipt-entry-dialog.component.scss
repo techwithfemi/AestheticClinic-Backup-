@@ -4,17 +4,6 @@ h2[mat-dialog-title] {
   gap: 8px;
 }
 
-.receipt-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  background: #f5f5f5;
-  border-radius: 6px;
-  font-size: 0.875rem;
-}
-
 .dialog-shell {
   box-sizing: border-box;
   padding: 24px;
@@ -48,23 +37,236 @@ h2[mat-dialog-title] {
   margin-left: auto;
 }
 
+.dialog-title-row {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+
+  .spacer { flex: 1; }
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 8px;
+  min-width: 520px;
+  max-width: 760px;
+}
+
+/* ── Context bar ─────────────────────────────────────── */
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f0f4ff;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ctx-icon {
+  font-size: 16px;
+  height: 16px;
+  width: 16px;
+  color: #5c6bc0;
+}
+
+/* ── Financial Summary Panel ────────────────────────── */
+.billing-summary-panel {
+  border: 1px solid #c8d6e0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: #f7fbff;
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #1565c0;
+    margin-bottom: 8px;
+    line-height: 18px;
+
+    mat-icon { font-size: 16px; height: 16px; width: 16px; line-height: 16px; }
+  }
+
+  .loading-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #666;
+  }
+}
+
+/* 2-column grid: each cell = label + value */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.sum-cell {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 2px 6px 2px 0;
+  gap: 6px;
+  font-size: 0.8rem;
+
+  /* Right cell gets a left padding to separate from left cell */
+  &:nth-child(even) {
+    padding-left: 12px;
+    border-left: 1px solid #dce8f0;
+  }
+
+  .sum-lbl {
+    color: #546e7a;
+    white-space: nowrap;
+    border-bottom: 1px dashed transparent;
+    cursor: default;
+
+    &[mattooltip] { border-bottom-color: #aaa; }
+  }
+
+  .sum-val {
+    font-weight: 500;
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+
+    &.mono { font-family: 'Courier New', monospace; font-size: 0.78rem; }
+    &.deduction { color: #c62828; }
+    &.paid { color: #2e7d32; }
+    &.strong { font-weight: 700; }
+  }
+
+  /* Highlighted total-bill cell */
+  &.sum-cell--highlight {
+    background: #e8f0fe;
+    border-radius: 4px 0 0 4px;
+    padding: 3px 6px 3px 6px;
+
+    .sum-lbl { color: #1a237e; font-weight: 600; }
+    .sum-val  { color: #1a237e; }
+  }
+
+  /* Balance cell */
+  &.sum-cell--balance {
+    background: #e3f2fd;
+    border-radius: 0 4px 4px 0;
+    padding: 3px 4px 3px 12px;
+    border-left: none;
+
+    .sum-lbl { color: #1565c0; font-weight: 600; }
+    .sum-val  { color: #1565c0; font-size: 0.9rem; &.credit { color: #2e7d32; } }
+
+    .credit-lbl { color: #2e7d32; }
+  }
+}
+
+/* Divider that spans both columns */
+.sum-divider {
+  grid-column: 1 / -1;
+  border-top: 1px solid #c8d6e0;
+  margin: 4px 0;
+}
+
+/* Amount to Pay — spans both columns */
+.sum-pay-row {
+  grid-column: 1 / -1;
+  padding-top: 6px;
+
+  .pay-field {
+    width: 100%;
+
+    .mat-mdc-form-field-subscript-wrapper { margin-bottom: -4px; }
+  }
+}
+
+/* ── Section divider ───────────────────────────────── */
+.section-divider {
+  margin: 12px 0;
+}
+
+/* ── Form ──────────────────────────────────────────── */
+.form-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #37474f;
+  margin-bottom: 8px;
+  margin-top: 4px;
+
+  mat-icon { font-size: 18px; height: 18px; width: 18px; }
+}
+
 .receipt-form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 0;
 }
 
 .full-width {
   width: 100%;
 }
 
-.dialog-actions {
+.form-row-2 {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  gap: 12px;
+  width: 100%;
+
+  .flex-field {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ── Receipt notice ────────────────────────────────── */
+.receipt-notice {
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
-  margin-top: 8px;
+  padding: 10px 14px;
+  background: #e8f5e9;
+  border-left: 4px solid #2e7d32;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #1b5e20;
+  margin-top: 10px;
+
+  .notice-icon {
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    color: #2e7d32;
+    flex-shrink: 0;
+  }
+}
+
+/* ── Receipt meta (edit mode) ──────────────────────── */
+.receipt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 900px) {

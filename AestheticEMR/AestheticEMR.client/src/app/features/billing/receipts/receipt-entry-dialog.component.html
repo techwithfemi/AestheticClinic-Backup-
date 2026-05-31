@@ -1,86 +1,178 @@
-<h2 mat-dialog-title>
-  <mat-icon>receipt</mat-icon>
-  Manual Receipt Entry
+<h2 mat-dialog-title class="dialog-title-row">
+  <mat-icon>receipt_long</mat-icon>
+  {{ dialogTitle }}
+  <span class="spacer"></span>
+  <button mat-icon-button type="button" (click)="cancel()" aria-label="Close">
+    <mat-icon>close</mat-icon>
+  </button>
 </h2>
 
-<mat-dialog-content>
-  <div class="receipt-meta" *ngIf="data.patientName || data.billNo">
-    <span class="meta-item"><strong>Bill No:</strong> {{ data.billNo }}</span>
-    <span class="meta-item" *ngIf="data.patientName"><strong>Patient:</strong> {{ data.patientName }}</span>
-    <span class="meta-item" *ngIf="data.balance != null"><strong>Balance:</strong> {{ data.balance | number:'1.2-2' }}</span>
-  </div>
+<mat-dialog-content class="dialog-content">
 
+  <!-- ── Patient / attendance context ──────────────────────────── -->
   <app-attendance-summary
     [compact]="true"
     [attendance]="attendanceSummary"
     [photo]="selectedPatientPhoto">
   </app-attendance-summary>
 
+  <!-- ── Financial Summary Panel ───────────────────────────────── -->
+  <div class="billing-summary-panel" *ngIf="billingSummary || isLoadingBilling">
+    <div class="panel-title">
+      <mat-icon>account_balance_wallet</mat-icon>
+      <span>Financial Summary</span>
+    </div>
+
+    <div class="loading-row" *ngIf="isLoadingBilling">
+      <mat-spinner diameter="20"></mat-spinner><span>Loading billing details…</span>
+    </div>
+
+    <div class="summary-grid" *ngIf="billingSummary && !isLoadingBilling">
+
+      <!-- Row 1: Bill Date | Debt B/F -->
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Date the bill was raised">Bill Date</span>
+        <span class="sum-val">{{ billingSummary.bDate | date:'dd-MMM-yy' }}</span>
+      </div>
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Prior balance carried forward">Debt B/F</span>
+        <span class="sum-val mono">{{ fmt(billingSummary.debtBF) }}</span>
+      </div>
+
+      <!-- Row 2: Current Bill | Discount -->
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Gross charge for this visit">Current Bill</span>
+        <span class="sum-val mono">{{ fmt(billingSummary.amountBilled) }}</span>
+      </div>
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Discount applied to this bill">Discount</span>
+        <span class="sum-val mono deduction">{{ fmt(billingSummary.discount) }}</span>
+      </div>
+
+      <!-- Row 3: VAT | Amount Paid -->
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Value Added Tax">VAT</span>
+        <span class="sum-val mono">{{ fmt(billingSummary.tax) }}</span>
+      </div>
+      <div class="sum-cell">
+        <span class="sum-lbl" matTooltip="Cumulative payments received so far">Amount Paid</span>
+        <span class="sum-val mono paid">{{ fmt(billingSummary.amountPaid) }}</span>
+      </div>
+
+      <!-- Divider -->
+      <div class="sum-divider"></div>
+
+      <!-- Row 4: Total Bill | Balance (with Amount to Pay input) -->
+      <div class="sum-cell sum-cell--highlight">
+        <span class="sum-lbl" matTooltip="Debt B/F + Current Bill + VAT − Discount">Total Bill</span>
+        <span class="sum-val mono strong">{{ fmt(billingSummary.totalBill) }}</span>
+      </div>
+      <div class="sum-cell sum-cell--balance">
+        <span class="sum-lbl" matTooltip="Remaining amount due after all prior payments"
+              [class.credit-lbl]="billingSummary.balance < 0">
+          {{ billingSummary.balance < 0 ? 'Credit (Overpaid)' : 'Balance' }}
+        </span>
+        <span class="sum-val mono strong" [class.credit]="billingSummary.balance < 0">
+          {{ fmt(billingSummary.balance) }}
+        </span>
+      </div>
+
+      <!-- Row 5: Amount to Pay (spans both columns) -->
+      <div class="sum-pay-row">
+        <mat-form-field appearance="outline" class="pay-field">
+          <mat-label>Amount to Pay</mat-label>
+          <input matInput type="number" formControlName="amountToPay"
+                 [placeholder]="billingSummary.balance | number:'1.2-2'" />
+          <mat-icon matPrefix>payments</mat-icon>
+          <mat-hint>Defaults to full balance if left blank</mat-hint>
+        </mat-form-field>
+      </div>
+
+    </div>
+  </div>
+
+  <mat-divider class="section-divider"></mat-divider>
+
+  <!-- ── Payment Entry Form ─────────────────────────────────────── -->
   <form [formGroup]="form" class="receipt-form">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Select Patient</mat-label>
-      <mat-select [(value)]="selectedAttendanceKey" (selectionChange)="onAttendanceSelectionChange()">
-        <mat-option value="">Select patient name</mat-option>
-        <mat-option *ngFor="let option of attendanceOptions" [value]="optionKey(option)">
-          {{ option.label }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Bill No</mat-label>
-      <input matInput formControlName="billNo" placeholder="e.g. CONSULT ID" />
-    </mat-form-field>
+    <div class="form-section-label"><mat-icon>point_of_sale</mat-icon> Payment Details</div>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Payment Type</mat-label>
-      <mat-select formControlName="payType">
-        <mat-option *ngFor="let pt of payTypes" [value]="pt">{{ pt }}</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <div class="form-row-2">
+      <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Payment Type</mat-label>
+        <mat-select formControlName="payType">
+          <mat-option *ngFor="let pt of payTypes" [value]="pt">{{ pt }}</mat-option>
+        </mat-select>
+        <mat-icon matPrefix>credit_card</mat-icon>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Account / Revenue Code</mat-label>
-      <input matInput formControlName="accountNo" placeholder="e.g. CASH" />
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Account / Revenue Code</mat-label>
+        <input matInput formControlName="accountNo" placeholder="e.g. CASH, BANK01" />
+        <mat-icon matPrefix>account_tree</mat-icon>
+      </mat-form-field>
+    </div>
 
+    <!-- Cheque / Transfer fields -->
     <ng-container *ngIf="showChequeFields">
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Cheque No</mat-label>
-        <input matInput formControlName="chequeNo" />
-      </mat-form-field>
+      <div class="form-row-2">
+        <mat-form-field appearance="outline" class="flex-field">
+          <mat-label>Cheque No</mat-label>
+          <input matInput formControlName="chequeNo" />
+          <mat-icon matPrefix>article</mat-icon>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Bank Code</mat-label>
-        <input matInput formControlName="bankCode" />
-      </mat-form-field>
+        <mat-form-field appearance="outline" class="flex-field">
+          <mat-label>Bank Code</mat-label>
+          <input matInput formControlName="bankCode" />
+          <mat-icon matPrefix>account_balance</mat-icon>
+        </mat-form-field>
+      </div>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Value / Clearing Date</mat-label>
         <input matInput [matDatepicker]="valuePicker" formControlName="valueDate" />
         <mat-datepicker-toggle matSuffix [for]="valuePicker"></mat-datepicker-toggle>
         <mat-datepicker #valuePicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
       </mat-form-field>
     </ng-container>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Received By</mat-label>
-      <input matInput formControlName="receivedBy" placeholder="Cashier name (optional)" />
-    </mat-form-field>
+    <div class="form-row-2">
+      <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Received By</mat-label>
+        <input matInput formControlName="receivedBy" placeholder="Cashier name (optional)" />
+        <mat-icon matPrefix>badge</mat-icon>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Remarks</mat-label>
-      <textarea matInput formControlName="remarks" rows="2"></textarea>
-    </mat-form-field>
-
-    <div class="dialog-actions">
-      <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
-      <button mat-raised-button color="primary" type="button"
-              [disabled]="form.invalid || isSaving"
-              (click)="save()">
-        <mat-icon>save</mat-icon>
-        {{ isSaving ? 'Saving…' : 'Save Receipt' }}
-      </button>
+      <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Remarks</mat-label>
+        <input matInput formControlName="remarks" />
+        <mat-icon matPrefix>notes</mat-icon>
+      </mat-form-field>
     </div>
+
   </form>
+
+  <!-- ── Receipt preview notice ────────────────────────────────── -->
+  <div class="receipt-notice" *ngIf="billingSummary && !isEditMode">
+    <mat-icon class="notice-icon">info</mat-icon>
+    Saving will issue a receipt for
+    <strong>{{ fmt(form.get('amountToPay')?.value || billingSummary.balance) }}</strong>
+    via <strong>{{ form.get('payType')?.value || '—' }}</strong>.
+  </div>
+
 </mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cancel()">
+    <mat-icon>cancel</mat-icon> Cancel
+  </button>
+  <button mat-raised-button color="primary" type="button"
+          [disabled]="form.invalid || isSaving || isLoadingBilling"
+          (click)="save()">
+    <mat-icon>{{ isEditMode ? 'update' : 'save' }}</mat-icon>
+    {{ isSaving ? 'Saving…' : (isEditMode ? 'Update Receipt' : 'Issue Receipt') }}
+  </button>
+</mat-dialog-actions>

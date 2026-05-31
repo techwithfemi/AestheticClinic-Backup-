@@ -32,6 +32,9 @@ public class SaveReceiptVM
     /// <summary>Name of the cashier collecting the payment (defaults to current user).</summary>
     [StringLength(100)]
     public string? ReceivedBy { get; set; }
+
+    /// <summary>Specific amount to pay. When null/omitted the full outstanding balance is collected.</summary>
+    public decimal? AmountToPay { get; set; }
 }
 
 /// <summary>Response returned after a receipt is successfully saved.</summary>

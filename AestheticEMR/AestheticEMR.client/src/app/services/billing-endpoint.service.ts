@@ -9,6 +9,17 @@ import { Billing } from '../models/legacy/billing.model';
 
 export interface SaveReceiptRequest {
   payType: string;
+  amountToPay?: number;   // if omitted, backend pays the full balance
+  accountNo?: string;
+  chequeNo?: string;
+  bankCode?: string;
+  valueDate?: string;   // ISO date string
+  remarks?: string;
+  receivedBy?: string;
+}
+
+export interface UpdateReceiptRequest {
+  payType: string;
   accountNo?: string;
   chequeNo?: string;
   bankCode?: string;
@@ -99,6 +110,16 @@ export class BillingEndpoint extends EndpointBase {
       this.requestHeaders
     ).pipe(
       catchError(error => this.handleError(error, () => this.getDeleteReceiptEndpoint<T>(receiptNo)))
+    );
+  }
+
+  getUpdateReceiptEndpoint<T>(receiptNo: string, payload: UpdateReceiptRequest): Observable<T> {
+    return this.http.put<T>(
+      `${this.billingsUrl}/receipts/${encodeURIComponent(receiptNo)}`,
+      JSON.stringify(payload),
+      this.requestHeaders
+    ).pipe(
+      catchError(error => this.handleError(error, () => this.getUpdateReceiptEndpoint<T>(receiptNo, payload)))
     );
   }
 

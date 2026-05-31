@@ -20,4 +20,11 @@ public class QryhBillingIncomeVM
     public bool? IsPost { get; set; }
     public string? Remarks { get; set; }
     public bool? Suppres { get; set; }
+
+    /// <summary>
+    /// False when the billNo (consultId) is still referenced in operational
+    /// tables (HRecords, Billings, HDental, HConsulting) or has linked payments
+    /// beyond this receipt. Set server-side on list load.
+    /// </summary>
+    public bool CanDelete { get; set; } = true;
 }
