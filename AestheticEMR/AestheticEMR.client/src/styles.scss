@@ -1,8 +1,3 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 @use 'assets/styles/custom-variables' as *;
 @use 'bootstrap/scss/bootstrap' as *;
@@ -11,16 +6,26 @@
 @use 'assets/styles/ngx-datatable';
 @use 'assets/styles/styles-vendor';
 
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+
+// Include theming for Angular Material with `mat.theme()`.
+// This Sass mixin will define CSS variables that are used for styling Angular Material
+// components according to the Material 3 design spec.
+// Learn more about theming and how to use it for your application's
+// custom components at https://material.angular.dev/guide/theming
+@include mat.theme((
+  color: (
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: Roboto,
+  density: 0,
+));
+
 html {
   height: 100%;
-  @include mat.theme((
-    color: (
-      primary: mat.$azure-palette,
-      tertiary: mat.$blue-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
   font-size: 16px;
 }
 
@@ -276,7 +281,8 @@ i.page-caption {
 //    filter: blur(1px);
 //    filter: url("https://gist.githubusercontent.com/amitabhaghosh197/b7865b409e835b5a43b5/raw/1a255b551091924971e7dee8935fd38a7fdf7311/blur".svg#blur);
 //    filter: progid:DXImageTransform.Microsoft.Blur(PixelRadius='1');
-//}*/
+///}*/
+
 .vertical-center-flex {
   min-height: 80vh;
   display: flex;
