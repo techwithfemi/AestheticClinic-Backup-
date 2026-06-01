@@ -34,4 +34,5 @@ export interface VwhRecord {
   debt?: number;
   policyType?: string;
   empNo?: string;
+  patientPhotoBase64?: string;
 }

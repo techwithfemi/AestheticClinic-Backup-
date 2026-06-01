@@ -13,7 +13,7 @@
   <app-attendance-summary
     [compact]="true"
     [attendance]="attendanceSummary"
-    [photo]="selectedPatientPhoto">
+    [photo]="attendanceSummary?.patientPhotoBase64">
   </app-attendance-summary>
 
   <!-- ── Financial Summary Panel ───────────────────────────────── -->
@@ -77,17 +77,6 @@
         </span>
       </div>
 
-      <!-- Row 5: Amount to Pay (spans both columns) -->
-      <div class="sum-pay-row">
-        <mat-form-field appearance="outline" class="pay-field">
-          <mat-label>Amount to Pay</mat-label>
-          <input matInput type="number" formControlName="amountToPay"
-                 [placeholder]="billingSummary.balance | number:'1.2-2'" />
-          <mat-icon matPrefix>payments</mat-icon>
-          <mat-hint>Defaults to full balance if left blank</mat-hint>
-        </mat-form-field>
-      </div>
-
     </div>
   </div>
 
@@ -100,17 +89,32 @@
 
     <div class="form-row-2">
       <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Amount to Pay</mat-label>
+        <input matInput type="number" formControlName="amountToPay"
+               [placeholder]="fmt(billingSummary?.balance ?? 0)" />
+        <mat-icon matPrefix>payments</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="flex-field">
         <mat-label>Payment Type</mat-label>
         <mat-select formControlName="payType">
           <mat-option *ngFor="let pt of payTypes" [value]="pt">{{ pt }}</mat-option>
         </mat-select>
         <mat-icon matPrefix>credit_card</mat-icon>
       </mat-form-field>
+    </div>
 
+    <div class="form-row-2">
       <mat-form-field appearance="outline" class="flex-field">
         <mat-label>Account / Revenue Code</mat-label>
         <input matInput formControlName="accountNo" placeholder="e.g. CASH, BANK01" />
         <mat-icon matPrefix>account_tree</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="flex-field">
+        <mat-label>Remarks</mat-label>
+        <input matInput formControlName="remarks" />
+        <mat-icon matPrefix>notes</mat-icon>
       </mat-form-field>
     </div>
 
@@ -138,20 +142,6 @@
         <mat-icon matPrefix>event</mat-icon>
       </mat-form-field>
     </ng-container>
-
-    <div class="form-row-2">
-      <mat-form-field appearance="outline" class="flex-field">
-        <mat-label>Received By</mat-label>
-        <input matInput formControlName="receivedBy" placeholder="Cashier name (optional)" />
-        <mat-icon matPrefix>badge</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="flex-field">
-        <mat-label>Remarks</mat-label>
-        <input matInput formControlName="remarks" />
-        <mat-icon matPrefix>notes</mat-icon>
-      </mat-form-field>
-    </div>
 
   </form>
 

@@ -14,4 +14,5 @@ public class VwhRecordSummaryVM
     public string? PhoneNo { get; set; }
     public string? RetainCode { get; set; }
     public string? RetainId { get; set; }
+    public string? PatientPhotoBase64 { get; set; }
 }

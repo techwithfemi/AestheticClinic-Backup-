@@ -15,6 +15,7 @@ import { MatDividerModule } from '@angular/material/divider';
 
 import { BillingEndpoint, SaveReceiptRequest, UpdateReceiptRequest } from '../../../services/billing-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AuthService } from '../../../services/auth.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { Billing } from '../../../models/legacy/billing.model';
@@ -32,7 +33,6 @@ export interface ReceiptEntryDialogData {
   bankCode?: string;
   valueDate?: string;
   remarks?: string;
-  receivedBy?: string;
 }
 
 /** Live financial summary loaded from the billing record */
@@ -76,6 +76,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly billingEndpoint = inject(BillingEndpoint);
   private readonly alertService = inject(AlertService);
+  private readonly authService = inject(AuthService);
 
   form!: FormGroup;
   isSaving = false;
@@ -94,18 +95,15 @@ export class ReceiptEntryDialogComponent implements OnInit {
     return ['CHEQUE', 'TRANSFER'].includes(payType);
   }
 
-  get selectedPatientPhoto(): string | undefined { return undefined; }
-
   ngOnInit(): void {
     this.form = this.fb.group({
-      payType:     [this.data.payType ?? 'Cash', Validators.required],
       amountToPay: [null],   // null = pay full balance (resolved on save)
+      payType:     [this.data.payType ?? 'Cash', Validators.required],
       accountNo:   [this.data.accountNo ?? ''],
       chequeNo:    [this.data.chequeNo ?? ''],
       bankCode:    [this.data.bankCode ?? ''],
       valueDate:   [this.data.valueDate ? new Date(this.data.valueDate) : null],
-      remarks:     [this.data.remarks ?? ''],
-      receivedBy:  [this.data.receivedBy ?? '']
+      remarks:     [this.data.remarks ?? '']
     });
 
     this.loadAttendanceSummary(this.data.billNo);
@@ -114,7 +112,9 @@ export class ReceiptEntryDialogComponent implements OnInit {
 
   private loadAttendanceSummary(billNo: string): void {
     this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(billNo).subscribe({
-      next: summary => { this.attendanceSummary = summary; },
+      next: summary => {
+        this.attendanceSummary = summary;
+      },
       error: () => { this.attendanceSummary = undefined; }
     });
   }
@@ -151,6 +151,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
 
     this.isSaving = true;
     const v = this.form.getRawValue();
+    const currentUser = this.authService.currentUser;
 
     if (this.isEditMode) {
       const payload: UpdateReceiptRequest = {
@@ -160,7 +161,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
         bankCode:   v.bankCode || undefined,
         valueDate:  v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
         remarks:    v.remarks || undefined,
-        receivedBy: v.receivedBy || undefined
+        receivedBy: currentUser?.empID
       };
       this.billingEndpoint.getUpdateReceiptEndpoint(this.data.receiptNo!, payload).subscribe({
         next: () => { this.isSaving = false; this.dialogRef.close(true); },
@@ -178,7 +179,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
         bankCode:     v.bankCode || undefined,
         valueDate:    v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
         remarks:      v.remarks || undefined,
-        receivedBy:   v.receivedBy || undefined
+        receivedBy:   currentUser?.empID
       };
       this.billingEndpoint.getSaveReceiptEndpoint(this.data.billNo, payload).subscribe({
         next: result => { this.isSaving = false; this.dialogRef.close(result); },
@@ -200,10 +201,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
   }
 
   private getErrorMessage(error: unknown): string {
-    if (error && typeof error === 'object') {
-      const e = error as { error?: { title?: string }; message?: string };
-      return e.error?.title ?? e.message ?? 'Unknown error';
-    }
-    return 'Unknown error';
+    if (error instanceof Error) return error.message;
+    return String(error);
   }
 }

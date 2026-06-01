@@ -216,8 +216,7 @@ export class ReceiptsComponent implements OnInit {
       patientName: receipt.fullname,
       balance:     receipt.balance,
       payType:     receipt.payType,
-      remarks:     receipt.remarks,
-      receivedBy:  receipt.receivedBy
+      remarks:     receipt.remarks
     };
 
     this.dialog.open(ReceiptEntryDialogComponent, {

@@ -743,6 +743,23 @@ public class BillingController(
             if (record is null)
                 return NotFound(consultId);
 
+            // Load patient photo from HPatient table
+            string? patientPhoto = null;
+            if (!string.IsNullOrEmpty(record.PNo))
+            {
+                var patient = await context.HPatients
+                    .AsNoTracking()
+                    .Where(p => p.Pno == record.PNo)
+                    .FirstOrDefaultAsync();
+                
+                if (patient?.PatPix != null && patient.PatPix.Length > 0)
+                {
+                    // Convert byte array to base64 data URI
+                    string base64String = Convert.ToBase64String(patient.PatPix);
+                    patientPhoto = $"data:image/jpeg;base64,{base64String}";
+                }
+            }
+
             return Ok(new VwhRecordSummaryVM
             {
                 ConsultId = record.ConsultId,
@@ -756,7 +773,8 @@ public class BillingController(
                 Age = record.Age,
                 PhoneNo = record.PhoneNo,
                 RetainCode = record.RetainCode,
-                RetainId = record.RetainId
+                RetainId = record.RetainId,
+                PatientPhotoBase64 = patientPhoto
             });
         }
         catch (Exception ex)
