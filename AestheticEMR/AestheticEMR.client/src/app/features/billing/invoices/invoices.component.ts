@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatCardModule } from '@angular/material/card';
@@ -24,8 +24,6 @@ import { AttendanceEndpoint } from '../../../services/attendance-endpoint.servic
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
 import { HRetainership } from '../../../models/legacy/h-retainership.model';
-import { BillingInvoicePrintComponent } from '../print/billing-invoice-print.component';
-import { BillingReceiptPrintComponent } from '../print/billing-receipt-print.component';
 
 interface InvoiceAttendanceOption {
   consultId: string;
@@ -64,6 +62,7 @@ export class InvoicesComponent implements OnInit {
   private hRetainershipEndpoint = inject(HRetainershipEndpoint);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   invoices: Billing[] = [];
   invoicesCache: Billing[] = [];
@@ -434,27 +433,7 @@ export class InvoicesComponent implements OnInit {
       return;
     }
 
-    this.alertService.startLoadingMessage('Preparing invoice...');
-    this.billingEndpoint.getInvoicePrintDataEndpoint<InvoicePrintData>(invoice.billNo).subscribe({
-      next: printData => {
-        this.alertService.stopLoadingMessage();
-        this.dialog.open(BillingInvoicePrintComponent, {
-          width:      '900px',
-          maxWidth:   '98vw',
-          panelClass: 'print-dialog',
-          data:       { printData }
-        });
-      },
-      error: error => {
-        this.alertService.stopLoadingMessage();
-        this.alertService.showStickyMessage(
-          'Invoice Error',
-          `Cannot generate invoice.\r\nError: "${this.getErrorMessage(error)}"`,
-          MessageSeverity.error,
-          error
-        );
-      }
-    });
+    this.router.navigate(['/billing/invoices', invoice.billNo, 'preview']);
   }
 
   // ─────────────────────────────────────────────
@@ -518,20 +497,13 @@ export class InvoicesComponent implements OnInit {
           next: saved => {
             this.alertService.stopLoadingMessage();
 
-            // Merge saved receipt metadata into the print data
-            const enriched: InvoicePrintData = {
-              ...printData,
-              receiptNo:   saved.receiptNo,
-              receiptDate: saved.receiptDate,
-              payType:     saved.payType,
-              amountPaid:  saved.amountPaid
-            };
-
-            this.dialog.open(BillingReceiptPrintComponent, {
-              width:      '900px',
-              maxWidth:   '98vw',
-              panelClass: 'print-dialog',
-              data:       { printData: enriched }
+            this.router.navigate(['/billing/receipts', invoice.billNo, 'preview'], {
+              queryParams: {
+                receiptNo: saved.receiptNo,
+                receiptDate: saved.receiptDate,
+                payType: saved.payType,
+                amountPaid: saved.amountPaid
+              }
             });
 
             // Refresh list so updated amountPaid reflects

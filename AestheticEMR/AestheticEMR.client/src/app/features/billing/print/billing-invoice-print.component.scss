@@ -34,11 +34,30 @@
   margin-bottom: 6mm;
 }
 
+.clinic-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.clinic-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.large-logo {
+  width: 120px;
+  height: 120px;
+}
+
 .clinic-name {
   font-size: 16pt;
   font-weight: 700;
   color: #1565c0;
-  margin: 0 0 2px;
+  margin: 0;
 }
 
 .clinic-addr {
@@ -47,8 +66,17 @@
   font-size: 9pt;
 }
 
+.inv-logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .inv-label-area {
   text-align: right;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
 }
 
 .inv-label-box {
@@ -56,6 +84,10 @@
   padding: 4px 18px;
   display: inline-block;
   margin-top: 4px;
+}
+
+.inv-label-left {
+  margin: 0 0 10px 0;
 }
 
 .inv-title {
@@ -85,6 +117,7 @@
 
 .meta-right {
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .section-label {
@@ -103,9 +136,11 @@
 
 .meta-table {
   border-collapse: collapse;
-  td { padding: 2px 6px 2px 0; font-size: 9.5pt; }
-  .meta-key { color: #555; white-space: nowrap; }
-  .meta-val { font-weight: 500; }
+  margin-left: auto;
+
+  td { padding: 2px 0 2px 10px; font-size: 9.5pt; }
+  .meta-key { color: #555; white-space: nowrap; text-align: right; }
+  .meta-val { font-weight: 500; text-align: right; white-space: nowrap; }
   .bold { font-weight: 700; }
 }
 
@@ -138,7 +173,6 @@
   .col-sno  { width: 28px; text-align: center; }
   .col-qty  { width: 42px; }
   .col-price, .col-total { width: 80px; }
-  .col-cat  { width: 90px; }
 }
 
 /* ===== Summary ===== */
@@ -150,12 +184,13 @@
 
 .summary-table {
   border-collapse: collapse;
-  min-width: 200px;
+  width: 260px;
+  margin-right: 0;
 
   td { padding: 3px 8px; font-size: 9.5pt; }
 
-  .sum-key { color: #444; }
-  .sum-val { text-align: right; white-space: nowrap; }
+  .sum-key { color: #444; text-align: right; }
+  .sum-val { text-align: right; white-space: nowrap; width: 110px; }
   .bold     { font-weight: 700; }
 
   .balance-row td {
@@ -192,4 +227,60 @@
     box-shadow: none;
     margin: 0;
   }
+}
+
+/* ===== Invoice Preview Page ===== */
+.invoice-preview-page {
+  padding: 20px;
+
+  @media (max-width: 992px) {
+    padding: 16px;
+
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .header-actions button {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    padding: 12px;
+  }
+}
+
+.preview-page-card {
+  padding: 16px;
+  margin-bottom: 12px;
+
+  @media (max-width: 575.98px) {
+    padding: 12px;
+  }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+
+  @media (max-width: 992px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #6b7280;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
 }

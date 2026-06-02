@@ -600,3 +600,14 @@ table {
 .ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-disabled {
   color: #9ca3af !important;
 }
+
+.print-dialog {
+  .mat-mdc-dialog-container {
+    max-height: 95vh !important;
+  }
+
+  .mdc-dialog__surface {
+    max-height: 95vh !important;
+    overflow: auto !important;
+  }
+}

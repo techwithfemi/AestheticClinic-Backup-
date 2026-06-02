@@ -1,40 +1,51 @@
-<div class="dialog-toolbar no-print">
-  <span class="toolbar-title">Invoice Preview</span>
-  <div class="toolbar-actions">
-    <button mat-raised-button color="primary" (click)="print()">
-      <mat-icon>print</mat-icon> Print / Save PDF
-    </button>
-    <button mat-icon-button (click)="close()" title="Close">
-      <mat-icon>close</mat-icon>
-    </button>
+<div class="invoice-preview-page">
+  <mat-card class="preview-page-card no-print">
+    <div class="page-header">
+      <div>
+        <h2>Invoice Preview</h2>
+        <p class="subtitle">Preview and print invoice as PDF.</p>
+      </div>
+      <div class="header-actions">
+        <button mat-raised-button color="primary" (click)="print()" [disabled]="loadingIndicator">
+          <mat-icon>print</mat-icon>
+          Print / Save PDF
+        </button>
+        <button mat-stroked-button type="button" (click)="close()">
+          <mat-icon>arrow_back</mat-icon>
+          Back to Invoices
+        </button>
+      </div>
+    </div>
+  </mat-card>
+
+  <div class="a4-page printable" *ngIf="!loadingIndicator">
+    <ng-container *ngTemplateOutlet="invoiceContent"></ng-container>
   </div>
 </div>
 
-<div class="a4-page printable">
-
-  <!-- ===== HEADER ===== -->
+<ng-template #invoiceContent>
   <div class="inv-header">
     <div class="inv-logo-area">
+      <div class="inv-label-box inv-label-left">
+        <span class="inv-title">INVOICE</span>
+      </div>
+
       <h1 class="clinic-name">{{ d.billHead }}</h1>
       <p class="clinic-addr">{{ d.billHead2 }}</p>
       <p class="clinic-addr">{{ d.billHead3 }}</p>
       <p class="clinic-addr">{{ d.billHead4 }}</p>
     </div>
     <div class="inv-label-area">
-      <div class="inv-label-box">
-        <span class="inv-title">INVOICE</span>
-      </div>
+      <img *ngIf="logoSrc" [src]="logoSrc" alt="Clinic logo" class="clinic-logo large-logo" (error)="onLogoError($event)" />
     </div>
   </div>
 
   <hr class="divider" />
 
-  <!-- ===== META ROW ===== -->
   <div class="meta-row">
     <div class="meta-block">
       <h4 class="section-label">Bill To</h4>
       <p class="meta-value bold">{{ d.patientName }}</p>
-      <p class="meta-value">{{ d.payerName }}</p>
       <p class="meta-value">{{ d.payerAddress }}</p>
       <p class="meta-value" *ngIf="d.payerPhone">{{ d.payerPhone }}</p>
     </div>
@@ -62,13 +73,11 @@
 
   <hr class="divider" />
 
-  <!-- ===== LINE ITEMS ===== -->
   <table class="items-table">
     <thead>
       <tr>
         <th class="col-sno">#</th>
         <th class="col-desc">Description</th>
-        <th class="col-cat">Category</th>
         <th class="col-qty">Qty</th>
         <th class="col-price">Unit Price</th>
         <th class="col-total">Amount</th>
@@ -78,7 +87,6 @@
       <tr *ngFor="let item of d.details; let i = index">
         <td class="col-sno">{{ i + 1 }}</td>
         <td class="col-desc">{{ item.itemName }}</td>
-        <td class="col-cat">{{ item.category || item.billType || '' }}</td>
         <td class="col-qty text-right">{{ item.qty | number:'1.0-2' }}</td>
         <td class="col-price text-right">{{ fmt(item.price) }}</td>
         <td class="col-total text-right">{{ fmt(item.subTotal) }}</td>
@@ -86,24 +94,23 @@
     </tbody>
   </table>
 
-  <!-- ===== SUMMARY ===== -->
   <div class="summary-wrapper">
     <table class="summary-table">
       <tr>
-        <td class="sum-key">Subtotal</td>
-        <td class="sum-val">{{ fmt(subtotal) }}</td>
+        <td class="sum-key">Current Bill</td>
+        <td class="sum-val">{{ fmt(currentBill) }}</td>
+      </tr>
+      <tr *ngIf="discountAmount !== 0">
+        <td class="sum-key">Discount</td>
+        <td class="sum-val">({{ fmt(discountAmount) }})</td>
+      </tr>
+      <tr *ngIf="vatAmount !== 0">
+        <td class="sum-key">{{ d.taxName }} ({{ d.taxPcent }}%)</td>
+        <td class="sum-val">{{ fmt(vatAmount) }}</td>
       </tr>
       <tr *ngIf="d.debtBF !== 0">
-        <td class="sum-key">Balance B/F</td>
+        <td class="sum-key">Debt B/F</td>
         <td class="sum-val">{{ fmt(d.debtBF) }}</td>
-      </tr>
-      <tr *ngIf="d.tax !== 0">
-        <td class="sum-key">{{ d.taxName }} ({{ d.taxPcent }}%)</td>
-        <td class="sum-val">{{ fmt(d.tax) }}</td>
-      </tr>
-      <tr *ngIf="d.discount !== 0">
-        <td class="sum-key">Discount</td>
-        <td class="sum-val">({{ fmt(d.discount) }})</td>
       </tr>
       <tr *ngIf="d.amountPaid !== 0">
         <td class="sum-key">Amount Paid</td>
@@ -111,15 +118,13 @@
       </tr>
       <tr class="balance-row">
         <td class="sum-key bold">Balance Due</td>
-        <td class="sum-val bold" [class.credit]="d.balance < 0">{{ fmt(d.balance) }}</td>
+        <td class="sum-val bold" [class.credit]="balanceDue < 0">{{ fmt(balanceDue) }}</td>
       </tr>
     </table>
   </div>
 
-  <!-- ===== FOOTER ===== -->
   <div class="inv-footer">
     <p class="footer-note">Thank you for choosing {{ d.billHead }}. Please retain this invoice for your records.</p>
     <p class="footer-note small">All amounts are in Nigerian Naira (₦).</p>
   </div>
-
-</div>
+</ng-template>

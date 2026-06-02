@@ -12,6 +12,60 @@
   mat-button-toggle-group { background: rgba(255,255,255,.15); border-radius: 4px; }
 }
 
+.receipt-preview-page {
+  padding: 20px;
+}
+
+.preview-page-card {
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #6b7280;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 992px) {
+  .receipt-preview-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .receipt-preview-page {
+    padding: 12px;
+  }
+
+  .preview-page-card {
+    padding: 12px;
+  }
+}
+
 /* ==================== A4 RECEIPT ==================== */
 .a4-page {
   width: 210mm;

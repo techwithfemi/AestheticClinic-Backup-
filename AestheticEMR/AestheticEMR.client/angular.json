@@ -32,6 +32,11 @@
                 "input": "public"
               },
               {
+                "glob": "config.json",
+                "input": "src/assets",
+                "output": "assets"
+              },
+              {
                 "glob": "**/*.json",
                 "input": "src/assets/module-settings",
                 "output": "assets/module-settings"
@@ -178,6 +183,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "config.json",
+                "input": "src/assets",
+                "output": "assets"
               },
               {
                 "glob": "**/*.json",

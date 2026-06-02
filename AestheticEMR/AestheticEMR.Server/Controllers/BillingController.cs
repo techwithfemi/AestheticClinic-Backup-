@@ -219,6 +219,12 @@ public class BillingController(
             var defaults = await emrAppDefaultsService.GetAsync();
             var patient  = await patientService.GetByIdAsync(billing.pNo);
 
+            var currentBill = details.Sum(d => d.subTotal ?? (decimal)(d.Price * d.Qty));
+            var vatPercent = (decimal)defaults.Taxes.Pcent;
+            var taxableAmount = Math.Max(0m, currentBill - discount);
+            var computedVat = Math.Round(taxableAmount * (vatPercent / 100m), 2, MidpointRounding.AwayFromZero);
+            balance = debtBF + currentBill + computedVat - discount - amountPaid;
+
             // ── clientCat sourced from VwhRecord (consultId == billNo) ──
             var vwhRecord = await context.VwhRecords
                 .AsNoTracking()
@@ -233,13 +239,22 @@ public class BillingController(
 
             var isPrivate = string.Equals(clientCat, defaults.ClientCategoryPrivate, StringComparison.OrdinalIgnoreCase);
 
-            // For non-PRIVATE patients look up retainership company address
-            if (!isPrivate && !string.IsNullOrWhiteSpace(billing.clientID))
+            if (isPrivate)
+            {
+                if (patient != null)
+                {
+                    payerName = $"{patient.PSurName} {patient.PFirstname}".Trim();
+                    payerAddress = patient.HomeAddress ?? string.Empty;
+                    payerPhone = patient.PPhoneNo ?? string.Empty;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(billing.clientID))
             {
                 var retainerships = await retainershipService.GetAllAsync();
                 var retainership  = retainerships.FirstOrDefault(r =>
                     string.Equals(r.RetainCode, billing.clientID, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(r.RetainId,   billing.clientID, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(r.RetainId,   billing.clientID, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r.ClientCatId, billing.clientID, StringComparison.OrdinalIgnoreCase));
 
                 if (retainership != null)
                 {
@@ -249,20 +264,15 @@ public class BillingController(
                 }
             }
 
-            // Fallback: patient's own company / home address
             if (string.IsNullOrWhiteSpace(payerName) && patient != null)
             {
-                payerName    = patient.CoyName       ?? string.Empty;
-                payerAddress = patient.OfficeAddress ?? patient.HomeAddress ?? string.Empty;
-                payerPhone   = patient.PPhoneNo      ?? string.Empty;
+                payerName = $"{patient.PSurName} {patient.PFirstname}".Trim();
+                payerPhone = patient.PPhoneNo ?? string.Empty;
             }
 
-            // Final fallback — clinic address (always the case for PRIVATE patients)
-            if (string.IsNullOrWhiteSpace(payerName))
+            if (string.IsNullOrWhiteSpace(payerAddress))
             {
-                payerName    = defaults.BillHead;
                 payerAddress = $"{defaults.BillHead2}, {defaults.BillHead3}".Trim(',', ' ');
-                payerPhone   = defaults.BillHead4;
             }
 
             var patientName = patient != null
@@ -287,9 +297,9 @@ public class BillingController(
                 PayerAddress = payerAddress,
                 PayerPhone   = payerPhone,
                 DebtBF       = debtBF,
-                AmountBilled = amountBilled,
+                AmountBilled = currentBill,
                 Discount     = discount,
-                Tax          = tax,
+                Tax          = computedVat,
                 AmountPaid   = amountPaid,
                 Balance      = balance,
                 Details = details.Select((d, i) => new InvoicePrintDetailVM

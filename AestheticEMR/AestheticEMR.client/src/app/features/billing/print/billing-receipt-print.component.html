@@ -1,4 +1,4 @@
-<div class="dialog-toolbar no-print">
+<div class="dialog-toolbar no-print" *ngIf="isDialogMode">
   <span class="toolbar-title">Receipt Preview</span>
   <div class="toolbar-actions">
     <mat-button-toggle-group [(ngModel)]="paperSize" aria-label="Paper Size">
@@ -203,3 +203,225 @@
   <div class="pos-divider"></div>
 
 </div>
+
+<!-- Routed Page Template -->
+<ng-template #routedPage>
+  <div class="receipt-preview-page">
+    <mat-card class="preview-page-card no-print">
+      <div class="page-header">
+        <div>
+          <h2>Receipt Preview</h2>
+          <p class="subtitle">Preview and print receipt as PDF.</p>
+        </div>
+        <div class="header-actions">
+          <mat-button-toggle-group [(ngModel)]="paperSize" aria-label="Paper Size">
+            <mat-button-toggle value="a4">A4</mat-button-toggle>
+            <mat-button-toggle value="pos">POS (80mm)</mat-button-toggle>
+          </mat-button-toggle-group>
+          <button mat-raised-button color="primary" (click)="print()" [disabled]="loadingIndicator">
+            <mat-icon>print</mat-icon>
+            Print / Save PDF
+          </button>
+          <button mat-stroked-button type="button" (click)="close()">
+            <mat-icon>arrow_back</mat-icon>
+            Back to Invoices
+          </button>
+        </div>
+      </div>
+    </mat-card>
+
+    <ng-container *ngIf="!loadingIndicator">
+      <ng-container *ngTemplateOutlet="receiptContent"></ng-container>
+    </ng-container>
+  </div>
+</ng-template>
+
+<ng-template #receiptContent>
+  <div class="a4-page printable" *ngIf="paperSize === 'a4'">
+
+    <div class="rct-header">
+      <h1 class="clinic-name">{{ d.billHead }}</h1>
+      <p class="clinic-addr">{{ d.billHead2 }}</p>
+      <p class="clinic-addr">{{ d.billHead3 }}</p>
+      <p class="clinic-addr">{{ d.billHead4 }}</p>
+      <div class="rct-title-label">OFFICIAL RECEIPT</div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="meta-row">
+      <div class="meta-block">
+        <h4 class="section-label">Received From</h4>
+        <p class="meta-value bold">{{ d.patientName }}</p>
+        <p class="meta-value">Patient No: {{ d.patientNo }}</p>
+      </div>
+      <div class="meta-block meta-right">
+        <table class="meta-table">
+          <tr>
+            <td class="meta-key">Receipt No:</td>
+            <td class="meta-val bold">{{ receiptNo }}</td>
+          </tr>
+          <tr>
+            <td class="meta-key">Date:</td>
+            <td class="meta-val">{{ receiptDate }}</td>
+          </tr>
+          <tr>
+            <td class="meta-key">Payment Mode:</td>
+            <td class="meta-val">{{ payType }}</td>
+          </tr>
+          <tr>
+            <td class="meta-key">Inv. Ref:</td>
+            <td class="meta-val">{{ d.billNo }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th class="col-sno">#</th>
+          <th class="col-desc">Description</th>
+          <th class="col-qty">Qty</th>
+          <th class="col-total">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of d.details; let i = index">
+          <td class="col-sno">{{ i + 1 }}</td>
+          <td class="col-desc">{{ item.itemName }}</td>
+          <td class="col-qty text-right">{{ item.qty | number:'1.0-2' }}</td>
+          <td class="col-total text-right">{{ fmt(item.subTotal) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="summary-wrapper">
+      <table class="summary-table">
+        <tr *ngIf="d.debtBF !== 0">
+          <td class="sum-key">Balance B/F</td>
+          <td class="sum-val">{{ fmt(d.debtBF) }}</td>
+        </tr>
+        <tr *ngIf="d.discount !== 0">
+          <td class="sum-key">Discount</td>
+          <td class="sum-val">({{ fmt(d.discount) }})</td>
+        </tr>
+        <tr *ngIf="d.tax !== 0">
+          <td class="sum-key">{{ d.taxName }}</td>
+          <td class="sum-val">{{ fmt(d.tax) }}</td>
+        </tr>
+        <tr class="total-due-row">
+          <td class="sum-key bold">Total Amount Due</td>
+          <td class="sum-val bold">{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</td>
+        </tr>
+        <tr class="paid-row">
+          <td class="sum-key bold">Amount Paid</td>
+          <td class="sum-val bold paid-amount">{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</td>
+        </tr>
+        <tr *ngIf="d.balance > 0" class="balance-row">
+          <td class="sum-key bold">Outstanding Balance</td>
+          <td class="sum-val bold outstanding">{{ fmt(d.balance) }}</td>
+        </tr>
+        <tr *ngIf="d.balance < 0" class="balance-row">
+          <td class="sum-key bold">Change / Credit</td>
+          <td class="sum-val bold credit">{{ fmt(d.balance) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="sign-row">
+      <div class="sign-block">
+        <div class="sign-line"></div>
+        <p class="sign-label">Cashier Signature</p>
+      </div>
+      <div class="sign-block">
+        <div class="sign-line"></div>
+        <p class="sign-label">Patient Signature</p>
+      </div>
+    </div>
+
+    <div class="rct-footer">
+      <p class="footer-note">Thank you for your payment. This receipt is your proof of payment.</p>
+      <p class="footer-note small">{{ d.billHead }} &bull; {{ d.billHead2 }}, {{ d.billHead3 }}</p>
+    </div>
+
+  </div>
+
+  <div class="pos-page printable" *ngIf="paperSize === 'pos'">
+
+    <div class="pos-center">
+      <p class="pos-clinic-name">{{ d.billHead }}</p>
+      <p class="pos-line">{{ d.billHead2 }}</p>
+      <p class="pos-line">{{ d.billHead3 }}</p>
+      <p class="pos-line">{{ d.billHead4 }}</p>
+    </div>
+
+    <div class="pos-divider">--------------------------------</div>
+
+    <div class="pos-center">
+      <p class="pos-receipt-title">** OFFICIAL RECEIPT **</p>
+    </div>
+
+    <div class="pos-meta">
+      <div class="pos-meta-row"><span>Receipt No:</span><span>{{ receiptNo }}</span></div>
+      <div class="pos-meta-row"><span>Date:</span><span>{{ receiptDate }}</span></div>
+      <div class="pos-meta-row"><span>Pay Mode:</span><span>{{ payType }}</span></div>
+      <div class="pos-meta-row"><span>Patient:</span><span>{{ d.patientName }}</span></div>
+      <div class="pos-meta-row"><span>Pt No:</span><span>{{ d.patientNo }}</span></div>
+      <div class="pos-meta-row"><span>Inv Ref:</span><span>{{ d.billNo }}</span></div>
+    </div>
+
+    <div class="pos-divider">--------------------------------</div>
+
+    <div class="pos-items">
+      <div class="pos-item-header">
+        <span class="pi-desc">ITEM</span>
+        <span class="pi-qty">QTY</span>
+        <span class="pi-amt">AMT</span>
+      </div>
+      <div class="pos-item" *ngFor="let item of d.details">
+        <span class="pi-desc">{{ item.itemName }}</span>
+        <span class="pi-qty">{{ item.qty }}</span>
+        <span class="pi-amt">{{ fmt(item.subTotal) }}</span>
+      </div>
+    </div>
+
+    <div class="pos-divider">--------------------------------</div>
+
+    <div class="pos-summary">
+      <div class="pos-sum-row" *ngIf="d.debtBF !== 0">
+        <span>Bal B/F:</span><span>{{ fmt(d.debtBF) }}</span>
+      </div>
+      <div class="pos-sum-row" *ngIf="d.discount !== 0">
+        <span>Discount:</span><span>({{ fmt(d.discount) }})</span>
+      </div>
+      <div class="pos-sum-row" *ngIf="d.tax !== 0">
+        <span>{{ d.taxName }}:</span><span>{{ fmt(d.tax) }}</span>
+      </div>
+      <div class="pos-sum-row pos-total">
+        <span>TOTAL DUE:</span><span>{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</span>
+      </div>
+      <div class="pos-sum-row pos-paid">
+        <span>AMT PAID:</span>
+        <span>{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</span>
+      </div>
+      <div class="pos-sum-row pos-outstanding" *ngIf="d.balance > 0">
+        <span>OUTSTANDING:</span><span>{{ fmt(d.balance) }}</span>
+      </div>
+      <div class="pos-sum-row pos-credit" *ngIf="d.balance < 0">
+        <span>CHANGE:</span><span>{{ fmt(d.balance) }}</span>
+      </div>
+    </div>
+
+    <div class="pos-divider">================================</div>
+    <div class="pos-center pos-thanks">
+      <p>Thank you!</p>
+      <p class="pos-small">{{ d.billHead }}</p>
+      <p class="pos-small">{{ d.billHead3 }}</p>
+    </div>
+    <div class="pos-divider"></div>
+
+  </div>
+</ng-template>
