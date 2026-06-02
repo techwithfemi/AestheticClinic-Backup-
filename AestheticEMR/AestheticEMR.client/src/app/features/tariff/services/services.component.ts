@@ -365,7 +365,7 @@ export class TariffServicesComponent {
       case 'Product':
         this.productEndpoint.getProductTariffsEndpoint<ProductTariff[]>(coy).subscribe({
           next: data => this.setRows(data.map(d => ({
-            sno: d.sno,
+            sno: d.sno ?? 0,
             name: d.pdtName,
             price: d.price ?? 0,
             company: d.company ?? coy,
@@ -526,6 +526,40 @@ export class TariffServicesComponent {
     usersCat: string;
   }, currentItem: TariffRow): void {
     const selectedCompany = this.companies.find(x => x.coyId === this.selectedCoyId);
+
+    if (this.selectedCategory === 'Product') {
+      const payload: ProductTariff = {
+        sno: currentItem.sno ?? result.sno,
+        pdtName: result.service,
+        price: Number(result.price),
+        company: this.selectedCoyId,
+        coyName: selectedCompany?.company,
+        remarks: result.remarks,
+        capitated: result.capitated,
+        tariffStatus: result.tariffStatus,
+        revType: result.revType,
+        usersCat: result.usersCat
+      };
+
+      if (!payload.sno) {
+        this.alertService.showMessage('Validation Error', 'Unable to determine tariff item to update.', MessageSeverity.error);
+        return;
+      }
+
+      this.alertService.startLoadingMessage();
+      this.productEndpoint.getUpdateProductTariffEndpoint<ProductTariff>(payload.sno, payload).subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.loadTariffs();
+          this.alertService.showMessage('Success', 'Tariff item updated successfully.', MessageSeverity.success);
+        },
+        error: error => {
+          this.alertService.stopLoadingMessage();
+          this.alertService.showStickyMessage('Update Error', `Unable to update tariff item.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+        }
+      });
+      return;
+    }
 
     const payload: ServiceTariff = {
       sno: currentItem.sno ?? result.sno,

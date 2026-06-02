@@ -12,6 +12,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { BillingEndpoint, SaveReceiptRequest, UpdateReceiptRequest } from '../../../services/billing-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
@@ -19,6 +20,7 @@ import { AuthService } from '../../../services/auth.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { Billing } from '../../../models/legacy/billing.model';
+import { BankAccount } from '../../../models/legacy/bank-account.model';
 
 export interface ReceiptEntryDialogData {
   billNo: string;
@@ -65,6 +67,7 @@ interface BillingSummary {
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatDividerModule,
+    MatCheckboxModule,
     AttendanceSummaryComponent
   ],
   templateUrl: './receipt-entry-dialog.component.html',
@@ -81,33 +84,41 @@ export class ReceiptEntryDialogComponent implements OnInit {
   form!: FormGroup;
   isSaving = false;
   isLoadingBilling = false;
+  isLoadingBankAccounts = false;
 
   attendanceSummary?: VwhRecord;
   billingSummary?: BillingSummary;
+  bankAccounts: BankAccount[] = [];
 
   readonly payTypes = ['Cash', 'Cheque', 'Transfer', 'POS'];
 
   get isEditMode(): boolean { return !!this.data.receiptNo; }
-  get dialogTitle(): string { return this.isEditMode ? 'Update Receipt' : 'New Receipt Entry'; }
+  get dialogTitle(): string { return this.isEditMode ? 'Update Receipt' : 'Receipt Entry'; }
 
   get showChequeFields(): boolean {
     const payType = (this.form?.get('payType')?.value ?? '').toString().toUpperCase();
     return ['CHEQUE', 'TRANSFER'].includes(payType);
   }
 
+  get showBankSelect(): boolean {
+    const payType = (this.form?.get('payType')?.value ?? '').toString().toUpperCase();
+    return payType !== 'CASH';
+  }
+
   ngOnInit(): void {
     this.form = this.fb.group({
-      amountToPay: [null],   // null = pay full balance (resolved on save)
+      amountToPay: [null],
       payType:     [this.data.payType ?? 'Cash', Validators.required],
-      accountNo:   [this.data.accountNo ?? ''],
+      bankAccount: [this.data.accountNo ?? ''],
       chequeNo:    [this.data.chequeNo ?? ''],
       bankCode:    [this.data.bankCode ?? ''],
-      valueDate:   [this.data.valueDate ? new Date(this.data.valueDate) : null],
+      valueDate:   [this.data.valueDate ? new Date(this.data.valueDate) : new Date()],
       remarks:     [this.data.remarks ?? '']
     });
 
     this.loadAttendanceSummary(this.data.billNo);
     this.loadBillingSummary(this.data.billNo);
+    this.loadBankAccounts();
   }
 
   private loadAttendanceSummary(billNo: string): void {
@@ -143,6 +154,23 @@ export class ReceiptEntryDialogComponent implements OnInit {
     });
   }
 
+  private loadBankAccounts(): void {
+    this.isLoadingBankAccounts = true;
+    this.billingEndpoint.getBankAccountsEndpoint<BankAccount[]>().subscribe({
+      next: accounts => {
+        this.isLoadingBankAccounts = false;
+        // Deduplicate by accountId in case the view returns multiple period rows
+        const seen = new Set<string>();
+        this.bankAccounts = (accounts ?? []).filter(a => {
+          if (seen.has(a.accountId)) return false;
+          seen.add(a.accountId);
+          return true;
+        });
+      },
+      error: () => { this.isLoadingBankAccounts = false; }
+    });
+  }
+
   save(): void {
     if (this.form.invalid) {
       this.alertService.showStickyMessage('Validation Error', 'Payment type is required.', MessageSeverity.error);
@@ -153,10 +181,14 @@ export class ReceiptEntryDialogComponent implements OnInit {
     const v = this.form.getRawValue();
     const currentUser = this.authService.currentUser;
 
+    // Resolve accountNo: for Cash, leave undefined (backend will use Acct_Cash); for others use selected bank account
+    const payType = (v.payType ?? '').toString().toUpperCase();
+    const resolvedAccountNo = payType !== 'CASH' ? (v.bankAccount || undefined) : undefined;
+
     if (this.isEditMode) {
       const payload: UpdateReceiptRequest = {
         payType:    v.payType,
-        accountNo:  v.accountNo || undefined,
+        accountNo:  resolvedAccountNo,
         chequeNo:   v.chequeNo || undefined,
         bankCode:   v.bankCode || undefined,
         valueDate:  v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
@@ -171,10 +203,13 @@ export class ReceiptEntryDialogComponent implements OnInit {
         }
       });
     } else {
+      // Parse amountToPay — may be a formatted string like "5,000.00" after blur
+      const rawAmt = String(v.amountToPay ?? '').replace(/,/g, '');
+      const parsedAmt = parseFloat(rawAmt);
       const payload: SaveReceiptRequest = {
         payType:      v.payType,
-        amountToPay:  v.amountToPay ? Number(v.amountToPay) : undefined,
-        accountNo:    v.accountNo || undefined,
+        amountToPay:  !isNaN(parsedAmt) && parsedAmt > 0 ? parsedAmt : undefined,
+        accountNo:    resolvedAccountNo,
         chequeNo:     v.chequeNo || undefined,
         bankCode:     v.bankCode || undefined,
         valueDate:    v.valueDate ? (v.valueDate as Date).toISOString() : undefined,
@@ -198,6 +233,30 @@ export class ReceiptEntryDialogComponent implements OnInit {
   fmt(val: number): string {
     if (val < 0) return `(${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
     return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  onExactAmountToggle(checked: boolean): void {
+    const balance = this.billingSummary?.balance ?? 0;
+    if (checked) {
+      this.form.get('amountToPay')?.setValue(this.fmt(balance), { emitEvent: false });
+    } else {
+      this.form.get('amountToPay')?.setValue(this.fmt(0), { emitEvent: false });
+    }
+  }
+
+  formatAmountToPay(): void {
+    const raw = this.form.get('amountToPay')?.value;
+    // Strip any existing formatting then parse
+    const num = parseFloat(String(raw ?? '').replace(/,/g, ''));
+    if (!isNaN(num) && num > 0) {
+      this.form.get('amountToPay')?.setValue(this.fmt(num), { emitEvent: false });
+    }
+  }
+
+  parseAmountToPay(): number {
+    const raw = String(this.form.get('amountToPay')?.value ?? '').replace(/,/g, '');
+    const num = parseFloat(raw);
+    return isNaN(num) ? 0 : num;
   }
 
   private getErrorMessage(error: unknown): string {

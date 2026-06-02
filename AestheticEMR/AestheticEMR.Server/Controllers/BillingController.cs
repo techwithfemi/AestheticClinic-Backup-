@@ -6,6 +6,7 @@ using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace AestheticEMR.Server.Controllers;
@@ -21,7 +22,8 @@ public class BillingController(
     IHPatientService patientService,
     IHRetainershipService retainershipService,
     IEmrAppDefaultsService emrAppDefaultsService,
-    ApplicationDbContext context)
+    ApplicationDbContext context,
+    IConfiguration configuration)
     : BaseApiController(logger, mapper)
 {
     [HttpGet]
@@ -791,5 +793,78 @@ public class BillingController(
         // Replace with a proper currency-words library if needed.
         var absAmt = Math.Abs(amount);
         return $"{absAmt:N2} only";
+    }
+
+    /// <summary>
+    /// Returns bank accounts from vwAccountsInfo for bank-account selection on receipts.
+    /// Excludes the cash account (Acct_Cash) since that is selected implicitly for Cash payments.
+    /// </summary>
+    [HttpGet("bank-accounts")]
+    [ProducesResponseType(typeof(IEnumerable<BankAccountVM>), 200)]
+    public async Task<IActionResult> GetBankAccounts()
+    {
+        try
+        {
+            var defaults = await emrAppDefaultsService.GetAsync();
+            var acctBanks = defaults.Get("Acct_Banks");
+
+            var accountingConnStr = configuration.GetConnectionString("AccountingConnection")
+                ?? throw new InvalidOperationException("AccountingConnection is not configured.");
+
+            var accounts = new List<BankAccountVM>();
+            await using var conn = new SqlConnection(accountingConnStr);
+            await conn.OpenAsync();
+            const string sql = "SELECT DISTINCT AccountName, AccountNo FROM vwAccountsInfo WHERE GroupId = @AcctBanks ORDER BY AccountName";
+            await using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@AcctBanks", acctBanks ?? string.Empty);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                accounts.Add(new BankAccountVM
+                {
+                    AccountName = reader.GetString(0),
+                    AccountId   = reader.GetString(1)
+                });
+            }
+
+            return Ok(accounts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving bank accounts");
+            AddModelError("Unable to retrieve bank accounts");
+            return BadRequest(ModelState);
+        }
+    }
+
+    /// <summary>
+    /// Returns the credit account ID (AcctId) from the PRIVATE company row in hRetainership.
+    /// </summary>
+    [HttpGet("private-credit-account")]
+    [ProducesResponseType(typeof(string), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetPrivateCreditAccount()
+    {
+        try
+        {
+            var defaults = await emrAppDefaultsService.GetAsync();
+            var privateCategory = defaults.ClientCategoryPrivate; // "PRIVATE"
+
+            var retainership = await context.HRetainerships
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RetainName != null &&
+                    r.RetainName.Trim().ToUpper() == privateCategory.ToUpper());
+
+            if (retainership is null)
+                return NotFound("PRIVATE retainership not found");
+
+            return Ok(retainership.AcctId ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving private credit account");
+            AddModelError("Unable to retrieve private credit account");
+            return BadRequest(ModelState);
+        }
     }
 }

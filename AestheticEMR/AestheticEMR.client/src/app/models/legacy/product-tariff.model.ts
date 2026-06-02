@@ -1,10 +1,10 @@
 export interface ProductTariff {
-  pdtName: string; // item name
+  sno?: number;
+  pdtName: string;
   category?: string;
   company?: string;
   price?: number;
   remarks?: string;
-  sno: number;
   coyName?: string;
   capitated?: string;
   tariffStatus?: string;

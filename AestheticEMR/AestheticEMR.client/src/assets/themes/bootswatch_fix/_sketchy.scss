@@ -6,13 +6,13 @@
 
 /*
     This is a temporary fix for the issue with importing the font path in the theme.
-    Once it is fixed delete this file and import from node_modules "bootswatch/dist/<theme>/bootswatch" file instead.
+    Once it is fixed delete this file and import from node_modules "bootswatch/dist/<theme>" file instead.
 */
 
-$web-font-path: "https://fonts.googleapis.com/css?family=Neucha|Cabin+Sketch&display=swap" !default;
+$web-font-path: "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" !default;
 
 @if $web-font-path {
-  @import url("https://fonts.googleapis.com/css?family=Neucha|Cabin+Sketch&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
 }
 
 // stylelint-disable scss/dollar-variable-default
@@ -27,6 +27,7 @@ $border-radius-sm-sketchy: 255px 25px 225px 25px / 25px 225px 25px 255px;
   border-style: solid;
   border-width: 2px;
   border-radius: 25px 25px 55px 5px/5px 55px 25px 25px;
+  font-family: 'Roboto', sans-serif;
 
   &.bg-light {
     border-color: $gray-800;
@@ -43,7 +44,7 @@ $border-radius-sm-sketchy: 255px 25px 225px 25px / 25px 225px 25px 255px;
   }
 
   &-brand {
-    font-family: $headings-font-family;
+    font-family: 'Roboto', sans-serif;
     font-weight: 400;
     text-decoration: none;
   }
@@ -54,6 +55,7 @@ $border-radius-sm-sketchy: 255px 25px 225px 25px / 25px 225px 25px 255px;
 .btn {
   text-decoration: none;
   border-radius: $border-radius-sketchy;
+  font-family: 'Roboto', sans-serif;
 
   &-lg {
     border-radius: $border-radius-lg-sketchy;
@@ -76,12 +78,12 @@ input,
 optgroup,
 select,
 textarea {
-  font-family: $font-family-sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 
 b,
 strong {
-  font-family: $headings-font-family;
+  font-family: 'Roboto', sans-serif;
 }
 
 blockquote {

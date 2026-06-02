@@ -32,7 +32,7 @@
       <!-- Row 1: Bill Date | Debt B/F -->
       <div class="sum-cell">
         <span class="sum-lbl" matTooltip="Date the bill was raised">Bill Date</span>
-        <span class="sum-val">{{ billingSummary.bDate | date:'dd-MMM-yy' }}</span>
+        <span class="sum-val mono">{{ billingSummary.bDate | date:'dd-MMM-yy' }}</span>
       </div>
       <div class="sum-cell">
         <span class="sum-lbl" matTooltip="Prior balance carried forward">Debt B/F</span>
@@ -88,14 +88,23 @@
     <div class="form-section-label"><mat-icon>point_of_sale</mat-icon> Payment Details</div>
 
     <div class="form-row-2">
-      <mat-form-field appearance="outline" class="flex-field">
-        <mat-label>Amount to Pay</mat-label>
-        <input matInput type="number" formControlName="amountToPay"
-               [placeholder]="fmt(billingSummary?.balance ?? 0)" />
-        <mat-icon matPrefix>payments</mat-icon>
-      </mat-form-field>
+      <!-- Left column: checkbox pinned to top-right, Amount to Pay below -->
+      <div class="amount-col">
+        <div class="exact-amount-row">
+          <span class="exact-amount-lbl">Tick to enter exact amount</span>
+          <mat-checkbox color="primary" (change)="onExactAmountToggle($event.checked)"></mat-checkbox>
+        </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Amount to Pay</mat-label>
+          <input matInput type="text" formControlName="amountToPay"
+                 [placeholder]="fmt(billingSummary?.balance ?? 0)"
+                 (blur)="formatAmountToPay()" />
+          <mat-icon matPrefix>payments</mat-icon>
+        </mat-form-field>
+      </div>
 
-      <mat-form-field appearance="outline" class="flex-field">
+      <!-- Right column: Payment Type aligned to bottom (beside Amount to Pay) -->
+      <mat-form-field appearance="outline" class="flex-field pay-type-field">
         <mat-label>Payment Type</mat-label>
         <mat-select formControlName="payType">
           <mat-option *ngFor="let pt of payTypes" [value]="pt">{{ pt }}</mat-option>
@@ -104,16 +113,22 @@
       </mat-form-field>
     </div>
 
+    <!-- Bank Account — own row, shown for non-Cash payment types -->
+    <mat-form-field appearance="outline" class="full-width" *ngIf="showBankSelect">
+      <mat-label>Bank Account</mat-label>
+      <mat-select formControlName="bankAccount">
+        <mat-option *ngIf="isLoadingBankAccounts" disabled>Loading…</mat-option>
+        <mat-option *ngFor="let acct of bankAccounts" [value]="acct.accountId">
+          {{ acct.accountName }} [{{ acct.accountId }}]
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>account_balance</mat-icon>
+    </mat-form-field>
+
     <div class="form-row-2">
       <mat-form-field appearance="outline" class="flex-field">
-        <mat-label>Account / Revenue Code</mat-label>
-        <input matInput formControlName="accountNo" placeholder="e.g. CASH, BANK01" />
-        <mat-icon matPrefix>account_tree</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="flex-field">
         <mat-label>Remarks</mat-label>
-        <input matInput formControlName="remarks" />
+        <textarea matInput formControlName="remarks" rows="3"></textarea>
         <mat-icon matPrefix>notes</mat-icon>
       </mat-form-field>
     </div>
@@ -149,7 +164,7 @@
   <div class="receipt-notice" *ngIf="billingSummary && !isEditMode">
     <mat-icon class="notice-icon">info</mat-icon>
     Saving will issue a receipt for
-    <strong>{{ fmt(form.get('amountToPay')?.value || billingSummary.balance) }}</strong>
+    <strong>{{ fmt(parseAmountToPay() || billingSummary.balance) }}</strong>
     via <strong>{{ form.get('payType')?.value || '—' }}</strong>.
   </div>
 

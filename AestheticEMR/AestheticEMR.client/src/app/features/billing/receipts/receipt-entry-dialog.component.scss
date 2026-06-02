@@ -82,11 +82,11 @@ h2[mat-dialog-title] {
 
 /* ── Financial Summary Panel ────────────────────────── */
 .billing-summary-panel {
-  border: 1px solid #c8d6e0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 10px 14px;
   margin: 8px 0;
-  background: #f7fbff;
+  background: #f8fafc;
 
   .panel-title {
     display: flex;
@@ -94,7 +94,7 @@ h2[mat-dialog-title] {
     gap: 5px;
     font-weight: 600;
     font-size: 0.8rem;
-    color: #1565c0;
+    color: #1d4ed8;
     margin-bottom: 8px;
     line-height: 18px;
 
@@ -106,7 +106,7 @@ h2[mat-dialog-title] {
     align-items: center;
     gap: 8px;
     font-size: 0.8rem;
-    color: #666;
+    color: #64748b;
   }
 }
 
@@ -121,65 +121,68 @@ h2[mat-dialog-title] {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 2px 6px 2px 0;
+  padding: 3px 6px 3px 0;
   gap: 6px;
   font-size: 0.8rem;
 
   /* Right cell gets a left padding to separate from left cell */
   &:nth-child(even) {
     padding-left: 12px;
-    border-left: 1px solid #dce8f0;
+    border-left: 1px solid #e2e8f0;
   }
 
   .sum-lbl {
-    color: #546e7a;
+    color: #000000;
     white-space: nowrap;
     border-bottom: 1px dashed transparent;
     cursor: default;
+    font-size: 0.78rem;
+    font-weight: 500;
 
-    &[mattooltip] { border-bottom-color: #aaa; }
+    &[mattooltip] { border-bottom-color: #94a3b8; }
   }
 
   .sum-val {
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
     text-align: right;
     flex-shrink: 0;
+    color: #000000;
 
     &.mono { font-family: 'Courier New', monospace; font-size: 0.78rem; }
-    &.deduction { color: #c62828; }
-    &.paid { color: #2e7d32; }
+    &.deduction { color: #dc2626; }
+    &.paid { color: #16a34a; }
     &.strong { font-weight: 700; }
   }
 
   /* Highlighted total-bill cell */
   &.sum-cell--highlight {
-    background: #e8f0fe;
+    background: #eff6ff;
     border-radius: 4px 0 0 4px;
-    padding: 3px 6px 3px 6px;
+    padding: 4px 6px;
 
-    .sum-lbl { color: #1a237e; font-weight: 600; }
-    .sum-val  { color: #1a237e; }
+    .sum-lbl { color: #1e40af; font-weight: 600; }
+    .sum-val  { color: #1e40af; }
   }
 
   /* Balance cell */
   &.sum-cell--balance {
-    background: #e3f2fd;
+    background: #eff6ff;
     border-radius: 0 4px 4px 0;
-    padding: 3px 4px 3px 12px;
+    padding: 4px 6px 4px 12px;
     border-left: none;
 
-    .sum-lbl { color: #1565c0; font-weight: 600; }
-    .sum-val  { color: #1565c0; font-size: 0.9rem; &.credit { color: #2e7d32; } }
+    .sum-lbl { color: #1d4ed8; font-weight: 600; }
+    .sum-val  { color: #1d4ed8; font-size: 0.9rem; &.credit { color: #16a34a; } }
 
-    .credit-lbl { color: #2e7d32; }
+    .credit-lbl { color: #16a34a; }
   }
 }
 
 /* Divider that spans both columns */
 .sum-divider {
   grid-column: 1 / -1;
-  border-top: 1px solid #c8d6e0;
+  border-top: 1px solid #e2e8f0;
   margin: 4px 0;
 }
 
@@ -212,6 +215,38 @@ h2[mat-dialog-title] {
   margin-top: 4px;
 
   mat-icon { font-size: 18px; height: 18px; width: 18px; }
+}
+
+.exact-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.exact-amount-lbl {
+  font-size: 0.75rem;
+  color: #546e7a;
+}
+
+.amount-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.pay-type-field {
+  flex: 1;
+  align-self: flex-end; /* aligns to bottom so it sits beside the input, not the checkbox */
+}
+
+.amount-field-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .receipt-form {

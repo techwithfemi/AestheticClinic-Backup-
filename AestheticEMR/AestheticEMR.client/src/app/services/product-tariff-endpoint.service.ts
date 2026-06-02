@@ -18,4 +18,10 @@ export class ProductTariffEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getProductTariffsEndpoint<T>(coyID)))
     );
   }
+
+  getUpdateProductTariffEndpoint<T>(id: number, model: ProductTariff): Observable<T> {
+    return this.http.put<T>(`${this.productTariffUrl}/${id}`, JSON.stringify(model), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getUpdateProductTariffEndpoint<T>(id, model)))
+    );
+  }
 }

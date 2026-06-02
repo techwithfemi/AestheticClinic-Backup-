@@ -128,4 +128,16 @@ export class BillingEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getVwhRecordSummaryEndpoint<T>(consultId)))
     );
   }
+
+  getBankAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/bank-accounts`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getBankAccountsEndpoint<T>()))
+    );
+  }
+
+  getPrivateCreditAccountEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.billingsUrl}/private-credit-account`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getPrivateCreditAccountEndpoint<T>()))
+    );
+  }
 }
