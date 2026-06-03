@@ -54,6 +54,25 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Print Preview QA Checklist (Billing)
+
+Use this quick check before release whenever billing print styles or templates change.
+
+### Invoice print preview
+
+- Open invoice preview route and click **Print / Save PDF**.
+- Confirm popup preview shows **invoice content only** (no app sidebar/header shell).
+- Confirm popup has dialog-style toolbar with **Print** and **X** close button.
+- Confirm details **Amount** column and summary values are right-aligned to the same edge.
+- Confirm browser print preview still matches invoice preview layout and margins.
+
+### Receipt print preview
+
+- Open receipt preview and test both **A4** and **POS (80mm)** modes.
+- Confirm popup preview shows **receipt content only** (no app shell).
+- Confirm popup has dialog-style toolbar with **Print** and **X** close button.
+- Confirm totals/summary values are right-aligned and readable in both paper sizes.
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

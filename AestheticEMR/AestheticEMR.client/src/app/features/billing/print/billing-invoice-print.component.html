@@ -18,7 +18,7 @@
     </div>
   </mat-card>
 
-  <div class="a4-page printable" *ngIf="!loadingIndicator">
+  <div #printRoot class="a4-page printable" *ngIf="!loadingIndicator">
     <ng-container *ngTemplateOutlet="invoiceContent"></ng-container>
   </div>
 </div>

@@ -126,7 +126,126 @@ export class BillingReceiptPrintComponent implements OnInit {
   }
 
   print(): void {
-    window.print();
+    const selector = this.paperSize === 'pos' ? '.pos-page.printable' : '.a4-page.printable';
+    const printContainer = document.querySelector(selector) as HTMLElement | null;
+    if (!printContainer) {
+      return;
+    }
+
+    const printableContent = printContainer.outerHTML;
+    const printWindow = window.open('', '_blank', 'popup=yes,width=1200,height=900,resizable=yes,scrollbars=yes');
+    if (!printWindow) {
+      return;
+    }
+
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(tag => tag.outerHTML)
+      .join('');
+
+    const pageRule = this.paperSize === 'pos'
+      ? '@page { size: 80mm auto; margin: 0; }'
+      : '@page { size: A4 portrait; margin: 0; }';
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Receipt ${this.d.billNo}</title>
+          <base href="${document.baseURI}">
+          ${styleTags}
+          <style>
+            ${pageRule}
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #f3f4f6;
+              font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            .preview-shell {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+            .preview-toolbar {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+              padding: 10px 14px;
+              background: #14532d;
+              color: #fff;
+              position: sticky;
+              top: 0;
+              z-index: 10;
+            }
+            .preview-toolbar .title {
+              font-size: 14px;
+              font-weight: 600;
+            }
+            .preview-toolbar .toolbar-actions {
+              display: flex;
+              gap: 8px;
+            }
+            .preview-toolbar button {
+              border: 0;
+              border-radius: 6px;
+              padding: 6px 10px;
+              cursor: pointer;
+              font-size: 13px;
+            }
+            .preview-toolbar .btn-print {
+              background: #16a34a;
+              color: #fff;
+            }
+            .preview-toolbar .btn-close {
+              background: #ef4444;
+              color: #fff;
+              width: 32px;
+              height: 32px;
+              line-height: 1;
+              font-size: 18px;
+              padding: 0;
+            }
+            .preview-content {
+              padding: 16px;
+              overflow: auto;
+            }
+            .preview-content .a4-page,
+            .preview-content .pos-page {
+              margin: 0 auto;
+            }
+            @media print {
+              .preview-toolbar { display: none !important; }
+              html, body { background: #fff !important; }
+              .preview-content { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="preview-shell">
+            <div class="preview-toolbar">
+              <span class="title">Receipt ${this.d.billNo} (${this.paperSize.toUpperCase()})</span>
+              <div class="toolbar-actions">
+                <button class="btn-print" onclick="window.print()">Print</button>
+                <button class="btn-close" onclick="window.close()" aria-label="Close">×</button>
+              </div>
+            </div>
+            <div class="preview-content">
+              ${printableContent}
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
   }
 
   close(): void {

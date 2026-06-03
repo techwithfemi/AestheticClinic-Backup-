@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -21,6 +21,8 @@ export interface InvoicePrintDialogData {
   styleUrl: './billing-invoice-print.component.scss'
 })
 export class BillingInvoicePrintComponent implements OnInit {
+  @ViewChild('printRoot') private printRoot?: ElementRef<HTMLElement>;
+
   readonly data = inject<InvoicePrintDialogData | null>(MAT_DIALOG_DATA, { optional: true });
   private readonly dialogRef = inject(MatDialogRef<BillingInvoicePrintComponent>, { optional: true });
   private readonly route = inject(ActivatedRoute);
@@ -138,7 +140,128 @@ export class BillingInvoicePrintComponent implements OnInit {
   }
 
   print(): void {
-    window.print();
+    const printContainer = this.printRoot?.nativeElement;
+    if (!printContainer) {
+      return;
+    }
+
+    const printableContent = printContainer.outerHTML;
+    const popupWidth = 900;
+    const popupHeight = 675;
+    const popupLeft = Math.max(0, Math.round((window.screen.availWidth - popupWidth) / 2));
+    const popupTop = Math.max(0, Math.round((window.screen.availHeight - popupHeight) / 2));
+    const printWindow = window.open(
+      '',
+      '_blank',
+      `popup=yes,width=${popupWidth},height=${popupHeight},left=${popupLeft},top=${popupTop},resizable=no,scrollbars=yes,menubar=no,toolbar=no,location=no,status=no`
+    );
+    if (!printWindow) {
+      return;
+    }
+
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(tag => tag.outerHTML)
+      .join('');
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Invoice ${this.d.billNo}</title>
+          <base href="${document.baseURI}">
+          ${styleTags}
+          <style>
+            @page { size: A4 portrait; margin: 0; }
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #f3f4f6;
+              font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            .preview-shell {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+            .preview-toolbar {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+              padding: 10px 14px;
+              background: #0f172a;
+              color: #fff;
+              position: sticky;
+              top: 0;
+              z-index: 10;
+            }
+            .preview-toolbar .title {
+              font-size: 14px;
+              font-weight: 600;
+            }
+            .preview-toolbar .toolbar-actions {
+              display: flex;
+              gap: 8px;
+            }
+            .preview-toolbar button {
+              border: 0;
+              border-radius: 6px;
+              padding: 6px 10px;
+              cursor: pointer;
+              font-size: 13px;
+            }
+            .preview-toolbar .btn-print {
+              background: #2563eb;
+              color: #fff;
+            }
+            .preview-toolbar .btn-close {
+              background: #ef4444;
+              color: #fff;
+              width: 32px;
+              height: 32px;
+              line-height: 1;
+              font-size: 18px;
+              padding: 0;
+            }
+            .preview-content {
+              padding: 16px;
+              overflow: auto;
+            }
+            .preview-content .a4-page {
+              margin: 0 auto;
+            }
+            @media print {
+              .preview-toolbar { display: none !important; }
+              html, body { background: #fff !important; }
+              .preview-content { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="preview-shell">
+            <div class="preview-toolbar">
+              <span class="title">Invoice ${this.d.billNo}</span>
+              <div class="toolbar-actions">
+                <button class="btn-print" onclick="window.print()">Print</button>
+                <button class="btn-close" onclick="window.close()" aria-label="Close">×</button>
+              </div>
+            </div>
+            <div class="preview-content">
+              ${printableContent}
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
   }
 
   close(): void {
