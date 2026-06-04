@@ -7,11 +7,16 @@ using Microsoft.Extensions.Logging;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
-public class AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor, ILogger<AttendanceService> logger) : IAttendanceService
+public class AttendanceService(
+    ApplicationDbContext context, 
+    IUserIdAccessor userIdAccessor, 
+    ILogger<AttendanceService> logger,
+    IEmrAppDefaultsService emrAppDefaultsService) : IAttendanceService
 {
-    private readonly ILogger<AttendanceService> _logger;
+    private readonly ILogger<AttendanceService> _logger = logger;
+    private readonly IEmrAppDefaultsService _emrAppDefaultsService = emrAppDefaultsService;
 
-    public AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : this(context, userIdAccessor, null!)
+    public AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : this(context, userIdAccessor, null!, null!)
     {
     }
 
@@ -273,17 +278,21 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
             }
 
             var previousBill = await previousBillQuery
-                .OrderByDescending(b => b.bDate)
-                .ThenByDescending(b => b.billNO)
-                .ThenByDescending(b => b.ID)
+                .OrderByDescending(b => b.billNO)
                 .FirstOrDefaultAsync();
 
             decimal openBal = 0;
             var pat = await context.HPatients.FirstOrDefaultAsync(x => x.Pno == pNo);
             if (previousBill != null && pat != null)
             {
-                var isPrivate = (pat.CoyType ?? string.Empty).Trim() == "0001";
-                _logger?.LogInformation("Patient {PatientNo} isPrivate: {IsPrivate}, CoyType: {CoyType}", pNo, isPrivate, pat.CoyType);
+                // Check if patient is private by comparing CoyName against the PRIVATE config value (0001)
+                var emrDefaults = await _emrAppDefaultsService.GetAsync();
+                var privateRetainCode = emrDefaults.Get("PRIVATE", "0001");
+                var isPrivate = (pat.CoyName ?? string.Empty).Trim() == privateRetainCode;
+                
+                _logger?.LogInformation("Patient {PatientNo} isPrivate: {IsPrivate}, CoyName: {CoyName}, PrivateRetainCode: {PrivateRetainCode}", 
+                    pNo, isPrivate, pat.CoyName, privateRetainCode);
+                
                 if (isPrivate)
                 {
                     var billed = previousBill.AmountBilled ?? 0;
@@ -318,14 +327,20 @@ public class AttendanceService(ApplicationDbContext context, IUserIdAccessor use
         try
         {
             _logger?.LogInformation($"SaveBillAsync called for consultId: {record.ConsultId}, pNo: {record.PNo}");
-            var exists = await context.Billings.AnyAsync(b => b.billNO == record.ConsultId);
-            if (exists)
-            {
-                _logger?.LogWarning($"Billing already exists for consultId: {record.ConsultId}");
-                return;
-            }
+            
+            var existingBilling = await context.Billings.FirstOrDefaultAsync(b => b.billNO == record.ConsultId);
             var pat = await context.HPatients.FirstOrDefaultAsync(x => x.Pno == record.PNo);
             decimal debtBf = pat?.DebtBf ?? 0;
+            
+            if (existingBilling != null)
+            {
+                // Update existing billing with latest debt information
+                existingBilling.DebtBF = debtBf;
+                _logger?.LogInformation($"Updated existing billing for consultId: {record.ConsultId} with DebtBF: {debtBf}");
+                await context.SaveChangesAsync();
+                return;
+            }
+            
             var bill = new Billing
             {
                 // DO NOT set ID here! Let the database generate it.

@@ -33,6 +33,50 @@
   margin-left: auto;
 }
 
+.header-section-row {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+
+.header-section-main,
+.header-section-side {
+  min-width: 0;
+  height: 100%;
+}
+
+.header-section-main,
+.header-section-side {
+  display: flex;
+}
+
+.header-section-main app-attendance-summary {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.header-notes {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #475569;
+  background: #f8fafc;
+  font: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .section-card {
   margin-bottom: 12px;
   padding: 12px;
@@ -100,6 +144,14 @@
   .line-field,
   .line-total-box {
     max-width: 100% !important;
+  }
+
+  .header-section-row {
+    grid-template-columns: 1fr;
+  }
+
+  .header-notes {
+    min-height: 90px;
   }
 }
 

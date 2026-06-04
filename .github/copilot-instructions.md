@@ -86,7 +86,7 @@ QuickApp.Server/
 
 ### Services
 
-**Interface Location**: `QuickApp.Core/Services/{Domain}/Interfaces/`
+**Interface Location**: `QuickApp.Core/Services/{Domain}/Interfaces/`  
 **Implementation Location**: `QuickApp.Core/Services/{Domain}/`
 
 **Service Rules:**
@@ -101,9 +101,7 @@ QuickApp.Server/
 8. ❌ **DO NOT add ViewModels to Core project** - only entities
 9. ❌ **DO NOT add authorization logic** - that belongs in controllers
 
-**Service Registration** (in `Program.cs`):
-builder.Services.AddScoped<IProductService, ProductService>();
-
+**Service Registration** (in `Program.cs`):builder.Services.AddScoped<IProductService, ProductService>();
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -146,7 +144,7 @@ public async Task<IActionResult> GetUserById(string id)
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-   }
+}
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -282,7 +280,7 @@ quickapp.client/src/app/
 
 **Important**: When adding new UI text, add translation keys to all locale files.
 
-**Location**: `quickapp.client/public/locale/`
+**Location**: `quickapp.client/public/locale/`  
 **Files**: `en.json`, `fr.json`, `de.json`, `es.json`, `pt.json`, `zh.json`, `ko.json`, `ar.json`
 
 **Usage in Templates:**<h4>{{ 'Products' | translate }}</h4>
@@ -314,3 +312,24 @@ quickapp.client/src/app/
         this.alertService.showStickyMessage(
           'Load Error',
           `Unable to retrieve items.\r\nError: "${this.getErrorMessage(error)}"`,
+        );
+      }
+    });
+}
+### Patient Management
+
+**Private Patients Identification:**
+- Check if a patient is private by verifying `HRetainership.RetainCode = "0001"`.
+- Use `Patient.CoyName` as the foreign key linking to `HRetainership.RetainCode`.
+- Note that debt carry-forward applies **ONLY** to private patients.
+- Avoid using `CoyType` - utilize the retainership lookup instead.
+
+**Debt Carry-Forward Logic:**
+- The debt carry-forward logic is implemented in `AttendanceService.cs`.
+- The main debt methods are:
+  - `SaveDebtAsync`: Calculates and updates patient debt (called **before** saving changes to the database).
+  - `SaveBillAsync`: Creates a billing record with the debt (called **after** saving changes to the database).
+- These methods are invoked from `CreateAsync` during attendance saving.
+
+**Billing Debt Flow Logic:**
+- In this codebase's billing debt flow logic, DebtBF (debt brought forward from previous transaction) must be included in debt calculations/running balance.

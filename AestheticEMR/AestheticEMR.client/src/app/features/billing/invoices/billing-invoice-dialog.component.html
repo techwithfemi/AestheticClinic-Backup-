@@ -6,11 +6,22 @@
     </button>
   </div>
 
-  <app-attendance-summary
-    [compact]="true"
-    [attendance]="attendanceSummary"
-    [photo]="selectedPatientPhoto">
-  </app-attendance-summary>
+  <div class="header-section-row">
+    <div class="header-section-main">
+      <app-attendance-summary
+        [compact]="true"
+        [attendance]="attendanceSummary"
+        [photo]="selectedPatientPhoto">
+      </app-attendance-summary>
+    </div>
+
+    <div class="header-section-side">
+      <textarea
+        class="header-notes"
+        readonly
+        [value]="readOnlyReason"></textarea>
+    </div>
+  </div>
 
   <form [formGroup]="invoiceForm" class="invoice-form">
     <mat-card class="section-card">
