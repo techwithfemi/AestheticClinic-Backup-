@@ -11,6 +11,14 @@ public interface IServiceTariffService
     Task<hServiceNHI> CreateAsync(hServiceNHI serviceTariff);
     Task<hServiceNHI> UpdateAsync(hServiceNHI serviceTariff);
     Task DeleteAsync(long sno);
-    Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting, string? category = null, string? sheetName = null);
+    Task<int> UploadAsync(
+        string coyId,
+        Stream fileStream,
+        string fileName,
+        bool deleteExisting,
+        string? category = null,
+        string? sheetName = null,
+        int? itemColumn = null,
+        int? qtyColumn = null);
     Task<int> CopyFromCompanyAsync(string targetCoyId, string sourceCoyId, bool deleteExisting, string? category = null);
 }

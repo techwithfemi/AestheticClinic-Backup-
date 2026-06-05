@@ -101,7 +101,8 @@ QuickApp.Server/
 8. ❌ **DO NOT add ViewModels to Core project** - only entities
 9. ❌ **DO NOT add authorization logic** - that belongs in controllers
 
-**Service Registration** (in `Program.cs`):builder.Services.AddScoped<IProductService, ProductService>();
+**Service Registration** (in `Program.cs`): builder.Services.AddScoped<IProductService, ProductService>();
+
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -144,7 +145,7 @@ public async Task<IActionResult> GetUserById(string id)
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-}
+   }
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -333,3 +334,7 @@ quickapp.client/src/app/
 
 **Billing Debt Flow Logic:**
 - In this codebase's billing debt flow logic, DebtBF (debt brought forward from previous transaction) must be included in debt calculations/running balance.
+
+### Tariff Module Settings
+
+For tariff module settings, use top-level key `tariffUpload` instead of `inventoryProductsUpload`.

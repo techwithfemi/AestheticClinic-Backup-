@@ -1,0 +1,9 @@
+{
+  "tariffUpload": {
+    "fileFormat": ["xls", "xlsx", "csv"],
+    "forExcel": {
+      "items": "col 1",
+      "price": "col 2"
+    }
+  }
+}

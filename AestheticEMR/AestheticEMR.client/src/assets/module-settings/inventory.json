@@ -1,0 +1,9 @@
+{
+  "inventoryProductsUpload": {
+    "fileFormat": ["xls", "xlsx", "csv"],
+    "forExcel": {
+      "items": "col 1",
+      "Qty": "col 3"
+    }
+  }
+}

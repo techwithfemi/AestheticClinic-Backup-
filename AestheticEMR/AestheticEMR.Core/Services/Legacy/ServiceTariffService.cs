@@ -146,7 +146,15 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         await context.SaveChangesAsync();
     }
 
-    public async Task<int> UploadAsync(string coyId, Stream fileStream, string fileName, bool deleteExisting, string? category = null, string? sheetName = null)
+    public async Task<int> UploadAsync(
+        string coyId,
+        Stream fileStream,
+        string fileName,
+        bool deleteExisting,
+        string? category = null,
+        string? sheetName = null,
+        int? itemColumn = null,
+        int? qtyColumn = null)
     {
         var normalizedCoyId = (coyId ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(normalizedCoyId))
@@ -159,7 +167,12 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         var cat = category?.Trim().ToUpperInvariant() ?? "SERVICE";
         var companyName = await ResolveCompanyNameAsync(normalizedCoyId);
 
-        var items = extension == ".csv" ? ParseCsv(fileStream) : ParseXlsx(fileStream, sheetName);
+        var itemColIndex = NormalizeColumnIndex(itemColumn, 1);
+        var qtyColIndex = NormalizeColumnIndex(qtyColumn, 2);
+
+        var items = extension == ".csv"
+            ? ParseCsv(fileStream, itemColIndex, qtyColIndex)
+            : ParseXlsx(fileStream, sheetName, itemColIndex, qtyColIndex);
 
         if (cat == "DRUG")
             return await UploadDrugAsync(normalizedCoyId, companyName, items, deleteExisting);
@@ -466,7 +479,7 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         return retainership?.RetainName ?? coyId;
     }
 
-    private static List<UploadRow> ParseCsv(Stream stream)
+    private static List<UploadRow> ParseCsv(Stream stream, int itemColumn, int qtyColumn)
     {
         var rows = new List<UploadRow>();
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
@@ -482,13 +495,13 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             }
 
             var columns = line.Split(',');
-            if (lineNumber == 1 && LooksLikeHeader(columns))
+            if (lineNumber == 1 && LooksLikeHeader(columns, itemColumn, qtyColumn))
             {
                 continue;
             }
 
-            var service = columns.ElementAtOrDefault(0)?.Trim();
-            var priceRaw = columns.ElementAtOrDefault(1)?.Trim();
+            var service = columns.ElementAtOrDefault(itemColumn - 1)?.Trim();
+            var priceRaw = columns.ElementAtOrDefault(qtyColumn - 1)?.Trim();
             var category = columns.ElementAtOrDefault(2)?.Trim();
 
             if (string.IsNullOrWhiteSpace(service))
@@ -507,7 +520,7 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         return rows;
     }
 
-    private static List<UploadRow> ParseXlsx(Stream stream, string? sheetName)
+    private static List<UploadRow> ParseXlsx(Stream stream, string? sheetName, int itemColumn, int qtyColumn)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -532,14 +545,14 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
             return [];
         }
 
-        var startRow = table.Rows.Count > 0 && LooksLikeHeader(table.Rows[0]) ? 1 : 0;
+        var startRow = table.Rows.Count > 0 && LooksLikeHeader(table.Rows[0], itemColumn, qtyColumn) ? 1 : 0;
         var rows = new List<UploadRow>();
 
         for (var i = startRow; i < table.Rows.Count; i++)
         {
             var row = table.Rows[i];
-            var service = row.ItemArray.ElementAtOrDefault(0)?.ToString()?.Trim();
-            var priceRaw = row.ItemArray.ElementAtOrDefault(1)?.ToString()?.Trim();
+            var service = row.ItemArray.ElementAtOrDefault(itemColumn - 1)?.ToString()?.Trim();
+            var priceRaw = row.ItemArray.ElementAtOrDefault(qtyColumn - 1)?.ToString()?.Trim();
             var category = row.ItemArray.ElementAtOrDefault(2)?.ToString()?.Trim();
 
             if (string.IsNullOrWhiteSpace(service))
@@ -558,18 +571,28 @@ public class ServiceTariffService(ApplicationDbContext context) : IServiceTariff
         return rows;
     }
 
-    private static bool LooksLikeHeader(string[] columns)
+    private static bool LooksLikeHeader(string[] columns, int itemColumn, int qtyColumn)
     {
-        var first = columns.ElementAtOrDefault(0)?.Trim().ToLowerInvariant() ?? string.Empty;
-        var second = columns.ElementAtOrDefault(1)?.Trim().ToLowerInvariant() ?? string.Empty;
-        return first.Contains("service") || second.Contains("price");
+        var first = columns.ElementAtOrDefault(itemColumn - 1)?.Trim().ToLowerInvariant() ?? string.Empty;
+        var second = columns.ElementAtOrDefault(qtyColumn - 1)?.Trim().ToLowerInvariant() ?? string.Empty;
+        return first.Contains("service") || first.Contains("item") || second.Contains("price") || second.Contains("qty") || second.Contains("quantity");
     }
 
-    private static bool LooksLikeHeader(DataRow row)
+    private static bool LooksLikeHeader(DataRow row, int itemColumn, int qtyColumn)
     {
-        var first = row.ItemArray.ElementAtOrDefault(0)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
-        var second = row.ItemArray.ElementAtOrDefault(1)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
-        return first.Contains("service") || second.Contains("price");
+        var first = row.ItemArray.ElementAtOrDefault(itemColumn - 1)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
+        var second = row.ItemArray.ElementAtOrDefault(qtyColumn - 1)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
+        return first.Contains("service") || first.Contains("item") || second.Contains("price") || second.Contains("qty") || second.Contains("quantity");
+    }
+
+    private static int NormalizeColumnIndex(int? configuredIndex, int fallback)
+    {
+        if (!configuredIndex.HasValue || configuredIndex.Value <= 0)
+        {
+            return fallback;
+        }
+
+        return configuredIndex.Value;
     }
 
     private static double ParsePrice(string? raw)

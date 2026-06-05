@@ -26,6 +26,17 @@ import { ProductTariff } from '../../../models/legacy/product-tariff.model';
 import { TariffCompany } from '../../../models/legacy/tariff-company.model';
 import { TariffServiceDialogComponent } from './tariff-service-dialog.component';
 import { TariffUploadDialogComponent, TariffUploadDialogResult } from './tariff-upload-dialog.component';
+import { ModuleSettingsService } from '../../../services/module-settings.service';
+
+interface TariffUploadSettings {
+  tariffUpload?: {
+    fileFormat?: string[];
+    forExcel?: {
+      items?: string;
+      price?: string;
+    };
+  };
+}
 
 /** Normalised row used by the grid regardless of source model */
 interface TariffRow {
@@ -249,6 +260,7 @@ export class TariffServicesComponent {
   private productEndpoint = inject(ProductTariffEndpoint);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
+  private moduleSettingsService = inject(ModuleSettingsService);
 
   companies: TariffCompany[] = [];
   allRows: TariffRow[] = [];    // full set for selected company + category
@@ -263,6 +275,12 @@ export class TariffServicesComponent {
   currentPage = 1;
 
   readonly tariffCategories = ['Drug', 'Investigation', 'Service', 'Product'];
+  private tariffUploadSettings: TariffUploadSettings = {
+    tariffUpload: {
+      fileFormat: ['xls', 'xlsx', 'csv'],
+      forExcel: { items: 'col 1', price: 'col 2' }
+    }
+  };
 
   get totalPages(): number {
     return Math.max(1, Math.ceil(this.rows.length / this.pageSize));
@@ -281,6 +299,7 @@ export class TariffServicesComponent {
       }
     });
 
+    this.loadTariffUploadSettings();
     this.loadCompanies();
   }
 
@@ -427,6 +446,38 @@ export class TariffServicesComponent {
     });
   }
 
+  private loadTariffUploadSettings(): void {
+    this.moduleSettingsService
+      .getModuleSettings<TariffUploadSettings>('tariff', this.tariffUploadSettings)
+      .then(settings => {
+        this.tariffUploadSettings = settings ?? this.tariffUploadSettings;
+      })
+      .catch(() => undefined);
+  }
+
+  private getUploadColumnIndex(raw: string | undefined, fallback: number): number {
+    if (!raw) return fallback;
+    const match = raw.match(/\d+/);
+    const parsed = match ? Number(match[0]) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private get allowedUploadFileFormats(): string[] {
+    const configured = this.tariffUploadSettings.tariffUpload?.fileFormat
+      ?.map(x => x?.trim().toLowerCase())
+      .filter((x): x is string => !!x);
+
+    return configured && configured.length > 0 ? configured : ['xls', 'xlsx', 'csv'];
+  }
+
+  private get uploadItemColumn(): number {
+    return this.getUploadColumnIndex(this.tariffUploadSettings.tariffUpload?.forExcel?.items, 1);
+  }
+
+  private get uploadQtyColumn(): number {
+    return this.getUploadColumnIndex(this.tariffUploadSettings.tariffUpload?.forExcel?.price, 2);
+  }
+
   openUploadDialog(): void {
     if (!this.selectedCoyId) {
       this.alertService.showMessage('Validation', 'Please select a company first.', MessageSeverity.warn);
@@ -448,7 +499,8 @@ export class TariffServicesComponent {
             sourceCompanies: sourceCompanies.filter(x => x.coyId !== this.selectedCoyId),
             category: this.selectedCategory,
             companyName: selectedCompany?.company ?? this.selectedCoyId,
-            coyId: this.selectedCoyId
+            coyId: this.selectedCoyId,
+            allowedFileFormats: this.allowedUploadFileFormats
           }
         });
 
@@ -464,7 +516,13 @@ export class TariffServicesComponent {
               () => {
                 this.alertService.startLoadingMessage('Uploading tariff data...');
                 this.serviceTariffEndpoint.uploadServiceTariffEndpoint<{ inserted: number }>(
-                  this.selectedCoyId, result.file!, true, this.selectedCategory, result.sheetName
+                  this.selectedCoyId,
+                  result.file!,
+                  true,
+                  this.selectedCategory,
+                  result.sheetName,
+                  this.uploadItemColumn,
+                  this.uploadQtyColumn
                 ).subscribe({
                   next: response => {
                     this.alertService.stopLoadingMessage();

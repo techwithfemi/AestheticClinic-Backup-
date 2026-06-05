@@ -66,7 +66,14 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
     [HttpPost("upload")]
     [ProducesResponseType(200)]
     [ProducesResponseType(400)]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string coyId, [FromForm] bool deleteExisting = false, [FromForm] string? category = null, [FromForm] string? sheetName = null)
+    public async Task<IActionResult> Upload(
+        [FromForm] IFormFile file,
+        [FromForm] string coyId,
+        [FromForm] bool deleteExisting = false,
+        [FromForm] string? category = null,
+        [FromForm] string? sheetName = null,
+        [FromForm] int? itemColumn = null,
+        [FromForm] int? qtyColumn = null)
     {
         if (file is null || file.Length == 0)
         {
@@ -83,7 +90,7 @@ public class ServiceTariffController(ILogger<ServiceTariffController> logger, IM
         try
         {
             await using var stream = file.OpenReadStream();
-            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting, category, sheetName);
+            var inserted = await serviceTariffService.UploadAsync(coyId, stream, file.FileName, deleteExisting, category, sheetName, itemColumn, qtyColumn);
             return Ok(new { inserted });
         }
         catch (Exception ex)

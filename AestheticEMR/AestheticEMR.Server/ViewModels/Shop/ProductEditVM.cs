@@ -13,7 +13,7 @@ public class ProductEditVM
     [StringLength(500)]
     public string? Description { get; set; }
 
-    [StringLength(256)]
+    [StringLength(5000000)]
     public string? Icon { get; set; }
 
     [Range(0, (double)decimal.MaxValue)]

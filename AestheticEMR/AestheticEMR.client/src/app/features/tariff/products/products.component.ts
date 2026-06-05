@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -7,8 +7,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTableDataSource } from '@angular/material/table';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -28,6 +30,7 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
     MatButtonModule,
     MatIconModule,
     MatTableModule,
+    MatPaginatorModule,
     MatProgressSpinnerModule,
     MatDialogModule
   ],
@@ -36,8 +39,8 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
     <div [@fadeInOut] class="tariff-products-page">
       <mat-card>
         <mat-card-header>
-          <mat-card-title>Tariff Products</mat-card-title>
-          <mat-card-subtitle>Manage tariff product items and prices.</mat-card-subtitle>
+          <mat-card-title>Inventory Products</mat-card-title>
+          <mat-card-subtitle>Manage inventory product items and prices.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="toolbar-row">
@@ -63,7 +66,7 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
       <mat-card>
         <mat-card-content>
           <div class="table-wrap">
-            <table mat-table [dataSource]="filteredProducts" class="products-table">
+            <table mat-table [dataSource]="dataSource" class="products-table">
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef>Name</th>
                 <td mat-cell *matCellDef="let row">{{ row.name }}</td>
@@ -99,6 +102,15 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
             </table>
+
+            <mat-paginator
+              #paginator
+              [length]="dataSource.data.length"
+              [pageSize]="10"
+              [pageSizeOptions]="[5, 10, 25]"
+              [showFirstLastButtons]="true"
+              aria-label="Select page">
+            </mat-paginator>
           </div>
 
           @if (filteredProducts.length === 0 && !loadingIndicator) {
@@ -136,7 +148,7 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
     }
   `]
 })
-export class TariffProductsComponent {
+export class TariffProductsComponent implements AfterViewInit {
   private alertService = inject(AlertService);
   private productEndpoint = inject(ProductEndpoint);
   private dialog = inject(MatDialog);
@@ -147,9 +159,16 @@ export class TariffProductsComponent {
   searchText = '';
   loadingIndicator = false;
   displayedColumns = ['name', 'category', 'buyingPrice', 'unitsInStock', 'actions'];
+  dataSource = new MatTableDataSource<Product>(this.filteredProducts);
+
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   constructor() {
     this.loadAll();
+  }
+
+  ngAfterViewInit() {
+    this.dataSource.paginator = this.paginator;
   }
 
   loadAll(): void {
@@ -277,6 +296,7 @@ export class TariffProductsComponent {
     const term = this.searchText.trim().toLowerCase();
     if (!term) {
       this.filteredProducts = [...this.products];
+      this.dataSource.data = this.filteredProducts;
       return;
     }
 
@@ -285,6 +305,10 @@ export class TariffProductsComponent {
       || (x.productCategoryName ?? '').toLowerCase().includes(term)
       || (x.description ?? '').toLowerCase().includes(term)
     );
+    this.dataSource.data = this.filteredProducts;
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
   }
 
   private getErrorMessage(error: unknown): string {

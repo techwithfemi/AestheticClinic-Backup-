@@ -29,6 +29,11 @@ namespace AestheticEMR.Core.Services.Shop
 
         public async Task<Product> CreateAsync(Product product, string? userName)
         {
+            // Load the category to satisfy the 'required' constraint
+            product.ProductCategory = await context.ProductCategories
+                .FirstOrDefaultAsync(x => x.Id == product.ProductCategoryId)
+                ?? throw new InvalidOperationException($"Category with ID {product.ProductCategoryId} not found");
+
             product.PreviousBuyingPrices = 0;
             product.PreviousSellingPrice = 0;
             product.PreviousUnitsInStock = 0;
@@ -49,6 +54,11 @@ namespace AestheticEMR.Core.Services.Shop
 
         public async Task<Product> UpdateAsync(Product product, string? userName)
         {
+            // Load the category to satisfy the 'required' constraint
+            product.ProductCategory = await context.ProductCategories
+                .FirstOrDefaultAsync(x => x.Id == product.ProductCategoryId)
+                ?? throw new InvalidOperationException($"Category with ID {product.ProductCategoryId} not found");
+
             var currentValues = await context.Products
                 .AsNoTracking()
                 .Where(x => x.Id == product.Id)

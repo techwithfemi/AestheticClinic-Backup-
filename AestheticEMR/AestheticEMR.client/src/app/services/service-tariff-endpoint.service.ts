@@ -70,7 +70,15 @@ export class ServiceTariffEndpoint extends EndpointBase {
     );
   }
 
-  uploadServiceTariffEndpoint<T>(coyId: string, file: File, deleteExisting: boolean, category?: string, sheetName?: string | null): Observable<T> {
+  uploadServiceTariffEndpoint<T>(
+    coyId: string,
+    file: File,
+    deleteExisting: boolean,
+    category?: string,
+    sheetName?: string | null,
+    itemColumn?: number | null,
+    qtyColumn?: number | null
+  ): Observable<T> {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('coyId', coyId);
@@ -81,9 +89,15 @@ export class ServiceTariffEndpoint extends EndpointBase {
     if (sheetName) {
       formData.append('sheetName', sheetName);
     }
+    if (itemColumn && itemColumn > 0) {
+      formData.append('itemColumn', String(itemColumn));
+    }
+    if (qtyColumn && qtyColumn > 0) {
+      formData.append('qtyColumn', String(qtyColumn));
+    }
 
     return this.http.post<T>(`${this.serviceTariffUrl}/upload`, formData, this.uploadHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting, category, sheetName)))
+      catchError(error => this.handleError(error, () => this.uploadServiceTariffEndpoint<T>(coyId, file, deleteExisting, category, sheetName, itemColumn, qtyColumn)))
     );
   }
 

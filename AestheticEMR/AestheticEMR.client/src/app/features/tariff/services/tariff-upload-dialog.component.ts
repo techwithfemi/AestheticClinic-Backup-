@@ -21,6 +21,7 @@ interface TariffUploadDialogData {
   category: string;
   companyName: string;
   coyId: string;
+  allowedFileFormats?: string[];
 }
 
 @Component({
@@ -72,7 +73,7 @@ interface TariffUploadDialogData {
             <mat-icon>upload_file</mat-icon>
             Select File...
           </button>
-          <input #fileInput type="file" accept=".xls,.xlsx,.csv" (change)="onFilePicked($event)" hidden />
+          <input #fileInput type="file" [attr.accept]="fileInputAccept" (change)="onFilePicked($event)" hidden />
           <span class="file-name">{{ selectedFile?.name || 'No file selected' }}</span>
         </div>
 
@@ -89,7 +90,7 @@ interface TariffUploadDialogData {
 
         <p class="hint">If no file is selected, the tariff from the selected company above will be used.</p>
         <p class="hint">Re-upload will replace any existing <strong>{{ data.category }}</strong> tariff items for the selected company.</p>
-        <p class="hint">Supported formats: .xls, .xlsx, .csv</p>
+        <p class="hint">Supported formats: {{ supportedFormatsText }}</p>
         <p class="hint">First row = header. Column 1 = service item, Column 2 = price. Blank rows are ignored.</p>
       </mat-dialog-content>
 
@@ -132,19 +133,36 @@ export class TariffUploadDialogComponent {
   sheetNames: string[] = [];
   selectedSheet = '';
 
+  get allowedFileFormats(): string[] {
+    const configured = this.data.allowedFileFormats?.map(x => x?.trim().toLowerCase()).filter(Boolean) ?? [];
+    return configured.length ? configured : ['xls', 'xlsx', 'csv'];
+  }
+
+  get fileInputAccept(): string {
+    return this.allowedFileFormats.map(x => `.${x}`).join(',');
+  }
+
+  get supportedFormatsText(): string {
+    return this.allowedFileFormats.map(x => `.${x}`).join(', ');
+  }
+
   onFilePicked(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     input.value = '';
 
-    this.selectedFile = file;
+    this.selectedFile = null;
     this.sheetNames = [];
     this.selectedSheet = '';
 
     if (!file) return;
 
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext !== 'xls' && ext !== 'xlsx') return;   // CSV has no sheets
+    if (!ext || !this.allowedFileFormats.includes(ext)) return;
+
+    this.selectedFile = file;
+
+    if (ext !== 'xls' && ext !== 'xlsx') return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -152,7 +170,7 @@ export class TariffUploadDialogComponent {
         const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array', bookSheets: true });
         this.sheetNames = wb.SheetNames ?? [];
-        this.selectedSheet = '';   // user must pick
+        this.selectedSheet = '';
       } catch {
         this.sheetNames = [];
         this.selectedSheet = '';
