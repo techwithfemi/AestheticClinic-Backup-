@@ -4,7 +4,6 @@ export interface Product {
   description?: string;
   icon?: string;
   buyingPrice: number;
-  sellingPrice: number;
   unitsInStock: number;
   isActive: boolean;
   isDiscontinued: boolean;
@@ -17,7 +16,6 @@ export interface ProductEdit {
   description?: string;
   icon?: string;
   buyingPrice: number;
-  sellingPrice: number;
   unitsInStock: number;
   isActive: boolean;
   isDiscontinued: boolean;

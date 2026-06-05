@@ -36,7 +36,6 @@ namespace AestheticEMR.Core.Services.Shop
             context.Products.Add(product);
 
             var hasStockValueChanges = product.BuyingPrice != 0
-                || product.SellingPrice != 0
                 || product.UnitsInStock != 0;
 
             if (hasStockValueChanges)
@@ -56,7 +55,6 @@ namespace AestheticEMR.Core.Services.Shop
                 .Select(x => new
                 {
                     x.BuyingPrice,
-                    x.SellingPrice,
                     x.UnitsInStock,
                     x.PreviousBuyingPrices,
                     x.PreviousSellingPrice,
@@ -71,13 +69,11 @@ namespace AestheticEMR.Core.Services.Shop
             }
 
             var hasStockValueChanges = product.BuyingPrice != currentValues.BuyingPrice
-                || product.SellingPrice != currentValues.SellingPrice
                 || product.UnitsInStock != currentValues.UnitsInStock;
 
             if (hasStockValueChanges)
             {
                 product.PreviousBuyingPrices = currentValues.BuyingPrice;
-                product.PreviousSellingPrice = currentValues.SellingPrice;
                 product.PreviousUnitsInStock = currentValues.UnitsInStock;
 
                 AddStockReportEntry(product, "Update", userName);
@@ -364,7 +360,6 @@ namespace AestheticEMR.Core.Services.Shop
                 Product = product,
                 OperationType = operationType,
                 BuyingPrice = product.BuyingPrice,
-                SellingPrice = product.SellingPrice,
                 PreviousBuyingPrices = product.PreviousBuyingPrices,
                 PreviousSellingPrice = product.PreviousSellingPrice,
                 PreviousUnitsInStock = product.PreviousUnitsInStock,

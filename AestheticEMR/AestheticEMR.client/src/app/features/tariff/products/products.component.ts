@@ -79,11 +79,6 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
                 <td mat-cell *matCellDef="let row" class="text-end">{{ row.buyingPrice | number:'1.2-2' }}</td>
               </ng-container>
 
-              <ng-container matColumnDef="sellingPrice">
-                <th mat-header-cell *matHeaderCellDef class="text-end">Selling</th>
-                <td mat-cell *matCellDef="let row" class="text-end">{{ row.sellingPrice | number:'1.2-2' }}</td>
-              </ng-container>
-
               <ng-container matColumnDef="unitsInStock">
                 <th mat-header-cell *matHeaderCellDef class="text-end">Stock</th>
                 <td mat-cell *matCellDef="let row" class="text-end">{{ row.unitsInStock }}</td>
@@ -151,7 +146,7 @@ export class TariffProductsComponent {
   categories: ProductCategory[] = [];
   searchText = '';
   loadingIndicator = false;
-  displayedColumns = ['name', 'category', 'buyingPrice', 'sellingPrice', 'unitsInStock', 'actions'];
+  displayedColumns = ['name', 'category', 'buyingPrice', 'unitsInStock', 'actions'];
 
   constructor() {
     this.loadAll();
@@ -231,7 +226,6 @@ export class TariffProductsComponent {
           description: item.description,
           icon: item.icon,
           buyingPrice: item.buyingPrice,
-          sellingPrice: item.sellingPrice,
           unitsInStock: item.unitsInStock,
           isActive: item.isActive,
           isDiscontinued: item.isDiscontinued,

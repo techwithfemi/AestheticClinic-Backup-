@@ -19,9 +19,6 @@ public class ProductEditVM
     [Range(0, (double)decimal.MaxValue)]
     public decimal BuyingPrice { get; set; }
 
-    [Range(0, (double)decimal.MaxValue)]
-    public decimal SellingPrice { get; set; }
-
     [Range(0, int.MaxValue)]
     public int UnitsInStock { get; set; }
 

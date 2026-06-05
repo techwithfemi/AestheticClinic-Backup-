@@ -12,7 +12,6 @@ namespace AestheticEMR.Core.Models.Shop
         public string? Description { get; set; }
         public string? Icon { get; set; }
         public decimal BuyingPrice { get; set; }
-        public decimal SellingPrice { get; set; }
         public decimal PreviousBuyingPrices { get; set; } = 0;
         public decimal PreviousSellingPrice { get; set; } = 0;
         public int PreviousUnitsInStock { get; set; } = 0;

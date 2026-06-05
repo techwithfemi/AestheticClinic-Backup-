@@ -267,7 +267,6 @@ namespace AestheticEMR.Core.Infrastructure
                     Name = "BMW M6",
                     Description = "Yet another masterpiece from the world's best car manufacturer",
                     BuyingPrice = 109775,
-                    SellingPrice = 114234,
                     UnitsInStock = 12,
                     IsActive = true,
                     ProductCategory = prodCat_1
@@ -278,7 +277,6 @@ namespace AestheticEMR.Core.Infrastructure
                     Name = "Nissan Patrol",
                     Description = "A true man's choice",
                     BuyingPrice = 78990,
-                    SellingPrice = 86990,
                     UnitsInStock = 4,
                     IsActive = true,
                     ProductCategory = prodCat_1
@@ -299,14 +297,14 @@ namespace AestheticEMR.Core.Infrastructure
 
                 ordr_1.OrderDetails.Add(new()
                 {
-                    UnitPrice = prod_1.SellingPrice,
+                    UnitPrice = prod_1.BuyingPrice,
                     Quantity = 1,
                     Product = prod_1,
                     Order = ordr_1
                 });
                 ordr_1.OrderDetails.Add(new()
                 {
-                    UnitPrice = prod_2.SellingPrice,
+                    UnitPrice = prod_2.BuyingPrice,
                     Quantity = 1,
                     Product = prod_2,
                     Order = ordr_1
@@ -314,7 +312,7 @@ namespace AestheticEMR.Core.Infrastructure
 
                 ordr_2.OrderDetails.Add(new()
                 {
-                    UnitPrice = prod_2.SellingPrice,
+                    UnitPrice = prod_2.BuyingPrice,
                     Quantity = 1,
                     Product = prod_2,
                     Order = ordr_2

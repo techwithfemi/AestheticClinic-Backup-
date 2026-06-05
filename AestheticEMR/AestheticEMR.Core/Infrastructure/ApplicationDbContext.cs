@@ -191,7 +191,7 @@ namespace AestheticEMR.Core.Infrastructure
             builder.Entity<Product>().Property(p => p.Icon).IsUnicode(false).HasMaxLength(256);
             builder.Entity<Product>().HasOne(p => p.Parent).WithMany(p => p.Children).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Product>().Property(p => p.BuyingPrice).HasColumnType(priceDecimalType);
-            builder.Entity<Product>().Property(p => p.SellingPrice).HasColumnType(priceDecimalType);
+            
             builder.Entity<Product>().Property(p => p.PreviousBuyingPrices).HasColumnType(priceDecimalType);
             builder.Entity<Product>().Property(p => p.PreviousSellingPrice).HasColumnType(priceDecimalType);
             builder.Entity<Product>().Property(p => p.PreviousUnitsInStock).HasDefaultValue(0);
