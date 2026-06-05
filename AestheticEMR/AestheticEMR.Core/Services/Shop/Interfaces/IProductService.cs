@@ -16,6 +16,7 @@ namespace AestheticEMR.Core.Services.Shop
         Task<Product> UpdateAsync(Product product, string? userName);
         Task DeleteAsync(int id);
         Task<IEnumerable<ProductStockReport>> GetStockReportAsync();
+        Task<int> UploadAsync(Stream fileStream, string fileName, int itemColumn, int qtyColumn, bool deleteExisting, string? userName, string? sheetName = null);
 
         Task<IEnumerable<ProductCategory>> GetCategoriesAsync();
         Task<ProductCategory?> GetCategoryByIdAsync(int id);

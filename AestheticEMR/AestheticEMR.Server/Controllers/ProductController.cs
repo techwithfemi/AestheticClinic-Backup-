@@ -427,6 +427,44 @@ public class ProductController(ILogger<ProductController> logger, IMapper mapper
         }
     }
 
+    [HttpPost("upload")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> Upload(
+        [FromForm] IFormFile file,
+        [FromForm] bool deleteExisting = true,
+        [FromForm] string? sheetName = null,
+        [FromForm] int? itemColumn = null,
+        [FromForm] int? qtyColumn = null)
+    {
+        if (file is null || file.Length == 0)
+        {
+            AddModelError("Please select a file to upload.");
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var inserted = await productService.UploadAsync(
+                stream,
+                file.FileName,
+                itemColumn ?? 1,
+                qtyColumn ?? 3,
+                deleteExisting,
+                GetCurrentUserName(),
+                sheetName);
+
+            return Ok(new { inserted });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading products file");
+            AddModelError(ex.GetBaseException().Message);
+            return BadRequest(ModelState);
+        }
+    }
+
     private string? GetCurrentUserName()
     {
         return User.Identity?.Name

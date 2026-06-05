@@ -7,6 +7,10 @@
 using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Shop;
 using Microsoft.EntityFrameworkCore;
+using ExcelDataReader;
+using System.Data;
+using System.Globalization;
+using System.Text;
 
 namespace AestheticEMR.Core.Services.Shop
 {
@@ -360,6 +364,101 @@ namespace AestheticEMR.Core.Services.Shop
                 .ToListAsync();
         }
 
+        public async Task<int> UploadAsync(Stream fileStream, string fileName, int itemColumn, int qtyColumn, bool deleteExisting, string? userName, string? sheetName = null)
+        {
+            var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
+            if (extension is not ".csv" and not ".xls" and not ".xlsx")
+                throw new InvalidOperationException("Only .xls, .xlsx and .csv files are supported.");
+
+            var itemColIndex = itemColumn > 0 ? itemColumn : 1;
+            var qtyColIndex = qtyColumn > 0 ? qtyColumn : 3;
+
+            var rows = extension == ".csv"
+                ? ParseCsv(fileStream, itemColIndex, qtyColIndex)
+                : ParseXlsx(fileStream, sheetName, itemColIndex, qtyColIndex);
+
+            if (rows.Count == 0)
+                return 0;
+
+            var category = await context.ProductCategories
+                .OrderBy(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            if (category is null)
+            {
+                category = new ProductCategory
+                {
+                    Name = "General",
+                    Description = "Auto-created default category"
+                };
+                context.ProductCategories.Add(category);
+                await context.SaveChangesAsync();
+            }
+
+            if (deleteExisting)
+            {
+                context.ProcedureProductUsages.RemoveRange(context.ProcedureProductUsages);
+                context.ProductBatches.RemoveRange(context.ProductBatches);
+                context.ProductStockReports.RemoveRange(context.ProductStockReports);
+
+                var productIds = await context.Products.AsNoTracking().Select(x => x.Id).ToListAsync();
+                if (productIds.Count > 0)
+                {
+                    context.OrderDetails.RemoveRange(context.OrderDetails.Where(x => productIds.Contains(x.ProductId)));
+                }
+
+                context.Products.RemoveRange(context.Products);
+                await context.SaveChangesAsync();
+            }
+
+            var inserted = 0;
+            var uploadedProducts = new List<Product>();
+
+            foreach (var row in rows)
+            {
+                var name = row.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
+
+                var product = new Product
+                {
+                    Name = name,
+                    Description = null,
+                    Icon = null,
+                    BuyingPrice = 0,
+                    PreviousBuyingPrices = 0,
+                    PreviousSellingPrice = 0,
+                    PreviousUnitsInStock = 0,
+                    UnitsInStock = row.Quantity,
+                    IsActive = true,
+                    IsDiscontinued = false,
+                    ProductCategoryId = category.Id,
+                    ProductCategory = category
+                };
+
+                context.Products.Add(product);
+                uploadedProducts.Add(product);
+                inserted++;
+            }
+
+            if (inserted > 0)
+            {
+                await context.SaveChangesAsync();
+
+                foreach (var product in uploadedProducts)
+                {
+                    if (product.UnitsInStock != 0)
+                    {
+                        AddStockReportEntry(product, "Upload", userName);
+                    }
+                }
+
+                await context.SaveChangesAsync();
+            }
+
+            return inserted;
+        }
+
         private void AddStockReportEntry(Product product, string operationType, string? userName)
         {
             var now = DateTime.UtcNow;
@@ -379,6 +478,120 @@ namespace AestheticEMR.Core.Services.Shop
                 OperationTimestamp = now,
                 UserName = userName
             });
+        }
+
+        private static List<UploadProductRow> ParseCsv(Stream stream, int itemColumn, int qtyColumn)
+        {
+            var rows = new List<UploadProductRow>();
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+
+            var lineNumber = 0;
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                lineNumber++;
+
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                var columns = line.Split(',');
+                if (lineNumber == 1 && LooksLikeHeader(columns, itemColumn, qtyColumn))
+                    continue;
+
+                var item = columns.ElementAtOrDefault(itemColumn - 1)?.Trim();
+                var qtyRaw = columns.ElementAtOrDefault(qtyColumn - 1)?.Trim();
+
+                if (string.IsNullOrWhiteSpace(item))
+                    continue;
+
+                rows.Add(new UploadProductRow
+                {
+                    Name = item,
+                    Quantity = ParseQuantity(qtyRaw)
+                });
+            }
+
+            return rows;
+        }
+
+        private static List<UploadProductRow> ParseXlsx(Stream stream, string? sheetName, int itemColumn, int qtyColumn)
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            using var excelReader = ExcelReaderFactory.CreateReader(stream);
+            var result = excelReader.AsDataSet(new ExcelDataSetConfiguration
+            {
+                ConfigureDataTable = _ => new ExcelDataTableConfiguration
+                {
+                    UseHeaderRow = false
+                }
+            });
+
+            DataTable? table = null;
+            if (!string.IsNullOrWhiteSpace(sheetName))
+            {
+                table = result.Tables.Cast<DataTable>().FirstOrDefault(x => x.TableName.Equals(sheetName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            table ??= result.Tables.Count > 0 ? result.Tables[0] : null;
+            if (table is null)
+                return [];
+
+            var startRow = table.Rows.Count > 0 && LooksLikeHeader(table.Rows[0], itemColumn, qtyColumn) ? 1 : 0;
+            var rows = new List<UploadProductRow>();
+
+            for (var i = startRow; i < table.Rows.Count; i++)
+            {
+                var row = table.Rows[i];
+                var item = row.ItemArray.ElementAtOrDefault(itemColumn - 1)?.ToString()?.Trim();
+                var qtyRaw = row.ItemArray.ElementAtOrDefault(qtyColumn - 1)?.ToString()?.Trim();
+
+                if (string.IsNullOrWhiteSpace(item))
+                    continue;
+
+                rows.Add(new UploadProductRow
+                {
+                    Name = item,
+                    Quantity = ParseQuantity(qtyRaw)
+                });
+            }
+
+            return rows;
+        }
+
+        private static bool LooksLikeHeader(string[] columns, int itemColumn, int qtyColumn)
+        {
+            var first = columns.ElementAtOrDefault(itemColumn - 1)?.Trim().ToLowerInvariant() ?? string.Empty;
+            var second = columns.ElementAtOrDefault(qtyColumn - 1)?.Trim().ToLowerInvariant() ?? string.Empty;
+            return first.Contains("item") || first.Contains("name") || first.Contains("product") || second.Contains("qty") || second.Contains("quantity") || second.Contains("stock");
+        }
+
+        private static bool LooksLikeHeader(DataRow row, int itemColumn, int qtyColumn)
+        {
+            var first = row.ItemArray.ElementAtOrDefault(itemColumn - 1)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
+            var second = row.ItemArray.ElementAtOrDefault(qtyColumn - 1)?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
+            return first.Contains("item") || first.Contains("name") || first.Contains("product") || second.Contains("qty") || second.Contains("quantity") || second.Contains("stock");
+        }
+
+        private static int ParseQuantity(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return 0;
+
+            var normalized = raw.Replace(",", string.Empty).Trim();
+            if (int.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var intValue))
+                return Math.Max(0, intValue);
+
+            if (decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out var decimalValue))
+                return Math.Max(0, (int)Math.Round(decimalValue, MidpointRounding.AwayFromZero));
+
+            return 0;
+        }
+
+        private sealed class UploadProductRow
+        {
+            public string? Name { get; set; }
+            public int Quantity { get; set; }
         }
     }
 }

@@ -17,6 +17,18 @@ import { AlertService, DialogType, MessageSeverity } from '../../../services/ale
 import { ProductEndpoint } from '../../../services/product-endpoint.service';
 import { Product, ProductCategory, ProductEdit } from '../../../models/shop/product.model';
 import { TariffProductDialogComponent } from './tariff-product-dialog.component';
+import { ModuleSettingsService } from '../../../services/module-settings.service';
+import { ProductUploadDialogComponent, ProductUploadDialogResult } from '../../inventory/products/product-upload-dialog.component';
+
+interface InventoryUploadSettings {
+  inventoryProductsUpload?: {
+    fileFormat?: string[];
+    forExcel?: {
+      items?: string;
+      Qty?: string;
+    };
+  };
+}
 
 @Component({
   selector: 'app-tariff-products',
@@ -53,6 +65,10 @@ import { TariffProductDialogComponent } from './tariff-product-dialog.component'
               <button mat-raised-button color="primary" type="button" (click)="openCreateDialog()">
                 <mat-icon>add</mat-icon>
                 Add Product
+              </button>
+              <button mat-raised-button color="accent" type="button" (click)="openUploadDialog()">
+                <mat-icon>upload_file</mat-icon>
+                Upload Products
               </button>
               <button mat-stroked-button type="button" (click)="loadAll()">
                 <mat-icon>refresh</mat-icon>
@@ -152,6 +168,7 @@ export class TariffProductsComponent implements AfterViewInit {
   private alertService = inject(AlertService);
   private productEndpoint = inject(ProductEndpoint);
   private dialog = inject(MatDialog);
+  private moduleSettingsService = inject(ModuleSettingsService);
 
   products: Product[] = [];
   filteredProducts: Product[] = [];
@@ -161,14 +178,57 @@ export class TariffProductsComponent implements AfterViewInit {
   displayedColumns = ['name', 'category', 'buyingPrice', 'unitsInStock', 'actions'];
   dataSource = new MatTableDataSource<Product>(this.filteredProducts);
 
+  private inventoryUploadSettings: InventoryUploadSettings = {
+    inventoryProductsUpload: {
+      fileFormat: ['xls', 'xlsx', 'csv'],
+      forExcel: {
+        items: 'col 1',
+        Qty: 'col 3'
+      }
+    }
+  };
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   constructor() {
+    this.loadUploadSettings();
     this.loadAll();
   }
 
   ngAfterViewInit() {
     this.dataSource.paginator = this.paginator;
+  }
+
+  private loadUploadSettings(): void {
+    this.moduleSettingsService
+      .getModuleSettings<InventoryUploadSettings>('inventory', this.inventoryUploadSettings)
+      .then(settings => {
+        this.inventoryUploadSettings = settings ?? this.inventoryUploadSettings;
+      })
+      .catch(() => undefined);
+  }
+
+  private getUploadColumnIndex(raw: string | undefined, fallback: number): number {
+    if (!raw) return fallback;
+    const match = raw.match(/\d+/);
+    const parsed = match ? Number(match[0]) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private get allowedUploadFileFormats(): string[] {
+    const configured = this.inventoryUploadSettings.inventoryProductsUpload?.fileFormat
+      ?.map(x => x?.trim().toLowerCase())
+      .filter((x): x is string => !!x);
+
+    return configured && configured.length > 0 ? configured : ['xls', 'xlsx', 'csv'];
+  }
+
+  private get uploadItemColumn(): number {
+    return this.getUploadColumnIndex(this.inventoryUploadSettings.inventoryProductsUpload?.forExcel?.items, 1);
+  }
+
+  private get uploadQtyColumn(): number {
+    return this.getUploadColumnIndex(this.inventoryUploadSettings.inventoryProductsUpload?.forExcel?.Qty, 3);
   }
 
   loadAll(): void {
@@ -289,6 +349,48 @@ export class TariffProductsComponent implements AfterViewInit {
           this.alertService.showStickyMessage('Delete Error', `Unable to delete product.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
         }
       });
+    });
+  }
+
+  openUploadDialog(): void {
+    const dialogRef = this.dialog.open(ProductUploadDialogComponent, {
+      width: '560px',
+      disableClose: true,
+      data: {
+        allowedFileFormats: this.allowedUploadFileFormats
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result: ProductUploadDialogResult | undefined) => {
+      if (!result?.file) {
+        return;
+      }
+
+      this.alertService.showDialog(
+        'This will replace all existing inventory products with the uploaded file. Continue?',
+        DialogType.confirm,
+        () => {
+          this.alertService.startLoadingMessage('Uploading inventory products...');
+          this.productEndpoint.uploadProductsEndpoint<{ inserted: number }>(
+            result.file!,
+            true,
+            result.sheetName,
+            this.uploadItemColumn,
+            this.uploadQtyColumn
+          ).subscribe({
+            next: response => {
+              this.alertService.stopLoadingMessage();
+              this.loadAll();
+              const inserted = response?.inserted ?? 0;
+              this.alertService.showMessage('Success', `${inserted} product(s) uploaded successfully.`, MessageSeverity.success);
+            },
+            error: error => {
+              this.alertService.stopLoadingMessage();
+              this.alertService.showStickyMessage('Upload Error', `Unable to upload products.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.error, error);
+            }
+          });
+        }
+      );
     });
   }
 

@@ -67,4 +67,32 @@ export class ProductEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getDeleteProductCategoryEndpoint<T>(id)))
     );
   }
+
+  uploadProductsEndpoint<T>(
+    file: File,
+    deleteExisting: boolean,
+    sheetName?: string | null,
+    itemColumn?: number | null,
+    qtyColumn?: number | null
+  ): Observable<T> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('deleteExisting', String(deleteExisting));
+
+    if (sheetName) {
+      formData.append('sheetName', sheetName);
+    }
+
+    if (itemColumn && itemColumn > 0) {
+      formData.append('itemColumn', String(itemColumn));
+    }
+
+    if (qtyColumn && qtyColumn > 0) {
+      formData.append('qtyColumn', String(qtyColumn));
+    }
+
+    return this.http.post<T>(`${this.productsUrl}/upload`, formData, this.uploadHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.uploadProductsEndpoint<T>(file, deleteExisting, sheetName, itemColumn, qtyColumn)))
+    );
+  }
 }
