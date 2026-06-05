@@ -35,6 +35,61 @@ public class AttendanceService(
         return await context.HRecords.FirstOrDefaultAsync(x => x.ConsultId == consultId);
     }
 
+    public async Task<string?> GetConsultingNotesAsync(string consultId)
+    {
+        var rows = await context.VwhConsultingDetailsForBillingAlts
+            .AsNoTracking()
+            .Where(x => x.ConsultId == consultId)
+            .OrderByDescending(x => x.CDate)
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return null;
+
+        var strPrescX2 = new System.Text.StringBuilder();
+
+        foreach (var row in rows)
+        {
+            var docName = row.Treatedby ?? "";
+            var cDateStr = row.CDate.HasValue ? row.CDate.Value.ToString("dd-MMM-yyyy") : "";
+            var cTimeStr = row.CTime ?? "";
+
+            var strPrescX = new System.Text.StringBuilder();
+            strPrescX.AppendLine($"Clinic: {row.ClinicType}");
+            strPrescX.AppendLine($"Purpose: {row.Purpose ?? ""}");
+            strPrescX.AppendLine($"Diagnosis: {row.Diagnosis ?? ""}");
+            strPrescX.AppendLine($"##### Treatment by Dr. {docName} on {cDateStr} {cTimeStr} #####");
+            strPrescX.AppendLine();
+
+            if (!string.IsNullOrWhiteSpace(row.Investigate))
+                strPrescX.Append(row.Investigate);
+
+            if (!string.IsNullOrWhiteSpace(row.Prescription))
+            {
+                strPrescX.AppendLine();
+                strPrescX.Append(row.Prescription);
+            }
+
+            if (!string.IsNullOrWhiteSpace(row.Services))
+            {
+                strPrescX.AppendLine();
+                strPrescX.AppendLine(row.Services);
+            }
+
+            if (!string.IsNullOrWhiteSpace(row.BillRemarks))
+                strPrescX.AppendLine($"-----BILL ADVICE---{row.BillRemarks}");
+
+            strPrescX.AppendLine();
+            strPrescX.AppendLine("--------------------------------------");
+
+            strPrescX2.Append(strPrescX);
+            strPrescX2.AppendLine("--------------------------------------");
+        }
+
+        var result = strPrescX2.ToString().Trim();
+        return result.Length > 0 ? result : null;
+    }
+
     public async Task<HRecord> CreateAsync(HRecord record)
     {
         await PopulatePatientDetailsAsync(record);

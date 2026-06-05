@@ -48,4 +48,10 @@ export class AttendanceEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getDeleteAttendanceEndpoint<T>(id)))
     );
   }
+
+  getConsultingNotesEndpoint<T>(consultId: string): Observable<T> {
+    return this.http.get<T>(`${this.attendanceUrl}/${consultId}/consulting-notes`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsultingNotesEndpoint<T>(consultId)))
+    );
+  }
 }

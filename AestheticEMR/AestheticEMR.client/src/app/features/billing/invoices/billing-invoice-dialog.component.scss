@@ -33,50 +33,6 @@
   margin-left: auto;
 }
 
-.header-section-row {
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: 12px;
-  align-items: stretch;
-  margin-bottom: 12px;
-}
-
-.header-section-main,
-.header-section-side {
-  min-width: 0;
-  height: 100%;
-}
-
-.header-section-main,
-.header-section-side {
-  display: flex;
-}
-
-.header-section-main app-attendance-summary {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.header-notes {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  resize: none;
-  box-sizing: border-box;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: #475569;
-  background: #f8fafc;
-  font: inherit;
-  overflow-x: hidden;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
 .section-card {
   margin-bottom: 12px;
   padding: 12px;
@@ -144,14 +100,6 @@
   .line-field,
   .line-total-box {
     max-width: 100% !important;
-  }
-
-  .header-section-row {
-    grid-template-columns: 1fr;
-  }
-
-  .header-notes {
-    min-height: 90px;
   }
 }
 
@@ -445,4 +393,38 @@ label {
 
 :host ::ng-deep .mat-mdc-input-element {
   color: #0f172a !important;
+}
+
+.remarks-row {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.remarks-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 0.875rem;
+  font-family: inherit;
+  line-height: 1.5;
+  cursor: default;
+  outline: none;
+
+  &:focus {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+  }
+}
+
+@media (max-width: 600px) {
+  .remarks-textarea {
+    font-size: 0.8125rem;
+    padding: 6px 8px;
+  }
 }

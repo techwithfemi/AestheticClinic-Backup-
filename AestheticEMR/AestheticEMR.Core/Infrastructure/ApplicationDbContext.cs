@@ -103,6 +103,8 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<VwAccountsInfo> VwAccountsInfos { get; set; }
         public DbSet<QryBillingBalance> QryBillingBalances { get; set; }
         public DbSet<QryhBillingIncome> QryhBillingIncomes { get; set; }
+        public DbSet<QryhConsulting> QryhConsultings { get; set; }
+        public DbSet<VwhConsultingDetailsForBillingAlt> VwhConsultingDetailsForBillingAlts { get; set; }
 
         public DbSet<Drug> Drugs { get; set; }
         public DbSet<DrugMaster> DrugMasters { get; set; }
@@ -1529,6 +1531,18 @@ namespace AestheticEMR.Core.Infrastructure
             {
                 entity.HasNoKey();
                 entity.ToView("qryhBillingIncome");
+            });
+
+            builder.Entity<QryhConsulting>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("qryhConsulting");
+            });
+
+            builder.Entity<VwhConsultingDetailsForBillingAlt>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("vwhConsultingDetailsForBillingAlt");
             });
         }
 

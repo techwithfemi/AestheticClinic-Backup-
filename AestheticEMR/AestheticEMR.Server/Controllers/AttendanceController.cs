@@ -59,6 +59,27 @@ public class AttendanceController(
         }
     }
 
+    [HttpGet("{id}/consulting-notes")]
+    [ProducesResponseType(typeof(string), 200)]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> GetConsultingNotes(string id)
+    {
+        try
+        {
+            var notes = await attendanceService.GetConsultingNotesAsync(id);
+            if (notes is null)
+                return NoContent();
+
+            return Ok(notes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving consulting notes for {Id}", id);
+            AddModelError("Unable to retrieve consulting notes");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet("clinic-types")]
     [ProducesResponseType(typeof(IEnumerable<string>), 200)]
     public async Task<IActionResult> GetClinicTypes()

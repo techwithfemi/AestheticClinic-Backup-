@@ -103,6 +103,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   hasChanges = false;
   isReadOnly = false;
   readOnlyReason = '';
+  consultingNotes = '';
 
   attendanceOptions: AttendanceOption[] = [];
   selectedAttendanceKey = '';
@@ -314,6 +315,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.patientName = selected.patientName;
     this.headerInfo.coyID = selected.coyID ?? '';
     void this.refreshPersistedDetails();
+    this.loadConsultingNotes(selected.consultId);
   }
 
   save(): void {
@@ -400,6 +402,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       this.persistedDetails = [...((invoice.details ?? []) as BillingDetail[])];
       this.resetLineItemForm();
       await this.evaluateReadOnlyState(this.headerInfo.pNo, this.headerInfo.billNo);
+      this.loadConsultingNotes(this.headerInfo.consultId);
 
       if (this.headerInfo.pNo) {
         const option = this.attendanceOptions.find(x => x.pNo === this.headerInfo.pNo && x.consultId === this.headerInfo.consultId);
@@ -407,6 +410,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.selectedAttendanceKey = this.optionKey(option);
           this.headerInfo.patientName = option.patientName;
           this.headerInfo.coyID = option.coyID ?? this.headerInfo.coyID;
+          this.loadConsultingNotes(option.consultId);
         }
       }
 
@@ -467,6 +471,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.selectedAttendanceKey = this.optionKey(preselected);
           this.headerInfo.patientName = preselected.patientName;
           this.headerInfo.coyID = preselected.coyID ?? this.headerInfo.coyID;
+          this.loadConsultingNotes(preselected.consultId);
           return;
         }
       }
@@ -490,6 +495,17 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.productEndpoint.getProductCategoriesEndpoint<ProductCategory[]>().subscribe({
       next: data => { this.productCategories = data || []; },
       error: err => { this.handleLoadError('Product Categories Error', err); }
+    });
+  }
+
+  private loadConsultingNotes(consultId: string): void {
+    if (!consultId) {
+      this.consultingNotes = '';
+      return;
+    }
+    this.attendanceEndpoint.getConsultingNotesEndpoint<string>(consultId).subscribe({
+      next: notes => { this.consultingNotes = notes ?? ''; },
+      error: () => { this.consultingNotes = ''; }
     });
   }
 

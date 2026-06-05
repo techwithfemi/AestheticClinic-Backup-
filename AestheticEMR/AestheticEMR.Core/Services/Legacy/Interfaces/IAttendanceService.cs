@@ -10,4 +10,5 @@ public interface IAttendanceService
     Task<HRecord> UpdateAsync(HRecord record);
     Task DeleteAsync(string consultId);
     Task<IEnumerable<string>> GetClinicTypesAsync();
+    Task<string?> GetConsultingNotesAsync(string consultId);
 }

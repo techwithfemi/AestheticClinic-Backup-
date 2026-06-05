@@ -6,21 +6,20 @@
     </button>
   </div>
 
-  <div class="header-section-row">
-    <div class="header-section-main">
-      <app-attendance-summary
-        [compact]="true"
-        [attendance]="attendanceSummary"
-        [photo]="selectedPatientPhoto">
-      </app-attendance-summary>
-    </div>
+  <app-attendance-summary
+    [compact]="true"
+    [attendance]="attendanceSummary"
+    [photo]="selectedPatientPhoto">
+  </app-attendance-summary>
 
-    <div class="header-section-side">
-      <textarea
-        class="header-notes"
-        readonly
-        [value]="readOnlyReason"></textarea>
-    </div>
+  <div class="remarks-row">
+    <textarea
+      class="remarks-textarea"
+      readonly
+      rows="2"
+      placeholder="Consultation / Services Rendered"
+      [value]="consultingNotes">
+    </textarea>
   </div>
 
   <form [formGroup]="invoiceForm" class="invoice-form">
