@@ -32,8 +32,8 @@ interface TariffUploadSettings {
   tariffUpload?: {
     fileFormat?: string[];
     forExcel?: {
-      items?: string;
-      price?: string;
+      itemCol?: number;
+      priceCol?: number;
     };
   };
 }
@@ -278,7 +278,7 @@ export class TariffServicesComponent {
   private tariffUploadSettings: TariffUploadSettings = {
     tariffUpload: {
       fileFormat: ['xls', 'xlsx', 'csv'],
-      forExcel: { items: 'col 1', price: 'col 2' }
+      forExcel: { itemCol: 1, priceCol: 2 }
     }
   };
 
@@ -455,27 +455,16 @@ export class TariffServicesComponent {
       .catch(() => undefined);
   }
 
-  private getUploadColumnIndex(raw: string | undefined, fallback: number): number {
-    if (!raw) return fallback;
-    const match = raw.match(/\d+/);
-    const parsed = match ? Number(match[0]) : NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-  }
-
   private get allowedUploadFileFormats(): string[] {
-    const configured = this.tariffUploadSettings.tariffUpload?.fileFormat
-      ?.map(x => x?.trim().toLowerCase())
-      .filter((x): x is string => !!x);
-
-    return configured && configured.length > 0 ? configured : ['xls', 'xlsx', 'csv'];
+    return this.tariffUploadSettings.tariffUpload?.fileFormat ?? ['xls', 'xlsx', 'csv'];
   }
 
   private get uploadItemColumn(): number {
-    return this.getUploadColumnIndex(this.tariffUploadSettings.tariffUpload?.forExcel?.items, 1);
+    return this.tariffUploadSettings.tariffUpload?.forExcel?.itemCol ?? 1;
   }
 
   private get uploadQtyColumn(): number {
-    return this.getUploadColumnIndex(this.tariffUploadSettings.tariffUpload?.forExcel?.price, 2);
+    return this.tariffUploadSettings.tariffUpload?.forExcel?.priceCol ?? 2;
   }
 
   openUploadDialog(): void {

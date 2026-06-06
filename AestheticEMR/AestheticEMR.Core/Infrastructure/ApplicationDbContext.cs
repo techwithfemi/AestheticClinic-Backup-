@@ -188,7 +188,7 @@ namespace AestheticEMR.Core.Infrastructure
             builder.Entity<Product>().Property(p => p.Name).IsRequired().HasMaxLength(100);
             builder.Entity<Product>().HasIndex(p => p.Name);
             builder.Entity<Product>().Property(p => p.Description).HasMaxLength(500);
-            builder.Entity<Product>().Property(p => p.Icon).IsUnicode(false).HasMaxLength(256);
+            builder.Entity<Product>().Property(p => p.Icon).IsUnicode(false).HasColumnType("varchar(max)");
             builder.Entity<Product>().HasOne(p => p.Parent).WithMany(p => p.Children).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Product>().Property(p => p.BuyingPrice).HasColumnType(priceDecimalType);
             
@@ -1972,6 +1972,7 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
 
 
 
