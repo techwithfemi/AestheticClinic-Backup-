@@ -229,6 +229,10 @@ quickapp.client/src/app/
 
 **Admin user registration (create user):** There is no public self-service register route. Creating a user is done from **Settings → Users** via `UsersManagementComponent`, which opens `UserInfoComponent` with `isGeneralEditor` and `isNewUser`. The form posts to `POST /api/account/users` with `UserEdit` (including `roles: string[]`, `newPassword`, and profile fields). The **Role assignment** section uses `ng-select` with multiple selection; users who can assign roles need the `assignRoles` permission. Backend reference: `UserAccountController.Register` and `UserEditVM.Roles` in `UserVMs.cs`.
 
+### Reusable Components
+
+**Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`.
+
 ### Services
 
 **ALL API services MUST extend `EndpointBase`** which provides:

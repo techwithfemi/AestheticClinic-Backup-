@@ -1,0 +1,91 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <h2>Procedures</h2>
+      <p class="subtitle">Capture consultation and procedure details.</p>
+    </div>
+  </div>
+
+  <app-attendance-summary [attendance]="selectedPatientSummary() ?? undefined" [compact]="true"></app-attendance-summary>
+
+  <mat-card>
+    <form [formGroup]="form" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Patient</mat-label>
+        <mat-select formControlName="patientId" (selectionChange)="onPatientChanged()">
+          @for (option of patientAttendanceOptions(); track option.trackKey) {
+            <mat-option [value]="option.patientId" [disabled]="option.disabled">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Procedure Type</mat-label>
+        <mat-select formControlName="procedureType" (selectionChange)="onProcedureTypeChanged()">
+          @for (type of procedureTypeOptions; track type) {
+            <mat-option [value]="type">{{ type }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </form>
+
+    <mat-tab-group [selectedIndex]="selectedTabIndex()">
+      <mat-tab label="Consultation">
+        <div class="tab-content" [formGroup]="consultationGroup">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Chief Complaint</mat-label>
+            <textarea matInput rows="3" formControlName="chiefComplaint"></textarea>
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="pregnancy">Pregnancy</mat-slide-toggle>
+          <mat-slide-toggle formControlName="hsvHistory">HSV History</mat-slide-toggle>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Allergies</mat-label>
+            <input matInput formControlName="allergies" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Neuromodulator">
+        <div class="tab-content" [formGroup]="neuromodulatorGroup">
+          <mat-form-field appearance="outline">
+            <mat-label>Lot Number</mat-label>
+            <input matInput formControlName="lotNumber" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Dilution</mat-label>
+            <input matInput type="number" formControlName="dilution" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Post Care Instructions</mat-label>
+            <textarea matInput rows="3" formControlName="postCareInstructions"></textarea>
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Dermal Filler">
+        <div class="tab-content" [formGroup]="dermalFillerGroup">
+          <mat-form-field appearance="outline">
+            <mat-label>Product Name</mat-label>
+            <input matInput formControlName="productName" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Laser">
+        <div class="tab-content" [formGroup]="laserGroup">
+          <mat-form-field appearance="outline"><mat-label>Device Name</mat-label><input matInput formControlName="deviceName" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Wavelength</mat-label><input matInput formControlName="wavelength" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Fluence</mat-label><input matInput formControlName="fluence" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Pulse Duration</mat-label><input matInput formControlName="pulseDuration" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Spot Size</mat-label><input matInput formControlName="spotSize" /></mat-form-field>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <div class="actions">
+      <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="form.invalid">Save</button>
+    </div>
+  </mat-card>
+</div>
