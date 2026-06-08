@@ -36,6 +36,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
         IEnumerable<AestheticSignedConsent> GetSignedConsents(string? consultId = null, string? pNo = null, string? procedureType = null, bool includeVoided = false);
         AestheticSignedConsent? GetLatestSignedConsent(string consultId, string pNo, string procedureType);
         AestheticSignedConsent SignConsent(int? patientId, string consultId, string pNo, string procedureType, int consentTemplateId, string signatureName, string? witnessedBy, string? signedBy, string? notes, byte[]? signatureImage, string? signatureImagePath);
+        AestheticSignedConsent UpdateSignedConsent(int consentId, int? patientId, int? consentTemplateId, string signatureName, string? witnessedBy, string? notes, byte[]? signatureImage, string? signatureImagePath, string currentUserId);
         AestheticSignedConsent MarkConsentViewed(int consentId, string doctorViewedBy);
         AestheticSignedConsent VoidConsent(int consentId, string voidReason, string voidedBy);
         IEnumerable<AestheticFollowUp> GetFollowUps(int? patientId = null, int? consultationId = null, bool? isCompleted = null);

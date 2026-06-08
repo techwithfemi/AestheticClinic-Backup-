@@ -45,6 +45,40 @@ namespace AestheticEMR.Server.Controllers
             _appSettings = appSettings.Value;
         }
 
+        [HttpPut("consents/{consentId:int}")]
+        [ProducesResponseType(typeof(AestheticSignedConsentVM), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdateSignedConsent(int consentId, [FromBody] UpdateAestheticConsentVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var existing = _aestheticService.GetSignedConsents(includeVoided: true).FirstOrDefault(x => x.Id == consentId);
+            if (existing == null)
+                return NotFound(consentId);
+
+            try
+            {
+                var signatureBytes = ToBytes(model.SignatureImageBase64);
+                var signatureImagePath = SaveConsentSignature(signatureBytes, existing.ConsultId ?? string.Empty, existing.PNo ?? string.Empty, existing.ProcedureType ?? string.Empty);
+                var updated = _aestheticService.UpdateSignedConsent(consentId, model.PatientId, model.ConsentTemplateId, model.SignatureName, model.WitnessedBy, model.Notes, signatureBytes, signatureImagePath, GetCurrentUserId() ?? "SYSTEM");
+                return Ok(ApplyConsentImageUrl(_mapper.Map<AestheticSignedConsentVM>(updated)));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Update blocked for consent {ConsentId}", consentId);
+                AddModelError(ex.Message);
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating consent {ConsentId}", consentId);
+                AddModelError(ex.GetBaseException().Message);
+                return BadRequest(ModelState);
+            }
+        }
+
         [HttpGet("patients")]
         [ProducesResponseType(typeof(IEnumerable<AestheticPatientVM>), StatusCodes.Status200OK)]
         public IActionResult GetPatients()

@@ -5,6 +5,7 @@ namespace AestheticEMR.Core.Services.Legacy.Interfaces;
 public interface IAttendanceService
 {
     Task<IEnumerable<HRecord>> GetAllAsync();
+    Task<IEnumerable<QryhvisitsForToday>> GetTodayVisitsAsync();
     Task<HRecord?> GetByIdAsync(string consultId);
     Task<HRecord> CreateAsync(HRecord record);
     Task<HRecord> UpdateAsync(HRecord record);

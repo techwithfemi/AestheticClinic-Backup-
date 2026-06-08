@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { Attendance } from '../models/legacy/attendance.model';
+import { QryhvisitsForToday } from '../models/legacy/qryhvisits-for-today.model';
 import { ConfigurationService } from './configuration.service';
 
 @Injectable({ providedIn: 'root' })
@@ -16,6 +17,12 @@ export class AttendanceEndpoint extends EndpointBase {
   getAttendancesEndpoint<T>(): Observable<T> {
     return this.http.get<T>(this.attendanceUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getAttendancesEndpoint<T>()))
+    );
+  }
+
+  getTodayVisitsEndpoint<T = QryhvisitsForToday[]>(): Observable<T> {
+    return this.http.get<T>(`${this.attendanceUrl}/today-visits`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getTodayVisitsEndpoint<T>()))
     );
   }
 

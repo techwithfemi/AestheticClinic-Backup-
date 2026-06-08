@@ -160,6 +160,8 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.ConsultId, map => map.Ignore())
                 .ForMember(d => d.RecId, map => map.Ignore());
 
+            CreateMap<QryhvisitsForToday, QryhvisitsForTodayVM>();
+
             CreateMap<hAppointment, AppointmentVM>()
                 .ForMember(d => d.Id, map => map.MapFrom(s => s.ID))
                 .ForMember(d => d.Pno, map => map.MapFrom(s => s.pno))

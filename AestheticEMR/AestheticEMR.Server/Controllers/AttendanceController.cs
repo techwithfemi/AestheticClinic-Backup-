@@ -36,6 +36,23 @@ public class AttendanceController(
         }
     }
 
+    [HttpGet("today-visits")]
+    [ProducesResponseType(typeof(IEnumerable<QryhvisitsForTodayVM>), 200)]
+    public async Task<IActionResult> GetTodayVisits()
+    {
+        try
+        {
+            var records = await attendanceService.GetTodayVisitsAsync();
+            return Ok(_mapper.Map<IEnumerable<QryhvisitsForTodayVM>>(records));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving today's attendance records");
+            AddModelError("Unable to retrieve today's attendance records");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(AttendanceVM), 200)]
     [ProducesResponseType(404)]

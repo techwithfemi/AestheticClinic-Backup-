@@ -156,6 +156,11 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.voidConsentEndpoint<T>(consentId, payload))));
   }
 
+  updateSignedConsentEndpoint<T>(consentId: number, payload: object): Observable<T> {
+    return this.http.put<T>(`${this.baseUrl}/consents/${consentId}`, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.updateSignedConsentEndpoint<T>(consentId, payload))));
+  }
+
   getPhotosEndpoint<T>(): Observable<T> {
     return this.http.get<T>(this.photosUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getPhotosEndpoint<T>())));

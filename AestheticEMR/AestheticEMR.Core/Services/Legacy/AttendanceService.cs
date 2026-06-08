@@ -30,6 +30,16 @@ public class AttendanceService(
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<QryhvisitsForToday>> GetTodayVisitsAsync()
+    {
+        return await context.QryhvisitsForTodays
+            .AsNoTracking()
+            .OrderByDescending(x => x.RecDate)
+            .ThenBy(x => x.Fullname)
+            .ThenBy(x => x.ConsultId)
+            .ToListAsync();
+    }
+
     public async Task<HRecord?> GetByIdAsync(string consultId)
     {
         return await context.HRecords.FirstOrDefaultAsync(x => x.ConsultId == consultId);

@@ -40,6 +40,48 @@ namespace AestheticEMR.Core.Services.Aesthetics
             return patient;
         }
 
+        public AestheticSignedConsent UpdateSignedConsent(int consentId, int? patientId, int? consentTemplateId, string signatureName, string? witnessedBy, string? notes, byte[]? signatureImage, string? signatureImagePath, string currentUserId)
+        {
+            var existing = dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .FirstOrDefault(x => x.Id == consentId);
+
+            if (existing == null)
+                throw new KeyNotFoundException($"Signed consent not found: {consentId}");
+
+            // Only creator can update
+            if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only the author that created this consent can update it.");
+
+            if (consentTemplateId.HasValue)
+            {
+                var template = dbContext.AestheticConsentTemplates.FirstOrDefault(x => x.Id == consentTemplateId.Value && x.IsActive);
+                if (template == null)
+                    throw new KeyNotFoundException($"Consent template not found: {consentTemplateId}");
+
+                existing.ConsentTemplateId = template.Id;
+                existing.ConsentTemplate = template;
+                existing.ConsentContent = template.Content;
+            }
+
+            existing.PatientId = patientId ?? existing.PatientId;
+            existing.SignatureName = NormalizeRequired(signatureName, "Signature name");
+            existing.WitnessedBy = NormalizeOptional(witnessedBy);
+            existing.Notes = NormalizeOptional(notes);
+            existing.SignatureImage = signatureImage ?? existing.SignatureImage;
+            existing.SignatureImagePath = NormalizeOptional(signatureImagePath) ?? existing.SignatureImagePath;
+            existing.UpdatedDate = DateTime.UtcNow;
+
+            dbContext.SaveChanges();
+
+            return dbContext.AestheticSignedConsents
+                .Include(x => x.ConsentTemplate)
+                .Include(x => x.Patient)
+                .AsSingleQuery()
+                .First(x => x.Id == existing.Id);
+        }
+
         public AestheticPatient UpdatePatient(AestheticPatient patient)
         {
             var existing = dbContext.AestheticPatients.Find(patient.Id);

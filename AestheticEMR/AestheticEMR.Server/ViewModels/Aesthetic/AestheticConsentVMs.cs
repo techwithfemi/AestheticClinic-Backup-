@@ -96,4 +96,22 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         [StringLength(500)]
         public string VoidReason { get; set; } = string.Empty;
     }
+
+    public class UpdateAestheticConsentVM
+    {
+        public int? PatientId { get; set; }
+
+        [Required]
+        [StringLength(150)]
+        public string SignatureName { get; set; } = string.Empty;
+
+        [StringLength(150)]
+        public string? WitnessedBy { get; set; }
+
+        public string? Notes { get; set; }
+
+        public string? SignatureImageBase64 { get; set; }
+
+        public int? ConsentTemplateId { get; set; }
+    }
 }

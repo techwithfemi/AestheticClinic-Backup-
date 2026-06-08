@@ -21,9 +21,9 @@ import { AttendanceEndpoint } from '../../../services/attendance-endpoint.servic
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
 import { AestheticConsultation, AestheticPatient, AestheticPhoto, AestheticSignedConsent } from '../../../models/aesthetic.model';
-import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
+import { QryhvisitsForToday } from '../../../models/legacy/qryhvisits-for-today.model';
 import { ModuleSettingsService } from '../../../services/module-settings.service';
 
 type PhotoTab = 'neuromodulator' | 'dermalFiller' | 'laser';
@@ -167,10 +167,10 @@ interface ProceduresEntryDialogData {
                 <div class="consent-grid full">
                   <mat-form-field appearance="outline" class="patient-field">
                     <mat-label>Patient</mat-label>
-                    <mat-select formControlName="patientId" (selectionChange)="onPatientChanged()">
-                      <mat-option [value]="0">Select Patient</mat-option>
+                    <mat-select [value]="selectedVisitConsultId()" (selectionChange)="onPatientVisitChanged($event.value)">
+                      <mat-option value="">Select Patient</mat-option>
                       @for (item of patientAttendanceOptions(); track item.trackKey) {
-                        <mat-option [value]="item.patientId">{{ item.label }}</mat-option>
+                        <mat-option [value]="item.consultId">{{ item.label }}</mat-option>
                       }
                     </mat-select>
                   </mat-form-field>
@@ -707,9 +707,10 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly safetyAlerts = signal<SafetyAlert[]>([]);
   readonly showEmergencyProtocols = signal(false);
   readonly reportedComplications = signal<{ tab: string; timestamp: Date }[]>([]);
-  readonly attendanceRecords = signal<Attendance[]>([]);
+  readonly todayVisits = signal<QryhvisitsForToday[]>([]);
   readonly legacyPatients = signal<HPatient[]>([]);
   readonly selectedConsentProcedureType = signal('');
+  readonly selectedVisitConsultId = signal('');
   readonly signedConsents = signal<AestheticSignedConsent[]>([]);
   readonly procedureTypes = signal<string[]>(['Procedures', 'Neuromodulator', 'Dermal Filler', 'Laser']);
   readonly consentTableRows = signal<AestheticSignedConsent[]>([]);
@@ -719,26 +720,18 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly consentTableColumns = ['consultId', 'patient', 'procedureType', 'signedDate', 'doctorViewed'];
 
   readonly selectedAttendanceSummary = computed<VwhRecord | null>(() => {
-    const patientId = this.form.controls.patientId.value;
-    if (!patientId) {
+    const consultId = this.selectedVisitConsultId().trim();
+    if (!consultId) {
       return null;
     }
 
-    const patient = this.patients().find(x => x.id === patientId) ?? null;
-    if (!patient) {
+    const visit = this.todayVisits().find(x => (x.consultId || '').trim() === consultId);
+    if (!visit) {
       return null;
     }
 
-    const todayKey = this.toLocalDateKey(new Date());
-    const attendance = this.attendanceRecords()
-      .filter(a => this.toLocalDateKey(a.recDate) === todayKey)
-      .find(a => this.findPatientByAttendancePno([patient], a.pNo)?.id === patientId);
-
-    if (!attendance) {
-      return null;
-    }
-
-    return this.buildAttendanceSummary(attendance, patient);
+    const patient = this.findPatientByAttendancePno(this.patients(), visit.pNo) ?? null;
+    return this.buildAttendanceSummary(visit, patient);
   });
 
   readonly selectedProcedureSignedConsents = computed(() => {
@@ -748,30 +741,28 @@ export class ProceduresEntryDialogComponent implements OnInit {
 
   readonly patientAttendanceOptions = computed<{
     trackKey: string;
+    consultId: string;
     patientId: number;
+    pNo: string;
     label: string;
-    disabled: boolean;
   }[]>(() => {
-    const todayKey = this.toLocalDateKey(new Date());
     const patients = this.patients();
 
-    return this.attendanceRecords()
-      .filter(attendance => this.toLocalDateKey(attendance.recDate) === todayKey)
-      .map(attendance => {
-        const patient = this.findPatientByAttendancePno(patients, attendance.pNo);
-        const patientName = this.resolveAttendancePatientName(attendance, patient);
-        const visitDate = this.formatAttendanceDate(attendance.recDate);
-        const consultId = attendance.consultId ?? '';
-        const clinic = attendance.clinicType ?? '';
+    return this.todayVisits()
+      .filter(visit => !!visit.consultId?.trim() && !!visit.pNo?.trim())
+      .map(visit => {
+        const patient = this.findPatientByAttendancePno(patients, visit.pNo);
+        const patientName = (visit.fullname || '').trim() || this.resolveAttendancePatientName(visit, patient);
+        const visitDate = this.formatAttendanceDate(visit.recDate);
 
         return {
-          trackKey: `${consultId}-${attendance.recId ?? attendance.pNo ?? patient?.id ?? 0}`,
+          trackKey: `${visit.consultId}-${visit.pNo}`,
+          consultId: visit.consultId,
           patientId: patient?.id ?? 0,
-          label: `${patientName} ${visitDate} [${consultId}]${clinic ? ` - ${clinic}` : ''}`,
-          disabled: !patient
+          pNo: visit.pNo,
+          label: `${patientName} ${visitDate} [${visit.consultId}]`
         };
       })
-      .filter(item => item.patientId > 0)
       .sort((a, b) => a.label.localeCompare(b.label));
   });
 
@@ -953,6 +944,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
     if (this.data.consultation) {
       this.currentConsultationId.set(this.data.consultation.id ?? null);
       this.form.controls.patientId.setValue(this.data.consultation.patientId ?? 0);
+      this.selectedVisitConsultId.set((this.data.consultation.consultId || '').trim());
       this.loadFromConsultation(this.data.consultation);
     }
 
@@ -963,12 +955,12 @@ export class ProceduresEntryDialogComponent implements OnInit {
   }
 
   private loadAttendances(): void {
-    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
-      next: attendances => {
-        this.attendanceRecords.set(attendances || []);
+    this.attendanceEndpoint.getTodayVisitsEndpoint<QryhvisitsForToday[]>().subscribe({
+      next: visits => {
+        this.todayVisits.set(visits || []);
       },
       error: error => {
-        this.alertService.showStickyMessage('Load error', 'Unable to load attendance records.', MessageSeverity.error, error);
+        this.alertService.showStickyMessage('Load error', 'Unable to load today\'s attendance records.', MessageSeverity.error, error);
       }
     });
   }
@@ -1022,9 +1014,9 @@ export class ProceduresEntryDialogComponent implements OnInit {
   }
 
   private loadSignedConsentsForSelection(): void {
-    const patientId = this.form.controls.patientId.value;
-    const patient = this.patients().find(x => x.id === patientId);
-    const pNo = (patient?.pno || '').trim();
+    const consultId = this.selectedVisitConsultId().trim();
+    const option = this.patientAttendanceOptions().find(x => x.consultId === consultId);
+    const pNo = (option?.pNo || '').trim();
     if (!pNo) {
       this.signedConsents.set([]);
       return;
@@ -1040,20 +1032,20 @@ export class ProceduresEntryDialogComponent implements OnInit {
     });
   }
 
-  private buildAttendanceSummary(attendance: Attendance, patient: AestheticPatient): VwhRecord {
-    const legacyPatient = this.legacyPatients().find(p => this.normalizePno(p.pno) === this.normalizePno(attendance.pNo));
-    const dob = legacyPatient?.dob || patient.dateOfBirth;
-    const surname = legacyPatient?.pSurName ?? patient.lastName;
-    const firstName = legacyPatient?.pFirstname ?? patient.firstName;
-    const fullName = `${surname ?? ''} ${firstName ?? ''}`.trim() || attendance.pNo;
+  private buildAttendanceSummary(visit: QryhvisitsForToday, patient: AestheticPatient | null): VwhRecord {
+    const legacyPatient = this.legacyPatients().find(p => this.normalizePno(p.pno) === this.normalizePno(visit.pNo));
+    const dob = legacyPatient?.dob || patient?.dateOfBirth;
+    const fullName = (visit.fullname || '').trim()
+      || `${legacyPatient?.pSurName ?? patient?.lastName ?? ''} ${legacyPatient?.pFirstname ?? patient?.firstName ?? ''}`.trim()
+      || visit.pNo;
 
     return {
-      consultId: attendance.consultId ?? '—',
-      pNo: attendance.pNo,
-      clinicType: attendance.clinicType,
-      clientCat: attendance.clientCat,
-      coyname: attendance.coyname,
-      retainName: undefined,
+      consultId: visit.consultId ?? '—',
+      pNo: visit.pNo,
+      clinicType: visit.clinicType,
+      clientCat: visit.clientCat,
+      coyname: visit.coyName,
+      retainName: visit.retainName,
       fullname: fullName,
       dob,
       age: this.calculateAge(dob)
@@ -1214,8 +1206,24 @@ export class ProceduresEntryDialogComponent implements OnInit {
     this.loadSignedConsentsForSelection();
   }
 
+  onPatientVisitChanged(consultId: string): void {
+    const normalizedConsultId = (consultId || '').trim();
+    this.selectedVisitConsultId.set(normalizedConsultId);
+
+    const selected = this.patientAttendanceOptions().find(x => x.consultId === normalizedConsultId);
+    this.form.controls.patientId.setValue(selected?.patientId ?? 0);
+
+    this.loadSignedConsentsForSelection();
+
+    if (!selected?.patientId) {
+      return;
+    }
+
+    this.onPatientChanged();
+  }
+
   hasConsentSelection(): boolean {
-    return !!this.form.controls.patientId.value && !!this.selectedConsentProcedureType().trim();
+    return !!this.selectedVisitConsultId().trim() && !!this.selectedConsentProcedureType().trim();
   }
 
   onConsentProcedureTypeChanged(procedureType: string): void {
@@ -1781,12 +1789,17 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     return (value ?? '').trim().toLowerCase();
   }
 
-  private resolveAttendancePatientName(attendance: Attendance, aestheticPatient: AestheticPatient | null): string {
+  private resolveAttendancePatientName(attendance: { pNo?: string; fullname?: string }, aestheticPatient: AestheticPatient | null): string {
     if (aestheticPatient) {
       const name = `${aestheticPatient.firstName ?? ''} ${aestheticPatient.lastName ?? ''}`.trim();
       if (name) {
         return name;
       }
+    }
+
+    const fullName = (attendance.fullname || '').trim();
+    if (fullName) {
+      return fullName;
     }
 
     const attendancePno = this.normalizePno(attendance.pNo);
