@@ -1,7 +1,7 @@
 {
   "autoFollowUpDays": 14,
   "procedureTypes": [
-    "Procedures",
+    "Botox",
     "Neuromodulator",
     "Dermal Filler",
     "Laser"

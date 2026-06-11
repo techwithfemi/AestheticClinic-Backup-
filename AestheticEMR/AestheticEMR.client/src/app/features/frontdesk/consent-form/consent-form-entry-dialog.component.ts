@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, ElementRef, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -63,7 +63,7 @@ interface ConsentEntryDialogData {
           <p class="subtitle">Select patient and capture signature for procedure consent.</p>
           @if (selectedAttendanceSummary()) {
             <div class="header-attendance-summary">
-              <app-attendance-summary [attendance]="selectedAttendanceSummary()!" [compact]="true"></app-attendance-summary>
+              <app-attendance-summary [attendance]="selectedAttendanceSummary()!" [photo]="selectedPatientPhoto()" [compact]="true"></app-attendance-summary>
             </div>
           }
         </div>
@@ -87,6 +87,7 @@ interface ConsentEntryDialogData {
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Procedure Type</mat-label>
               <mat-select [value]="selectedProcedureType()" (selectionChange)="onProcedureTypeChanged($event.value)">
+                <mat-option value="">Select procedure type</mat-option>
                 @for (procedureType of procedureTypes(); track procedureType) {
                   <mat-option [value]="procedureType">{{ procedureType }}</mat-option>
                 }
@@ -134,11 +135,11 @@ interface ConsentEntryDialogData {
           </div>
 
           <div class="actions-row">
-            <button mat-stroked-button type="button" (click)="closeDialog()" [disabled]="loadingIndicator">
+                        <button mat-stroked-button type="button" (click)="closeDialog()" [disabled]="isBusy()">
               Cancel
             </button>
-            <button mat-raised-button color="primary" type="button" (click)="saveConsent()" 
-              [disabled]="!canSave() || loadingIndicator">
+            <button mat-raised-button color="primary" type="button" (click)="saveConsent()"
+              [disabled]="!canSave()">
               {{ isEditing() ? 'Update' : 'Save' }}
             </button>
           </div>
@@ -209,16 +210,26 @@ export class ConsentFormEntryDialogComponent implements OnInit {
   private readonly hPatientEndpoint = inject(HPatientEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly moduleSettings = inject(ModuleSettingsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  loadingIndicator = false;
+  /** Signal-based busy flag — replaces plain boolean so computed() re-evaluates reactively */
+  readonly isBusy = signal(false);
 
   readonly todayVisits = signal<QryhvisitsForToday[]>([]);
   readonly legacyPatients = signal<HPatient[]>([]);
   readonly templates = signal<AestheticConsentTemplate[]>([]);
   readonly procedureTypes = signal<string[]>(['Procedures', 'Neuromodulator', 'Dermal Filler', 'Laser']);
   readonly selectedConsultId = signal<string>('');
-  readonly selectedProcedureType = signal<string>('Procedures');
+  readonly selectedProcedureType = signal<string>('');
   readonly existingConsent = signal<AestheticSignedConsent | null>(null);
+
+  /**
+   * Reactive mirrors of the form values that canSave() depends on.
+   * Angular computed() cannot track ReactiveForm controls directly,
+   * so we mirror them into signals and keep both in sync.
+   */
+  readonly signatureBase64    = signal<string>('');
+  readonly signatureNameValue = signal<string>('');
 
   @ViewChild('signatureCanvas')
   set signatureCanvas(value: ElementRef<HTMLCanvasElement> | undefined) {
@@ -243,7 +254,7 @@ export class ConsentFormEntryDialogComponent implements OnInit {
 
     const patient = this.legacyPatients().find(p => this.normalizePno(p.pno) === this.normalizePno(attendance.pNo));
     const dob = patient?.dob;
-    const fullName = attendance.fullname?.trim() 
+    const fullName = attendance.fullname?.trim()
       || `${patient?.pSurName || ''} ${patient?.pFirstname || ''}`.trim()
       || attendance.pNo;
 
@@ -256,8 +267,16 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       retainName: attendance.retainName,
       fullname: fullName,
       dob,
-      age: this.calculateAge(dob)
+      age: this.calculateAge(dob),
+      patientPhotoBase64: patient?.patPixBase64
     };
+  });
+
+  readonly selectedPatientPhoto = computed<string | undefined>(() => {
+    const attendance = this.selectedAttendance();
+    if (!attendance) return undefined;
+    const patient = this.legacyPatients().find(p => this.normalizePno(p.pno) === this.normalizePno(attendance.pNo));
+    return patient?.patPixBase64;
   });
 
   readonly activeTemplate = computed(() => {
@@ -282,7 +301,7 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       .filter(v => !!v.consultId?.trim() && !!v.pNo?.trim())
       .map(v => {
         const patient = patients.find(p => this.normalizePno(p.pno) === this.normalizePno(v.pNo));
-        const patientName = (v.fullname || '').trim() 
+        const patientName = (v.fullname || '').trim()
           || `${patient?.pSurName || ''} ${patient?.pFirstname || ''}`.trim()
           || v.pNo;
         const visitDate = this.formatVisitDate(v.recDate);
@@ -297,24 +316,35 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       .sort((a, b) => a.label.localeCompare(b.label));
   });
 
-  readonly isEditing = computed(() => this.existingConsent() !== null);
+    readonly isEditing = computed(() => this.existingConsent() !== null);
 
+  /**
+   * Save enabled when: patient selected + template exists + name filled + signature drawn + not busy.
+   * All dependencies are signals so Angular change-detection picks up every change.
+   */
   readonly canSave = computed(() => {
-    const hasPatient = !!this.selectedConsultId();
+    const hasPatient  = !!this.selectedConsultId();
     const hasTemplate = !!this.activeTemplate();
-    const hasSignature = !!this.form.get('signatureImageBase64')?.value;
-    const formValid = this.form.valid;
-    return hasPatient && hasTemplate && hasSignature && formValid && !this.loadingIndicator;
+    const hasName     = !!this.signatureNameValue().trim();
+    const hasSig      = !!this.signatureBase64();
+    const notBusy     = !this.isBusy();
+    return hasPatient && hasTemplate && hasName && hasSig && notBusy;
   });
 
   form = this.fb.nonNullable.group({
-    signatureName: ['', Validators.required],
-    witnessedBy: [''],
-    notes: [''],
-    signatureImageBase64: ['', Validators.required]
+    signatureName:        ['', Validators.required],
+    witnessedBy:          [''],
+    notes:                [''],
+    signatureImageBase64: ['']   // validation handled via canSave signal
   });
 
   ngOnInit(): void {
+    // Keep reactive signals in sync with form control changes
+    this.form.controls.signatureName.valueChanges
+      .subscribe(v => this.signatureNameValue.set(v || ''));
+    this.form.controls.signatureImageBase64.valueChanges
+      .subscribe(v => this.signatureBase64.set(v || ''));
+
     this.loadTemplates();
     this.loadAttendances();
     this.loadPatients();
@@ -365,44 +395,55 @@ export class ConsentFormEntryDialogComponent implements OnInit {
     });
   }
 
-  private loadExistingConsent(consentId: number): void {
-    this.loadingIndicator = true;
+    private loadExistingConsent(consentId: number): void {
+    this.isBusy.set(true);
     this.alertService.startLoadingMessage('Loading consent...');
-    // Note: Load all consents and filter by ID on client side
-    // since the API doesn't support filtering by single consent ID
+    // Load all consents and filter by ID on client side
+    // (API doesn't expose a single-consent-by-ID endpoint)
     this.aestheticEndpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ includeVoided: false }).subscribe({
       next: consents => {
         const consent = (consents || []).find(c => c.id === consentId);
         if (consent) {
           this.existingConsent.set(consent);
           this.selectedConsultId.set(consent.consultId || '');
-          this.selectedProcedureType.set(consent.procedureType || 'Procedures');
+          this.selectedProcedureType.set(consent.procedureType || '');
           this.form.controls.signatureName.setValue(consent.signatureName || '');
           this.form.controls.witnessedBy.setValue(consent.witnessedBy || '');
           this.form.controls.notes.setValue(consent.notes || '');
-          this.form.controls.signatureImageBase64.setValue(consent.signatureImageBase64 || '');
+          // valueChanges subscription will update signatureBase64 signal automatically
+          const sig = consent.signatureImageBase64 || '';
+          this.form.controls.signatureImageBase64.setValue(sig);
+          // If canvas is already mounted, paint the signature onto it now.
+          // If not yet mounted, initializeSignaturePad() will handle it when
+          // the ViewChild setter fires (once selectedConsultId makes template visible).
+          if (this._signatureCanvas && this.signaturePad && sig) {
+            this.loadSignatureImageIntoCanvas(sig);
+          }
         }
-        this.loadingIndicator = false;
+        this.isBusy.set(false);
         this.alertService.stopLoadingMessage();
       },
       error: error => {
-        this.loadingIndicator = false;
+        this.isBusy.set(false);
         this.alertService.stopLoadingMessage();
         this.alertService.showStickyMessage('Load Error', 'Unable to load consent.', MessageSeverity.error, error);
       }
     });
   }
 
-  onPatientChanged(consultId: string): void {
+    onPatientChanged(consultId: string): void {
     this.selectedConsultId.set(consultId);
     this.clearSignature();
     this.form.reset({ signatureName: '', witnessedBy: '', notes: '', signatureImageBase64: '' });
+    this.signatureNameValue.set('');
+    this.signatureBase64.set('');
   }
 
-  onProcedureTypeChanged(procedureType: string): void {
+    onProcedureTypeChanged(procedureType: string): void {
     this.selectedProcedureType.set(procedureType);
     this.clearSignature();
     this.form.controls.signatureImageBase64.setValue('');
+    // signatureBase64 signal updated via valueChanges subscription
   }
 
   private initializeSignaturePad(): void {
@@ -428,7 +469,10 @@ export class ConsentFormEntryDialogComponent implements OnInit {
 
       this.signaturePad.minWidth = 1.8;
       this.signaturePad.maxWidth = 3.0;
-      this.signaturePad.addEventListener('endStroke', () => this.persistSignatureImage());
+      this.signaturePad.addEventListener('endStroke', () => {
+        this.persistSignatureImage();
+        this.cdr.markForCheck();
+      });
 
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -438,9 +482,12 @@ export class ConsentFormEntryDialogComponent implements OnInit {
 
       this.signaturePad.clear();
 
-      // If editing, load existing signature
-      if (this.isEditing() && this.form.controls.signatureImageBase64.value) {
-        this.loadSignatureImageIntoCanvas(this.form.controls.signatureImageBase64.value);
+            // Paint existing signature if available (edit mode).
+      // Data may have already arrived from loadExistingConsent() before this
+      // ViewChild setter fired — check the form value directly.
+      const existingBase64 = this.form.controls.signatureImageBase64.value;
+      if (existingBase64) {
+        this.loadSignatureImageIntoCanvas(existingBase64);
       } else {
         this.persistSignatureImage();
       }
@@ -458,15 +505,18 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       }
     }
     this.form.controls.signatureImageBase64.setValue('');
+    this.signatureBase64.set('');
   }
 
   private persistSignatureImage(): void {
     if (!this.signaturePad || this.signaturePad.isEmpty()) {
       this.form.controls.signatureImageBase64.setValue('');
+      this.signatureBase64.set('');
       return;
     }
-
-    this.form.controls.signatureImageBase64.setValue(this.signaturePad.toDataURL('image/png'), { emitEvent: false });
+    const dataUrl = this.signaturePad.toDataURL('image/png');
+    this.form.controls.signatureImageBase64.setValue(dataUrl, { emitEvent: false });
+    this.signatureBase64.set(dataUrl);
   }
 
   private loadSignatureImageIntoCanvas(base64: string): void {
@@ -499,8 +549,10 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       const offsetX = Math.round((canvas.width - drawWidth) / 2);
       const offsetY = Math.round((canvas.height - drawHeight) / 2);
 
-      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+      // Keep form and signal in sync after painting
       this.form.controls.signatureImageBase64.setValue(base64, { emitEvent: false });
+      this.signatureBase64.set(base64);
     };
     img.src = base64;
   }
@@ -531,31 +583,32 @@ export class ConsentFormEntryDialogComponent implements OnInit {
       signatureImageBase64: this.form.controls.signatureImageBase64.value
     };
 
-    this.loadingIndicator = true;
-    this.alertService.startLoadingMessage(this.isEditing() ? 'Updating consent...' : 'Saving consent...');
+        this.isBusy.set(true);
+    const editing = this.isEditing();
+    this.alertService.startLoadingMessage(editing ? 'Updating consent...' : 'Saving consent...');
 
     const consentId = this.existingConsent()?.id;
-    const request = consentId
+    const request   = consentId
       ? this.aestheticEndpoint.updateSignedConsentEndpoint<AestheticSignedConsent>(consentId, payload)
       : this.aestheticEndpoint.signConsentEndpoint<AestheticSignedConsent>(payload);
 
     request.subscribe({
       next: consent => {
-        this.loadingIndicator = false;
+        this.isBusy.set(false);
         this.alertService.stopLoadingMessage();
         this.alertService.showMessage(
           'Success',
-          this.isEditing() ? 'Consent updated successfully.' : 'Consent saved successfully.',
+          editing ? 'Consent updated successfully.' : 'Consent saved successfully.',
           MessageSeverity.success
         );
         this.dialogRef.close(consent);
       },
       error: error => {
-        this.loadingIndicator = false;
+        this.isBusy.set(false);
         this.alertService.stopLoadingMessage();
         this.alertService.showStickyMessage(
-          this.isEditing() ? 'Update Error' : 'Save Error',
-          this.isEditing() ? 'Unable to update consent.' : 'Unable to save consent.',
+          editing ? 'Update Error' : 'Save Error',
+          editing ? 'Unable to update consent.' : 'Unable to save consent.',
           MessageSeverity.error,
           error
         );

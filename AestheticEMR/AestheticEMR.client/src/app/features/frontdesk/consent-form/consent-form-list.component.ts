@@ -62,6 +62,11 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
           </mat-form-field>
 
           <div class="filter-toggle">
+            <span>Show today's records only</span>
+            <mat-slide-toggle [checked]="todayOnly()" (change)="todayOnly.set($event.checked)"></mat-slide-toggle>
+          </div>
+
+          <div class="filter-toggle">
             <span>Show voided</span>
             <mat-slide-toggle [checked]="showVoided()" (change)="showVoided.set($event.checked)"></mat-slide-toggle>
           </div>
@@ -71,6 +76,20 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
             Refresh
           </button>
         </div>
+
+        @if (isDateFilterActive()) {
+          <div class="filter-info">
+            <mat-icon>event</mat-icon>
+            <span>
+              Showing records signed on <strong>{{ todayLabel() }}</strong>.
+              @if (searchText()) {
+                Search is also applied.
+              } @else {
+                Clear the search box to keep only today's records visible.
+              }
+            </span>
+          </div>
+        }
       </mat-card>
 
       <mat-card class="table-card">
@@ -183,6 +202,19 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     .badge-signed { background: #e6f4ea; color: #1e7e34; }
     .badge-voided { background: #fce8e6; color: #c5221f; }
 
+    .filter-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #e3f2fd;
+      border-radius: 6px;
+      color: #0d47a1;
+      font-size: 0.85rem;
+    }
+    .filter-info mat-icon { font-size: 18px; height: 18px; width: 18px; }
+
     @media (max-width: 992px) {
       .page-shell { padding: 16px; }
       .page-header { flex-direction: column; }
@@ -213,6 +245,7 @@ export class ConsentFormListComponent implements OnInit {
   readonly patients = signal<HPatient[]>([]);
   readonly searchText = signal<string>('');
   readonly showVoided = signal<boolean>(false);
+  readonly todayOnly = signal<boolean>(true);
   readonly pageIndex = signal<number>(0);
   readonly pageSize = signal<number>(10);
 
@@ -223,11 +256,22 @@ export class ConsentFormListComponent implements OnInit {
   readonly filteredEntries = computed(() => {
     const term = this.searchText().toLowerCase().trim();
     const includeVoided = this.showVoided();
+    const hasSearch = term.length > 0;
+    const filterByToday = this.todayOnly() && !hasSearch;
+    const today = this.startOfToday();
 
     return this.entries()
       .filter(e => includeVoided || !e.isVoided)
       .filter(e => {
-        if (!term) return true;
+        if (filterByToday) {
+          const signed = this.parseSignedDate(e.signedDate);
+          if (!signed) return false;
+          if (signed.getTime() < today) return false;
+        }
+        return true;
+      })
+      .filter(e => {
+        if (!hasSearch) return true;
         return (
           (e.consultId || '').toLowerCase().includes(term) ||
           (e.procedureType || '').toLowerCase().includes(term) ||
@@ -236,6 +280,13 @@ export class ConsentFormListComponent implements OnInit {
           this.resolvePatientName(e.pNo).toLowerCase().includes(term)
         );
       });
+  });
+
+  readonly isDateFilterActive = computed(() => this.todayOnly() && !this.searchText().trim());
+
+  readonly todayLabel = computed(() => {
+    const d = new Date();
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   });
 
   readonly pagedEntries = computed(() => {
@@ -281,6 +332,23 @@ export class ConsentFormListComponent implements OnInit {
   onSearchChanged(value: string): void {
     this.searchText.set((value || '').trim());
     this.pageIndex.set(0);
+  }
+
+  private startOfToday(): number {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  }
+
+  private parseSignedDate(value?: string): Date | null {
+    if (!value) return null;
+    let date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      const parts = (value || '').split('T');
+      const datePart = parts[0] || value;
+      const timePart = parts[1] ? parts[1].split('Z')[0] : '';
+      date = new Date(datePart + (timePart ? 'T' + timePart : ''));
+    }
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   onPageChanged(event: PageEvent): void {
