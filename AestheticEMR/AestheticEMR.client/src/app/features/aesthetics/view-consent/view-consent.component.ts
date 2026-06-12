@@ -122,7 +122,9 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
               <div class="doc-heading">Post-Treatment Care Instructions</div>
               <div class="doc-body">{{ activeConsent()?.notes || 'Follow all post-treatment instructions provided by your practitioner. Avoid sun exposure and strenuous activity as directed. Contact the clinic immediately if you experience unusual pain, swelling, or any adverse reactions.' }}</div>
             </div>
-            <hr class="doc-rule" />
+
+            <!-- Full-width separator between content and signatures -->
+            <hr class="sig-section-rule" />
 
             <!-- Signature section -->
             <div class="signatures">
@@ -133,8 +135,9 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
                 } @else if (activeConsent()?.signatureImagePath) {
                   <img [src]="resolveImageUrl(activeConsent()!.signatureImagePath)" alt="Patient signature" class="sig-image" />
                 } @else {
-                  <div class="sig-line"></div>
+                  <div class="sig-spacer"></div>
                 }
+                <div class="sig-underline"></div>
                 <div class="sig-name">{{ activeConsent()?.signatureName || '—' }}</div>
                 @if (activeConsent()?.witnessedBy) {
                   <div class="sig-witness">Witnessed by: {{ activeConsent()!.witnessedBy }}</div>
@@ -142,7 +145,8 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
               </div>
               <div class="sig-col">
                 <div class="sig-label">Provider Signature:</div>
-                <div class="sig-line"></div>
+                <div class="sig-spacer"></div>
+                <div class="sig-underline"></div>
                 <div class="sig-provider">{{ resolveProviderName(activeConsent()?.signedBy) }}</div>
                 <div class="sig-date-row">
                   <strong>Date:</strong>
@@ -252,14 +256,18 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
     .doc-body { font-size: 13px; color: #374151; line-height: 1.65; white-space: pre-wrap; }
     .doc-rule { border: none; border-top: 1px solid #e5e7eb; margin: 6px 32px; }
 
+    /* Full-width rule above signatures */
+    .sig-section-rule { border: none; border-top: 1.5px solid #374151; margin: 10px 0 0; }
+
     /* Signatures */
     .signatures { display: flex; justify-content: space-between; gap: 20px; padding: 14px 32px 24px; }
     .sig-col { flex: 1; }
     .sig-label { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
-    .sig-image { max-width: 220px; max-height: 80px; border: 1px solid #e5e7eb; padding: 4px; border-radius: 4px; display: block; margin-bottom: 6px; }
-    .sig-line { border-bottom: 1.5px solid #6b7280; min-height: 50px; max-width: 260px; margin-bottom: 6px; }
-    .sig-name { font-size: 13px; font-weight: 600; color: #374151; }
-    .sig-witness { font-size: 12px; color: #6b7280; margin-top: 3px; }
+    .sig-image { max-width: 220px; max-height: 80px; border: 1px solid #e5e7eb; padding: 4px; border-radius: 4px; display: block; }
+    .sig-spacer { min-height: 56px; }
+    .sig-underline { border-bottom: 1.5px solid #374151; width: 260px; max-width: 100%; margin: 4px 0 6px; }
+    .sig-name { font-size: 13px; font-weight: 600; color: #374151; text-align: center; width: 260px; max-width: 100%; }
+    .sig-witness { font-size: 12px; color: #6b7280; margin-top: 3px; text-align: center; width: 260px; max-width: 100%; }
     .sig-provider { font-size: 13px; font-weight: 500; color: #374151; }
     .sig-date-row { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #374151; margin-top: 6px; }
 
