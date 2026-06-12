@@ -20,6 +20,7 @@ import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service'
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
+import { ViewConsentComponent } from '../view-consent/view-consent.component';
 import { AestheticConsultation, AestheticPatient, AestheticPhoto, AestheticSignedConsent } from '../../../models/aesthetic.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
@@ -74,7 +75,8 @@ interface ProceduresEntryDialogData {
     MatTooltipModule,
     MatDialogModule,
     MatProgressBarModule,
-    AttendanceSummaryComponent
+    AttendanceSummaryComponent,
+    ViewConsentComponent
   ],
   template: `
     <div class="procedures-page">
@@ -91,7 +93,7 @@ interface ProceduresEntryDialogData {
           <p class="subtitle">Unified consultation and procedure tabs with integrated safety checks.</p>
           @if (selectedAttendanceSummary()) {
             <div class="header-attendance-summary">
-              <app-attendance-summary [attendance]="selectedAttendanceSummary()!" [compact]="true"></app-attendance-summary>
+              <app-attendance-summary [attendance]="selectedAttendanceSummary()!" [photo]="selectedAttendanceSummary()?.patientPhotoBase64" [compact]="true"></app-attendance-summary>
             </div>
           }
         </div>
@@ -190,18 +192,10 @@ interface ProceduresEntryDialogData {
                   <div class="block-title">Signed Consent for Selected Procedure</div>
                   @if (!hasConsentSelection()) {
                     <div class="empty-consent">Select patient and procedure type to view signed consent.</div>
-                  } @else if (selectedProcedureSignedConsents().length === 0) {
+                  } @else if (!selectedProcedureSignedConsent()) {
                     <div class="empty-consent">No signed consent found for {{ selectedConsentProcedureType() }}.</div>
                   } @else {
-                    @for (consent of selectedProcedureSignedConsents(); track consent.id) {
-                      <div class="consent-item">
-                        <div><strong>Signed:</strong> {{ consent.signedDate | date:'medium' }}</div>
-                        <div><strong>By:</strong> {{ consent.signatureName || consent.signedBy || '—' }}</div>
-                        <div><strong>Witness:</strong> {{ consent.witnessedBy || '—' }}</div>
-                        <div><strong>Status:</strong> {{ consent.isVoided ? 'Voided' : 'Active' }}</div>
-                        <div class="consent-content">{{ consent.consentContent || '—' }}</div>
-                      </div>
-                    }
+                    <app-view-consent [embeddedConsent]="selectedProcedureSignedConsent()"></app-view-consent>
                   }
                 </div>
 
@@ -628,8 +622,9 @@ interface ProceduresEntryDialogData {
     .tab-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px 2px 2px; }
     .consent-tab { grid-template-columns: 1fr; }
     .consent-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .consent-preview { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
-    .empty-consent { color: #666; }
+    .consent-preview { border: 1px solid #e0e0e0; border-radius: 8px; padding: 0; background: #f5f5f5; overflow: hidden; }
+    .consent-preview .block-title { padding: 10px 14px 8px; font-weight: 600; font-size: 13px; color: #374151; }
+    .empty-consent { color: #666; padding: 10px 14px; }
     .consent-item { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 10px; margin-bottom: 10px; }
     .consent-content { margin-top: 8px; white-space: pre-wrap; }
     .full { grid-column: 1 / -1; }
@@ -737,6 +732,16 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly selectedProcedureSignedConsents = computed(() => {
     const normalizedProcedure = this.selectedConsentProcedureType().trim().toLowerCase();
     return this.signedConsents().filter(c => (c.procedureType ?? '').trim().toLowerCase() === normalizedProcedure);
+  });
+
+  readonly selectedProcedureSignedConsent = computed<AestheticSignedConsent | null>(() => {
+    const consents = this.selectedProcedureSignedConsents();
+    if (!consents.length) return null;
+    const active = consents.filter(c => !c.isVoided);
+    const pool = active.length ? active : consents;
+    return pool.reduce((latest, c) =>
+      (c.signedDate ?? '') >= (latest.signedDate ?? '') ? c : latest
+    );
   });
 
   readonly patientAttendanceOptions = computed<{
@@ -1023,6 +1028,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
     }
 
     this.endpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({
+      consultId,
       pNo,
       procedureType: this.selectedConsentProcedureType(),
       includeVoided: true
@@ -1048,7 +1054,8 @@ export class ProceduresEntryDialogComponent implements OnInit {
       retainName: visit.retainName,
       fullname: fullName,
       dob,
-      age: this.calculateAge(dob)
+      age: this.calculateAge(dob),
+      patientPhotoBase64: legacyPatient?.patPixBase64
     };
   }
 
