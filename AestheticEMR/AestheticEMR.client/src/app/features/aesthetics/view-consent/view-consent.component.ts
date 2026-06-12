@@ -129,7 +129,7 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
               <div class="sig-col">
                 <div class="sig-label">Patient Signature:</div>
                 @if (activeConsent()?.signatureImageBase64) {
-                  <img [src]="'data:image/png;base64,' + activeConsent()!.signatureImageBase64" alt="Patient signature" class="sig-image" />
+                  <img [src]="activeConsent()!.signatureImageBase64" alt="Patient signature" class="sig-image" />
                 } @else if (activeConsent()?.signatureImagePath) {
                   <img [src]="resolveImageUrl(activeConsent()!.signatureImagePath)" alt="Patient signature" class="sig-image" />
                 } @else {
