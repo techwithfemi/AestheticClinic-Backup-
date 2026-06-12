@@ -148,10 +148,6 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
                 <div class="sig-spacer"></div>
                 <div class="sig-underline"></div>
                 <div class="sig-provider">{{ resolveProviderName(activeConsent()?.signedBy) }}</div>
-                <div class="sig-date-row">
-                  <strong>Date:</strong>
-                  <span>{{ activeConsent()?.doctorViewedDate ? (activeConsent()!.doctorViewedDate | date:'MM/dd/yyyy') : 'MM/DD/YYYY' }}</span>
-                </div>
               </div>
             </div>
 
