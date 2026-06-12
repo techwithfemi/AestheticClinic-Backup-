@@ -408,15 +408,16 @@ interface ProceduresEntryDialogData {
                     <button mat-stroked-button type="button" (click)="triggerPhotoUpload('neuromodulator', nPhoto)">Upload Photo</button>
                     <input #nPhoto type="file" accept="image/*" (change)="onPhotoSelected('neuromodulator', nPhoto.files, nPhase.value || 'Before', nTag.value || 'frontal')" style="display:none" />
                   </div>
-                  @for (item of tabPhotos().neuromodulator; track $index) {
-                    <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
-                  }
-                  <div class="compare-grid">
-                    @for (img of getComparisonImages('neuromodulator').before; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="before" />
-                    }
-                    @for (img of getComparisonImages('neuromodulator').after; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="after" />
+                  <div class="photo-grid">
+                    @for (img of tabPhotos().neuromodulator; track $index) {
+                      <div class="photo-card">
+                        <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
+                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                        <div class="photo-actions">
+                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" (click)="removePhoto('neuromodulator', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                        </div>
+                      </div>
                     }
                   </div>
                 </div>
@@ -450,15 +451,16 @@ interface ProceduresEntryDialogData {
                     <button mat-stroked-button type="button" (click)="triggerPhotoUpload('dermalFiller', dPhoto)">Upload Photo</button>
                     <input #dPhoto type="file" accept="image/*" (change)="onPhotoSelected('dermalFiller', dPhoto.files, dPhase.value || 'Before', dTag.value || 'frontal')" style="display:none" />
                   </div>
-                  @for (item of tabPhotos().dermalFiller; track $index) {
-                    <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
-                  }
-                  <div class="compare-grid">
-                    @for (img of getComparisonImages('dermalFiller').before; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="before" />
-                    }
-                    @for (img of getComparisonImages('dermalFiller').after; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="after" />
+                  <div class="photo-grid">
+                    @for (img of tabPhotos().dermalFiller; track $index) {
+                      <div class="photo-card">
+                        <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
+                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                        <div class="photo-actions">
+                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" (click)="removePhoto('dermalFiller', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                        </div>
+                      </div>
                     }
                   </div>
                 </div>
@@ -491,15 +493,16 @@ interface ProceduresEntryDialogData {
                     <button mat-stroked-button type="button" (click)="triggerPhotoUpload('laser', lPhoto)">Upload Photo</button>
                     <input #lPhoto type="file" accept="image/*" (change)="onPhotoSelected('laser', lPhoto.files, lPhase.value || 'Before', lTag.value || 'frontal')" style="display:none" />
                   </div>
-                  @for (item of tabPhotos().laser; track $index) {
-                    <div class="photo-item">{{ item.phase }} · {{ item.tag }} · {{ item.fileName }}</div>
-                  }
-                  <div class="compare-grid">
-                    @for (img of getComparisonImages('laser').before; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="before" />
-                    }
-                    @for (img of getComparisonImages('laser').after; track img.id ?? img.fileName) {
-                      <img [src]="img.url || ''" alt="after" />
+                  <div class="photo-grid">
+                    @for (img of tabPhotos().laser; track $index) {
+                      <div class="photo-card">
+                        <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
+                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                        <div class="photo-actions">
+                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" (click)="removePhoto('laser', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                        </div>
+                      </div>
                     }
                   </div>
                 </div>
@@ -583,6 +586,15 @@ interface ProceduresEntryDialogData {
           </mat-card-content>
         </mat-card>
       }
+
+      @if (zoomedPhotoUrl()) {
+        <div class="photo-lightbox" (click)="zoomedPhotoUrl.set(null)">
+          <img [src]="zoomedPhotoUrl()!" alt="zoomed photo" (click)="$event.stopPropagation()" />
+          <button mat-icon-button type="button" class="lightbox-close" (click)="zoomedPhotoUrl.set(null)" matTooltip="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -663,17 +675,28 @@ interface ProceduresEntryDialogData {
       .save-row { justify-content: stretch; }
       .save-row button { width: 100%; min-height: 44px; }
       .toggle-row { padding: 6px 2px; }
-      .compare-grid { grid-template-columns: 1fr; }
-      .compare-grid img { height: auto; min-height: 160px; }
       .emergency-content { flex-direction: column; align-items: flex-start; }
       .emergency-content button { width: 100%; }
     }
+
+    .photo-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+    .photo-card { position: relative; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; width: 160px; flex-shrink: 0; background: #f9f9f9; }
+    .photo-card img { display: block; width: 100%; height: 140px; object-fit: cover; }
+    .photo-badge { font-size: 11px; font-weight: 600; padding: 4px 8px; background: rgba(0,0,0,0.55); color: #fff; position: absolute; top: 0; left: 0; right: 0; }
+    .photo-actions { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; background: rgba(0,0,0,0.45); padding: 2px 4px; }
+    .photo-actions button { color: #fff; width: 32px; height: 32px; line-height: 32px; }
+    .photo-actions button mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+
+    .photo-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .photo-lightbox img { max-width: 90vw; max-height: 88vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 32px rgba(0,0,0,0.6); }
+    .lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; background: rgba(0,0,0,0.5); }
 
     @media (max-width: 575.98px) {
       .procedures-page { padding: 10px; }
       .form-shell { padding: 8px; }
       .tab-body { gap: 8px; }
-      .photo-item { font-size: .85rem; }
+      .photo-card { width: 140px; }
+      .photo-card img { height: 120px; }
     }
   `]
 })
@@ -702,6 +725,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly safetyAlerts = signal<SafetyAlert[]>([]);
   readonly showEmergencyProtocols = signal(false);
   readonly reportedComplications = signal<{ tab: string; timestamp: Date }[]>([]);
+  readonly zoomedPhotoUrl = signal<string | null>(null);
   readonly todayVisits = signal<QryhvisitsForToday[]>([]);
   readonly legacyPatients = signal<HPatient[]>([]);
   readonly selectedConsentProcedureType = signal('');
@@ -847,8 +871,8 @@ export class ProceduresEntryDialogComponent implements OnInit {
     }),
     neuromodulator: this.fb.nonNullable.group({
       productName: ['Botox'],
-      lotNumber: ['', Validators.required],
-      expiryDate: ['', Validators.required],
+      lotNumber: [''],
+      expiryDate: [''],
       dilution: [0],
       totalUnitsDrawn: [0],
       unitsPerArea: this.fb.nonNullable.group({
@@ -950,7 +974,9 @@ export class ProceduresEntryDialogComponent implements OnInit {
       this.currentConsultationId.set(this.data.consultation.id ?? null);
       this.form.controls.patientId.setValue(this.data.consultation.patientId ?? 0);
       this.selectedVisitConsultId.set((this.data.consultation.consultId || '').trim());
+      this.selectedConsentProcedureType.set((this.data.consultation.procedureType || '').trim());
       this.loadFromConsultation(this.data.consultation);
+      this.loadSignedConsentsForConsultation(this.data.consultation);
     }
 
     this.neuromodulatorGroup.valueChanges.subscribe(() => {
@@ -1031,6 +1057,25 @@ export class ProceduresEntryDialogComponent implements OnInit {
       consultId,
       pNo,
       procedureType: this.selectedConsentProcedureType(),
+      includeVoided: true
+    }).subscribe({
+      next: consents => this.signedConsents.set(consents || []),
+      error: () => this.signedConsents.set([])
+    });
+  }
+
+  private loadSignedConsentsForConsultation(consultation: AestheticConsultation): void {
+    const consultId = (consultation.consultId || '').trim();
+    const pNo = (consultation.pNo || '').trim();
+    if (!consultId || !pNo) {
+      this.signedConsents.set([]);
+      return;
+    }
+
+    this.endpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({
+      consultId,
+      pNo,
+      procedureType: consultation.procedureType,
       includeVoided: true
     }).subscribe({
       next: consents => this.signedConsents.set(consents || []),
@@ -1242,6 +1287,17 @@ export class ProceduresEntryDialogComponent implements OnInit {
     this.dialogRef.close(false);
   }
 
+  zoomPhoto(url: string): void {
+    this.zoomedPhotoUrl.set(url || null);
+  }
+
+  removePhoto(tab: PhotoTab, index: number): void {
+    this.tabPhotos.update(current => ({
+      ...current,
+      [tab]: current[tab].filter((_, i) => i !== index)
+    }));
+  }
+
   triggerPhotoUpload(tab: PhotoTab, input: HTMLInputElement): void {
     input.click();
   }
@@ -1270,11 +1326,6 @@ export class ProceduresEntryDialogComponent implements OnInit {
   saveOrUpdate(): void {
     if (this.form.invalid) {
       this.alertService.showStickyMessage('Validation error', 'Please complete required fields.', MessageSeverity.warn);
-      return;
-    }
-
-    if (!this.hasMandatoryBaselines()) {
-      this.alertService.showStickyMessage('Baseline photos required', 'Baseline (Before) photos are mandatory for Neuromodulator, Dermal Filler, and Laser tabs.', MessageSeverity.warn);
       return;
     }
 

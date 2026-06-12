@@ -256,6 +256,7 @@ i.page-caption {
 #toasta.toasta-position-top-right {
   top: 40px;
   right: 20px;
+  z-index: 2000;
 }
 
 #toasta .toast.toasta-theme-bootstrap {
