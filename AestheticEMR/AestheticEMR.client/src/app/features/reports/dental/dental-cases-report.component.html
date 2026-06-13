@@ -1,54 +1,234 @@
-<div class="reports-container">
-  <h2>Dental Cases Report</h2>
-  <table mat-table [dataSource]="dentalCharts()" class="mat-elevation-z8" *ngIf="!loading()">
-    <ng-container matColumnDef="patientName">
-      <th mat-header-cell *matHeaderCellDef>Patient Name</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.patientName }}</td>
-    </ng-container>
-    <ng-container matColumnDef="pno">
-      <th mat-header-cell *matHeaderCellDef>PNO</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.pno }}</td>
-    </ng-container>
-    <ng-container matColumnDef="consultId">
-      <th mat-header-cell *matHeaderCellDef>Consult ID</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.consultId }}</td>
-    </ng-container>
-    <ng-container matColumnDef="tDate">
-      <th mat-header-cell *matHeaderCellDef>Date</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.tDate | date:'dd-MMM-yyyy' }}</td>
-    </ng-container>
-    <ng-container matColumnDef="inflammationOfGingiva">
-      <th mat-header-cell *matHeaderCellDef>Gingiva</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.inflammationOfGingiva }}</td>
-    </ng-container>
-    <ng-container matColumnDef="presenceOfDebris">
-      <th mat-header-cell *matHeaderCellDef>Debris</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.presenceOfDebris }}</td>
-    </ng-container>
-    <ng-container matColumnDef="presenceOfCalculus">
-      <th mat-header-cell *matHeaderCellDef>Calculus</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.presenceOfCalculus }}</td>
-    </ng-container>
-    <ng-container matColumnDef="presenceOfStains">
-      <th mat-header-cell *matHeaderCellDef>Stains</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.presenceOfStains }}</td>
-    </ng-container>
-    <ng-container matColumnDef="underOrthodonticTreatment">
-      <th mat-header-cell *matHeaderCellDef>Ortho Tx</th>
-      <td mat-cell *matCellDef="let chart">{{ chart.underOrthodonticTreatment }}</td>
-    </ng-container>
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Actions</th>
-      <td mat-cell *matCellDef="let chart">
-        <button mat-icon-button color="primary" (click)="editChart(chart)"><mat-icon>edit</mat-icon></button>
-        <button mat-icon-button color="warn" (click)="deleteChart(chart)"><mat-icon>delete</mat-icon></button>
-      </td>
-    </ng-container>
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-  </table>
-  <mat-spinner *ngIf="loading()"></mat-spinner>
+<div class="report-page">
+  <div class="print-sidebar">
+    <div class="print-sidebar-title">
+      <mat-icon>summarize</mat-icon>
+      Reports
+    </div>
+    <ul class="print-sidebar-links">
+      @for (link of printSidebarLinks; track link.path) {
+        <li [class.active]="link.path === 'dental-cases-report'">{{ link.label }}</li>
+      }
+    </ul>
+  </div>
+
+  <div class="print-main">
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <mat-icon>medical_services</mat-icon>
+        </div>
+        <div>
+          <h2 class="page-title">Dental Cases Report</h2>
+          <p class="page-subtitle">Clinical findings, orthodontic status and dental case history</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="export-links">
+          <span class="export-label">Export to</span>
+          <a href="#" (click)="exportExcel($event)">Excel</a>
+          <span>|</span>
+          <a href="#" (click)="exportCsv($event)">CSV</a>
+          <span>|</span>
+          <a href="#" (click)="exportPdf($event)">PDF</a>
+        </div>
+
+        <button mat-stroked-button color="primary" (click)="load()" [disabled]="loadingIndicator">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button color="accent" (click)="printReport()">
+          <mat-icon>print</mat-icon>
+          Print Report
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <mat-card class="kpi-card kpi-teal">
+        <div class="kpi-icon"><mat-icon>assignment</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ totalCases() }}</div>
+          <div class="kpi-label">Filtered Cases</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-indigo">
+        <div class="kpi-icon"><mat-icon>people</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ uniquePatients() }}</div>
+          <div class="kpi-label">Unique Patients</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-rose">
+        <div class="kpi-icon"><mat-icon>settings_accessibility</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ orthodonticCases() }}</div>
+          <div class="kpi-label">Orthodontic Cases</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-amber">
+        <div class="kpi-icon"><mat-icon>calendar_month</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ thisMonthCases() }}</div>
+          <div class="kpi-label">This Month</div>
+        </div>
+      </mat-card>
+    </div>
+
+    <mat-card class="filters-card">
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="filter-search">
+          <mat-label>Search patient / PNO / finding</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            [(ngModel)]="searchText"
+            (ngModelChange)="appliedSearch.set($event)"
+            placeholder="Type to search..." />
+          @if (searchText) {
+            <button matSuffix mat-icon-button (click)="searchText = ''; appliedSearch.set('')" aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-select">
+          <mat-label>select patient</mat-label>
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-select [(ngModel)]="selectedPatient">
+            <mat-option value="">select patient</mat-option>
+            @for (option of patientOptions(); track option.pNo) {
+              <mat-option [value]="option.pNo">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>From Date</mat-label>
+          <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="dateFrom" />
+          <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+          <mat-datepicker #pickerFrom></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>To Date</mat-label>
+          <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo" />
+          <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+          <mat-datepicker #pickerTo></mat-datepicker>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" class="run-btn" (click)="runReport()" matTooltip="Apply date range and patient filter">
+          <mat-icon>play_arrow</mat-icon>
+          Run Report
+        </button>
+
+        <button mat-stroked-button class="clear-btn" (click)="clearFilters()" matTooltip="Reset all filters to today">
+          <mat-icon>filter_alt_off</mat-icon>
+          Clear
+        </button>
+      </div>
+    </mat-card>
+
+    <mat-card class="table-card">
+      @if (loadingIndicator) {
+        <div class="loading-state">
+          <mat-icon class="spin">autorenew</mat-icon>
+          <p>Loading dental case data...</p>
+        </div>
+      } @else if (filtered().length === 0) {
+        <div class="empty-state">
+          <mat-icon>medical_services</mat-icon>
+          <h3>No Records Found</h3>
+          <p>No dental cases match the selected date range or filters.</p>
+          <button mat-stroked-button color="primary" (click)="clearFilters()">Reset Filters</button>
+        </div>
+      } @else {
+        <div class="table-header-bar">
+          <span class="record-count">
+            Showing <strong>{{ pagedRows().length }}</strong> of <strong>{{ filtered().length }}</strong> records
+          </span>
+        </div>
+
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="pagedRows()" class="dental-table">
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let chart">
+                <div class="date-cell">
+                  <mat-icon class="cell-icon">calendar_today</mat-icon>
+                  {{ chart.tDate | date:'dd-MMM-yyyy' }}
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="patient">
+              <th mat-header-cell *matHeaderCellDef>Patient</th>
+              <td mat-cell *matCellDef="let chart">
+                <div class="patient-cell">
+                  <div class="patient-avatar">{{ resolvePatientInitial(chart) }}</div>
+                  <div>
+                    <div class="patient-name">{{ resolvePatientName(chart) }}</div>
+                    <div class="patient-sub">{{ chart.pno || chart.consultId || '-' }}</div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="consultId">
+              <th mat-header-cell *matHeaderCellDef>Consult ID</th>
+              <td mat-cell *matCellDef="let chart">{{ chart.consultId || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="findings">
+              <th mat-header-cell *matHeaderCellDef>Clinical Findings</th>
+              <td mat-cell *matCellDef="let chart">
+                <span class="truncate-text" [matTooltip]="resolveFindings(chart)">
+                  {{ resolveFindings(chart) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="orthodontic">
+              <th mat-header-cell *matHeaderCellDef>Orthodontic</th>
+              <td mat-cell *matCellDef="let chart">
+                @if (chart.underOrthodonticTreatment) {
+                  <span class="status-chip" [class.status-yes]="chart.underOrthodonticTreatment.toLowerCase() === 'yes'">
+                    {{ chart.underOrthodonticTreatment }}
+                  </span>
+                } @else {
+                  <span class="no-data">-</span>
+                }
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="remarks">
+              <th mat-header-cell *matHeaderCellDef>Remarks</th>
+              <td mat-cell *matCellDef="let chart">
+                <span class="truncate-text" [matTooltip]="resolveRemarks(chart)">
+                  {{ resolveRemarks(chart) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
+          </table>
+        </div>
+
+        <mat-paginator
+          [length]="filtered().length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageIndex]="currentPage()"
+          (page)="onPageChange($event)"
+          showFirstLastButtons
+          aria-label="Select page">
+        </mat-paginator>
+      }
+    </mat-card>
+  </div>
 </div>
-
-
-

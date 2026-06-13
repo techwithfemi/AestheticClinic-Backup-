@@ -342,3 +342,45 @@ quickapp.client/src/app/
 ### Tariff Module Settings
 
 For tariff module settings, use top-level key `tariffUpload` instead of `inventoryProductsUpload`.
+
+
+### Reports Module Settings
+custom instructions for reports module:
+-------------
+- reports are READ-ONLY. Only the Read operation of CRUD is relevant: the report UI must only read/display data. Do NOT add Create, Update, or Delete actions (no add button, no edit/delete row actions, no edit dialog) to a report. Only the read (GET) endpoint(s) for the report's underlying entity are required on the backend.
+- except otherwise specified, use spa services report page (app/features/reports/spa/spa-services-report.component) as report guide.
+- Summary cards — Totals 
+- Results sorted newest-first
+- use angular material / material icons
+- add dropdown element with source (patient [consultID]) from attendance
+- the  dropdown element label shld be 'select patient' and not 'patient [consultID]'
+- by default, the  dropdown element source shld be today's attendance list
+
+- dropdown list shld Include patients for all clinics on attendace
+- the  first item in dropdown element shld be 'select patient' 
+- show patient name  (instead of 'u') and user fullname (instead of user id) in the grid/table 
+- for print report dialog when displayed shld show reports only for that dept/role in the sidebar. for 'management' role, it can display all reports in the sidebar
+- show patient name  (instead of 'u') and full name (instead of user id)
+- add angular material table to to the report body  (as datagrid)
+- add two date pickers and search field at the section head of the report
+- the two date pickers shld show todays date by default
+- the two date pickers format shld be dd-MMM-YYYY
+- except for searches, records displayed in the grid should depend on the date range. Add a button to click to display the records
+- by default, it should display records for the current date
+- grid/table shld display records at a time (pagesixe = 10)
+- run report and clear buttons not working
+
+----------------
+
+- add 'export to Excel CSV PDF' links 
+- the names ( Excel, CSV, PDF) shld be links 
+- add 'export to Excel CSV PDF' links above the 'print' button. the names ( Excel, CSV, PDF) shld be links 
+- add 'export to Excel CSV PDF' links the names ( Excel, CSV, PDF) shld be links
+--------------------
+- let the export links be before 'refresh' button. same row. add 'Export to ' before excel link
+- the links shld work, shld be well styled and beautiful. 
+- remove any underline
+- add downloadable functionality (sent to download folder). 
+- the excel file shld be in true .xlsx format.
+- as said earlier, use spa services report page as report guide.
+
