@@ -1,5 +1,272 @@
-<div class="reports-container">
-  <h2>Frontdesk Appointments Report</h2>
-  <p>Frontdesk Appointments Report component - Coming Soon</p>
-</div>
+<div class="report-page">
 
+  <!-- ============================================================
+       PRINT-ONLY sidebar — shows role-scoped report links
+       ============================================================ -->
+  <div class="print-sidebar">
+    <div class="print-sidebar-title">
+      <span class="print-sidebar-icon">📋</span>
+      Reports
+    </div>
+    <ul class="print-sidebar-links">
+      @for (link of printSidebarLinks; track link.path) {
+        <li [class.active]="link.path === 'frontdesk-appointments-report'">{{ link.label }}</li>
+      }
+    </ul>
+  </div>
+
+  <!-- ============================================================
+       Main content
+       ============================================================ -->
+  <div class="print-main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <mat-icon>event</mat-icon>
+        </div>
+        <div>
+          <h2 class="page-title">Appointments Report</h2>
+          <p class="page-subtitle">Scheduled appointments by date, clinic &amp; patient</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="export-links">
+          <span class="export-label">Export to</span>
+          <a href="#" (click)="exportExcel($event)">Excel</a>
+          <span>|</span>
+          <a href="#" (click)="exportCsv($event)">CSV</a>
+          <span>|</span>
+          <a href="#" (click)="exportPdf($event)">PDF</a>
+        </div>
+
+        <button mat-stroked-button color="primary" (click)="load()" [disabled]="loadingIndicator">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button color="accent" (click)="printReport()">
+          <mat-icon>print</mat-icon>
+          Print Report
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-row">
+      <mat-card class="kpi-card kpi-teal">
+        <div class="kpi-icon"><mat-icon>event</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ totalAppointments() }}</div>
+          <div class="kpi-label">Total Appointments</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-purple">
+        <div class="kpi-icon"><mat-icon>event_available</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ todayAppointments() }}</div>
+          <div class="kpi-label">Today</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-rose">
+        <div class="kpi-icon"><mat-icon>people</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ uniquePatients() }}</div>
+          <div class="kpi-label">Unique Patients</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-amber">
+        <div class="kpi-icon"><mat-icon>calendar_month</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ thisMonthCount() }}</div>
+          <div class="kpi-label">This Month</div>
+        </div>
+      </mat-card>
+    </div>
+
+    <!-- Filters -->
+    <mat-card class="filters-card">
+      <div class="filters-row">
+
+        <!-- Search — live filter -->
+        <mat-form-field appearance="outline" class="filter-search">
+          <mat-label>Search patient / PNO / clinic / remarks</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchText"
+            (ngModelChange)="appliedSearch.set($event)"
+            placeholder="Type to search..." />
+          @if (searchText) {
+            <button matSuffix mat-icon-button (click)="searchText = ''; appliedSearch.set('')" aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <!-- Select Patient — sourced from today's attendance (all clinics) -->
+        <mat-form-field appearance="outline" class="filter-select">
+          <mat-label>Select Patient</mat-label>
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-select [(ngModel)]="selectedPatient">
+            <mat-option value="">Select Patient</mat-option>
+            @for (opt of patientOptions(); track opt.pNo) {
+              <mat-option [value]="opt.pNo">{{ opt.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Clinic Type -->
+        <mat-form-field appearance="outline" class="filter-select">
+          <mat-label>Clinic Type</mat-label>
+          <mat-icon matPrefix>local_hospital</mat-icon>
+          <mat-select [(ngModel)]="selectedClinic">
+            <mat-option value="">All Clinics</mat-option>
+            @for (clinic of clinicTypes(); track clinic) {
+              <mat-option [value]="clinic">{{ clinic }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- From Date — defaults to today, dd-MMM-yyyy -->
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>From Date</mat-label>
+          <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="dateFrom" />
+          <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+          <mat-datepicker #pickerFrom></mat-datepicker>
+        </mat-form-field>
+
+        <!-- To Date — defaults to today, dd-MMM-yyyy -->
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>To Date</mat-label>
+          <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo" />
+          <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+          <mat-datepicker #pickerTo></mat-datepicker>
+        </mat-form-field>
+
+        <!-- Run Report button -->
+        <button mat-raised-button color="primary" class="run-btn" (click)="runReport()"
+          matTooltip="Apply date range, patient and clinic filters">
+          <mat-icon>play_arrow</mat-icon>
+          Run Report
+        </button>
+
+        <!-- Clear -->
+        <button mat-stroked-button class="clear-btn" (click)="clearFilters()"
+          matTooltip="Reset all filters to today">
+          <mat-icon>filter_alt_off</mat-icon>
+          Clear
+        </button>
+
+      </div>
+    </mat-card>
+
+    <!-- Data Table -->
+    <mat-card class="table-card">
+      @if (loadingIndicator) {
+        <div class="loading-state">
+          <mat-icon class="spin">autorenew</mat-icon>
+          <p>Loading appointments data...</p>
+        </div>
+      } @else if (filtered().length === 0) {
+        <div class="empty-state">
+          <mat-icon>event_busy</mat-icon>
+          <h3>No Records Found</h3>
+          <p>No appointments match the selected date range or filters.</p>
+          <button mat-stroked-button color="primary" (click)="clearFilters()">Reset Filters</button>
+        </div>
+      } @else {
+        <div class="table-header-bar">
+          <span class="record-count">
+            Showing <strong>{{ pagedRows().length }}</strong> of
+            <strong>{{ filtered().length }}</strong> records
+          </span>
+        </div>
+
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="pagedRows()" class="reg-table">
+
+            <!-- Date -->
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="date-cell">
+                  <mat-icon class="cell-icon">calendar_today</mat-icon>
+                  {{ row.apptDate | date:'dd-MMM-yyyy' }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Time -->
+            <ng-container matColumnDef="time">
+              <th mat-header-cell *matHeaderCellDef>Time</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="date-cell">
+                  <mat-icon class="cell-icon">schedule</mat-icon>
+                  {{ formatTime(row.apptTime) }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Patient -->
+            <ng-container matColumnDef="patient">
+              <th mat-header-cell *matHeaderCellDef>Patient</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="patient-cell">
+                  <div class="patient-avatar">{{ resolvePatientInitial(row.pno) }}</div>
+                  <div class="patient-name">{{ resolvePatientName(row.pno) }}</div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Clinic Type -->
+            <ng-container matColumnDef="clinicType">
+              <th mat-header-cell *matHeaderCellDef>Clinic</th>
+              <td mat-cell *matCellDef="let row">{{ row.clinicType || '—' }}</td>
+            </ng-container>
+
+            <!-- Employee -->
+            <ng-container matColumnDef="employee">
+              <th mat-header-cell *matHeaderCellDef>Employee</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="provider-cell">
+                  @if (row.empID) {
+                    <mat-icon class="cell-icon">badge</mat-icon>
+                    {{ row.empID }}
+                  } @else {
+                    <span class="no-data">—</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Remarks -->
+            <ng-container matColumnDef="remarks">
+              <th mat-header-cell *matHeaderCellDef>Remarks</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="truncate-text" [matTooltip]="row.remarks ?? ''">{{ row.remarks || '—' }}</span>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
+          </table>
+        </div>
+
+        <!-- Paginator -->
+        <mat-paginator
+          [length]="filtered().length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageIndex]="currentPage()"
+          (page)="onPageChange($event)"
+          showFirstLastButtons
+          aria-label="Select page">
+        </mat-paginator>
+      }
+    </mat-card>
+
+  </div><!-- /.print-main -->
+</div>
