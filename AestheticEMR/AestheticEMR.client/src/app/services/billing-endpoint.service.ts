@@ -98,9 +98,10 @@ export class BillingEndpoint extends EndpointBase {
     );
   }
 
-  getReceiptsEndpoint<T>(includeAll = false): Observable<T> {
-    return this.http.get<T>(`${this.billingsUrl}/receipts?includeAll=${includeAll}`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getReceiptsEndpoint<T>(includeAll)))
+  getReceiptsEndpoint<T>(includeAll = false, retainId?: string): Observable<T> {
+    const retainFilter = retainId ? `&retainId=${encodeURIComponent(retainId)}` : '';
+    return this.http.get<T>(`${this.billingsUrl}/receipts?includeAll=${includeAll}${retainFilter}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getReceiptsEndpoint<T>(includeAll, retainId)))
     );
   }
 

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatCardModule } from '@angular/material/card';
@@ -18,9 +19,7 @@ import { BillingEndpoint } from '../../../services/billing-endpoint.service';
 import { Receipt } from '../../../models/legacy/receipt.model';
 import { ReceiptEntryDialogComponent, ReceiptEntryDialogData } from './receipt-entry-dialog.component';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
-import { Attendance } from '../../../models/legacy/attendance.model';
-import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
-import { HPatient } from '../../../models/legacy/h-patient.model';
+import { QryhvisitsForToday } from '../../../models/legacy/qryhvisits-for-today.model';
 
 interface ReceiptAttendanceOption {
   consultId: string;
@@ -54,13 +53,12 @@ export class ReceiptsComponent implements OnInit {
   private alertService = inject(AlertService);
   private billingEndpoint = inject(BillingEndpoint);
   private attendanceEndpoint = inject(AttendanceEndpoint);
-  private patientEndpoint = inject(HPatientEndpoint);
   private dialog = inject(MatDialog);
+  private router = inject(Router);
 
   receipts: Receipt[] = [];
   receiptsCache: Receipt[] = [];
   filteredReceipts: Receipt[] = [];
-  patients: HPatient[] = [];
   attendanceOptions: ReceiptAttendanceOption[] = [];
   loadingIndicator = false;
   searchText = '';
@@ -83,8 +81,24 @@ export class ReceiptsComponent implements OnInit {
     return this.filteredReceipts.slice(start, start + this.pageSize);
   }
 
+  get totalReceiptCount(): number {
+    return this.filteredReceipts.length;
+  }
+
+  get totalBilled(): number {
+    return this.filteredReceipts.reduce((sum, r) => sum + (r.amountBilled ?? 0), 0);
+  }
+
+  get totalPaid(): number {
+    return this.filteredReceipts.reduce((sum, r) => sum + (r.amountPaid ?? 0), 0);
+  }
+
+  get totalOutstanding(): number {
+    return this.filteredReceipts.reduce((sum, r) => sum + (r.balance ?? 0), 0);
+  }
+
   ngOnInit(): void {
-    this.loadPatients();
+    this.loadAttendanceOptions();
     this.loadData();
   }
 
@@ -118,33 +132,17 @@ export class ReceiptsComponent implements OnInit {
     this.loadAttendanceOptions();
   }
 
-  private loadPatients(): void {
-    this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().subscribe({
-      next: patients => {
-        this.patients = patients ?? [];
-        this.loadAttendanceOptions();
-      },
-      error: () => {
-        this.patients = [];
-        this.loadAttendanceOptions();
-      }
-    });
-  }
-
   private loadAttendanceOptions(): void {
-    this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().subscribe({
-      next: attendance => {
-        const todays = (attendance ?? []).filter(a => this.isToday(a.recDate));
+    this.attendanceEndpoint.getTodayVisitsEndpoint<QryhvisitsForToday[]>().subscribe({
+      next: visits => {
         const unique = new Map<string, ReceiptAttendanceOption>();
 
-        for (const item of todays) {
+        for (const item of visits ?? []) {
           const consultId = item.consultId ?? '';
           const pNo = item.pNo ?? '';
           if (!consultId || !pNo) continue;
 
-          const patient = this.patients.find(p => p.pno === pNo);
-          const patientName = `${patient?.pSurName ?? 'Unknown'} ${patient?.pFirstname ?? ''}`.trim();
-
+          const patientName = (item.fullname ?? '').trim() || 'Unknown Patient';
           const option: ReceiptAttendanceOption = { consultId, pNo, patientName, label: `${patientName} [${consultId}]` };
           const key = this.optionKey(option);
           if (!unique.has(key)) unique.set(key, option);
@@ -227,6 +225,17 @@ export class ReceiptsComponent implements OnInit {
       if (result) {
         this.alertService.showMessage('Success', 'Receipt updated successfully.', MessageSeverity.success);
         this.loadData();
+      }
+    });
+  }
+
+  previewReceipt(receipt: Receipt): void {
+    this.router.navigate(['/billing/receipts', receipt.billNo, 'preview'], {
+      queryParams: {
+        receiptNo: receipt.receiptNo,
+        receiptDate: receipt.receiptDate,
+        payType: receipt.payType,
+        amountPaid: receipt.amountPaid
       }
     });
   }

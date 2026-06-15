@@ -558,16 +558,41 @@ public class BillingController(
     /// <summary>
     /// List receipts sourced from QryhBillingIncome.
     /// By default returns current-date records unless includeAll=true.
+    /// When retainId is provided, results are filtered to that company.
     /// </summary>
     [HttpGet("receipts")]
     [ProducesResponseType(typeof(IEnumerable<QryhBillingIncomeVM>), 200)]
-    public async Task<IActionResult> GetReceipts([FromQuery] bool includeAll = false)
+    public async Task<IActionResult> GetReceipts([FromQuery] bool includeAll = false, [FromQuery] string? retainId = null)
     {
         try
         {
             var query = context.QryhBillingIncomes
                 .AsNoTracking()
                 .Where(x => x.Suppres != true);
+
+            if (!string.IsNullOrWhiteSpace(retainId))
+            {
+                var retainership = await retainershipService.GetByIdAsync(retainId);
+                if (retainership is null)
+                    return NotFound(retainId);
+
+                var companyKeys = new[]
+                {
+                    retainership.RetainId,
+                    retainership.RetainCode,
+                    retainership.RetainName,
+                    retainership.ClientName
+                }
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Select(v => v!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+                if (companyKeys.Count > 0)
+                {
+                    query = query.Where(x => x.Coyname != null && companyKeys.Contains(x.Coyname));
+                }
+            }
 
             if (!includeAll)
             {

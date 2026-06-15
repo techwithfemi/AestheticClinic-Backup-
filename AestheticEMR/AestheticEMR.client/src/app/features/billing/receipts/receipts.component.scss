@@ -1,9 +1,11 @@
 .receipts-page {
   padding: 20px;
+  background: #f7f9fc;
 }
 
 .page-card {
   padding: 20px;
+  border-radius: 12px;
 }
 
 .page-header {
@@ -16,12 +18,14 @@
 
   h2 {
     margin: 0 0 4px;
+    font-weight: 700;
+    color: #1f2937;
   }
 
   .subtitle {
     margin: 0;
-    color: #666;
-    font-size: 0.875rem;
+    color: #6b7280;
+    font-size: 0.9rem;
   }
 }
 
@@ -35,11 +39,50 @@
 
 .header-actions > button {
   margin-top: 0;
+  height: 56px;
 }
 
 .attendance-select-field {
-  width: 300px;
-  max-width: 300px;
+  width: 320px;
+  max-width: 320px;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.summary-card {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .summary-label {
+    color: #6b7280;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .summary-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .paid {
+    color: #166534;
+  }
+
+  .outstanding {
+    color: #b91c1c;
+  }
 }
 
 .toolbar-row {
@@ -48,12 +91,7 @@
 
 .search-field {
   width: 100%;
-  max-width: 400px;
-}
-
-.search-inline-field {
-  width: 300px;
-  max-width: 300px;
+  max-width: 440px;
 }
 
 .table-wrap {
@@ -62,11 +100,21 @@
 
 .list-table {
   width: 100%;
-  min-width: 800px;
+  min-width: 960px;
+
+  .mat-mdc-header-cell {
+    font-weight: 700;
+    color: #374151;
+  }
 }
 
 .figure-col {
   text-align: right;
+}
+
+.balance-due {
+  color: #b91c1c;
+  font-weight: 600;
 }
 
 .actions-cell {
@@ -96,16 +144,6 @@
   font-size: 0.875rem;
 }
 
-@media (max-width: 992px) {
-  .receipts-page { padding: 16px; }
-  .page-card { padding: 16px; }
-}
-
-@media (max-width: 575.98px) {
-  .receipts-page { padding: 12px; }
-  .page-card { padding: 12px; }
-}
-
 @media (max-width: 1200px) {
   .header-actions {
     width: 100%;
@@ -114,8 +152,31 @@
   }
 
   .attendance-select-field,
-  .search-inline-field {
+  .search-field {
     width: 100%;
     max-width: 100%;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .receipts-page { padding: 16px; }
+  .page-card { padding: 16px; }
+}
+
+@media (max-width: 575.98px) {
+  .receipts-page { padding: 12px; }
+  .page-card { padding: 12px; }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions > button {
+    width: 100%;
+    height: 44px;
   }
 }

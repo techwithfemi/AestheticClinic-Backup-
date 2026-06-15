@@ -108,7 +108,6 @@
         { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural" },
         { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description" },
         { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
-        { "label": "Billing Claims Report", "path": "billing-claims-report", "icon": "fact_check" },
         { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },
         { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
         { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule" },
