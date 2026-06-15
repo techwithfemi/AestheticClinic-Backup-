@@ -106,11 +106,19 @@ export class MainLayoutComponent implements OnInit {
       return subItems;
     }
 
-    const allowedPrefixes = new Set(this.normalizedRoles);
+    const allowedRoles = new Set(this.normalizedRoles);
 
     return subItems.filter(sub => {
       const reportPrefix = (sub.path || '').split('-')[0].toLowerCase();
-      return reportPrefix.length > 0 && allowedPrefixes.has(reportPrefix);
+      if (!reportPrefix) {
+        return false;
+      }
+
+      if (reportPrefix === 'aesthetics') {
+        return allowedRoles.has('aesthetics') || allowedRoles.has('laser');
+      }
+
+      return allowedRoles.has(reportPrefix);
     });
   }
 

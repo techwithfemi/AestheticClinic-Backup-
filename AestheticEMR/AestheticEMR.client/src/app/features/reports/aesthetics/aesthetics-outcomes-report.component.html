@@ -1,5 +1,211 @@
-<div class="reports-container">
-  <h2>Aesthetics Outcomes Report</h2>
-  <p>Aesthetics Outcomes Report component - Coming Soon</p>
+<div class="report-page">
+  <div class="print-sidebar">
+    <div class="print-sidebar-title">
+      <span class="print-sidebar-icon">📊</span>
+      Reports
+    </div>
+    <ul class="print-sidebar-links">
+      @for (link of printSidebarLinks; track link.path) {
+        <li [class.active]="link.path === 'aesthetics-outcomes-report'">{{ link.label }}</li>
+      }
+    </ul>
+  </div>
+
+  <div class="print-main">
+    <div class="page-header" [@fadeInOut]>
+      <div class="header-left">
+        <div class="header-icon"><mat-icon>trending_up</mat-icon></div>
+        <div>
+          <h2 class="page-title">Aesthetics Outcomes Report</h2>
+          <p class="page-subtitle">Treatment outcome tracking and patient satisfaction analysis</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="export-links">
+          <span class="export-label">Export to</span>
+          <a href="#" (click)="exportExcel($event)">Excel</a>
+          <span>|</span>
+          <a href="#" (click)="exportCsv($event)">CSV</a>
+          <span>|</span>
+          <a href="#" (click)="exportPdf($event)">PDF</a>
+        </div>
+
+        <button mat-stroked-button color="primary" (click)="load()" [disabled]="loadingIndicator">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button color="accent" (click)="printReport()">
+          <mat-icon>print</mat-icon>
+          Print Report
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-cards">
+      <mat-card class="summary-card">
+        <div class="summary-label">Total Outcomes</div>
+        <div class="summary-value">{{ totalRows() }}</div>
+      </mat-card>
+      <mat-card class="summary-card">
+        <div class="summary-label">Average Score</div>
+        <div class="summary-value">{{ averageScore }}</div>
+      </mat-card>
+      <mat-card class="summary-card">
+        <div class="summary-label">Positive Outcomes (8-10)</div>
+        <div class="summary-value">{{ positiveOutcomes() }}</div>
+      </mat-card>
+      <mat-card class="summary-card">
+        <div class="summary-label">Completed Follow-ups</div>
+        <div class="summary-value">{{ completedFollowUps() }}</div>
+      </mat-card>
+    </div>
+
+    <mat-card class="filters-card">
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="filter-search">
+          <mat-label>Search patient / consult id / outcome</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchText" (ngModelChange)="appliedSearch.set($event)" placeholder="Type to search..." />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>From Date</mat-label>
+          <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="dateFrom" />
+          <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+          <mat-datepicker #pickerFrom></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>To Date</mat-label>
+          <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo" />
+          <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+          <mat-datepicker #pickerTo></mat-datepicker>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" class="run-btn" (click)="runReport()" matTooltip="Apply date range filter">
+          <mat-icon>play_arrow</mat-icon>
+          Run Report
+        </button>
+
+        <button mat-stroked-button class="clear-btn" (click)="clearFilters()" matTooltip="Reset filters">
+          <mat-icon>filter_alt_off</mat-icon>
+          Clear
+        </button>
+      </div>
+
+      <div class="filters-row secondary">
+        <mat-form-field appearance="outline" class="filter-select patient-select">
+          <mat-label>Select patient</mat-label>
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-select [(ngModel)]="selectedAttendanceKey">
+            <mat-option value="">Select patient</mat-option>
+            @for (item of attendanceOptions(); track item.key) {
+              <mat-option [value]="item.key">{{ item.patientName }} [{{ item.consultId }}]</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" class="display-btn" (click)="displayReport()">
+          <mat-icon>visibility</mat-icon>
+          Display Report
+        </button>
+      </div>
+    </mat-card>
+
+    <mat-card class="table-card">
+      @if (loadingIndicator) {
+        <div class="loading-state">
+          <mat-icon class="spin">autorenew</mat-icon>
+          <p>Loading report data...</p>
+        </div>
+      } @else if (filteredRows().length === 0) {
+        <div class="empty-state">
+          <mat-icon>insights</mat-icon>
+          <h3>No Records Found</h3>
+          <p>No outcomes found for the selected date range.</p>
+        </div>
+      } @else {
+        <div class="table-header-bar">
+          <span class="record-count">Showing <strong>{{ pagedRows().length }}</strong> of <strong>{{ totalRows() }}</strong> records</span>
+        </div>
+
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="pagedRows()" class="report-table-grid">
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.patientSatisfactionSubmittedOn || row.completedDate || row.scheduledDate | date:'dd-MMM-yyyy' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="patient">
+              <th mat-header-cell *matHeaderCellDef>Patient</th>
+              <td mat-cell *matCellDef="let row">{{ resolveFollowUpPatientName(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="consultId">
+              <th mat-header-cell *matHeaderCellDef>Consult ID</th>
+              <td mat-cell *matCellDef="let row">{{ resolveConsultId(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="procedure">
+              <th mat-header-cell *matHeaderCellDef>Procedure</th>
+              <td mat-cell *matCellDef="let row">{{ resolveProcedureType(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="score">
+              <th mat-header-cell *matHeaderCellDef>Score</th>
+              <td mat-cell *matCellDef="let row">{{ row.patientSatisfactionScore ?? '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="outcome">
+              <th mat-header-cell *matHeaderCellDef>Outcome</th>
+              <td mat-cell *matCellDef="let row">{{ row.outcome || row.notes || '—' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef>User</th>
+              <td mat-cell *matCellDef="let row">{{ resolveProviderName(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">{{ resolveStatus(row) }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+
+        <mat-paginator
+          [length]="totalRows()"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageIndex]="currentPage()"
+          (page)="onPageChange($event)"
+          showFirstLastButtons>
+        </mat-paginator>
+      }
+    </mat-card>
+
+    @if (selectedOutcome()) {
+      <mat-card class="detail-card">
+        <h3>Outcome Detail</h3>
+        <div class="detail-grid">
+          <div><span class="label">Patient</span><span class="value">{{ selectedSummary().patientName }}</span></div>
+          <div><span class="label">Consult ID</span><span class="value">{{ selectedSummary().consultId }}</span></div>
+          <div><span class="label">Patient No</span><span class="value">{{ selectedSummary().pNo }}</span></div>
+          <div><span class="label">Procedure</span><span class="value">{{ selectedSummary().procedure }}</span></div>
+          <div><span class="label">Date</span><span class="value">{{ selectedSummary().date }}</span></div>
+          <div><span class="label">User</span><span class="value">{{ selectedSummary().user }}</span></div>
+          <div><span class="label">Satisfaction Score</span><span class="value">{{ selectedSummary().score }}</span></div>
+          <div><span class="label">Status</span><span class="value">{{ selectedSummary().status }}</span></div>
+          <div class="full"><span class="label">Outcome Notes</span><p class="outcome-text">{{ selectedSummary().outcome }}</p></div>
+        </div>
+      </mat-card>
+    }
+  </div>
 </div>
+
+
 
