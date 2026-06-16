@@ -1151,10 +1151,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo))
                 return;
 
+            var clinicFromHeader = ResolveClinicFromHeader(resolvedConsultId);
+
             var existing = dbContext.HConsultings.FirstOrDefault(x => x.ConsultId == resolvedConsultId);
             if (existing != null)
             {
                 existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
+                if (!string.IsNullOrWhiteSpace(clinicFromHeader))
+                {
+                    existing.Clinic = clinicFromHeader;
+                    existing.Remarks = clinicFromHeader;
+                }
                 existing.EditDate = DateTime.UtcNow;
                 existing.EditTime = DateTime.UtcNow;
                 dbContext.SaveChanges();
@@ -1171,6 +1178,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 Services = services,
                 TreatedBy = string.IsNullOrWhiteSpace(consultation.Provider) ? "SYSTEM" : consultation.Provider,
                 ClientCat = "PRIVATE",
+                Clinic = clinicFromHeader,
+                Remarks = clinicFromHeader,
                 IsLatest = true
             };
 
@@ -1185,6 +1194,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
             if (string.IsNullOrWhiteSpace(resolvedConsultId))
                 return;
+
+            var clinicFromHeader = ResolveClinicFromHeader(resolvedConsultId);
 
             // Resolve target row id first, then update by id (where id = xxx)
             var existingId = dbContext.HConsultings
@@ -1204,9 +1215,27 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
             if (!string.IsNullOrWhiteSpace(consultation.Provider))
                 existing.TreatedBy = consultation.Provider;
+            if (!string.IsNullOrWhiteSpace(clinicFromHeader))
+            {
+                existing.Clinic = clinicFromHeader;
+                existing.Remarks = clinicFromHeader;
+            }
             existing.EditDate = DateTime.UtcNow;
             existing.EditTime = DateTime.UtcNow;
             dbContext.SaveChanges();
+        }
+
+        private string? ResolveClinicFromHeader(string consultId)
+        {
+            if (string.IsNullOrWhiteSpace(consultId))
+                return null;
+
+            var clinicType = dbContext.VwhRecords
+                .Where(x => x.ConsultId == consultId)
+                .Select(x => x.ClinicType)
+                .FirstOrDefault();
+
+            return string.IsNullOrWhiteSpace(clinicType) ? null : clinicType.Trim();
         }
 
         private static string? MergeServices(string? existingServices, string? incomingServices, string? procedureType)

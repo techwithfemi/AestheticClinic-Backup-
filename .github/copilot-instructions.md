@@ -341,55 +341,14 @@ quickapp.client/src/app/
 **Billing Debt Flow Logic:**
 - In this codebase's billing debt flow logic, DebtBF (debt brought forward from previous transaction) must be included in debt calculations/running balance.
 
-### Tariff Module Settings
-
-For tariff module settings, use top-level key `tariffUpload` instead of `inventoryProductsUpload`.
-
-### Attendance for Current Date 
-- `QryhvisitsForToday` model is the single source of truth for the patient select element (format is patient recdate [consultID]).
-- `QryhvisitsForToday` is a db view that already filters attendance for the current date.
-
-### Reports Module Settings
-
-Custom instructions for reports module:
--------------
-- Except otherwise specified, use SPA services report page (`app/features/reports/spa/spa-services-report.component`) as report guide.
-- Summary cards — Totals 
-- Results sorted newest-first
-- Use Angular Material / Material Icons
-- Add dropdown element with source (patient [consultID]) from attendance
-- The dropdown element label should be 'select patient' and not 'patient [consultID]'
-- By default, the dropdown element source should be today's attendance list
-- Dropdown list should include patients for all clinics on attendance
-- The first item in the dropdown element should be 'select patient' 
-- Show patient name (instead of 'u') and user full name (instead of user id) in the grid/table 
-- For print report dialog when displayed, it should show reports only for that dept/role in the sidebar. For 'management' role, it can display all reports in the sidebar
-- Show patient name (instead of 'u') and full name (instead of user id)
-- Add Angular Material table to the report body (as datagrid)
-- Add two date pickers and search field at the section head of the report
-- The two date pickers should show today's date by default
-- The two date pickers format should be dd-MMM-YYYY
-- Except for searches, records displayed in the grid should depend on the date range. Add a button to click to display the records
-- By default, it should display records for the current date
-- Grid/table should display records at a time (page size = 10)
-- Run report and clear buttons not working
-
-----------------
-
-- Add 'export to Excel, CSV, PDF' links 
-- The names (Excel, CSV, PDF) should be links 
-- Add 'export to Excel, CSV, PDF' links above the 'print' button. The names (Excel, CSV, PDF) should be links 
-- Add 'export to Excel, CSV, PDF' links; the names (Excel, CSV, PDF) should be links
---------------------
-- Let the export links be before the 'refresh' button. Same row. Add 'Export to ' before the Excel link
-- The links should work, should be well styled and beautiful. 
-- Remove any underline
-- Add downloadable functionality (sent to download folder). 
-- The Excel file should be in true .xlsx format.
-- As said earlier, use SPA services report page as report guide.
-
-### Important Note
-In this codebase, `ConsultId` and `conID` are different fields and must not be treated as equivalent. However, `conID` is the same as the ID field in the `hConsulting` model.
+**Multi-Clinic Data Isolation (HConsulting):**
+- **Each clinic must have its own entry** in the `HConsulting` table (e.g., dental clinic, aesthetics clinic, etc.)
+- **Each consultation is identified by `consultID`** and belongs to a specific clinic
+- **Clinic pages can ONLY update their own records** - filter queries by the clinic identifier and consultation ID
+- **DO NOT allow cross-clinic access** - enforce clinic isolation at the service/controller level
+- **All HConsulting CRUD operations MUST validate** that the current clinic owns the record before allowing read/write
+- ✅ **Reference**: Filter HConsulting queries using clinic context from `GetCurrentUserId()` or clinic claim in JWT token
+- ❌ **DO NOT allow generic HConsulting access** without clinic validation
 
 
 
