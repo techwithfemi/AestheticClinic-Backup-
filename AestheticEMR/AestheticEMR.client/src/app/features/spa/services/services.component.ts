@@ -1,10 +1,13 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
 
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -28,7 +31,10 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
     MatCardModule,
     MatButtonModule,
     MatTableModule,
-    MatIconModule
+    MatIconModule,
+    MatPaginatorModule,
+    MatFormFieldModule,
+    MatInputModule
   ],
   template: `
     <div class="spa-page">
@@ -43,77 +49,105 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
         </button>
       </div>
 
-      <div class="search-section">
-        <input
-          type="text"
-          class="search-input"
-          [(ngModel)]="searchText"
-          placeholder="Search by patient name or PNO..." />
-      </div>
-
-      <mat-card>
-        @if (filteredConsultations().length === 0 && !loadingIndicator) {
-          <p class="empty-state">No spa sessions recorded yet.</p>
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search by patient name</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Type to filter..." />
+        @if (searchText()) {
+          <button mat-icon-button matSuffix type="button" (click)="searchText.set('')" aria-label="Clear">
+            <mat-icon>close</mat-icon>
+          </button>
         }
+      </mat-form-field>
 
-        @if (filteredConsultations().length > 0) {
-          <table mat-table [dataSource]="filteredConsultations()" class="data-table">
-            <ng-container matColumnDef="patient">
-              <th mat-header-cell *matHeaderCellDef>Patient (PNO)</th>
-              <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row) }}</td>
-            </ng-container>
+      <mat-card class="table-card">
+        <table mat-table [dataSource]="dataSource" class="data-table">
 
-            <ng-container matColumnDef="date">
-              <th mat-header-cell *matHeaderCellDef>Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'dd-MMM-yyyy' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="patient">
+            <th mat-header-cell *matHeaderCellDef>Patient</th>
+            <td mat-cell *matCellDef="let row">{{ resolvePatientName(row) }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="service">
-              <th mat-header-cell *matHeaderCellDef>Service</th>
-              <td mat-cell *matCellDef="let row">{{ row.indication || '—' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <td mat-cell *matCellDef="let row">{{ row.consultationDate | date:'dd-MMM-yyyy' }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="focus">
-              <th mat-header-cell *matHeaderCellDef>Area / Focus</th>
-              <td mat-cell *matCellDef="let row">{{ row.areaTreated || '—' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="service">
+            <th mat-header-cell *matHeaderCellDef>Service</th>
+            <td mat-cell *matCellDef="let row">{{ row.indication || '—' }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="notes">
-              <th mat-header-cell *matHeaderCellDef>Notes</th>
-              <td mat-cell *matCellDef="let row" class="truncate">{{ row.procedureDescription || '—' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="focus">
+            <th mat-header-cell *matHeaderCellDef>Area / Focus</th>
+            <td mat-cell *matCellDef="let row">{{ row.areaTreated || '—' }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Actions</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill">
-                  <mat-icon>receipt_long</mat-icon>
-                </button>
-                <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete" [disabled]="true">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </td>
-            </ng-container>
+          <ng-container matColumnDef="consultId">
+            <th mat-header-cell *matHeaderCellDef>Consult ID</th>
+            <td mat-cell *matCellDef="let row">{{ row.consultId || '—' }}</td>
+          </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-          </table>
-        }
+          <ng-container matColumnDef="services">
+            <th mat-header-cell *matHeaderCellDef>Services</th>
+            <td mat-cell *matCellDef="let row" class="truncate">{{ row.services || '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="notes">
+            <th mat-header-cell *matHeaderCellDef>Notes</th>
+            <td mat-cell *matCellDef="let row" class="truncate">{{ row.procedureDescription || '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let row" style="white-space:nowrap">
+              <button mat-icon-button type="button" (click)="openBilling(row)" title="Add Bill">
+                <mat-icon>receipt_long</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="delete(row.id)" title="Delete" [disabled]="true">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+              <mat-icon>spa</mat-icon>
+              <span>No spa sessions recorded yet.</span>
+            </td>
+          </tr>
+        </table>
+
+        <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons></mat-paginator>
       </mat-card>
     </div>
   `,
   styles: [`
     .spa-page { padding: 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; }
-    .subtitle { color: #666; margin: 4px 0 0; font-size: 0.9rem; }
-    .search-section { margin-bottom: 16px; }
-    .search-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
-    .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .truncate { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .empty-state { color: #888; padding: 32px; text-align: center; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
+    .page-header h2 { margin: 0; font-size: 1.6rem; }
+    .subtitle { color: #888; margin: 4px 0 0; font-size: 0.9rem; }
+    .search-field { width: 100%; margin-bottom: 8px; }
+    .table-card { padding: 0; overflow: hidden; }
+    .data-table { width: 100%; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .no-data-cell { text-align: center; padding: 40px 16px; color: #888; }
+    .no-data-cell mat-icon { display: block; font-size: 2.5rem; width: 2.5rem; height: 2.5rem; margin: 0 auto 8px; opacity: 0.4; }
+
+    ::ng-deep .mat-column-patient    { width: 16%; }
+    ::ng-deep .mat-column-date       { width: 10%; }
+    ::ng-deep .mat-column-service    { width: 11%; }
+    ::ng-deep .mat-column-consultId  { width: 11%; font-size: 0.85rem; color: #666; }
+    ::ng-deep .mat-column-services   { width: 18%; }
+    ::ng-deep .mat-column-focus      { width: 10%; }
+    ::ng-deep .mat-column-notes      { width: 14%; }
+    ::ng-deep .mat-column-actions    { width: 10%; white-space: nowrap; }
+    ::ng-deep .mat-column-actions .mat-cell { white-space: nowrap; }
 
     @media (max-width: 992px) {
       .spa-page { padding: 16px; }
@@ -123,7 +157,6 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
 
     @media (max-width: 575.98px) {
       .spa-page { padding: 12px; }
-      .truncate { max-width: 220px; }
     }
   `]
 })
@@ -141,11 +174,16 @@ export class ServicesComponent {
   readonly consultations = signal<AestheticConsultation[]>([]);
   readonly attendance = signal<Attendance[]>([]);
   readonly retainerships = signal<HRetainership[]>([]);
-  searchText = '';
-  readonly displayedColumns = ['patient', 'date', 'service', 'focus', 'notes', 'actions'];
+  readonly searchText = signal('');
+  readonly displayedColumns = ['patient', 'date', 'service', 'consultId', 'services', 'focus', 'notes', 'actions'];
+  readonly dataSource = new MatTableDataSource<AestheticConsultation>([]);
+
+  @ViewChild(MatPaginator) set matPaginator(p: MatPaginator) {
+    if (p) this.dataSource.paginator = p;
+  }
 
   readonly filteredConsultations = computed(() => {
-    const term = this.searchText.trim().toLowerCase();
+    const term = this.searchText().trim().toLowerCase();
     const source = term
       ? this.consultations()
       : this.consultations().filter(c => this.isToday(c.consultationDate));
@@ -181,6 +219,9 @@ export class ServicesComponent {
 
   constructor() {
     this.load();
+    effect(() => {
+      this.dataSource.data = this.filteredConsultations();
+    });
   }
 
   load(): void {
@@ -284,14 +325,19 @@ export class ServicesComponent {
       });
   }
 
-  resolvePatientLabel(row: AestheticConsultation): string {
+  resolvePatientName(row: AestheticConsultation): string {
+    if (row.patientName?.trim()) return row.patientName.trim();
+    const p = this.patients().find(x => x.id === row.patientId);
+    return p ? `${p.firstName} ${p.lastName}`.trim() : `Patient #${row.patientId}`;
+  }
+
+  private resolvePatientLabel(row: AestheticConsultation): string {
     if (row.patientName?.trim()) {
       const patient = this.patients().find(x => x.id === row.patientId);
-      return `${row.patientName} [${patient?.pno || 'N/A'}]`;
+      return `${row.patientName} ${patient?.pno || ''}`;
     }
-
     const p = this.patients().find(x => x.id === row.patientId);
-    return p ? `${p.firstName} ${p.lastName} [${p.pno || 'N/A'}]` : `Patient #${row.patientId}`;
+    return p ? `${p.firstName} ${p.lastName} ${p.pno || ''}` : `Patient #${row.patientId}`;
   }
 
   private async saveConsultation(result: SpaDialogResult): Promise<void> {
@@ -300,24 +346,11 @@ export class ServicesComponent {
 
     try {
       const consultation = { ...result.consultation };
-      let patientId = result.selectedPatient.patientId;
 
-      if (!patientId) {
-        const createdPatient = await this.endpoint.createPatientEndpoint<AestheticPatient>({
-          firstName: result.selectedPatient.firstName,
-          lastName: result.selectedPatient.lastName,
-          pno: result.selectedPatient.pNo,
-          notes: result.selectedPatient.pNo ? `Legacy PNO: ${result.selectedPatient.pNo}` : ''
-        }).toPromise();
-
-        patientId = createdPatient?.id ?? 0;
-      }
-
-      if (!patientId) {
-        throw new Error('Unable to resolve patient for spa session.');
-      }
-
-      consultation.patientId = patientId;
+      // PatientId is resolved server-side from PNo (HPatients is source of truth).
+      // Send pNo so the backend can look up / auto-create the AestheticPatient FK row.
+      consultation.pNo = result.selectedPatient.pNo || consultation.pNo;
+      consultation.consultId = result.selectedPatient.consultId || consultation.consultId;
 
       if (consultation.id) {
         await this.endpoint.updateConsultationEndpoint<AestheticConsultation>(consultation.id, consultation).toPromise();
@@ -363,8 +396,8 @@ export class ServicesComponent {
 
     const unique = new Map<string, SpaPatientOption>();
     for (const item of options) {
-      const key = `${item.consultId}|${item.pNo}|${item.firstName}|${item.lastName}`.toLowerCase();
-      if (!unique.has(key)) {
+      const key = (item.consultId ?? '').trim().toLowerCase();
+      if (key && !unique.has(key)) {
         unique.set(key, item);
       }
     }
@@ -415,3 +448,4 @@ export class ServicesComponent {
     return message || 'Operation failed.';
   }
 }
+

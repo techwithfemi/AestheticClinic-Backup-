@@ -113,13 +113,39 @@ namespace AestheticEMR.Core.Services.Aesthetics
             .OrderByDescending(c => c.ConsultationDate)
             .ToList();
 
-        public IEnumerable<AestheticConsultation> GetConsultationsByProcedure(string procedureType) => dbContext.AestheticConsultations
-            .Include(c => c.Photos)
-            .Include(c => c.Patient)
-            .AsSingleQuery()
-            .Where(c => c.ProcedureType.ToLower() == procedureType.ToLower())
-            .OrderByDescending(c => c.ConsultationDate)
-            .ToList();
+        public IEnumerable<AestheticConsultation> GetConsultationsByProcedure(string procedureType)
+        {
+            var consultations = dbContext.AestheticConsultations
+                .Include(c => c.Photos)
+                .Include(c => c.Patient)
+                .AsSingleQuery()
+                .Where(c => c.ProcedureType.ToLower() == procedureType.ToLower())
+                .OrderByDescending(c => c.ConsultationDate)
+                .ToList();
+
+            // Backfill Services from HConsulting for rows that predate the Services column
+            var consultIds = consultations
+                .Where(c => string.IsNullOrWhiteSpace(c.Services) && !string.IsNullOrWhiteSpace(c.ConsultId))
+                .Select(c => c.ConsultId!)
+                .Distinct()
+                .ToList();
+
+            if (consultIds.Count > 0)
+            {
+                var legacyServices = dbContext.HConsultings
+                    .Where(h => consultIds.Contains(h.ConsultId))
+                    .Select(h => new { h.ConsultId, h.Services })
+                    .ToDictionary(h => h.ConsultId, h => h.Services);
+
+                foreach (var c in consultations.Where(c => string.IsNullOrWhiteSpace(c.Services) && !string.IsNullOrWhiteSpace(c.ConsultId)))
+                {
+                    if (legacyServices.TryGetValue(c.ConsultId!, out var svc) && !string.IsNullOrWhiteSpace(svc))
+                        c.Services = svc;
+                }
+            }
+
+            return consultations;
+        }
 
         public IEnumerable<AestheticConsultation> GetLaserSessions() => dbContext.AestheticConsultations
             .Include(c => c.Patient)
@@ -134,14 +160,41 @@ namespace AestheticEMR.Core.Services.Aesthetics
             consultation.CreatedDate = DateTime.UtcNow;
             consultation.UpdatedDate = DateTime.UtcNow;
 
-            ApplyConsentStatus(consultation, consultId, pNo);
-            ValidateConsultationSafetyRequirements(consultation, consultId, pNo);
+            // Resolve PNo and ConsultId
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            // For Spa: ConsultId and PNo are required; resolve PatientId from HPatients (source of truth)
+            var isSpa = consultation.ProcedureType?.Equals("Spa", StringComparison.OrdinalIgnoreCase) == true;
+            if (isSpa)
+            {
+                if (string.IsNullOrWhiteSpace(resolvedConsultId))
+                    throw new InvalidOperationException("ConsultId is required to save a Spa session. Ensure the patient has attendance recorded for today.");
+
+                if (string.IsNullOrWhiteSpace(resolvedPNo))
+                    throw new InvalidOperationException("Patient number (PNo) is required to save a Spa session.");
+
+                // Resolve PatientId from HPatients — ignore whatever the frontend sent
+                var resolvedPatientId = ResolveAestheticPatientIdFromPNo(resolvedPNo);
+                if (resolvedPatientId <= 0)
+                    throw new InvalidOperationException($"No patient record found for PNo '{resolvedPNo}'. Ensure the patient is registered in the system.");
+
+                consultation.PatientId = resolvedPatientId;
+            }
+
+            consultation.ConsultId = resolvedConsultId;
+            consultation.PNo = resolvedPNo;
+            if (!string.IsNullOrWhiteSpace(services))
+                consultation.Services = services;
+
+            ApplyConsentStatus(consultation, resolvedConsultId, resolvedPNo);
+            ValidateConsultationSafetyRequirements(consultation, resolvedConsultId, resolvedPNo);
 
             dbContext.AestheticConsultations.Add(consultation);
             dbContext.SaveChanges();
 
             AutoScheduleDefaultFollowUp(consultation.Id);
-            SyncLegacyConsultingOnCreate(consultation, consultId, pNo, services);
+            SyncLegacyConsultingOnCreate(consultation, resolvedConsultId, resolvedPNo, services);
             return consultation;
         }
 
@@ -154,7 +207,29 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
-            existing.PatientId = consultation.PatientId;
+            // Resolve PNo and ConsultId
+            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, !string.IsNullOrWhiteSpace(pNo) ? pNo : consultation.PNo ?? existing.PNo);
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, !string.IsNullOrWhiteSpace(consultId) ? consultId : consultation.ConsultId ?? existing.ConsultId);
+
+            // For Spa: enforce ConsultId/PNo, resolve PatientId from HPatients
+            var isSpa = (consultation.ProcedureType ?? existing.ProcedureType).Equals("Spa", StringComparison.OrdinalIgnoreCase);
+            if (isSpa)
+            {
+                if (string.IsNullOrWhiteSpace(resolvedConsultId))
+                    throw new InvalidOperationException("ConsultId is required to update a Spa session. Ensure the patient has attendance recorded.");
+
+                if (string.IsNullOrWhiteSpace(resolvedPNo))
+                    throw new InvalidOperationException("Patient number (PNo) is required to update a Spa session.");
+
+                var resolvedPatientId = ResolveAestheticPatientIdFromPNo(resolvedPNo);
+                if (resolvedPatientId > 0)
+                    existing.PatientId = resolvedPatientId;
+            }
+            else
+            {
+                existing.PatientId = consultation.PatientId;
+            }
+
             existing.ConsultationDate = consultation.ConsultationDate;
             existing.ProcedureType = consultation.ProcedureType;
             existing.Provider = consultation.Provider;
@@ -183,9 +258,17 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.InjectionMapping = consultation.InjectionMapping;
             existing.LotNumber = consultation.LotNumber;
             existing.FollowUpReview = consultation.FollowUpReview;
+            existing.ConsentGiven = consultation.ConsentGiven;
+            existing.InformationAccepted = consultation.InformationAccepted;
+            existing.ConsentNotes = consultation.ConsentNotes;
 
-            ApplyConsentStatus(existing, consultId, pNo);
-            ValidateConsultationSafetyRequirements(existing, consultId, pNo);
+            existing.ConsultId = resolvedConsultId ?? existing.ConsultId;
+            existing.PNo = resolvedPNo ?? existing.PNo;
+            if (!string.IsNullOrWhiteSpace(services))
+                existing.Services = services;
+
+            ApplyConsentStatus(existing, resolvedConsultId, resolvedPNo);
+            ValidateConsultationSafetyRequirements(existing, resolvedConsultId, resolvedPNo);
             existing.UpdatedDate = DateTime.UtcNow;
 
             dbContext.SaveChanges();
@@ -220,11 +303,26 @@ namespace AestheticEMR.Core.Services.Aesthetics
             dbContext.SaveChanges();
         }
 
-        public AestheticConsultation? GetConsultationById(int consultationId) => dbContext.AestheticConsultations
-            .Include(c => c.Photos)
-            .Include(c => c.Patient)
-            .AsSingleQuery()
-            .FirstOrDefault(c => c.Id == consultationId);
+        public AestheticConsultation? GetConsultationById(int consultationId)
+        {
+            var consultation = dbContext.AestheticConsultations
+                .Include(c => c.Photos)
+                .Include(c => c.Patient)
+                .AsSingleQuery()
+                .FirstOrDefault(c => c.Id == consultationId);
+
+            if (consultation != null
+                && string.IsNullOrWhiteSpace(consultation.Services)
+                && !string.IsNullOrWhiteSpace(consultation.ConsultId))
+            {
+                consultation.Services = dbContext.HConsultings
+                    .Where(h => h.ConsultId == consultation.ConsultId)
+                    .Select(h => h.Services)
+                    .FirstOrDefault();
+            }
+
+            return consultation;
+        }
 
         public IEnumerable<AestheticPhoto> GetPhotos() => dbContext.AestheticPhotos
             .Include(p => p.Consultation)
@@ -847,6 +945,12 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 throw new InvalidOperationException("Procedure type is required.");
             }
 
+            // Spa uses toggle-based consent (ConsentGiven flag) so detailed field checks
+            // and signed-consent template validation are skipped.
+            // ConsultId + PNo are already validated in AddConsultation/UpdateConsultation before this runs.
+            var isSpa = consultation.ProcedureType.Equals("Spa", StringComparison.OrdinalIgnoreCase);
+            if (isSpa) return;
+
             if (string.IsNullOrWhiteSpace(consultation.Provider))
             {
                 throw new InvalidOperationException("Provider is required.");
@@ -897,7 +1001,6 @@ namespace AestheticEMR.Core.Services.Aesthetics
         {
             return procedureType.Equals("Botox", StringComparison.OrdinalIgnoreCase)
                    || procedureType.Equals("Laser", StringComparison.OrdinalIgnoreCase)
-                   || procedureType.Equals("Spa", StringComparison.OrdinalIgnoreCase)
                    || procedureType.Equals("Procedures", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -914,6 +1017,13 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
         private void ApplyConsentStatus(AestheticConsultation consultation, string? consultId, string? pNo)
         {
+            // Spa uses toggle-based consent - preserve the values set by the user, do not override from signed consent lookup
+            var isSpa = consultation.ProcedureType?.Equals("Spa", StringComparison.OrdinalIgnoreCase) == true;
+            if (isSpa)
+            {
+                return;
+            }
+
             var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
             var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
 
@@ -1076,11 +1186,24 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (string.IsNullOrWhiteSpace(resolvedConsultId))
                 return;
 
-            var existing = dbContext.HConsultings.FirstOrDefault(x => x.ConsultId == resolvedConsultId);
+            // Resolve target row id first, then update by id (where id = xxx)
+            var existingId = dbContext.HConsultings
+                .Where(x => x.ConsultId == resolvedConsultId
+                            && (string.IsNullOrWhiteSpace(resolvedPNo) || x.PNo == resolvedPNo))
+                .OrderByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            if (existingId <= 0)
+                return;
+
+            var existing = dbContext.HConsultings.FirstOrDefault(x => x.Id == existingId);
             if (existing == null)
                 return;
 
             existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
+            if (!string.IsNullOrWhiteSpace(consultation.Provider))
+                existing.TreatedBy = consultation.Provider;
             existing.EditDate = DateTime.UtcNow;
             existing.EditTime = DateTime.UtcNow;
             dbContext.SaveChanges();
@@ -1113,6 +1236,40 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 .Where(x => x.Id == patientId)
                 .Select(x => x.Pno)
                 .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Resolves the AestheticPatient.Id (FK used by AestheticConsultations) from a legacy PNo.
+        /// HPatients is the source of truth — if no AestheticPatient row exists for this PNo, one is
+        /// auto-created from HPatients data so that existing EF FK constraints are satisfied.
+        /// </summary>
+        private int ResolveAestheticPatientIdFromPNo(string pNo)
+        {
+            // Check if AestheticPatient already linked to this PNo
+            var existing = dbContext.AestheticPatients.FirstOrDefault(x => x.Pno == pNo);
+            if (existing != null)
+                return existing.Id;
+
+            // Look up from HPatients (source of truth)
+            var hPatient = dbContext.HPatients.FirstOrDefault(x => x.Pno == pNo);
+            if (hPatient == null)
+                return 0;
+
+            // Auto-create a thin AestheticPatient record to satisfy the FK
+            var created = new Models.Aesthetic.AestheticPatient
+            {
+                FirstName = hPatient.PFirstname?.Trim() ?? "Unknown",
+                LastName = hPatient.PSurName.Trim(),
+                Pno = pNo,
+                PhoneNumber = hPatient.PPhoneNo,
+                DateOfBirth = hPatient.Dob,
+                CreatedDate = DateTime.UtcNow,
+                UpdatedDate = DateTime.UtcNow
+            };
+
+            dbContext.AestheticPatients.Add(created);
+            dbContext.SaveChanges();
+            return created.Id;
         }
 
         private string? ResolveLegacyConsultId(DateTime consultationDate, string? pNo, string? providedConsultId)

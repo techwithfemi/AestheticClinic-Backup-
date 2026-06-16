@@ -16,6 +16,16 @@ export interface AestheticPhoto {
   updatedDate?: string;
 }
 
+export interface SpaService {
+  id?: number;
+  serviceType: string;
+  typeProductScrub?: string;
+  areaOfFocus?: string;
+  price?: number;
+  duration?: number; // in minutes
+  notes?: string;
+}
+
 export interface AestheticConsentTemplate {
   id: number;
   name?: string;

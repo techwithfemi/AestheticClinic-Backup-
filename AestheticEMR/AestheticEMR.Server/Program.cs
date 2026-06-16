@@ -379,6 +379,13 @@ if (effectiveMode == "MessageBusEventualSync")
 
 /************* SEED DATABASE *************/
 
+if (!app.Configuration.GetValue("DatabaseSeeding:Enabled", true))
+{
+    app.Logger.LogInformation("Database seeding is disabled by configuration.");
+    app.Run();
+    return;
+}
+
 using var scope = app.Services.CreateScope();
 try
 {

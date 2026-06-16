@@ -1,4 +1,3 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,8 +10,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { HttpClient } from '@angular/common/http';
 
 import { AestheticConsultation } from '../../../models/aesthetic.model';
+import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
+import { VwhRecord } from '../../../models/legacy/vwh-record.model';
+import { BillingEndpoint } from '../../../services/billing-endpoint.service';
 
 interface SpaStaticLists {
   serviceTypes?: string[];
@@ -53,7 +56,8 @@ export interface SpaDialogResult {
     MatSlideToggleModule,
     MatIconModule,
     MatDatepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    AttendanceSummaryComponent
   ],
   template: `
     <div class="dialog-content">
@@ -65,24 +69,11 @@ export interface SpaDialogResult {
       </div>
 
       <mat-dialog-content>
-        <div class="patient-header">
-          @if (selectedPatientInfo?.photo) {
-            <button class="photo-button" type="button" (click)="togglePhotoZoom()" [attr.aria-label]="isPhotoZoomed ? 'Zoom out photo' : 'Zoom in photo'">
-              <img class="patient-photo" [class.zoomed]="isPhotoZoomed" [src]="getPatientPhotoSource(selectedPatientInfo?.photo)" alt="Patient photo" />
-            </button>
-          } @else {
-            <div class="patient-photo placeholder">
-              <mat-icon>person</mat-icon>
-            </div>
-          }
-
-          <div class="patient-meta">
-            <div class="meta-item"><span class="label">Full Name:</span> <span>{{ selectedPatientFullName }}</span></div>
-            <div class="meta-item"><span class="label">Age:</span> <span>{{ selectedPatientAge ?? '—' }}</span></div>
-            <div class="meta-item"><span class="label">Company:</span> <span>{{ selectedPatientInfo?.company || '—' }}</span></div>
-            <div class="meta-item"><span class="label">Phone:</span> <span>{{ selectedPatientInfo?.phoneNumber || '—' }}</span></div>
-          </div>
-        </div>
+        <app-attendance-summary
+          [attendance]="selectedAttendanceSummary"
+          [photo]="selectedAttendanceSummary?.patientPhotoBase64"
+          [compact]="true">
+        </app-attendance-summary>
 
         <form [formGroup]="form">
           <mat-form-field appearance="outline" class="full-width">
@@ -91,24 +82,25 @@ export interface SpaDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Patient (ConsultID)</mat-label>
+            <mat-label>Select Patient</mat-label>
             <mat-select #patientSelect formControlName="patientKey" required>
+              <mat-option value="">Select Patient</mat-option>
               @for (p of filteredPatientOptions; track p.label) {
-                <mat-option [value]="p.label">{{ p.label }}</mat-option>
+                <mat-option [value]="getPatientKey(p)">{{ p.label }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Session Date</mat-label>
-            <input matInput [matDatepicker]="consultDatePicker" formControlName="consultationDate" required />
+            <input matInput [matDatepicker]="consultDatePicker" formControlName="consultationDate" />
             <mat-datepicker-toggle matIconSuffix [for]="consultDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #consultDatePicker></mat-datepicker>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Service Type</mat-label>
-            <mat-select formControlName="indication" required>
+            <mat-select formControlName="indication">
               @for (serviceType of serviceTypes; track serviceType) {
                 <mat-option [value]="serviceType">{{ serviceType }}</mat-option>
               }
@@ -131,14 +123,19 @@ export interface SpaDialogResult {
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Allergies / Health Issues</mat-label>
-            <textarea matInput rows="2" formControlName="allergies"></textarea>
+            <mat-label>Allergies / Health Issues *</mat-label>
+            <textarea matInput rows="2" formControlName="allergies" placeholder="List any allergies or health conditions"></textarea>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Pain Level / Pressure / Reaction</mat-label>
+            <mat-label>Current Medications *</mat-label>
+            <textarea matInput rows="2" formControlName="currentMedications" placeholder="List all current medications"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Pain Level / Pressure / Reaction *</mat-label>
             <textarea matInput rows="2" formControlName="risksAndComplications"
-              placeholder="Pain level, high/low pressure, skin/client reaction, heat sensitivity, etc."></textarea>
+              placeholder="Pain level, high/low pressure, skin/client reaction, heat sensitivity, risks and complications, etc."></textarea>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -162,11 +159,24 @@ export interface SpaDialogResult {
               placeholder="Client confirms sauna is safe, no hidden conditions, accepts risks"></textarea>
           </mat-form-field>
 
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Post-Treatment Instructions *</mat-label>
+            <textarea matInput rows="2" formControlName="postTreatmentInstructions" placeholder="Care instructions after treatment"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Services *</mat-label>
+            <textarea matInput rows="3" formControlName="services" placeholder="List of services rendered (e.g., Facial, Massage, Body Scrub)"></textarea>
+          </mat-form-field>
+
           <div class="toggles">
             <mat-slide-toggle formControlName="consentGiven" color="primary">Consent Obtained</mat-slide-toggle>
             <mat-slide-toggle formControlName="informationAccepted" color="primary">Information Accepted</mat-slide-toggle>
           </div>
         </form>
+
+        <!-- Services Section removed - using textarea instead -->
+
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
@@ -184,48 +194,30 @@ export interface SpaDialogResult {
     .toggles { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
     mat-dialog-content { max-height: 70vh; overflow-y: auto; overflow-x: hidden; padding: 0; margin: 0; }
     mat-form-field { width: 100%; }
-    .patient-header { display: flex; gap: 12px; align-items: center; border: 1px solid #e0e0e0; border-radius: 8px; min-height: 88px; padding: 10px 12px; margin-bottom: 12px; background: #fafafa; }
-    .photo-button { padding: 0; border: none; background: transparent; cursor: zoom-in; border-radius: 50%; line-height: 0; }
-    .photo-button:focus-visible { outline: 2px solid #1976d2; outline-offset: 2px; }
-    .patient-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #f1f1f1; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; color: #888; transition: transform 0.2s ease; transform-origin: center; }
-    .patient-photo.zoomed { transform: scale(2.2); }
-    .patient-photo.placeholder mat-icon { font-size: 32px; width: 32px; height: 32px; }
-    .patient-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; min-width: 0; flex: 1; }
-    .meta-item { font-size: 0.9rem; color: #444; display: flex; gap: 6px; min-width: 0; }
-    .meta-item span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .meta-item .label { color: #666; min-width: 72px; }
   `]
 })
 export class SpaDialogComponent {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
+  private billingEndpoint = inject(BillingEndpoint);
   dialogRef = inject(MatDialogRef<SpaDialogComponent>);
 
   @ViewChild('patientSelect') patientSelect?: MatSelect;
 
   patientSearchText = '';
   serviceTypes: string[] = [];
-
-  isPhotoZoomed = false;
+  patientOptions: SpaPatientOption[] = [];
+  selectedAttendanceSummary?: VwhRecord;
 
   get filteredPatientOptions(): SpaPatientOption[] {
-    const term = this.patientSearchText.trim().toLowerCase();
-    if (!term) {
-      return this.data.patientOptions;
-    }
-
-    return this.data.patientOptions.filter(p =>
-      p.label.toLowerCase().includes(term)
-      || p.firstName.toLowerCase().includes(term)
-      || p.lastName.toLowerCase().includes(term)
-      || p.pNo.toLowerCase().includes(term)
-      || p.consultId.toLowerCase().includes(term));
+    const searchTerm = this.patientSearchText.toLowerCase();
+    return this.patientOptions.filter(option => option.label.toLowerCase().includes(searchTerm));
   }
 
   form = this.fb.nonNullable.group({
     id: [0],
     patientKey: ['', Validators.required],
-    consultationDate: [new Date(), Validators.required],
+    consultationDate: [new Date()],
     indication: ['', Validators.required],
     brandUsed: [''],
     areaTreated: [''],
@@ -236,39 +228,62 @@ export class SpaDialogComponent {
     deviceSettings: [''],
     procedureDescription: [''],
     consentNotes: [''],
-    consentGiven: [true],
-    informationAccepted: [true]
+    consentGiven: [false, Validators.requiredTrue],
+    informationAccepted: [false, Validators.requiredTrue],
+    services: ['', Validators.required],
+    postTreatmentInstructions: [''],
+    currentMedications: ['']
   });
 
   private _data = inject<{ isEdit: boolean; consultation?: AestheticConsultation; patientOptions: SpaPatientOption[] }>(MAT_DIALOG_DATA);
   get data() { return this._data; }
 
   constructor() {
+    this.patientOptions = [...this.data.patientOptions];
     this.loadServiceTypes();
 
     if (this.data.isEdit && this.data.consultation) {
-      const selectedOption = this.data.patientOptions.find(x => x.patientId === this.data.consultation!.patientId);
+      const c = this.data.consultation;
+      const selectedOption = this.patientOptions.find(x => c.consultId && x.consultId === c.consultId);
 
       this.form.patchValue({
-        id: this.data.consultation.id,
-        patientKey: selectedOption?.label ?? '',
-        consultationDate: this.toDate(this.data.consultation.consultationDate) ?? new Date(),
-        indication: this.data.consultation.indication ?? '',
-        brandUsed: this.data.consultation.brandUsed ?? '',
-        areaTreated: this.data.consultation.areaTreated ?? '',
-        skinAssessment: this.data.consultation.skinAssessment ?? '',
-        allergies: this.data.consultation.allergies ?? '',
-        risksAndComplications: this.data.consultation.risksAndComplications ?? '',
-        treatmentPlan: this.data.consultation.treatmentPlan ?? '',
-        deviceSettings: this.data.consultation.deviceSettings ?? '',
-        procedureDescription: this.data.consultation.procedureDescription ?? '',
-        consentNotes: this.data.consultation.consentNotes ?? '',
-        consentGiven: this.data.consultation.consentGiven ?? true,
-        informationAccepted: this.data.consultation.informationAccepted ?? true
+        id: c.id,
+        patientKey: selectedOption ? this.getPatientKey(selectedOption) : '',
+        consultationDate: this.toDate(c.consultationDate) ?? new Date(),
+        indication: c.indication ?? '',
+        brandUsed: c.brandUsed ?? '',
+        areaTreated: c.areaTreated ?? '',
+        skinAssessment: c.skinAssessment ?? '',
+        allergies: c.allergies ?? '',
+        risksAndComplications: c.risksAndComplications ?? '',
+        treatmentPlan: c.treatmentPlan ?? '',
+        deviceSettings: c.deviceSettings ?? '',
+        procedureDescription: c.procedureDescription ?? '',
+        consentNotes: c.consentNotes ?? '',
+        consentGiven: c.consentGiven ?? false,
+        informationAccepted: c.informationAccepted ?? false,
+        services: c.services ?? '',
+        postTreatmentInstructions: c.postTreatmentInstructions ?? '',
+        currentMedications: c.currentMedications ?? ''
       });
 
       this.patientSearchText = selectedOption?.label ?? '';
+
+      if (selectedOption?.consultId) {
+        this.loadAttendanceSummary(selectedOption.consultId);
+      }
     }
+
+    this.form.controls.patientKey.valueChanges.subscribe(key => {
+      const selectedPatient = this.findPatientByKey(key);
+      const consultId = selectedPatient?.consultId?.trim();
+
+      if (consultId) {
+        this.loadAttendanceSummary(consultId);
+      } else {
+        this.selectedAttendanceSummary = undefined;
+      }
+    });
   }
 
   onPatientSearchChange(event: Event): void {
@@ -277,7 +292,7 @@ export class SpaDialogComponent {
 
     const matches = this.filteredPatientOptions;
     if (matches.length === 1) {
-      this.form.controls.patientKey.setValue(matches[0].label);
+      this.form.controls.patientKey.setValue(this.getPatientKey(matches[0]));
     }
 
     if (matches.length > 0) {
@@ -291,7 +306,7 @@ export class SpaDialogComponent {
     }
 
     const value = this.form.getRawValue();
-    const selectedPatient = this.data.patientOptions.find(x => x.label === value.patientKey);
+    const selectedPatient = this.findPatientByKey(value.patientKey);
     if (!selectedPatient) {
       return;
     }
@@ -299,6 +314,8 @@ export class SpaDialogComponent {
     const consultation: AestheticConsultation = {
       id: value.id,
       patientId: selectedPatient.patientId,
+      consultId: selectedPatient.consultId || undefined,
+      pNo: selectedPatient.pNo || undefined,
       consultationDate: this.toIsoDate(value.consultationDate) ?? this.toIsoDate(new Date()) ?? '',
       procedureType: 'Spa',
       indication: value.indication,
@@ -312,7 +329,10 @@ export class SpaDialogComponent {
       procedureDescription: value.procedureDescription,
       consentNotes: value.consentNotes,
       consentGiven: value.consentGiven,
-      informationAccepted: value.informationAccepted
+      informationAccepted: value.informationAccepted,
+      services: value.services,
+      postTreatmentInstructions: value.postTreatmentInstructions,
+      currentMedications: value.currentMedications
     };
 
     this.dialogRef.close({ consultation, selectedPatient } as SpaDialogResult);
@@ -347,6 +367,25 @@ export class SpaDialogComponent {
     });
   }
 
+  private loadAttendanceSummary(consultId: string): void {
+    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(consultId).subscribe({
+      next: summary => {
+        this.selectedAttendanceSummary = summary;
+      },
+      error: () => {
+        this.selectedAttendanceSummary = undefined;
+      }
+    });
+  }
+
+  getPatientKey(patient: SpaPatientOption): string {
+    return patient.consultId ?? '';
+  }
+
+  private findPatientByKey(key: string): SpaPatientOption | undefined {
+    return this.patientOptions.find(x => this.getPatientKey(x) === key);
+  }
+
   private toDate(value?: string): Date | null {
     if (!value) {
       return null;
@@ -371,7 +410,7 @@ export class SpaDialogComponent {
 
   get selectedPatientInfo(): SpaPatientOption | undefined {
     const key = this.form.controls.patientKey.value;
-    return this.data.patientOptions.find(x => x.label === key);
+    return this.findPatientByKey(key);
   }
 
   get selectedPatientFullName(): string {
@@ -403,18 +442,5 @@ export class SpaDialogComponent {
     }
 
     return age >= 0 ? age : null;
-  }
-
-  togglePhotoZoom(): void {
-    this.isPhotoZoomed = !this.isPhotoZoomed;
-  }
-
-  getPatientPhotoSource(photo?: string): string {
-    const trimmed = photo?.trim();
-    if (!trimmed) {
-      return '';
-    }
-
-    return trimmed.startsWith('data:') ? trimmed : `data:image/jpeg;base64,${trimmed}`;
   }
 }

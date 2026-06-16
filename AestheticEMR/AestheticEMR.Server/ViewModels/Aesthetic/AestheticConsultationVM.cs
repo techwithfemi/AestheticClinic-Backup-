@@ -6,6 +6,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace AestheticEMR.Server.ViewModels.Aesthetic
 {
@@ -13,7 +14,7 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
     {
         public int Id { get; set; }
 
-        [Range(1, int.MaxValue)]
+        [Range(0, int.MaxValue)]
         public int PatientId { get; set; }
 
         public string? PatientName { get; set; }
@@ -25,7 +26,8 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         [StringLength(100)]
         public string? ProcedureType { get; set; }
 
-        [Required]
+        // Always set server-side from the logged-in user's EmpId
+        [ValidateNever]
         [StringLength(150)]
         public string? Provider { get; set; }
 
@@ -35,6 +37,8 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         [StringLength(100)]
         public string? PNo { get; set; }
 
+        [Required]
+        [StringLength(2000)]
         public string? Services { get; set; }
         public bool ConsentGiven { get; set; }
         public bool InformationAccepted { get; set; }
@@ -42,19 +46,15 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         public string? ConsentNotes { get; set; }
         public string? ProcedureDescription { get; set; }
 
-        [Required]
         public string? RisksAndComplications { get; set; }
 
-        [Required]
         public string? PostTreatmentInstructions { get; set; }
 
         public string? SkinAssessment { get; set; }
         public string? TreatmentPlan { get; set; }
 
-        [Required]
         public string? CurrentMedications { get; set; }
 
-        [Required]
         public string? Allergies { get; set; }
 
         public string? DeviceSettings { get; set; }
@@ -86,14 +86,12 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
     {
         public AestheticConsultationViewModelValidator()
         {
-            RuleFor(x => x.PatientId).GreaterThan(0).WithMessage("Consultation must be linked to a patient.");
+            RuleFor(x => x.PatientId).GreaterThanOrEqualTo(0).WithMessage("Invalid patient identifier.");
             RuleFor(x => x.ProcedureType).NotEmpty().WithMessage("Procedure type is required.");
-            RuleFor(x => x.Provider).NotEmpty().WithMessage("Provider is required.");
-            RuleFor(x => x.Allergies).NotEmpty().WithMessage("Allergy information is required.");
-            RuleFor(x => x.CurrentMedications).NotEmpty().WithMessage("Current medications are required.");
-            RuleFor(x => x.RisksAndComplications).NotEmpty().WithMessage("Risks and complications are required.");
-            RuleFor(x => x.PostTreatmentInstructions).NotEmpty().WithMessage("Post-treatment instructions are required.");
-            RuleFor(x => x.ConsultationDate).LessThanOrEqualTo(DateTime.UtcNow).WithMessage("Consultation date cannot be in the future.");
+            RuleFor(x => x.Services).NotEmpty().WithMessage("Services are required.");
+            RuleFor(x => x.ConsultationDate)
+                .Must(date => date.Date <= DateTime.Today)
+                .WithMessage("Consultation date cannot be in the future.");
         }
     }
 }

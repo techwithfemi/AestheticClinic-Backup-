@@ -103,7 +103,7 @@ interface ConsentEntryDialogData {
             } @else if (!activeTemplate()) {
               <div class="consent-box empty">No template available for {{ selectedProcedureType() }}.</div>
             } @else {
-              <div class="consent-box">{{ activeTemplate().content || 'No content available.' }}</div>
+              <div class="consent-box">{{ activeTemplate()?.content || 'No content available.' }}</div>
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Signature Name</mat-label>
@@ -292,7 +292,7 @@ export class ConsentFormEntryDialogComponent implements OnInit {
     const general = templates.find(t => !(t.procedureType || '').trim());
     if (general) return general;
 
-    return templates[0] || null;
+    return null;
   });
 
   readonly patientAttendanceOptions = computed(() => {
@@ -575,7 +575,7 @@ export class ConsentFormEntryDialogComponent implements OnInit {
     const payload: SignAestheticConsent = {
       consultId,
       pNo,
-      procedureType: this.selectedProcedureType(),
+      procedureType: template.procedureType || this.selectedProcedureType(),
       consentTemplateId: template.id,
       signatureName: this.form.controls.signatureName.value,
       witnessedBy: this.form.controls.witnessedBy.value || '',

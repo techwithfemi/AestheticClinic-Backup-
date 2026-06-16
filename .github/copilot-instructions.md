@@ -145,11 +145,13 @@ public async Task<IActionResult> GetUserById(string id)
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-   }
+}
+```
+
 **Authorization Rules:**
 
-1. ✅ **All endpoints must be protected** - no exceptions
-2. ✅ **Use policy constants** from `AuthPolicies` class
+1. ✅ **All endpoints must be protected**- no exceptions
+2.✅ **Use policy constants** from `AuthPolicies` class
 3. ✅ **Use inline checks** for resource-based authorization
 4. ✅ **Create custom requirements** for complex authorization logic
 5. ✅ **Register authorization handlers** in `Program.cs`
@@ -343,49 +345,51 @@ quickapp.client/src/app/
 
 For tariff module settings, use top-level key `tariffUpload` instead of `inventoryProductsUpload`.
 
-
-### attendance for current date 
-- QryhvisitsForToday model is the single source of truth for  patient select element (format is patient recdate [consultID])
-- QryhvisitsForToday is a db view that already filters attendance for current date 
+### Attendance for Current Date 
+- `QryhvisitsForToday` model is the single source of truth for the patient select element (format is patient recdate [consultID]).
+- `QryhvisitsForToday` is a db view that already filters attendance for the current date.
 
 ### Reports Module Settings
-custom instructions for reports module:
+
+Custom instructions for reports module:
 -------------
-- except otherwise specified, use spa services report page (app/features/reports/spa/spa-services-report.component) as report guide.
+- Except otherwise specified, use SPA services report page (`app/features/reports/spa/spa-services-report.component`) as report guide.
 - Summary cards — Totals 
 - Results sorted newest-first
-- use angular material / material icons
-- add dropdown element with source (patient [consultID]) from attendance
-- the  dropdown element label shld be 'select patient' and not 'patient [consultID]'
-- by default, the  dropdown element source shld be today's attendance list
-
-- dropdown list shld Include patients for all clinics on attendace
-- the  first item in dropdown element shld be 'select patient' 
-- show patient name  (instead of 'u') and user fullname (instead of user id) in the grid/table 
-- for print report dialog when displayed shld show reports only for that dept/role in the sidebar. for 'management' role, it can display all reports in the sidebar
-- show patient name  (instead of 'u') and full name (instead of user id)
-- add angular material table to to the report body  (as datagrid)
-- add two date pickers and search field at the section head of the report
-- the two date pickers shld show todays date by default
-- the two date pickers format shld be dd-MMM-YYYY
-- except for searches, records displayed in the grid should depend on the date range. Add a button to click to display the records
-- by default, it should display records for the current date
-- grid/table shld display records at a time (pagesixe = 10)
-- run report and clear buttons not working
+- Use Angular Material / Material Icons
+- Add dropdown element with source (patient [consultID]) from attendance
+- The dropdown element label should be 'select patient' and not 'patient [consultID]'
+- By default, the dropdown element source should be today's attendance list
+- Dropdown list should include patients for all clinics on attendance
+- The first item in the dropdown element should be 'select patient' 
+- Show patient name (instead of 'u') and user full name (instead of user id) in the grid/table 
+- For print report dialog when displayed, it should show reports only for that dept/role in the sidebar. For 'management' role, it can display all reports in the sidebar
+- Show patient name (instead of 'u') and full name (instead of user id)
+- Add Angular Material table to the report body (as datagrid)
+- Add two date pickers and search field at the section head of the report
+- The two date pickers should show today's date by default
+- The two date pickers format should be dd-MMM-YYYY
+- Except for searches, records displayed in the grid should depend on the date range. Add a button to click to display the records
+- By default, it should display records for the current date
+- Grid/table should display records at a time (page size = 10)
+- Run report and clear buttons not working
 
 ----------------
 
-- add 'export to Excel CSV PDF' links 
-- the names ( Excel, CSV, PDF) shld be links 
-- add 'export to Excel CSV PDF' links above the 'print' button. the names ( Excel, CSV, PDF) shld be links 
-- add 'export to Excel CSV PDF' links the names ( Excel, CSV, PDF) shld be links
+- Add 'export to Excel, CSV, PDF' links 
+- The names (Excel, CSV, PDF) should be links 
+- Add 'export to Excel, CSV, PDF' links above the 'print' button. The names (Excel, CSV, PDF) should be links 
+- Add 'export to Excel, CSV, PDF' links; the names (Excel, CSV, PDF) should be links
 --------------------
-- let the export links be before 'refresh' button. same row. add 'Export to ' before excel link
-- the links shld work, shld be well styled and beautiful. 
-- remove any underline
-- add downloadable functionality (sent to download folder). 
-- the excel file shld be in true .xlsx format.
-- as said earlier, use spa services report page as report guide.
+- Let the export links be before the 'refresh' button. Same row. Add 'Export to ' before the Excel link
+- The links should work, should be well styled and beautiful. 
+- Remove any underline
+- Add downloadable functionality (sent to download folder). 
+- The Excel file should be in true .xlsx format.
+- As said earlier, use SPA services report page as report guide.
+
+### Important Note
+In this codebase, `ConsultId` and `conID` are different fields and must not be treated as equivalent. However, `conID` is the same as the ID field in the `hConsulting` model.
 
 
 
