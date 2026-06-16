@@ -510,6 +510,17 @@ interface ProceduresEntryDialogData {
             </mat-tab>
           </mat-tab-group>
 
+          <!-- Services rendered for this session (REQUIRED) -->
+          <div class="services-section">
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Services Rendered for This Session *</mat-label>
+              <textarea matInput rows="4" formControlName="services" required placeholder="Enter all services rendered during this consultation session..."></textarea>
+              @if (saveAttempted() && form.controls.services.invalid) {
+                <mat-error>Services rendered are required.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
           <div class="save-row">
             <button mat-stroked-button type="button" (click)="closeDialog()" [disabled]="loadingIndicator">
               Cancel
@@ -629,6 +640,7 @@ interface ProceduresEntryDialogData {
     .disabled-notice { display: flex; align-items: center; gap: 8px; padding: 12px; background: #f5f5f5; border-left: 4px solid #f44336; color: #d32f2f; font-weight: 500; }
 
     .form-shell { padding: 12px; }
+    .services-section { padding: 12px; margin: 12px 0; background: #fafafa; border-radius: 4px; border: 1px solid #e8e8e8; }
     .save-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
     .patient-field { width: min(460px, 100%); }
     .tab-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px 2px 2px; }
@@ -827,6 +839,9 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly isPregnant = signal(false);
   readonly hasHsvHistory = signal(false);
   readonly isFillerSelected = signal(false);
+  readonly saveAttempted = signal(false);
+  readonly selectedVisitPNo = signal('');
+  readonly selectedClinic = signal('');
 
   // Safety state
   readonly patientAllergies = signal<string[]>([]);
@@ -906,7 +921,8 @@ export class ProceduresEntryDialogComponent implements OnInit {
       endpoint: ['erythema'],
       testPatch: [false],
       complications: [false]
-    })
+    }),
+    services: ['', Validators.required]
   });
 
   get consultationGroup() { return this.form.controls.consultation; }
@@ -1264,6 +1280,8 @@ export class ProceduresEntryDialogComponent implements OnInit {
 
     const selected = this.patientAttendanceOptions().find(x => x.consultId === normalizedConsultId);
     this.form.controls.patientId.setValue(selected?.patientId ?? 0);
+    this.selectedVisitPNo.set(selected?.pNo ?? '');
+    this.selectedClinic.set('Aesthetic');
 
     this.loadSignedConsentsForSelection();
 
@@ -1616,7 +1634,14 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
       wavelength: laser.wavelength,
       fluence: laser.fluence,
       pulseDuration: laser.pulseDuration,
-      spotSize: laser.spotSize
+      spotSize: laser.spotSize,
+      Services: services,
+      Allergies: consultation.allergyNotes || (consultation.allergySelections ? consultation.allergySelections.join(', ') : ''),
+      CurrentMedications: consultation.medications ? consultation.medications.join(', ') : '',
+      ConsultId: this.selectedVisitConsultId(),
+      PNo: this.selectedVisitPNo(),
+      Clinic: this.selectedClinic(),
+      Remarks: ''
     };
   }
 
@@ -1888,6 +1913,8 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     return [patient.pSurName, patient.pFirstname].filter(Boolean).join(' ').trim() || (pNo ?? 'Unknown patient');
   }
 }
+
+
 
 
 
