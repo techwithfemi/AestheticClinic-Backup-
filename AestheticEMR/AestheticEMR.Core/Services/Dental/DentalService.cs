@@ -280,7 +280,7 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.ConsultId = chart.ConsultId;
         existing.Dtype = chart.Dtype;
         existing.TDate = NormalizeSqlDateTime(chart.TDate, DateTime.UtcNow);
-        existing.TTime = NormalizeSqlDateTime(chart.TTime, existing.TDate);
+        existing.TTime = chart.TTime; // TTime is now nullable, preserve as-is
         existing.TeethStatusJson = chart.TeethStatusJson;
         existing.OrthodonticsJson = chart.OrthodonticsJson;
         existing.OralExamJson = chart.OralExamJson;
@@ -314,7 +314,11 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
     {
         var fallback = DateTime.UtcNow;
         chart.TDate = NormalizeSqlDateTime(chart.TDate, fallback);
-        chart.TTime = NormalizeSqlDateTime(chart.TTime, chart.TDate);
+        // TTime is nullable - don't normalize if null
+        if (chart.TTime.HasValue)
+        {
+            chart.TTime = NormalizeSqlDateTime(chart.TTime.Value, chart.TDate);
+        }
     }
 
     private static DateTime NormalizeSqlDateTime(DateTime value, DateTime fallback)

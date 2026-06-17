@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +11,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { AttendanceSummaryComponent } from '../../components/attendance-summary/attendance-summary.component';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
@@ -17,6 +20,7 @@ import { VwhRecord } from '../../models/legacy/vwh-record.model';
 import { DentalEndpoint } from '../../services/dental-endpoint.service';
 import { AlertService, MessageSeverity } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
+import { ConfigurationService } from '../../services/configuration.service';
 
 export interface DentalPatientOption {
   pNo: string;
@@ -53,13 +57,15 @@ export interface DentalEncounterDialogData {
     MatCheckboxModule,
     MatRadioModule,
     MatIconModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     AttendanceSummaryComponent
   ],
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>{{ isEdit ? 'Edit Dental Info' : 'Add Dental Info' }}</h2>
       <button mat-icon-button type="button" class="close-btn" (click)="dialogRef.close()" aria-label="Close dialog">
-        Ã—
+        <mat-icon>close</mat-icon>
       </button>
     </div>
 
@@ -100,6 +106,26 @@ export interface DentalEncounterDialogData {
             <span>Treatment</span>
           </ng-template>
           <div class="tab-body">
+            <div class="span-2 treatment-top-fields">
+              <mat-form-field appearance="outline">
+                <mat-label>Treatment Date</mat-label>
+                <input matInput [matDatepicker]="treatmentDatePicker" [(ngModel)]="chartDateValue" />
+                <mat-datepicker-toggle matIconSuffix [for]="treatmentDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #treatmentDatePicker></mat-datepicker>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Treatment Type</mat-label>
+                <mat-select [(ngModel)]="chart.dtype">
+                  <mat-option value="">Select Treatment</mat-option>
+                  <mat-option value="Teeth Present">Teeth Present</mat-option>
+                  <mat-option value="Carious Teeth">Carious Teeth</mat-option>
+                  <mat-option value="Decayed Teeth">Decayed Teeth</mat-option>
+                  <mat-option value="Missing Teeth">Missing Teeth</mat-option>
+                  <mat-option value="Filled Teeth">Filled Teeth</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
             <div class="span-2 section-title">Dental Health Status (FDI)</div>
 
             <div class="span-2 fdi-matrix-wrap">
@@ -162,18 +188,6 @@ export interface DentalEncounterDialogData {
             </mat-form-field>
 
             <div class="span-2 section-title treatment-bottom">Clinical Examination</div>
-
-            <mat-form-field appearance="outline"><mat-label>Treatment Date</mat-label><input matInput type="date" [(ngModel)]="chartDate" /></mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Treatment Type</mat-label>
-              <mat-select [(ngModel)]="chart.dtype">
-                <mat-option value="Teeth Present">Teeth Present</mat-option>
-                <mat-option value="Carious Teeth">Carious Teeth</mat-option>
-                <mat-option value="Decayed Teeth">Decayed Teeth</mat-option>
-                <mat-option value="Missing Teeth">Missing Teeth</mat-option>
-                <mat-option value="Filled Teeth">Filled Teeth</mat-option>
-              </mat-select>
-            </mat-form-field>
 
             <div class="span-2 radio-row">
               <div class="radio-group">
@@ -403,7 +417,7 @@ export interface DentalEncounterDialogData {
                 <div class="image-grid">
                   @for (img of imagingPreviewUrls; track img; let i = $index) {
                     <div class="image-item">
-                      <img [src]="img" [alt]="'Dental image ' + (i + 1)" class="dental-image" />
+                      <img [src]="getSanitizedImageUrl(img)" [alt]="'Dental image ' + (i + 1)" class="dental-image" />
                       <div class="image-item-actions">
                         <button mat-icon-button type="button" (click)="zoomImage(img)" title="Zoom image">
                           <mat-icon>zoom_in</mat-icon>
@@ -426,7 +440,7 @@ export interface DentalEncounterDialogData {
                   <button mat-icon-button type="button" class="image-zoom-close" (click)="closeZoom()">
                     <mat-icon>close</mat-icon>
                   </button>
-                  <img [src]="zoomImageUrl" alt="Dental image zoom" class="image-zoom-img" />
+                  <img [src]="getSanitizedImageUrl(zoomImageUrl)" alt="Dental image zoom" class="image-zoom-img" />
                 </div>
               </div>
             }
@@ -462,6 +476,11 @@ export interface DentalEncounterDialogData {
 
     .section-title { font-weight: 700; font-size: 0.9rem; color: #90caf9; text-transform: uppercase; letter-spacing: 0.04em; }
     .treatment-bottom { margin-top: 12px; }
+    .treatment-top-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
 
     .patient-header {
       display: flex;
@@ -617,7 +636,7 @@ export interface DentalEncounterDialogData {
     .quad-label { font-size: 0.72rem; font-weight: 600; color: #555; margin-bottom: 8px; }
     .tooth-row { display: flex; flex-wrap: wrap; gap: 6px 4px; }
     .tooth { display: flex; flex-direction: column; align-items: center; width: 34px; overflow: hidden; }
-    .tooth-label { font-size: 0.65rem; font-weight: 600; color: #444; line-height: 1; height: 14px; display: flex; align-items: center; justify-content: center; width: 100%; text-align: center; margin-bottom: 2px; white-space: nowrap; }
+    .tooth-label { font-size: 0.65rem; font-weight: 600; color: #444; line-height: 1; height: 14px; display: flex; align-items: center; justify-content: center; width: 100%; text-align: center; margin-bottom: 2px; white-space:nowrap; }
     .tooth-box { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
     .tooth-box mat-checkbox { --mdc-checkbox-state-layer-size: 24px; }
     .tooth-box mat-checkbox ::ng-deep .mdc-checkbox { padding: 0; width: 18px; height: 18px; }
@@ -649,6 +668,17 @@ export interface DentalEncounterDialogData {
       gap: 8px 16px;
       align-items: center;
     }
+    .radio-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 16px;
+    }
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
     .ortho-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -674,7 +704,8 @@ export interface DentalEncounterDialogData {
       mat-dialog-content { width: min(100%, 95vw); }
       .tab-body { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
-      .radio-row { gap: 10px; }
+      .treatment-top-fields { grid-template-columns: 1fr; }
+      .radio-row { grid-template-columns: 1fr; }
       .radio-group { min-width: 0; width: 100%; }
       .image-select { min-width: 0; width: 100%; }
       .image-actions { justify-content: stretch; }
@@ -791,6 +822,8 @@ export class DentalEncounterDialogComponent {
   private readonly dentalEndpoint = inject(DentalEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly authService = inject(AuthService);
+  private readonly configurationService = inject(ConfigurationService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly fdiTopRow = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'] as const;
   readonly fdiBottomRow = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'] as const;
@@ -818,16 +851,17 @@ export class DentalEncounterDialogComponent {
   /** Errors shown in the sticky banner above the dialog content */
   inlineErrors: string[] = [];
 
-  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: new Date().toISOString(), teethStatus: {}, oralExam: {}, orthodontics: {} };
-  imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: new Date().toISOString() };
+  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: this.toLocalDate(new Date()), teethStatus: {}, oralExam: {}, orthodontics: {} };
+  imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: this.toLocalDate(new Date()) };
   consulting: DentalConsulting = { id: 0, consultId: '', pNo: '', clientCat: 'PRIVATE' };
 
-  chartDate = this.toDateInput(this.chart.tDate);
+  chartDateValue = this.toDateObject(this.chart.tDate) ?? new Date();
   imagingDate = this.toDateInput(this.imaging.imagingDate);
 
   imagingPreviewUrls: string[] = [];
   selectedImageFiles: File[] = [];
   zoomImageUrl = '';
+  sanitizedImageUrls = new Map<string, SafeUrl>();
 
   get isEdit(): boolean {
     return !!this.data.encounter;
@@ -865,9 +899,16 @@ export class DentalEncounterDialogComponent {
       };
       this.imaging = { ...this.imaging, ...this.data.encounter.imaging };
       this.consulting = { ...this.consulting, ...this.data.encounter.consulting };
-      this.chartDate = this.toDateInput(this.chart.tDate);
+      this.chartDateValue = this.toDateObject(this.chart.tDate) ?? new Date();
       this.imagingDate = this.toDateInput(this.imaging.imagingDate);
-      this.imagingPreviewUrls = this.imaging.filePath ? [this.imaging.filePath] : [];
+      
+      // Handle existing image in edit mode
+      if (this.imaging.filePath) {
+        const previewUrl = this.resolveImageUrl(this.imaging.filePath);
+        this.imagingPreviewUrls = [previewUrl];
+        const sanitized = this.sanitizer.bypassSecurityTrustUrl(previewUrl);
+        this.sanitizedImageUrls.set(previewUrl, sanitized);
+      }
 
       const key = this.data.patientOptions.find(p => p.pNo === this.chart.pno && p.consultId === this.chart.consultId)?.label;
       this.selectedPatientKey = key || '';
@@ -1007,7 +1048,12 @@ export class DentalEncounterDialogComponent {
       const reader = new FileReader();
       reader.onload = () => {
         const url = (reader.result as string) || '';
-        if (url) this.imagingPreviewUrls = [...this.imagingPreviewUrls, url];
+        if (url) {
+          this.imagingPreviewUrls = [...this.imagingPreviewUrls, url];
+          // Sanitize the data URL for safe display
+          const sanitized = this.sanitizer.bypassSecurityTrustUrl(url);
+          this.sanitizedImageUrls.set(url, sanitized);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -1019,13 +1065,20 @@ export class DentalEncounterDialogComponent {
     if (index < 0 || index >= this.imagingPreviewUrls.length) return;
 
     const previewToRemove = this.imagingPreviewUrls[index];
-    this.imagingPreviewUrls = this.imagingPreviewUrls.filter((_, i) => i !== index);
+    const existingPreviewUrl = this.imaging.filePath ? this.resolveImageUrl(this.imaging.filePath) : undefined;
+    const hasExistingPreview = !!existingPreviewUrl && this.imagingPreviewUrls.includes(existingPreviewUrl);
+    const selectedFileIndex = existingPreviewUrl && previewToRemove !== existingPreviewUrl && hasExistingPreview
+      ? index - 1
+      : index;
 
-    if (index < this.selectedImageFiles.length) {
-      this.selectedImageFiles = this.selectedImageFiles.filter((_, i) => i !== index);
-      this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
-    } else if (this.imaging.filePath === previewToRemove) {
+    this.imagingPreviewUrls = this.imagingPreviewUrls.filter((_, i) => i !== index);
+    this.sanitizedImageUrls.delete(previewToRemove);
+
+    if (existingPreviewUrl && previewToRemove === existingPreviewUrl) {
       this.imaging.filePath = undefined;
+      this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
+    } else if (selectedFileIndex >= 0 && selectedFileIndex < this.selectedImageFiles.length) {
+      this.selectedImageFiles = this.selectedImageFiles.filter((_, i) => i !== selectedFileIndex);
       this.imaging.fileName = this.selectedImageFiles[this.selectedImageFiles.length - 1]?.name;
     }
 
@@ -1040,6 +1093,25 @@ export class DentalEncounterDialogComponent {
 
   closeZoom(): void {
     this.zoomImageUrl = '';
+  }
+
+  getSanitizedImageUrl(url: string): SafeUrl {
+    if (!this.sanitizedImageUrls.has(url)) {
+      const sanitized = this.sanitizer.bypassSecurityTrustUrl(url);
+      this.sanitizedImageUrls.set(url, sanitized);
+    }
+    return this.sanitizedImageUrls.get(url)!;
+  }
+
+  private resolveImageUrl(url?: string): string {
+    if (!url) return '';
+    if (/^(data:|blob:|https?:\/\/)/i.test(url)) {
+      return url;
+    }
+
+    const baseUrl = this.configurationService.baseUrl.replace(/\/$/, '');
+    const relativeUrl = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${relativeUrl}`;
   }
 
   save(): void {
@@ -1067,7 +1139,7 @@ export class DentalEncounterDialogComponent {
       return;
     }
 
-    this.chart.tDate = this.fromDateInput(this.chartDate, this.chart.tDate);
+    this.chart.tDate = this.fromDateObject(this.chartDateValue, this.chart.tDate);
     this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
     this.syncLegacyFlagsFromStatusMap();
 
@@ -1110,7 +1182,11 @@ export class DentalEncounterDialogComponent {
       next: saved => {
         this.imaging = { ...this.imaging, ...saved };
         if (saved.filePath) {
-          this.imagingPreviewUrls = [...this.imagingPreviewUrls.filter(x => x !== saved.filePath), saved.filePath];
+          const previewUrl = this.resolveImageUrl(saved.filePath);
+          const sanitized = this.sanitizer.bypassSecurityTrustUrl(previewUrl);
+          this.sanitizedImageUrls.set(previewUrl, sanitized);
+          
+          this.imagingPreviewUrls = [...this.imagingPreviewUrls.filter(x => x !== previewUrl), previewUrl];
         }
 
         this.uploadSelectedImages(index + 1, done);
@@ -1130,24 +1206,63 @@ export class DentalEncounterDialogComponent {
     return `${d.getFullYear()}-${mm}-${dd}`;
   }
 
-  private fromDateInput(value: string, fallbackIso?: string): string {
-    if (!value) return this.ensureValidIsoDate(fallbackIso);
-
-    const parsed = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return this.ensureValidIsoDate(fallbackIso);
-
-    return parsed.toISOString();
+  private toDateObject(value?: string): Date | null {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  private ensureValidIsoDate(value?: string): string {
+  private toLocalDate(date: Date): string {
+    const mm = `${date.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${date.getDate()}`.padStart(2, '0');
+    return `${date.getFullYear()}-${mm}-${dd}T00:00:00`;
+  }
+
+  private fromDateInput(value: string, fallbackIso?: string): string {
+    if (!value) return this.ensureValidLocalDate(fallbackIso);
+
+    // Parse date in local timezone (not UTC)
+    const parts = value.split('-');
+    if (parts.length !== 3) return this.ensureValidLocalDate(fallbackIso);
+
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    const localDate = new Date(year, month, day, 0, 0, 0, 0);
+    if (Number.isNaN(localDate.getTime())) return this.ensureValidLocalDate(fallbackIso);
+
+    // Convert to ISO format while preserving local date
+    const mm = `${localDate.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${localDate.getDate()}`.padStart(2, '0');
+    return `${localDate.getFullYear()}-${mm}-${dd}T00:00:00`;
+  }
+
+  private fromDateObject(value: Date | null, fallbackIso?: string): string {
+    if (!value || Number.isNaN(value.getTime())) {
+      return this.ensureValidLocalDate(fallbackIso);
+    }
+
+    const localDate = new Date(value.getFullYear(), value.getMonth(), value.getDate(), 0, 0, 0, 0);
+    const mm = `${localDate.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${localDate.getDate()}`.padStart(2, '0');
+    return `${localDate.getFullYear()}-${mm}-${dd}T00:00:00`;
+  }
+
+  private ensureValidLocalDate(value?: string): string {
     if (value) {
       const d = new Date(value);
       if (!Number.isNaN(d.getTime())) {
-        return d.toISOString();
+        const mm = `${d.getMonth() + 1}`.padStart(2, '0');
+        const dd = `${d.getDate()}`.padStart(2, '0');
+        return `${d.getFullYear()}-${mm}-${dd}T00:00:00`;
       }
     }
 
-    return new Date().toISOString();
+    const now = new Date();
+    const mm = `${now.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${now.getDate()}`.padStart(2, '0');
+    return `${now.getFullYear()}-${mm}-${dd}T00:00:00`;
   }
 
   private withoutDefaults<T>(obj: T): Partial<T> {
