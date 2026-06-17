@@ -213,8 +213,11 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
 
             CreateMap<HConsulting, DentalConsultingVM>()
+                .ForMember(d => d.ClientCat, map => map.MapFrom(s => s.ClientCat))
                 .ReverseMap()
-                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0));
+                .ForMember(d => d.Id, map => map.Condition(src => src.Id != 0))
+                // ClientCat is optional in VM; fall back to "PRIVATE" when null/empty
+                .ForMember(d => d.ClientCat, map => map.MapFrom(s => string.IsNullOrWhiteSpace(s.ClientCat) ? "PRIVATE" : s.ClientCat));
 
             CreateMap<Billing, BillingVM>()
                 .ForMember(d => d.BillNo, map => map.MapFrom(s => s.billNO))

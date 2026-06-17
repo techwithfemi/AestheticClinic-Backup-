@@ -16,6 +16,7 @@ import { HRetainershipEndpoint } from '../../services/h-retainership-endpoint.se
 import { Attendance } from '../../models/legacy/attendance.model';
 import { HPatient } from '../../models/legacy/h-patient.model';
 import { HRetainership } from '../../models/legacy/h-retainership.model';
+import { QryhvisitsForToday } from '../../models/legacy/qryhvisits-for-today.model';
 import { DentalEncounter, DentalImaging } from '../../models/dental.model';
 import { DentalEncounterDialogComponent, DentalPatientOption } from './dental-encounter-dialog.component';
 import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoice-dialog.component';
@@ -126,6 +127,7 @@ export class DentalPageComponent implements OnInit {
 
   readonly imagingRecords = signal<DentalImaging[]>([]);
   readonly attendance = signal<Attendance[]>([]);
+  readonly todayVisits = signal<QryhvisitsForToday[]>([]);
   readonly patients = signal<HPatient[]>([]);
   readonly retainerships = signal<HRetainership[]>([]);
   readonly patientOptions = signal<DentalPatientOption[]>([]);
@@ -258,11 +260,13 @@ export class DentalPageComponent implements OnInit {
     Promise.all([
       this.dentalEndpoint.getImagingEndpoint<DentalImaging[]>().toPromise(),
       this.attendanceEndpoint.getAttendancesEndpoint<Attendance[]>().toPromise(),
+      this.attendanceEndpoint.getTodayVisitsEndpoint<QryhvisitsForToday[]>().toPromise(),
       this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise(),
       this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>().toPromise()
-    ]).then(([imaging, attendance, patients, retainerships]) => {
+    ]).then(([imaging, attendance, todayVisits, patients, retainerships]) => {
       this.imagingRecords.set(imaging || []);
       this.attendance.set(attendance || []);
+      this.todayVisits.set(todayVisits || []);
       this.patients.set(patients || []);
       this.retainerships.set(retainerships || []);
       this.patientOptions.set(this.buildPatientOptions());
@@ -279,26 +283,19 @@ export class DentalPageComponent implements OnInit {
   }
 
   private buildPatientOptions(): DentalPatientOption[] {
-    const today = new Date();
-    const items = this.attendance().filter(a => {
-      const d = new Date(a.recDate);
-      return d.getFullYear() === today.getFullYear()
-        && d.getMonth() === today.getMonth()
-        && d.getDate() === today.getDate();
-    });
-
-    const unique = new Map<string, Attendance>();
-    for (const item of items) {
-      const key = `${item.consultId ?? ''}|${item.pNo ?? ''}`;
+    const unique = new Map<string, QryhvisitsForToday>();
+    for (const item of this.todayVisits()) {
+      if (!item.consultId || !item.pNo) continue;
+      const key = `${item.consultId}|${item.pNo}`;
       if (!unique.has(key)) unique.set(key, item);
     }
 
     return Array.from(unique.values()).map(item => {
       const p = this.patients().find(x => x.pno === item.pNo);
-      const fullName = `${p?.pSurName ?? 'Unknown'} ${p?.pFirstname ?? ''}`.trim();
+      const fullName = (item.fullname || `${p?.pSurName ?? 'Unknown'} ${p?.pFirstname ?? ''}`).trim();
       const attendDate = this.formatAttendDate(item.recDate);
-      const retainership = this.retainerships().find(x => x.retainId === item.coyname);
-      const companyName = retainership?.retainName || p?.coyName || item.coyname;
+      const retainership = this.retainerships().find(x => x.retainId === item.coyName);
+      const companyName = item.retainName || retainership?.retainName || p?.coyName || item.coyName;
       return {
         pNo: item.pNo,
         consultId: item.consultId,
@@ -309,7 +306,7 @@ export class DentalPageComponent implements OnInit {
         photo: p?.patPixBase64,
         dateOfBirth: p?.dob,
         companyName,
-        coyId: item.coyname,
+        coyId: item.coyName,
         clinic: item.clinicType
       } as DentalPatientOption;
     }).sort((a, b) => a.label.localeCompare(b.label));

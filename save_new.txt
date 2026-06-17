@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -10,12 +10,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatIconModule } from '@angular/material/icon';
-import { AttendanceSummaryComponent } from '../../components/attendance-summary/attendance-summary.component';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
-import { VwhRecord } from '../../models/legacy/vwh-record.model';
 import { DentalEndpoint } from '../../services/dental-endpoint.service';
 import { AlertService, MessageSeverity } from '../../services/alert.service';
+import { AuthService } from '../../services/auth.service';
 import { AuthService } from '../../services/auth.service';
 
 export interface DentalPatientOption {
@@ -52,8 +51,7 @@ export interface DentalEncounterDialogData {
     MatButtonModule,
     MatCheckboxModule,
     MatRadioModule,
-    MatIconModule,
-    AttendanceSummaryComponent
+    MatIconModule
   ],
   template: `
     <div class="dialog-header">
@@ -64,10 +62,23 @@ export interface DentalEncounterDialogData {
     </div>
 
     <mat-dialog-content>
-      <app-attendance-summary
-        [attendance]="selectedAttendanceSummary"
-        [photo]="selectedPatientInfo?.photo">
-      </app-attendance-summary>
+      <div class="patient-header">
+        @if (selectedPatientInfo?.photo) {
+          <img class="patient-photo" [src]="getPatientPhotoSource(selectedPatientInfo?.photo)" alt="Patient photo" />
+        } @else {
+          <div class="patient-photo placeholder">
+            <mat-icon>person</mat-icon>
+          </div>
+        }
+
+        <div class="patient-meta">
+          <div class="meta-item"><span class="label">Patient:</span> <span>{{ selectedPatientInfo?.fullName || 'â€”' }}</span></div>
+          <div class="meta-item"><span class="label">Age:</span> <span>{{ selectedPatientAge ?? 'â€”' }}</span></div>
+          <div class="meta-item"><span class="label">Company:</span> <span>{{ selectedPatientInfo?.companyName || 'â€”' }}</span></div>
+          <div class="meta-item"><span class="label">ConsultID:</span> <span>{{ selectedPatientInfo?.consultId || 'â€”' }}</span></div>
+          <div class="meta-item"><span class="label">Clinic:</span> <span>{{ selectedPatientInfo?.clinic || 'â€”' }}</span></div>
+        </div>
+      </div>
 
       <mat-tab-group [(selectedIndex)]="selectedTabIndex">
 
@@ -393,9 +404,7 @@ export interface DentalEncounterDialogData {
             <div class="span-2 image-toolbar">
               <button mat-stroked-button type="button" (click)="fileInput.click()">Upload Dental Image</button>
               <input #fileInput type="file" accept="image/*" multiple (change)="onImageSelected(fileInput.files); fileInput.value = ''" style="display:none" />
-              @if (selectedImageFiles.length) {
-                <span class="image-count">{{ selectedImageFiles.length }} image(s) selected</span>
-              }
+              <span class="image-count" *ngIf="selectedImageFiles.length">{{ selectedImageFiles.length }} image(s) selected</span>
             </div>
 
             <div class="span-2 image-panel">
@@ -421,8 +430,8 @@ export interface DentalEncounterDialogData {
             </div>
 
             @if (zoomImageUrl) {
-              <div class="image-zoom-overlay" tabindex="0" (click)="closeZoom()" (keydown.enter)="closeZoom()" (keydown.space)="closeZoom()">
-                <div class="image-zoom-dialog" tabindex="0" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
+              <div class="image-zoom-overlay" (click)="closeZoom()">
+                <div class="image-zoom-dialog" (click)="$event.stopPropagation()">
                   <button mat-icon-button type="button" class="image-zoom-close" (click)="closeZoom()">
                     <mat-icon>close</mat-icon>
                   </button>
@@ -837,21 +846,25 @@ export class DentalEncounterDialogComponent {
     return this.data.patientOptions.find(x => x.label === this.selectedPatientKey);
   }
 
-  get selectedAttendanceSummary(): VwhRecord | undefined {
-    const patient = this.selectedPatientInfo;
-    if (!patient) return undefined;
+  get selectedPatientAge(): number | null {
+    const dob = this.selectedPatientInfo?.dateOfBirth;
+    if (!dob) return null;
 
-    return {
-      consultId: patient.consultId,
-      pNo: patient.pNo,
-      clientCat: patient.clientCat,
-      clinicType: patient.clinic || '',
-      fullname: patient.fullName || '—',
-      dob: patient.dateOfBirth,
-      retainName: patient.companyName,
-      coyname: patient.coyId || patient.companyName,
-      patientPhotoBase64: patient.photo
-    };
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  }
+
+  getPatientPhotoSource(photo?: string): string {
+    if (!photo) return '';
+    return photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`;
   }
 
   constructor() {
@@ -909,14 +922,14 @@ export class DentalEncounterDialogComponent {
 
   private applyLegacyFlagsToStatusMap(): void {
     const status = { ...(this.chart.teethStatus || {}) } as Record<string, ToothStatus>;
-    const dtype = this.normalizeDtype(this.chart.dtype);
+    const dtype = (this.chart.dtype || '').toLowerCase();
 
     const dtypeKey: keyof ToothStatus | null =
-      dtype === 'present' ? 'present'
-        : dtype === 'carious' ? 'carious'
-          : dtype === 'decayed' ? 'decayed'
-            : dtype === 'missing' ? 'missing'
-              : dtype === 'filled' ? 'filled'
+      dtype === 'teeth present' ? 'present'
+        : dtype === 'carious teeth' ? 'carious'
+          : dtype === 'decayed teeth' ? 'decayed'
+            : dtype === 'missing teeth' ? 'missing'
+              : dtype === 'filled teeth' ? 'filled'
                 : null;
 
     if (!dtypeKey) {
@@ -942,13 +955,13 @@ export class DentalEncounterDialogComponent {
   }
 
   private syncLegacyFlagsFromStatusMap(): void {
-    const dtype = this.normalizeDtype(this.chart.dtype);
+    const dtype = (this.chart.dtype || '').toLowerCase();
     const dtypeKey: keyof ToothStatus | null =
-      dtype === 'present' ? 'present'
-        : dtype === 'carious' ? 'carious'
-          : dtype === 'decayed' ? 'decayed'
-            : dtype === 'missing' ? 'missing'
-              : dtype === 'filled' ? 'filled'
+      dtype === 'teeth present' ? 'present'
+        : dtype === 'carious teeth' ? 'carious'
+          : dtype === 'decayed teeth' ? 'decayed'
+            : dtype === 'missing teeth' ? 'missing'
+              : dtype === 'filled teeth' ? 'filled'
                 : null;
 
     const chartRecord = this.chart as unknown as Record<string, unknown>;
@@ -957,28 +970,6 @@ export class DentalEncounterDialogComponent {
       const legacyField = this.legacyToothMap[tooth] as string;
       const value = dtypeKey ? !!this.chart.teethStatus?.[tooth]?.[dtypeKey] : false;
       chartRecord[legacyField] = value;
-    }
-  }
-
-  private normalizeDtype(dtype?: string): 'present' | 'carious' | 'decayed' | 'missing' | 'filled' | '' {
-    switch ((dtype || '').trim().toUpperCase()) {
-      case 'P':
-      case 'TEETH PRESENT':
-        return 'present';
-      case 'C':
-      case 'CARIOUS TEETH':
-        return 'carious';
-      case 'D':
-      case 'DECAYED TEETH':
-        return 'decayed';
-      case 'M':
-      case 'MISSING TEETH':
-        return 'missing';
-      case 'F':
-      case 'FILLED TEETH':
-        return 'filled';
-      default:
-        return '';
     }
   }
 
@@ -1042,121 +1033,4 @@ export class DentalEncounterDialogComponent {
     this.zoomImageUrl = '';
   }
 
-  save(): void {
-    this.touched = true;
-    this.inlineErrors = [];
-
-    if (!this.chart.pno || !this.chart.consultId) {
-      this.inlineErrors.push('Patient is required - please select a patient from the list.');
-    }
-    if (!this.consulting.services?.trim()) {
-      this.inlineErrors.push('Services is required - go to Management tab.');
-    }
-    if (!this.imaging.findings?.trim()) {
-      this.inlineErrors.push('Findings is required - go to Imaging tab.');
-    }
-
-    if (this.inlineErrors.length) {
-      if (!this.chart.pno || !this.chart.consultId) {
-        this.selectedTabIndex = 0;
-      } else if (!this.consulting.services?.trim()) {
-        this.selectedTabIndex = 3;
-      } else if (!this.imaging.findings?.trim()) {
-        this.selectedTabIndex = 4;
-      }
-      return;
-    }
-
-    this.chart.tDate = this.fromDateInput(this.chartDate, this.chart.tDate);
-    this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
-    this.syncLegacyFlagsFromStatusMap();
-
-    const closeWithPayload = () => {
-      this.dialogRef.close({
-        chart: this.withoutDefaults(this.chart),
-        imaging: this.withoutDefaults(this.imaging),
-        consulting: this.withoutDefaults(this.consulting)
-      });
-    };
-
-    if (this.selectedImageFiles.length) {
-      this.uploadSelectedImages(0, closeWithPayload);
-      return;
-    }
-
-    closeWithPayload();
-  }
-
-  private uploadSelectedImages(index: number, done: () => void): void {
-    const file = this.selectedImageFiles[index];
-    if (!file) {
-      this.selectedImageFiles = [];
-      done();
-      return;
-    }
-
-    this.dentalEndpoint.uploadImagingEndpoint<DentalImaging>({
-      file,
-      pno: this.chart.pno,
-      consultId: this.chart.consultId,
-      imagingDate: this.imaging.imagingDate,
-      imagingType: this.imaging.imagingType,
-      toothRegion: this.imaging.toothRegion,
-      findings: this.imaging.findings,
-      impression: this.imaging.impression,
-      recommendations: this.imaging.recommendations,
-      notes: this.imaging.notes
-    }).subscribe({
-      next: saved => {
-        this.imaging = { ...this.imaging, ...saved };
-        if (saved.filePath) {
-          this.imagingPreviewUrls = [...this.imagingPreviewUrls.filter(x => x !== saved.filePath), saved.filePath];
-        }
-
-        this.uploadSelectedImages(index + 1, done);
-      },
-      error: error => {
-        this.alertService.showStickyMessage('Upload error', 'Unable to upload one or more dental images.', MessageSeverity.error, error);
-      }
-    });
-  }
-
-  private toDateInput(value?: string): string {
-    if (!value) return '';
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '';
-    const mm = `${d.getMonth() + 1}`.padStart(2, '0');
-    const dd = `${d.getDate()}`.padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-
-  private fromDateInput(value: string, fallbackIso?: string): string {
-    if (!value) return this.ensureValidIsoDate(fallbackIso);
-
-    const parsed = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return this.ensureValidIsoDate(fallbackIso);
-
-    return parsed.toISOString();
-  }
-
-  private ensureValidIsoDate(value?: string): string {
-    if (value) {
-      const d = new Date(value);
-      if (!Number.isNaN(d.getTime())) {
-        return d.toISOString();
-      }
-    }
-
-    return new Date().toISOString();
-  }
-
-  private withoutDefaults<T>(obj: T): Partial<T> {
-    const source = obj as Record<string, unknown>;
-    const cleaned = Object.entries(source)
-      .filter(([, v]) => !(v === null || v === undefined || v === '' || v === false || v === 0))
-      .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, unknown>);
-
-    return cleaned as Partial<T>;
-  }
-}
 

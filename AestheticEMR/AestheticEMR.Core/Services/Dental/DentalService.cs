@@ -202,18 +202,22 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
             persistedConsulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? persistedConsulting.ClientCat : consulting.ClientCat;
             persistedConsulting.EditDate = now;
             persistedConsulting.EditTime = now;
-            persistedConsulting.TreatedBy = string.IsNullOrWhiteSpace(currentUserId) ? persistedConsulting.TreatedBy : currentUserId;
+            // TreatedBy = empId passed from controller; fall back to existing if blank
+            persistedConsulting.TreatedBy = string.IsNullOrWhiteSpace(consulting.TreatedBy)
+                ? persistedConsulting.TreatedBy
+                : consulting.TreatedBy;
         }
         else
         {
             consulting.ConsultId = chart.ConsultId;
             consulting.PNo = chart.Pno;
-            consulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? "PRIVATE" : consulting.ClientCat;
             consulting.CDate = now;
             consulting.CTime = now;
-            consulting.TreatedBy = string.IsNullOrWhiteSpace(currentUserId) ? "SYSTEM" : currentUserId;
-            consulting.Diagnosis = consulting.Diagnosis;
-            consulting.TreatPlan = consulting.TreatPlan;
+            consulting.ClientCat = string.IsNullOrWhiteSpace(consulting.ClientCat) ? "PRIVATE" : consulting.ClientCat;
+            // TreatedBy = empId passed from controller; fall back to userId if blank
+            consulting.TreatedBy = string.IsNullOrWhiteSpace(consulting.TreatedBy)
+                ? (string.IsNullOrWhiteSpace(currentUserId) ? "SYSTEM" : currentUserId)
+                : consulting.TreatedBy;
 
             dbContext.HConsultings.Add(consulting);
             persistedConsulting = consulting;

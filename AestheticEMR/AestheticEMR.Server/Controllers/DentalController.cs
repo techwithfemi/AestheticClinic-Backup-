@@ -36,6 +36,7 @@ public class DentalController(
             return NotFound();
 
         var chartVm = _mapper.Map<DentalChartVM>(encounter.Value.Chart);
+        chartVm.Dtype = ExpandDtypeForDisplay(chartVm.Dtype);
         chartVm.TeethStatus = ResolveTeethStatus(encounter.Value.Chart);
         chartVm.Orthodontics = DeserializeOrthodontics(encounter.Value.Chart.OrthodonticsJson);
         chartVm.OralExam = DeserializeOralExam(encounter.Value.Chart.OralExamJson);
@@ -55,16 +56,59 @@ public class DentalController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        // Resolve chart: required for pno/consultId
+        if (vm.Chart == null || string.IsNullOrWhiteSpace(vm.Chart.Pno) || string.IsNullOrWhiteSpace(vm.Chart.ConsultId))
+        {
+            AddModelError("Patient (PNo and ConsultId) are required.");
+            return BadRequest(ModelState);
+        }
+
+        // Services is required on the consulting record
+        if (vm.Consulting != null && string.IsNullOrWhiteSpace(vm.Consulting.Services))
+        {
+            AddModelError("Services is required.", nameof(vm.Consulting.Services));
+            return BadRequest(ModelState);
+        }
+
+        // Findings is required on the imaging record
+        if (vm.Imaging != null && string.IsNullOrWhiteSpace(vm.Imaging.Findings))
+        {
+            AddModelError("Findings is required.", nameof(vm.Imaging.Findings));
+            return BadRequest(ModelState);
+        }
+
         var chart = _mapper.Map<HDentalTreat>(vm.Chart);
+        chart.Dtype = NormalizeDtypeForStorage(vm.Chart.Dtype);
         chart.TeethStatusJson = SerializeTeethStatus(vm.Chart.TeethStatus);
         chart.OrthodonticsJson = SerializeOrthodontics(vm.Chart.Orthodontics);
         chart.OralExamJson = SerializeOralExam(vm.Chart.OralExam);
 
-        var imaging = _mapper.Map<DentalImaging>(vm.Imaging);
-        var consulting = _mapper.Map<HConsulting>(vm.Consulting);
+        // Build empty stubs when imaging/consulting are omitted
+        var imaging = vm.Imaging != null
+            ? _mapper.Map<DentalImaging>(vm.Imaging)
+            : new DentalImaging { Pno = chart.Pno, ConsultId = chart.ConsultId, ImagingDate = DateTime.UtcNow };
+
+        HConsulting consulting;
+        if (vm.Consulting != null)
+        {
+            consulting = _mapper.Map<HConsulting>(vm.Consulting);
+        }
+        else
+        {
+            consulting = new HConsulting
+            {
+                ConsultId = chart.ConsultId,
+                PNo = chart.Pno,
+                ClientCat = "PRIVATE",
+                TreatedBy = GetCurrentUserEmpId() ?? GetCurrentUserId(),
+                CDate = DateTime.UtcNow
+            };
+        }
 
         consulting.ConsultId = chart.ConsultId;
         consulting.PNo = chart.Pno;
+        // TreatedBy is always the logged-in user's empId
+        consulting.TreatedBy = GetCurrentUserEmpId() ?? GetCurrentUserId();
         if (string.IsNullOrWhiteSpace(consulting.ClientCat))
             consulting.ClientCat = "PRIVATE";
 
@@ -73,6 +117,7 @@ public class DentalController(
             var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId());
 
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
+            savedChartVm.Dtype = ExpandDtypeForDisplay(savedChartVm.Dtype);
             savedChartVm.TeethStatus = ResolveTeethStatus(saved.Chart);
             savedChartVm.Orthodontics = DeserializeOrthodontics(saved.Chart.OrthodonticsJson);
             savedChartVm.OralExam = DeserializeOralExam(saved.Chart.OralExamJson);
@@ -103,6 +148,7 @@ public class DentalController(
 
         for (var i = 0; i < result.Count && i < chartEntities.Count; i++)
         {
+            result[i].Dtype = ExpandDtypeForDisplay(result[i].Dtype);
             result[i].TeethStatus = ResolveTeethStatus(chartEntities[i]);
             result[i].Orthodontics = DeserializeOrthodontics(chartEntities[i].OrthodonticsJson);
             result[i].OralExam = DeserializeOralExam(chartEntities[i].OralExamJson);
@@ -120,6 +166,7 @@ public class DentalController(
         if (chart == null) return NotFound(id);
 
         var vm = _mapper.Map<DentalChartVM>(chart);
+        vm.Dtype = ExpandDtypeForDisplay(vm.Dtype);
         vm.TeethStatus = ResolveTeethStatus(chart);
         vm.Orthodontics = DeserializeOrthodontics(chart.OrthodonticsJson);
         vm.OralExam = DeserializeOralExam(chart.OralExamJson);
@@ -132,12 +179,14 @@ public class DentalController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         var entity = _mapper.Map<HDentalTreat>(vm);
+        entity.Dtype = NormalizeDtypeForStorage(vm.Dtype);
         entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
         entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
         entity.OralExamJson = SerializeOralExam(vm.OralExam);
         var created = dentalService.AddChart(entity);
 
         var createdVm = _mapper.Map<DentalChartVM>(created);
+        createdVm.Dtype = ExpandDtypeForDisplay(createdVm.Dtype);
         createdVm.TeethStatus = ResolveTeethStatus(created);
         createdVm.Orthodontics = DeserializeOrthodontics(created.OrthodonticsJson);
         createdVm.OralExam = DeserializeOralExam(created.OralExamJson);
@@ -154,12 +203,14 @@ public class DentalController(
         try
         {
             var entity = _mapper.Map<HDentalTreat>(vm);
+            entity.Dtype = NormalizeDtypeForStorage(vm.Dtype);
             entity.TeethStatusJson = SerializeTeethStatus(vm.TeethStatus);
             entity.OrthodonticsJson = SerializeOrthodontics(vm.Orthodontics);
             entity.OralExamJson = SerializeOralExam(vm.OralExam);
             var updated = dentalService.UpdateChart(entity, GetCurrentUserId());
 
             var updatedVm = _mapper.Map<DentalChartVM>(updated);
+            updatedVm.Dtype = ExpandDtypeForDisplay(updatedVm.Dtype);
             updatedVm.TeethStatus = ResolveTeethStatus(updated);
             updatedVm.Orthodontics = DeserializeOrthodontics(updated.OrthodonticsJson);
             updatedVm.OralExam = DeserializeOralExam(updated.OralExamJson);
@@ -407,14 +458,14 @@ public class DentalController(
 
     private static Dictionary<string, ToothStatusVM>? BuildTeethStatusFromLegacy(HDentalTreat chart)
     {
-        var dtype = (chart.Dtype ?? string.Empty).Trim().ToLowerInvariant();
+        var dtype = NormalizeDtypeForStorage(chart.Dtype);
         var key = dtype switch
         {
-            "teeth present" => "present",
-            "carious teeth" => "carious",
-            "decayed teeth" => "decayed",
-            "missing teeth" => "missing",
-            "filled teeth" => "filled",
+            "P" => "present",
+            "C" => "carious",
+            "D" => "decayed",
+            "M" => "missing",
+            "F" => "filled",
             _ => null
         };
 
@@ -494,6 +545,38 @@ public class DentalController(
             "37" => chart.Allm2,
             "38" => chart.Allm3,
             _ => null
+        };
+    }
+
+    private static string? NormalizeDtypeForStorage(string? dtype)
+    {
+        if (string.IsNullOrWhiteSpace(dtype))
+            return null;
+
+        return dtype.Trim().ToUpperInvariant() switch
+        {
+            "P" or "TEETH PRESENT" => "P",
+            "C" or "CARIOUS TEETH" => "C",
+            "D" or "DECAYED TEETH" => "D",
+            "M" or "MISSING TEETH" => "M",
+            "F" or "FILLED TEETH" => "F",
+            _ => dtype.Trim().Length > 1 ? dtype.Trim()[..1].ToUpperInvariant() : dtype.Trim().ToUpperInvariant()
+        };
+    }
+
+    private static string? ExpandDtypeForDisplay(string? dtype)
+    {
+        if (string.IsNullOrWhiteSpace(dtype))
+            return dtype;
+
+        return NormalizeDtypeForStorage(dtype) switch
+        {
+            "P" => "Teeth Present",
+            "C" => "Carious Teeth",
+            "D" => "Decayed Teeth",
+            "M" => "Missing Teeth",
+            "F" => "Filled Teeth",
+            _ => dtype
         };
     }
 

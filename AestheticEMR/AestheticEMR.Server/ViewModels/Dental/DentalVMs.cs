@@ -19,10 +19,9 @@ public class DentalChartVM
     [StringLength(100)]
     public string? Dtype { get; set; }
 
-    [Required]
     public DateTime TDate { get; set; }
 
-    public DateTime TTime { get; set; }
+    public DateTime? TTime { get; set; }
 
     public Dictionary<string, ToothStatusVM>? TeethStatus { get; set; }
     public OralExamVM? OralExam { get; set; }
@@ -159,7 +158,9 @@ public class DentalImagingVM
     [StringLength(200)]
     public string? ToothRegion { get; set; }
 
+    [Required(AllowEmptyStrings = false)]
     public string? Findings { get; set; }
+
     public string? Impression { get; set; }
     public string? Recommendations { get; set; }
     public string? FilePath { get; set; }
@@ -185,9 +186,8 @@ public class DentalConsultingVM
     [StringLength(20)]
     public required string PNo { get; set; }
 
-    [Required]
     [StringLength(50)]
-    public required string ClientCat { get; set; }
+    public string? ClientCat { get; set; }
 
     public string? Diagnosis { get; set; }
     public string? Complaints { get; set; }
@@ -196,7 +196,10 @@ public class DentalConsultingVM
     public string? DentHist { get; set; }
     public string? DrugHx { get; set; }
     public string? Prescription { get; set; }
+
+    [Required(AllowEmptyStrings = false)]
     public string? Services { get; set; }
+
     public string? Investigate { get; set; }
 
     public string? TreatPlan { get; set; }
@@ -204,14 +207,9 @@ public class DentalConsultingVM
 
 public class DentalEncounterSaveVM
 {
-    [Required]
-    public required DentalChartVM Chart { get; set; }
-
-    [Required]
-    public required DentalImagingVM Imaging { get; set; }
-
-    [Required]
-    public required DentalConsultingVM Consulting { get; set; }
+    public DentalChartVM? Chart { get; set; }
+    public DentalImagingVM? Imaging { get; set; }
+    public DentalConsultingVM? Consulting { get; set; }
 }
 
 public class DentalEncounterVM

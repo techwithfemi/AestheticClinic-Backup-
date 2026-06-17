@@ -1,0 +1,45 @@
+  save(): void {
+    this.touched = true;
+    this.inlineErrors = [];
+
+    if (!this.chart.pno || !this.chart.consultId) {
+      this.inlineErrors.push('Patient is required - please select a patient from the list.');
+    }
+    if (!this.consulting.services?.trim()) {
+      this.inlineErrors.push('Services is required - go to Management tab.');
+    }
+    if (!this.imaging.findings?.trim()) {
+      this.inlineErrors.push('Findings is required - go to Imaging tab.');
+    }
+
+    if (this.inlineErrors.length) {
+      if (!this.chart.pno || !this.chart.consultId) {
+        this.selectedTabIndex = 0;
+      } else if (!this.consulting.services?.trim()) {
+        this.selectedTabIndex = 3;
+      } else if (!this.imaging.findings?.trim()) {
+        this.selectedTabIndex = 4;
+      }
+      return;
+    }
+
+    this.chart.tDate = this.fromDateInput(this.chartDate, this.chart.tDate);
+    this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
+    this.syncLegacyFlagsFromStatusMap();
+
+    const closeWithPayload = () => {
+      this.dialogRef.close({
+        chart: this.withoutDefaults(this.chart),
+        imaging: this.withoutDefaults(this.imaging),
+        consulting: this.withoutDefaults(this.consulting)
+      });
+    };
+
+    if (this.selectedImageFiles.length) {
+      this.uploadSelectedImages(0, closeWithPayload);
+      return;
+    }
+
+    closeWithPayload();
+  }
+
