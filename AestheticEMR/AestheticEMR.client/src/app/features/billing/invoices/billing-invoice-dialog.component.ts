@@ -108,6 +108,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   readOnlyReason = '';
   consultingNotes = '';
   consultingDetails: ConsultingDetailsForBilling[] = [];
+  attendanceSummaryRecord?: VwhRecord;
 
   attendanceOptions: AttendanceOption[] = [];
   selectedAttendanceKey = '';
@@ -200,25 +201,26 @@ export class BillingInvoiceDialogComponent implements OnInit {
 
   get attendanceSummary(): VwhRecord {
     const selected = this.selectedPatientInfo;
+    const summary = this.attendanceSummaryRecord;
     const companyName = this.resolveCompanyName();
 
     return {
-      consultId: selected?.consultId || this.headerInfo.consultId,
-      pNo: selected?.pNo || this.headerInfo.pNo,
-      clientCat: selected?.clientCat,
-      clinicType: selected?.clinic || '',
-      fullname: selected?.fullName || selected?.patientName || this.headerInfo.patientName || '—',
-      dob: selected?.dateOfBirth,
-      age: selected?.age ?? this.selectedPatientAge ?? undefined,
-      coyname: selected?.companyName || selected?.coyID || this.headerInfo.coyID || undefined,
-      retainCode: this.headerInfo.coyID || this.data.coyID || this.data.clientID || undefined,
-      retainId: this.headerInfo.coyID || this.data.coyID || this.data.clientID || undefined,
-      retainName: companyName !== '—' ? companyName : undefined
+      consultId: selected?.consultId || this.headerInfo.consultId || summary?.consultId || '',
+      pNo: selected?.pNo || this.headerInfo.pNo || summary?.pNo || '',
+      clientCat: selected?.clientCat || summary?.clientCat,
+      clinicType: selected?.clinic || summary?.clinicType || '',
+      fullname: selected?.fullName || selected?.patientName || this.headerInfo.patientName || summary?.fullname || '—',
+      dob: selected?.dateOfBirth || summary?.dob,
+      age: selected?.age ?? this.selectedPatientAge ?? summary?.age ?? undefined,
+      coyname: selected?.companyName || selected?.coyID || summary?.coyname || this.headerInfo.coyID || undefined,
+      retainCode: this.headerInfo.coyID || summary?.retainCode || this.data.coyID || this.data.clientID || undefined,
+      retainId: this.headerInfo.coyID || summary?.retainId || this.data.coyID || this.data.clientID || undefined,
+      retainName: companyName !== '—' ? companyName : summary?.retainName
     };
   }
 
   get selectedPatientPhoto(): string | undefined {
-    return this.selectedPatientInfo?.photo;
+    return this.selectedPatientInfo?.photo || this.attendanceSummaryRecord?.patientPhotoBase64;
   }
 
   get displayedCompanyName(): string {
@@ -321,6 +323,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.pNo = selected.pNo;
     this.headerInfo.patientName = selected.patientName;
     this.headerInfo.coyID = selected.coyID ?? '';
+    this.loadAttendanceSummaryByConsultId(this.headerInfo.consultId);
     void this.refreshPersistedDetails();
     this.loadConsultingNotes(selected.consultId);
   }
@@ -384,6 +387,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
     this.headerInfo.billNo = (this.data.billNo ?? this.data.consultId ?? '').trim();
     this.headerInfo.pNo = this.data.pNo ?? '';
     this.headerInfo.coyID = this.data.coyID ?? this.data.clientID ?? '';
+    this.loadAttendanceSummaryByConsultId(this.headerInfo.consultId);
     this.loadConsultingNotes(this.headerInfo.consultId);
     void this.refreshPersistedDetails();
   }
@@ -399,6 +403,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
       this.headerInfo.consultId = this.resolveConsultId(invoice.consultId, invoice.billNo);
       this.headerInfo.pNo = invoice.pNo;
       this.headerInfo.coyID = invoice.clientID ?? '';
+
+      this.loadAttendanceSummaryByConsultId(this.headerInfo.consultId);
 
       this.invoiceForm.patchValue({
         bDate: this.normalizeDateInput(invoice.bDate),
@@ -418,6 +424,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.selectedAttendanceKey = this.optionKey(option);
           this.headerInfo.patientName = option.patientName;
           this.headerInfo.coyID = option.coyID ?? this.headerInfo.coyID;
+          this.loadAttendanceSummaryByConsultId(option.consultId);
           this.loadConsultingNotes(this.resolveConsultId(option.consultId, this.headerInfo.billNo));
         }
       }
@@ -479,6 +486,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.selectedAttendanceKey = this.optionKey(preselected);
           this.headerInfo.patientName = preselected.patientName;
           this.headerInfo.coyID = preselected.coyID ?? this.headerInfo.coyID;
+          this.loadAttendanceSummaryByConsultId(preselected.consultId);
           this.loadConsultingNotes(preselected.consultId);
           return;
         }
@@ -525,6 +533,35 @@ export class BillingInvoiceDialogComponent implements OnInit {
       error: () => {
         this.consultingDetails = [];
         this.consultingNotes = '';
+      }
+    });
+  }
+
+  private loadAttendanceSummaryByConsultId(consultId: string): void {
+    const resolvedConsultId = this.resolveConsultId(consultId, this.headerInfo.billNo || this.data.billNo).trim();
+    if (!resolvedConsultId) {
+      this.attendanceSummaryRecord = undefined;
+      return;
+    }
+
+    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(resolvedConsultId).subscribe({
+      next: summary => {
+        this.attendanceSummaryRecord = summary ?? undefined;
+
+        if (!this.headerInfo.pNo) {
+          this.headerInfo.pNo = summary?.pNo ?? '';
+        }
+
+        if (!this.headerInfo.patientName) {
+          this.headerInfo.patientName = summary?.fullname ?? '';
+        }
+
+        if (!this.headerInfo.coyID) {
+          this.headerInfo.coyID = summary?.retainCode || summary?.retainId || '';
+        }
+      },
+      error: () => {
+        this.attendanceSummaryRecord = undefined;
       }
     });
   }
@@ -914,9 +951,13 @@ export class BillingInvoiceDialogComponent implements OnInit {
   private resolveCompanyName(): string {
     const candidates = [
       this.selectedPatientInfo?.companyName,
+      this.attendanceSummaryRecord?.retainName,
+      this.attendanceSummaryRecord?.coyname,
       this.data.company,
       this.lookupRetainershipName(this.selectedPatientInfo?.coyID),
       this.lookupRetainershipName(this.headerInfo.coyID),
+      this.lookupRetainershipName(this.attendanceSummaryRecord?.retainCode),
+      this.lookupRetainershipName(this.attendanceSummaryRecord?.retainId),
       this.lookupRetainershipName(this.data.clientID),
       this.lookupRetainershipName(this.data.coyID)
     ];
