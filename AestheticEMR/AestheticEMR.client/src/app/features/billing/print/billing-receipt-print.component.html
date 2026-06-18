@@ -15,7 +15,7 @@
 </div>
 
 <!-- ===== A4 RECEIPT ===== -->
-<div class="a4-page printable" *ngIf="paperSize === 'a4'">
+<div class="a4-page printable" *ngIf="isDialogMode && paperSize === 'a4'">
 
   <div class="rct-header">
     <h1 class="clinic-name">{{ d.billHead }}</h1>
@@ -92,19 +92,23 @@
       </tr>
       <tr class="total-due-row">
         <td class="sum-key bold">Total Amount Due</td>
-        <td class="sum-val bold">{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</td>
+        <td class="sum-val bold">{{ fmt(totalAmountDue) }}</td>
       </tr>
       <tr class="paid-row">
         <td class="sum-key bold">Amount Paid</td>
-        <td class="sum-val bold paid-amount">{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</td>
+        <td class="sum-val bold paid-amount">{{ fmt(displayedAmountPaid) }}</td>
       </tr>
-      <tr *ngIf="d.balance > 0" class="balance-row">
+      <tr *ngIf="isPaidInFull" class="balance-row">
+        <td class="sum-key bold">Status</td>
+        <td class="sum-val bold paid-amount">Amount paid in full</td>
+      </tr>
+      <tr *ngIf="normalizedBalance > 0" class="balance-row">
         <td class="sum-key bold">Outstanding Balance</td>
-        <td class="sum-val bold outstanding">{{ fmt(d.balance) }}</td>
+        <td class="sum-val bold outstanding">{{ fmt(normalizedBalance) }}</td>
       </tr>
-      <tr *ngIf="d.balance < 0" class="balance-row">
+      <tr *ngIf="normalizedBalance < 0" class="balance-row">
         <td class="sum-key bold">Change / Credit</td>
-        <td class="sum-val bold credit">{{ fmt(d.balance) }}</td>
+        <td class="sum-val bold credit">{{ fmt(normalizedBalance) }}</td>
       </tr>
     </table>
   </div>
@@ -128,7 +132,7 @@
 </div>
 
 <!-- ===== POS RECEIPT ===== -->
-<div class="pos-page printable" *ngIf="paperSize === 'pos'">
+<div class="pos-page printable" *ngIf="isDialogMode && paperSize === 'pos'">
 
   <div class="pos-center">
     <p class="pos-clinic-name">{{ d.billHead }}</p>
@@ -180,17 +184,20 @@
       <span>{{ d.taxName }}:</span><span>{{ fmt(d.tax) }}</span>
     </div>
     <div class="pos-sum-row pos-total">
-      <span>TOTAL DUE:</span><span>{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</span>
+      <span>TOTAL DUE:</span><span>{{ fmt(totalAmountDue) }}</span>
     </div>
     <div class="pos-sum-row pos-paid">
       <span>AMT PAID:</span>
-      <span>{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</span>
+      <span>{{ fmt(displayedAmountPaid) }}</span>
     </div>
-    <div class="pos-sum-row pos-outstanding" *ngIf="d.balance > 0">
-      <span>OUTSTANDING:</span><span>{{ fmt(d.balance) }}</span>
+    <div class="pos-sum-row pos-paid" *ngIf="isPaidInFull">
+      <span>STATUS:</span><span>Amount paid in full</span>
     </div>
-    <div class="pos-sum-row pos-credit" *ngIf="d.balance < 0">
-      <span>CHANGE:</span><span>{{ fmt(d.balance) }}</span>
+    <div class="pos-sum-row pos-outstanding" *ngIf="normalizedBalance > 0">
+      <span>OUTSTANDING:</span><span>{{ fmt(normalizedBalance) }}</span>
+    </div>
+    <div class="pos-sum-row pos-credit" *ngIf="normalizedBalance < 0">
+      <span>CHANGE:</span><span>{{ fmt(normalizedBalance) }}</span>
     </div>
   </div>
 
@@ -314,19 +321,23 @@
         </tr>
         <tr class="total-due-row">
           <td class="sum-key bold">Total Amount Due</td>
-          <td class="sum-val bold">{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</td>
+          <td class="sum-val bold">{{ fmt(totalAmountDue) }}</td>
         </tr>
         <tr class="paid-row">
           <td class="sum-key bold">Amount Paid</td>
-          <td class="sum-val bold paid-amount">{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</td>
+          <td class="sum-val bold paid-amount">{{ fmt(displayedAmountPaid) }}</td>
         </tr>
-        <tr *ngIf="d.balance > 0" class="balance-row">
+        <tr *ngIf="isPaidInFull" class="balance-row">
+          <td class="sum-key bold">Status</td>
+          <td class="sum-val bold paid-amount">Amount paid in full</td>
+        </tr>
+        <tr *ngIf="normalizedBalance > 0" class="balance-row">
           <td class="sum-key bold">Outstanding Balance</td>
-          <td class="sum-val bold outstanding">{{ fmt(d.balance) }}</td>
+          <td class="sum-val bold outstanding">{{ fmt(normalizedBalance) }}</td>
         </tr>
-        <tr *ngIf="d.balance < 0" class="balance-row">
+        <tr *ngIf="normalizedBalance < 0" class="balance-row">
           <td class="sum-key bold">Change / Credit</td>
-          <td class="sum-val bold credit">{{ fmt(d.balance) }}</td>
+          <td class="sum-val bold credit">{{ fmt(normalizedBalance) }}</td>
         </tr>
       </table>
     </div>
@@ -401,17 +412,20 @@
         <span>{{ d.taxName }}:</span><span>{{ fmt(d.tax) }}</span>
       </div>
       <div class="pos-sum-row pos-total">
-        <span>TOTAL DUE:</span><span>{{ fmt(d.amountBilled + d.debtBF + d.tax - d.discount) }}</span>
+        <span>TOTAL DUE:</span><span>{{ fmt(totalAmountDue) }}</span>
       </div>
       <div class="pos-sum-row pos-paid">
         <span>AMT PAID:</span>
-        <span>{{ fmt(d.balance < 0 ? (d.amountBilled + d.debtBF + d.tax - d.discount) : d.amountPaid) }}</span>
+        <span>{{ fmt(displayedAmountPaid) }}</span>
       </div>
-      <div class="pos-sum-row pos-outstanding" *ngIf="d.balance > 0">
-        <span>OUTSTANDING:</span><span>{{ fmt(d.balance) }}</span>
+      <div class="pos-sum-row pos-paid" *ngIf="isPaidInFull">
+        <span>STATUS:</span><span>Amount paid in full</span>
       </div>
-      <div class="pos-sum-row pos-credit" *ngIf="d.balance < 0">
-        <span>CHANGE:</span><span>{{ fmt(d.balance) }}</span>
+      <div class="pos-sum-row pos-outstanding" *ngIf="normalizedBalance > 0">
+        <span>OUTSTANDING:</span><span>{{ fmt(normalizedBalance) }}</span>
+      </div>
+      <div class="pos-sum-row pos-credit" *ngIf="normalizedBalance < 0">
+        <span>CHANGE:</span><span>{{ fmt(normalizedBalance) }}</span>
       </div>
     </div>
 
@@ -425,3 +439,7 @@
 
   </div>
 </ng-template>
+
+<ng-container *ngIf="!isDialogMode">
+  <ng-container *ngTemplateOutlet="routedPage"></ng-container>
+</ng-container>

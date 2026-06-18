@@ -8,6 +8,7 @@ public class QryhBillingIncomeVM
     public string PNo { get; set; } = string.Empty;
     public string PaymentFor { get; set; } = string.Empty;
     public decimal AmountBilled { get; set; }
+    public decimal Tax { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal? Balance { get; set; }
     public string PayType { get; set; } = string.Empty;

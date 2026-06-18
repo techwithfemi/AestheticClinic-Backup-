@@ -1336,16 +1336,19 @@ namespace AestheticEMR.Core.Infrastructure
             builder.Entity<Payment>(entity =>
             {
                 entity.HasKey(e => e.ReceiptNo);
+                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
             });
 
             builder.Entity<PaymentDetail>(entity =>
             {
-                entity.HasNoKey();
+                entity.HasKey(e => e.SNo);
+                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
             });
 
             builder.Entity<PaymentType>(entity =>
             {
-                entity.HasNoKey();
+                entity.HasKey(e => e.SNo);
+                entity.Property(e => e.SNo).ValueGeneratedOnAdd();
             });
 
             builder.Entity<PaymentTypeDetail>(entity =>
@@ -1972,6 +1975,10 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
+
+
 
 
 

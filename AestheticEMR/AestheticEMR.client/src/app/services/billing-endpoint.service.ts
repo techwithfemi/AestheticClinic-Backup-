@@ -72,9 +72,10 @@ export class BillingEndpoint extends EndpointBase {
     );
   }
 
-  getInvoicePrintDataEndpoint<T>(billNo: string): Observable<T> {
-    return this.http.get<T>(`${this.billingsUrl}/${encodeURIComponent(billNo)}/print-data`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getInvoicePrintDataEndpoint<T>(billNo)))
+  getInvoicePrintDataEndpoint<T>(billNo: string, allowZeroBalance = false): Observable<T> {
+    const allowZeroBalanceQuery = allowZeroBalance ? '?allowZeroBalance=true' : '';
+    return this.http.get<T>(`${this.billingsUrl}/${encodeURIComponent(billNo)}/print-data${allowZeroBalanceQuery}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getInvoicePrintDataEndpoint<T>(billNo, allowZeroBalance)))
     );
   }
 

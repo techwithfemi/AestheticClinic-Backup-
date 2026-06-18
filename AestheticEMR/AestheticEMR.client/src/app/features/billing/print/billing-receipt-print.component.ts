@@ -75,7 +75,7 @@ export class BillingReceiptPrintComponent implements OnInit {
     }
 
     this.loadingIndicator = true;
-    this.billingEndpoint.getInvoicePrintDataEndpoint<InvoicePrintData>(billNo).subscribe({
+    this.billingEndpoint.getInvoicePrintDataEndpoint<InvoicePrintData>(billNo, true).subscribe({
       next: res => {
         const receiptNo = this.route.snapshot.queryParamMap.get('receiptNo') ?? res.receiptNo;
         const receiptDate = this.route.snapshot.queryParamMap.get('receiptDate') ?? res.receiptDate;
@@ -94,7 +94,7 @@ export class BillingReceiptPrintComponent implements OnInit {
       },
       error: () => {
         this.loadingIndicator = false;
-        this.router.navigate(['/billing/invoices']);
+        this.router.navigate(['/billing/receipts']);
       }
     });
   }
@@ -123,6 +123,22 @@ export class BillingReceiptPrintComponent implements OnInit {
 
   get payType(): string {
     return this.d.payType ?? 'Cash';
+  }
+
+  get totalAmountDue(): number {
+    return (this.d.amountBilled ?? 0) + (this.d.debtBF ?? 0) + (this.d.tax ?? 0) - (this.d.discount ?? 0);
+  }
+
+  get displayedAmountPaid(): number {
+    return this.d.balance < 0 ? this.totalAmountDue : (this.d.amountPaid ?? 0);
+  }
+
+  get normalizedBalance(): number {
+    return Math.round(((this.d.balance ?? 0) * 100)) / 100;
+  }
+
+  get isPaidInFull(): boolean {
+    return this.normalizedBalance === 0;
   }
 
   print(): void {
@@ -179,26 +195,27 @@ export class BillingReceiptPrintComponent implements OnInit {
               color: #fff;
               position: sticky;
               top: 0;
-              z-index: 10;
+              z-index: 100;
             }
             .preview-toolbar .title {
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 600;
             }
             .preview-toolbar .toolbar-actions {
               display: flex;
               gap: 8px;
             }
-            .preview-toolbar button {
-              border: 0;
-              border-radius: 6px;
-              padding: 6px 10px;
-              cursor: pointer;
-              font-size: 13px;
-            }
             .preview-toolbar .btn-print {
               background: #16a34a;
               color: #fff;
+              border: 0;
+              padding: 6px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 14px;
+            }
+            .preview-toolbar .btn-print:hover {
+              background: #15803d;
             }
             .preview-toolbar .btn-close {
               background: #ef4444;
@@ -251,9 +268,8 @@ export class BillingReceiptPrintComponent implements OnInit {
   close(): void {
     if (this.dialogRef) {
       this.dialogRef.close();
-      return;
+    } else {
+      this.router.navigate(['/billing/receipts']);
     }
-
-    this.router.navigate(['/billing/invoices']);
   }
 }

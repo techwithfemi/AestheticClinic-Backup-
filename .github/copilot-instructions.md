@@ -145,11 +145,11 @@ public async Task<IActionResult> GetUserById(string id)
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-}
+   }
 **Authorization Rules:**
 
-1. ✅ **All endpoints must be protected**- no exceptions
-2.✅ **Use policy constants** from `AuthPolicies` class
+1. ✅ **All endpoints must be protected** - no exceptions
+2. ✅ **Use policy constants** from `AuthPolicies` class
 3. ✅ **Use inline checks** for resource-based authorization
 4. ✅ **Create custom requirements** for complex authorization logic
 5. ✅ **Register authorization handlers** in `Program.cs`
@@ -351,6 +351,11 @@ quickapp.client/src/app/
 ### Billing Consultation UI
 
 For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBillingAlt` records exist per `consultId/billNo`, the component should iterate all records while using minimal screen space (compact layout).
+
+### Alert Banner Focus Rule
+
+- **Alert banner must show on the UI layer that has focus** (active dialog or parent page).
+- **Never allow alert banners/toasts to render behind modal dialogs or overlays.**
 
 
 

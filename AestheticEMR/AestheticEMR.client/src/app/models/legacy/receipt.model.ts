@@ -5,6 +5,7 @@ export interface Receipt {
   pNo: string;
   paymentFor: string;
   amountBilled: number;
+  tax: number;
   amountPaid: number;
   balance?: number;
   payType: string;

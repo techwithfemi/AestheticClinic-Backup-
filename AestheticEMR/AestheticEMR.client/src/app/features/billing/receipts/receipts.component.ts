@@ -86,7 +86,7 @@ export class ReceiptsComponent implements OnInit {
   }
 
   get totalBilled(): number {
-    return this.filteredReceipts.reduce((sum, r) => sum + (r.amountBilled ?? 0), 0);
+    return this.filteredReceipts.reduce((sum, r) => sum + ((r.amountBilled ?? 0) + (r.tax ?? 0)), 0);
   }
 
   get totalPaid(): number {
@@ -94,7 +94,8 @@ export class ReceiptsComponent implements OnInit {
   }
 
   get totalOutstanding(): number {
-    return this.filteredReceipts.reduce((sum, r) => sum + (r.balance ?? 0), 0);
+    const outstanding = this.totalBilled - this.totalPaid;
+    return Math.round(outstanding * 100) / 100;
   }
 
   ngOnInit(): void {

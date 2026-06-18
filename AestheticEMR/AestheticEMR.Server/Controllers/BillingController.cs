@@ -193,7 +193,7 @@ public class BillingController(
     [ProducesResponseType(typeof(InvoicePrintDataVM), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(422)]
-    public async Task<IActionResult> GetPrintData(string billNo)
+    public async Task<IActionResult> GetPrintData(string billNo, [FromQuery] bool allowZeroBalance = false)
     {
         try
         {
@@ -209,7 +209,7 @@ public class BillingController(
             var amountPaid   = billing.AmountPaid   ?? 0;
             var balance      = debtBF + amountBilled + tax - discount - amountPaid;
 
-            if (balance == 0)
+            if (balance == 0 && !allowZeroBalance)
             {
                 AddModelError("Invoice cannot be generated: balance is zero.");
                 return UnprocessableEntity(ModelState);
@@ -267,12 +267,6 @@ public class BillingController(
             if (string.IsNullOrWhiteSpace(payerName) && patient != null)
             {
                 payerName = $"{patient.PSurName} {patient.PFirstname}".Trim();
-                payerPhone = patient.PPhoneNo ?? string.Empty;
-            }
-
-            if (string.IsNullOrWhiteSpace(payerAddress))
-            {
-                payerAddress = $"{defaults.BillHead2}, {defaults.BillHead3}".Trim(',', ' ');
             }
 
             var patientName = patient != null
@@ -479,12 +473,10 @@ public class BillingController(
 
             // ── 2. PaymentDetails table (one row per billing detail line) ────
             var details = await billingService.GetDetailsAsync(billNo);
-            long sno    = 1;
             foreach (var detail in details)
             {
                 context.PaymentDetails.Add(new PaymentDetail
                 {
-                    SNo         = sno++,
                     ReceiptNo   = receiptNo,
                     billNO      = billNo,
                     ReceiptDate = now,
@@ -609,6 +601,7 @@ public class BillingController(
             var billNos = rows.Select(x => x.BillNo).Distinct().ToList();
 
             var referencedBillNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var billingTaxMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
             if (billNos.Count > 0)
             {
@@ -637,6 +630,18 @@ public class BillingController(
 
                 foreach (var id in inHRecords.Concat(inBillings).Concat(inDental).Concat(inConsulting))
                     referencedBillNos.Add(id);
+
+                // Fetch tax values from Billings table
+                var billingTaxes = await context.Billings.AsNoTracking()
+                    .Where(x => billNos.Contains(x.billNO))
+                    .Select(x => new { BillNo = x.billNO, Tax = x.Tax ?? 0 })
+                    .ToListAsync();
+
+                foreach (var bt in billingTaxes)
+                {
+                    if (!billingTaxMap.ContainsKey(bt.BillNo))
+                        billingTaxMap[bt.BillNo] = (decimal)bt.Tax;
+                }
             }
 
             var vms = rows.Select(x => new QryhBillingIncomeVM
@@ -647,6 +652,7 @@ public class BillingController(
                 PNo         = x.Pno,
                 PaymentFor  = x.PaymentFor,
                 AmountBilled= x.AmountBilled,
+                Tax         = billingTaxMap.ContainsKey(x.BillNo) ? billingTaxMap[x.BillNo] : 0,
                 AmountPaid  = x.AmountPaid,
                 Balance     = x.Balance,
                 PayType     = x.PayType,
@@ -660,7 +666,7 @@ public class BillingController(
                 Remarks     = x.Remarks,
                 Suppres     = x.Suppres,
                 CanDelete   = !referencedBillNos.Contains(x.BillNo)
-            });
+            }).ToList();
 
             return Ok(vms);
         }

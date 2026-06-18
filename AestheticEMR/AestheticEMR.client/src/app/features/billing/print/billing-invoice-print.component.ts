@@ -74,7 +74,7 @@ export class BillingInvoicePrintComponent implements OnInit {
     }
 
     this.loadingIndicator = true;
-    this.billingEndpoint.getInvoicePrintDataEndpoint<InvoicePrintData>(billNo).subscribe({
+    this.billingEndpoint.getInvoicePrintDataEndpoint<InvoicePrintData>(billNo, true).subscribe({
       next: res => {
         this.printData = res;
         this.loadingIndicator = false;
