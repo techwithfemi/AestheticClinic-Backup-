@@ -3,54 +3,65 @@
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #f8fafc;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.summary-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #0f172a;
+  padding: 8px 10px;
   margin-bottom: 8px;
 }
 
+.summary-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
 .summary-empty {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #475569;
 }
 
 .summary-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
 }
 
 .summary-item {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #ffffff;
-  padding: 8px;
+  padding: 5px 2px;
 }
 
-.meta-inline-row {
+.summary-item.with-divider {
+  border-top: 1px dashed #d1d5db;
+  margin-top: 4px;
+  padding-top: 7px;
+}
+
+.meta-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: 8px 12px;
+  margin-bottom: 4px;
   color: #0f172a;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.28;
 }
 
-.meta-inline .label,
+.meta-entry .label,
 .bill-advice-row .label {
   font-weight: 700;
   color: #0f172a;
 }
 
-.triple-columns {
+.consultation-line {
+  margin-top: 4px;
+  color: #1f2937;
+  font-size: 0.83rem;
+  line-height: 1.25;
+}
+
+.triple-columns.compact {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .detail-column {
@@ -58,46 +69,59 @@
 }
 
 .detail-label {
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #334155;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .detail-list {
   margin: 0;
-  padding-left: 16px;
   color: #1e293b;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.dash-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.dash-list li {
+  position: relative;
+  padding-left: 10px;
+}
+
+.dash-list li::before {
+  content: '-';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #1e293b;
 }
 
 .detail-list li + li {
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .detail-empty {
   color: #64748b;
-  font-size: 0.84rem;
-}
-
-.consultation-line {
-  margin-top: 8px;
-  color: #0f172a;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .bill-advice-row {
-  margin-top: 8px;
+  margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   color: #1e293b;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 
 @media (max-width: 900px) {
-  .triple-columns {
+  .triple-columns.compact {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 }

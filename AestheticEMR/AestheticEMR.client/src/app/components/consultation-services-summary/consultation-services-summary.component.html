@@ -6,18 +6,18 @@
   } @else {
     <div class="summary-list">
       @for (item of items; track $index) {
-        <div class="summary-item">
-          <div class="meta-inline-row">
-            <span class="meta-inline"><span class="label">Clinic:</span> {{ item.clinicType || '—' }}</span>
-            <span class="meta-inline"><span class="label">Purpose:</span> {{ item.purpose || '—' }}</span>
-            <span class="meta-inline"><span class="label">Diagnosis:</span> {{ item.diagnosis || '—' }}</span>
+        <div class="summary-item" [class.with-divider]="$index > 0">
+          <div class="meta-line">
+            <span class="meta-entry"><span class="label">Clinic:</span> {{ item.clinicType || '—' }}</span>
+            <span class="meta-entry"><span class="label">Purpose:</span> {{ item.purpose || '—' }}</span>
+            <span class="meta-entry"><span class="label">Diagnosis:</span> {{ item.diagnosis || '—' }}</span>
           </div>
 
-          <div class="triple-columns">
+          <div class="triple-columns compact">
             <div class="detail-column">
               <div class="detail-label">Services</div>
               @if (getListLines(item.services).length > 0) {
-                <ul class="detail-list">
+                <ul class="detail-list dash-list">
                   @for (line of getListLines(item.services); track $index) {
                     <li>{{ line }}</li>
                   }
@@ -30,7 +30,7 @@
             <div class="detail-column">
               <div class="detail-label">Prescription</div>
               @if (getListLines(item.prescription).length > 0) {
-                <ul class="detail-list">
+                <ul class="detail-list dash-list">
                   @for (line of getListLines(item.prescription); track $index) {
                     <li>{{ line }}</li>
                   }
@@ -43,7 +43,7 @@
             <div class="detail-column">
               <div class="detail-label">Investigation</div>
               @if (getListLines(item.investigate).length > 0) {
-                <ul class="detail-list">
+                <ul class="detail-list dash-list">
                   @for (line of getListLines(item.investigate); track $index) {
                     <li>{{ line }}</li>
                   }

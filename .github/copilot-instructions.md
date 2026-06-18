@@ -146,8 +146,6 @@ public async Task<IActionResult> GetUserById(string id)
         return new ChallengeResult();
     // ... rest of method
 }
-```
-
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected**- no exceptions
@@ -349,6 +347,10 @@ quickapp.client/src/app/
 - **All HConsulting CRUD operations MUST validate** that the current clinic owns the record before allowing read/write
 - ✅ **Reference**: Filter HConsulting queries using clinic context from `GetCurrentUserId()` or clinic claim in JWT token
 - ❌ **DO NOT allow generic HConsulting access** without clinic validation
+
+### Billing Consultation UI
+
+For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBillingAlt` records exist per `consultId/billNo`, the component should iterate all records while using minimal screen space (compact layout).
 
 
 
