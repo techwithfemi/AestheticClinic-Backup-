@@ -240,8 +240,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
       }
     });
     if (this.isEditing && this.data.billNo) {
-      void this.loadInvoice(this.data.billNo);
-      return;
+      const billNo = this.data.billNo.trim();
+      if (billNo) {
+        void this.loadInvoice(billNo);
+        return;
+      }
     }
 
     this.applyContextDefaults();
@@ -373,10 +376,11 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private applyContextDefaults(): void {
-    this.headerInfo.consultId = this.data.consultId ?? '';
-    this.headerInfo.billNo = this.data.billNo ?? this.data.consultId ?? '';
+    this.headerInfo.consultId = this.resolveConsultId(this.data.consultId, this.data.billNo);
+    this.headerInfo.billNo = (this.data.billNo ?? this.data.consultId ?? '').trim();
     this.headerInfo.pNo = this.data.pNo ?? '';
     this.headerInfo.coyID = this.data.coyID ?? this.data.clientID ?? '';
+    this.loadConsultingNotes(this.headerInfo.consultId);
     void this.refreshPersistedDetails();
   }
 
@@ -387,8 +391,8 @@ export class BillingInvoiceDialogComponent implements OnInit {
     try {
       const invoice = await firstValueFrom(this.billingEndpoint.getInvoiceByBillNoEndpoint<Billing>(billNo));
 
-      this.headerInfo.billNo = invoice.billNo;
-      this.headerInfo.consultId = invoice.consultId ?? invoice.billNo;
+      this.headerInfo.billNo = (invoice.billNo ?? '').trim();
+      this.headerInfo.consultId = this.resolveConsultId(invoice.consultId, invoice.billNo);
       this.headerInfo.pNo = invoice.pNo;
       this.headerInfo.coyID = invoice.clientID ?? '';
 
@@ -402,7 +406,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       this.persistedDetails = [...((invoice.details ?? []) as BillingDetail[])];
       this.resetLineItemForm();
       await this.evaluateReadOnlyState(this.headerInfo.pNo, this.headerInfo.billNo);
-      this.loadConsultingNotes(this.headerInfo.consultId);
+      this.loadConsultingNotes(this.resolveConsultId(this.headerInfo.consultId, this.headerInfo.billNo));
 
       if (this.headerInfo.pNo) {
         const option = this.attendanceOptions.find(x => x.pNo === this.headerInfo.pNo && x.consultId === this.headerInfo.consultId);
@@ -410,7 +414,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
           this.selectedAttendanceKey = this.optionKey(option);
           this.headerInfo.patientName = option.patientName;
           this.headerInfo.coyID = option.coyID ?? this.headerInfo.coyID;
-          this.loadConsultingNotes(option.consultId);
+          this.loadConsultingNotes(this.resolveConsultId(option.consultId, this.headerInfo.billNo));
         }
       }
 
@@ -499,11 +503,13 @@ export class BillingInvoiceDialogComponent implements OnInit {
   }
 
   private loadConsultingNotes(consultId: string): void {
-    if (!consultId) {
+    const resolvedConsultId = this.resolveConsultId(consultId, this.headerInfo.billNo || this.data.billNo).trim();
+    if (!resolvedConsultId) {
       this.consultingNotes = '';
       return;
     }
-    this.attendanceEndpoint.getConsultingNotesEndpoint<string>(consultId).subscribe({
+
+    this.attendanceEndpoint.getConsultingNotesEndpoint(resolvedConsultId).subscribe({
       next: notes => { this.consultingNotes = notes ?? ''; },
       error: () => { this.consultingNotes = ''; }
     });
@@ -931,5 +937,14 @@ export class BillingInvoiceDialogComponent implements OnInit {
     }
 
     return age >= 0 ? age : undefined;
+  }
+
+  private resolveConsultId(consultId?: string | null, billNo?: string | null): string {
+    const normalizedConsultId = (consultId ?? '').trim();
+    if (normalizedConsultId) {
+      return normalizedConsultId;
+    }
+
+    return (billNo ?? '').trim();
   }
 }

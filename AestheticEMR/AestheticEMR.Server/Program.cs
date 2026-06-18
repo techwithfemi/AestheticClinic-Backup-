@@ -247,53 +247,63 @@ builder.Services.AddScoped<IServiceTariffService, ServiceTariffService>();
 builder.Services.AddSingleton<IEmrAppDefaultsService, EmrAppDefaultsService>();
 builder.Services.AddSingleton<EmrAppDefaultsStartupService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmrAppDefaultsStartupService>());
+
 builder.Services.AddSingleton<IBillingCrossDatabaseSyncStrategyProvider, BillingCrossDatabaseSyncStrategyProvider>();
+
+var enableMessageBus = builder.Configuration.GetValue("BillingSync:EnableMessageBus", false);
 
 // Register both sync implementations; the factory chooses at runtime based on startup strategy
 builder.Services.AddScoped<SqlServerSameInstanceBillingCrossDatabaseSyncService>();
-builder.Services.AddScoped<MassTransitBillingCrossDatabaseSyncService>();
-builder.Services.AddScoped<BillingEventPublisher>();
+
+if (enableMessageBus)
+{
+    builder.Services.AddScoped<MassTransitBillingCrossDatabaseSyncService>();
+    builder.Services.AddScoped<BillingEventPublisher>();
+}
 
 builder.Services.AddScoped<IBillingCrossDatabaseSyncService>(sp =>
 {
     var provider = sp.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>();
-    return provider.CurrentStatus.EffectiveMode == "MessageBusEventualSync"
+    return provider.CurrentStatus.EffectiveMode == "MessageBusEventualSync" && enableMessageBus
         ? sp.GetRequiredService<MassTransitBillingCrossDatabaseSyncService>()
         : sp.GetRequiredService<SqlServerSameInstanceBillingCrossDatabaseSyncService>();
 });
 
 builder.Services.AddScoped<IBillingService, BillingService>();
 
-// MassTransit – always registered; only used when strategy resolves to MessageBusEventualSync
-var rabbitMqHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
-var rabbitMqUser = builder.Configuration["RabbitMQ:Username"] ?? "guest";
-var rabbitMqPass = builder.Configuration["RabbitMQ:Password"] ?? "guest";
-
-builder.Services.AddMassTransit(x =>
+if (enableMessageBus)
 {
-    // EF Core Outbox: messages are persisted atomically with the billing save
-    x.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
-    {
-        o.UseSqlServer();
-        o.UseBusOutbox();
-    });
+    // MassTransit – only registered when message bus sync is enabled
+    var rabbitMqHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
+    var rabbitMqUser = builder.Configuration["RabbitMQ:Username"] ?? "guest";
+    var rabbitMqPass = builder.Configuration["RabbitMQ:Password"] ?? "guest";
 
-    x.AddConsumer<SmartHRBillingUpsertedConsumer>();
-    x.AddConsumer<AccountingBillingUpsertedConsumer>();
-    x.AddConsumer<SmartHRBillingDeletedConsumer>();
-    x.AddConsumer<AccountingBillingDeletedConsumer>();
-
-    x.UsingRabbitMq((ctx, cfg) =>
+    builder.Services.AddMassTransit(x =>
     {
-        cfg.Host(rabbitMqHost, h =>
+        // EF Core Outbox: messages are persisted atomically with the billing save
+        x.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
         {
-            h.Username(rabbitMqUser);
-            h.Password(rabbitMqPass);
+            o.UseSqlServer();
+            o.UseBusOutbox();
         });
 
-        cfg.ConfigureEndpoints(ctx);
+        x.AddConsumer<SmartHRBillingUpsertedConsumer>();
+        x.AddConsumer<AccountingBillingUpsertedConsumer>();
+        x.AddConsumer<SmartHRBillingDeletedConsumer>();
+        x.AddConsumer<AccountingBillingDeletedConsumer>();
+
+        x.UsingRabbitMq((ctx, cfg) =>
+        {
+            cfg.Host(rabbitMqHost, h =>
+            {
+                h.Username(rabbitMqUser);
+                h.Password(rabbitMqPass);
+            });
+
+            cfg.ConfigureEndpoints(ctx);
+        });
     });
-});
+}
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();
