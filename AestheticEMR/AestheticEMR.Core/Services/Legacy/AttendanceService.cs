@@ -100,6 +100,20 @@ public class AttendanceService(
         return result.Length > 0 ? result : null;
     }
 
+    public async Task<IEnumerable<VwhConsultingDetailsForBillingAlt>> GetConsultingDetailsAsync(string consultId)
+    {
+        var normalizedConsultId = NormalizeText(consultId);
+        if (string.IsNullOrWhiteSpace(normalizedConsultId))
+            return [];
+
+        return await context.VwhConsultingDetailsForBillingAlts
+            .AsNoTracking()
+            .Where(x => x.ConsultId == normalizedConsultId)
+            .OrderByDescending(x => x.CDate)
+            .ThenByDescending(x => x.CTime)
+            .ToListAsync();
+    }
+
     public async Task<HRecord> CreateAsync(HRecord record)
     {
         await PopulatePatientDetailsAsync(record);

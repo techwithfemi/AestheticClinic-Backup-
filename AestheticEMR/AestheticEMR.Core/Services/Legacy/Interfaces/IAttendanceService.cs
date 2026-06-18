@@ -12,4 +12,5 @@ public interface IAttendanceService
     Task DeleteAsync(string consultId);
     Task<IEnumerable<string>> GetClinicTypesAsync();
     Task<string?> GetConsultingNotesAsync(string consultId);
+    Task<IEnumerable<VwhConsultingDetailsForBillingAlt>> GetConsultingDetailsAsync(string consultId);
 }

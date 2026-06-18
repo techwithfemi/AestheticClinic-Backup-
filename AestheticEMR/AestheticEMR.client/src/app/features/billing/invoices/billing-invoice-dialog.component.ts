@@ -34,6 +34,8 @@ import { ProductTariffEndpoint } from '../../../services/product-tariff-endpoint
 import { HRetainership } from '../../../models/legacy/h-retainership.model';
 import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
+import { ConsultationServicesSummaryComponent } from '../../../components/consultation-services-summary/consultation-services-summary.component';
+import { ConsultingDetailsForBilling } from '../../../models/legacy/consulting-details-for-billing.model';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 
 export interface BillingInvoiceDialogData {
@@ -76,7 +78,8 @@ interface AttendanceOption {
     MatCardModule,
     MatTableModule,
     NgSelectModule,
-    AttendanceSummaryComponent
+    AttendanceSummaryComponent,
+    ConsultationServicesSummaryComponent
   ],
   templateUrl: './billing-invoice-dialog.component.html',
   styleUrl: './billing-invoice-dialog.component.scss'
@@ -104,6 +107,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
   isReadOnly = false;
   readOnlyReason = '';
   consultingNotes = '';
+  consultingDetails: ConsultingDetailsForBilling[] = [];
 
   attendanceOptions: AttendanceOption[] = [];
   selectedAttendanceKey = '';
@@ -506,12 +510,22 @@ export class BillingInvoiceDialogComponent implements OnInit {
     const resolvedConsultId = this.resolveConsultId(consultId, this.headerInfo.billNo || this.data.billNo).trim();
     if (!resolvedConsultId) {
       this.consultingNotes = '';
+      this.consultingDetails = [];
       return;
     }
 
-    this.attendanceEndpoint.getConsultingNotesEndpoint(resolvedConsultId).subscribe({
-      next: notes => { this.consultingNotes = notes ?? ''; },
-      error: () => { this.consultingNotes = ''; }
+    this.attendanceEndpoint.getConsultingDetailsEndpoint<ConsultingDetailsForBilling[]>(resolvedConsultId).subscribe({
+      next: details => {
+        this.consultingDetails = details ?? [];
+        this.consultingNotes = this.consultingDetails
+          .map(x => x.services || x.prescription || x.investigate || '')
+          .filter(x => !!x)
+          .join('\n');
+      },
+      error: () => {
+        this.consultingDetails = [];
+        this.consultingNotes = '';
+      }
     });
   }
 

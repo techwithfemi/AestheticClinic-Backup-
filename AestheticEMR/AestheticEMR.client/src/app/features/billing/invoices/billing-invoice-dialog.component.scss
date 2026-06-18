@@ -394,37 +394,3 @@ label {
 :host ::ng-deep .mat-mdc-input-element {
   color: #0f172a !important;
 }
-
-.remarks-row {
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 10px;
-}
-
-.remarks-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #f8fafc;
-  color: #374151;
-  font-size: 0.875rem;
-  font-family: inherit;
-  line-height: 1.5;
-  cursor: default;
-  outline: none;
-
-  &:focus {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-  }
-}
-
-@media (max-width: 600px) {
-  .remarks-textarea {
-    font-size: 0.8125rem;
-    padding: 6px 8px;
-  }
-}

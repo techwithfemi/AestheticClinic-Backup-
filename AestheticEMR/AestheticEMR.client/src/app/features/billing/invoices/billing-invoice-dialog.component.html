@@ -12,15 +12,10 @@
     [photo]="selectedPatientPhoto">
   </app-attendance-summary>
 
-  <div class="remarks-row">
-    <textarea
-      class="remarks-textarea"
-      readonly
-      rows="2"
-      placeholder="Consultation / Services Rendered"
-      [value]="consultingNotes">
-    </textarea>
-  </div>
+  <app-consultation-services-summary
+    [title]="'Consultation / Services Rendered'"
+    [items]="consultingDetails">
+  </app-consultation-services-summary>
 
   <form [formGroup]="invoiceForm" class="invoice-form">
     <mat-card class="section-card">

@@ -97,6 +97,38 @@ public class AttendanceController(
         }
     }
 
+    [HttpGet("{id}/consulting-details")]
+    [ProducesResponseType(typeof(IEnumerable<ConsultingDetailsForBillingVM>), 200)]
+    public async Task<IActionResult> GetConsultingDetails(string id)
+    {
+        try
+        {
+            var records = await attendanceService.GetConsultingDetailsAsync(id);
+            var response = records.Select(x => new ConsultingDetailsForBillingVM
+            {
+                ConsultId = x.ConsultId,
+                ClinicType = x.ClinicType,
+                Purpose = x.Purpose,
+                Diagnosis = x.Diagnosis,
+                TreatedBy = x.Treatedby,
+                CDate = x.CDate,
+                CTime = x.CTime,
+                Investigate = x.Investigate,
+                Prescription = x.Prescription,
+                Services = x.Services,
+                BillRemarks = x.BillRemarks
+            });
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving consulting details for {Id}", id);
+            AddModelError("Unable to retrieve consulting details");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet("clinic-types")]
     [ProducesResponseType(typeof(IEnumerable<string>), 200)]
     public async Task<IActionResult> GetClinicTypes()

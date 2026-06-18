@@ -1,0 +1,69 @@
+<div class="consultation-summary">
+  <div class="summary-title">{{ title }}</div>
+
+  @if (items.length === 0) {
+    <div class="summary-empty">No consultation/services information available.</div>
+  } @else {
+    <div class="summary-list">
+      @for (item of items; track $index) {
+        <div class="summary-item">
+          <div class="meta-inline-row">
+            <span class="meta-inline"><span class="label">Clinic:</span> {{ item.clinicType || '—' }}</span>
+            <span class="meta-inline"><span class="label">Purpose:</span> {{ item.purpose || '—' }}</span>
+            <span class="meta-inline"><span class="label">Diagnosis:</span> {{ item.diagnosis || '—' }}</span>
+          </div>
+
+          <div class="triple-columns">
+            <div class="detail-column">
+              <div class="detail-label">Services</div>
+              @if (getListLines(item.services).length > 0) {
+                <ul class="detail-list">
+                  @for (line of getListLines(item.services); track $index) {
+                    <li>{{ line }}</li>
+                  }
+                </ul>
+              } @else {
+                <div class="detail-empty">-</div>
+              }
+            </div>
+
+            <div class="detail-column">
+              <div class="detail-label">Prescription</div>
+              @if (getListLines(item.prescription).length > 0) {
+                <ul class="detail-list">
+                  @for (line of getListLines(item.prescription); track $index) {
+                    <li>{{ line }}</li>
+                  }
+                </ul>
+              } @else {
+                <div class="detail-empty">-</div>
+              }
+            </div>
+
+            <div class="detail-column">
+              <div class="detail-label">Investigation</div>
+              @if (getListLines(item.investigate).length > 0) {
+                <ul class="detail-list">
+                  @for (line of getListLines(item.investigate); track $index) {
+                    <li>{{ line }}</li>
+                  }
+                </ul>
+              } @else {
+                <div class="detail-empty">-</div>
+              }
+            </div>
+          </div>
+
+          <div class="consultation-line">{{ getConsultationLine(item) || '—' }}</div>
+
+          @if (hasValue(item.billRemarks)) {
+            <div class="bill-advice-row">
+              <span class="label">Bill Advice:</span>
+              <span>{{ item.billRemarks }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
