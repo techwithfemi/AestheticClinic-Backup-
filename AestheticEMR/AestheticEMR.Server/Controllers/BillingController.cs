@@ -22,6 +22,7 @@ public class BillingController(
     IHPatientService patientService,
     IHRetainershipService retainershipService,
     IEmrAppDefaultsService emrAppDefaultsService,
+    IReceiptAccountingPostingService receiptAccountingPostingService,
     ApplicationDbContext context,
     IConfiguration configuration)
     : BaseApiController(logger, mapper)
@@ -473,9 +474,10 @@ public class BillingController(
 
             // ── 2. PaymentDetails table (one row per billing detail line) ────
             var details = await billingService.GetDetailsAsync(billNo);
+            var paymentDetails = new List<PaymentDetail>();
             foreach (var detail in details)
             {
-                context.PaymentDetails.Add(new PaymentDetail
+                var paymentDetail = new PaymentDetail
                 {
                     ReceiptNo   = receiptNo,
                     billNO      = billNo,
@@ -489,11 +491,15 @@ public class BillingController(
                     BillDate    = billing.bDate.ToDateTime(TimeOnly.MinValue),
                     SNoID       = detail.SNO > 0 ? detail.SNO : null,
                     suppres     = false
-                });
+                };
+                paymentDetails.Add(paymentDetail);
+                context.PaymentDetails.Add(paymentDetail);
             }
 
             // ── 3. PaymentTypes table (payment method record) ────────────────
-            context.PaymentTypes.Add(new PaymentType
+            // Single transaction id shared by the receipt's accounting debit & credit legs.
+            var tranId = Guid.NewGuid().ToString("N")[..12].ToUpper();
+            var paymentType = new PaymentType
             {
                 ReceiptNo   = receiptNo,
                 AmountPaid  = payAmount,
@@ -507,8 +513,9 @@ public class BillingController(
                 EntryTime   = now,
                 ClientName  = patientName,
                 AppName     = "AestheticEMR",
-                TranID      = model.ChequeNo ?? Guid.NewGuid().ToString("N")[..12].ToUpper()
-            });
+                TranID      = tranId
+            };
+            context.PaymentTypes.Add(paymentType);
 
             // ── 4. Update billing.AmountPaid = sum of all receipts for this billNo ──
             // Sum existing persisted payments plus the one we just staged above.
@@ -528,6 +535,36 @@ public class BillingController(
             await context.SaveChangesAsync();
 
             _logger.LogInformation("Receipt {ReceiptNo} saved for bill {BillNo}", receiptNo, billNo);
+
+            // ── 5. Post to Accounting (debit cash/bank, credit receivable) ───
+            // Mirrors the invoice path: same InsertTranxaction sproc. Receipt-first
+            // ordering means an accounting failure leaves the receipt saved/unposted
+            // (re-postable) rather than orphaning a GL entry.
+            var posted = await receiptAccountingPostingService.PostReceiptAsync(new ReceiptAccountingPostRequest
+            {
+                ReceiptNo           = receiptNo,
+                BillNo              = billNo,
+                TranId              = tranId,
+                PayType             = model.PayType,
+                Amount              = payAmount,
+                EntryDate           = now,
+                CoyId               = billing.clientID ?? defaults.Values.GetValueOrDefault("CoyID", "0001"),
+                ReceivableAccountNo = vwhRecord?.AcctId,
+                BankAccountNo       = model.AccountNo,
+                PatientName         = patientName
+            });
+
+            if (posted)
+            {
+                payment.isPost = true;
+                paymentType.isPost = true;
+                foreach (var pd in paymentDetails)
+                {
+                    pd.isPost = true;
+                }
+                await context.SaveChangesAsync();
+                _logger.LogInformation("Receipt {ReceiptNo} marked posted to accounting", receiptNo);
+            }
 
             return CreatedAtAction(nameof(GetByBillNo), new { billNo }, new ReceiptSavedVM
             {

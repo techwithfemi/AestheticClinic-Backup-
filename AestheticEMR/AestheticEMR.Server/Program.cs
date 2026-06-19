@@ -271,6 +271,9 @@ builder.Services.AddScoped<IBillingCrossDatabaseSyncService>(sp =>
 
 builder.Services.AddScoped<IBillingService, BillingService>();
 
+// Receipt -> Accounting posting (same-instance), uses the InsertTranxaction sproc like invoices
+builder.Services.AddScoped<IReceiptAccountingPostingService, ReceiptAccountingPostingService>();
+
 if (enableMessageBus)
 {
     // MassTransit – only registered when message bus sync is enabled

@@ -18,11 +18,16 @@
 <div class="a4-page printable" *ngIf="isDialogMode && paperSize === 'a4'">
 
   <div class="rct-header">
-    <h1 class="clinic-name">{{ d.billHead }}</h1>
-    <p class="clinic-addr">{{ d.billHead2 }}</p>
-    <p class="clinic-addr">{{ d.billHead3 }}</p>
-    <p class="clinic-addr">{{ d.billHead4 }}</p>
-    <div class="rct-title-label">OFFICIAL RECEIPT</div>
+    <div class="rct-header-main">
+      <h1 class="clinic-name">{{ d.billHead }}</h1>
+      <p class="clinic-addr">{{ d.billHead2 }}</p>
+      <p class="clinic-addr">{{ d.billHead3 }}</p>
+      <p class="clinic-addr">{{ d.billHead4 }}</p>
+      <div class="rct-title-label">OFFICIAL RECEIPT</div>
+    </div>
+    <div class="rct-logo-area">
+      <img *ngIf="logoSrc" [src]="logoSrc" alt="Clinic logo" class="clinic-logo large-logo" (error)="onLogoError($event)" />
+    </div>
   </div>
 
   <hr class="divider" />
@@ -62,8 +67,8 @@
       <tr>
         <th class="col-sno">#</th>
         <th class="col-desc">Description</th>
-        <th class="col-qty">Qty</th>
-        <th class="col-total">Amount</th>
+        <th class="col-qty text-right">Qty</th>
+        <th class="col-total text-right">Amount</th>
       </tr>
     </thead>
     <tbody>
@@ -247,11 +252,16 @@
   <div class="a4-page printable" *ngIf="paperSize === 'a4'">
 
     <div class="rct-header">
-      <h1 class="clinic-name">{{ d.billHead }}</h1>
-      <p class="clinic-addr">{{ d.billHead2 }}</p>
-      <p class="clinic-addr">{{ d.billHead3 }}</p>
-      <p class="clinic-addr">{{ d.billHead4 }}</p>
-      <div class="rct-title-label">OFFICIAL RECEIPT</div>
+      <div class="rct-header-main">
+        <h1 class="clinic-name">{{ d.billHead }}</h1>
+        <p class="clinic-addr">{{ d.billHead2 }}</p>
+        <p class="clinic-addr">{{ d.billHead3 }}</p>
+        <p class="clinic-addr">{{ d.billHead4 }}</p>
+        <div class="rct-title-label">OFFICIAL RECEIPT</div>
+      </div>
+      <div class="rct-logo-area">
+        <img *ngIf="logoSrc" [src]="logoSrc" alt="Clinic logo" class="clinic-logo large-logo" (error)="onLogoError($event)" />
+      </div>
     </div>
 
     <hr class="divider" />
