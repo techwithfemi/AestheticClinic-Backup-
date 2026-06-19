@@ -638,7 +638,7 @@ public class BillingController(
             var billNos = rows.Select(x => x.BillNo).Distinct().ToList();
 
             var referencedBillNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var billingTaxMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var billingSnapshotMap = new Dictionary<string, (decimal AmountBilled, decimal AmountPaid, decimal DebtBf, decimal Discount, decimal Tax)>(StringComparer.OrdinalIgnoreCase);
 
             if (billNos.Count > 0)
             {
@@ -668,41 +668,52 @@ public class BillingController(
                 foreach (var id in inHRecords.Concat(inBillings).Concat(inDental).Concat(inConsulting))
                     referencedBillNos.Add(id);
 
-                // Fetch tax values from Billings table
-                var billingTaxes = await context.Billings.AsNoTracking()
+                // Fetch live billing snapshot values (billed/paid/balance) from Billings table
+                var billingSnapshots = await context.Billings.AsNoTracking()
                     .Where(x => billNos.Contains(x.billNO))
-                    .Select(x => new { BillNo = x.billNO, Tax = x.Tax ?? 0 })
+                    .Select(x => new { BillNo = x.billNO, x.AmountBilled, x.AmountPaid, x.DebtBF, x.Discount, Tax = x.Tax ?? 0 })
                     .ToListAsync();
 
-                foreach (var bt in billingTaxes)
+                foreach (var bs in billingSnapshots)
                 {
-                    if (!billingTaxMap.ContainsKey(bt.BillNo))
-                        billingTaxMap[bt.BillNo] = (decimal)bt.Tax;
+                    if (!billingSnapshotMap.ContainsKey(bs.BillNo))
+                        billingSnapshotMap[bs.BillNo] = (bs.AmountBilled ?? 0, bs.AmountPaid ?? 0, bs.DebtBF ?? 0, bs.Discount ?? 0, (decimal)bs.Tax);
                 }
             }
 
-            var vms = rows.Select(x => new QryhBillingIncomeVM
+            var vms = rows.Select(x =>
             {
-                ReceiptDate = x.ReceiptDate,
-                RTime       = x.RTime,
-                ReceiptNo   = x.ReceiptNo,
-                PNo         = x.Pno,
-                PaymentFor  = x.PaymentFor,
-                AmountBilled= x.AmountBilled,
-                Tax         = billingTaxMap.ContainsKey(x.BillNo) ? billingTaxMap[x.BillNo] : 0,
-                AmountPaid  = x.AmountPaid,
-                Balance     = x.Balance,
-                PayType     = x.PayType,
-                ClinicId    = x.ClinicId,
-                Fullname    = x.Fullname,
-                PatNo       = x.PatNo,
-                ReceivedBy  = x.Receivedby,
-                BillNo      = x.BillNo,
-                CoyName     = x.Coyname,
-                IsPost      = x.IsPost,
-                Remarks     = x.Remarks,
-                Suppres     = x.Suppres,
-                CanDelete   = !referencedBillNos.Contains(x.BillNo)
+                var hasLiveBilling = billingSnapshotMap.TryGetValue(x.BillNo, out var billing);
+                var amountBilled = hasLiveBilling ? billing.AmountBilled : x.AmountBilled;
+                var amountPaid = hasLiveBilling ? billing.AmountPaid : x.AmountPaid;
+                var tax = hasLiveBilling ? billing.Tax : 0;
+                var balance = hasLiveBilling
+                    ? billing.DebtBf + amountBilled + tax - billing.Discount - amountPaid
+                    : (x.Balance ?? 0);
+
+                return new QryhBillingIncomeVM
+                {
+                    ReceiptDate = x.ReceiptDate,
+                    RTime       = x.RTime,
+                    ReceiptNo   = x.ReceiptNo,
+                    PNo         = x.Pno,
+                    PaymentFor  = x.PaymentFor,
+                    AmountBilled= amountBilled,
+                    Tax         = tax,
+                    AmountPaid  = amountPaid,
+                    Balance     = balance,
+                    PayType     = x.PayType,
+                    ClinicId    = x.ClinicId,
+                    Fullname    = x.Fullname,
+                    PatNo       = x.PatNo,
+                    ReceivedBy  = x.Receivedby,
+                    BillNo      = x.BillNo,
+                    CoyName     = x.Coyname,
+                    IsPost      = x.IsPost,
+                    Remarks     = x.Remarks,
+                    Suppres     = x.Suppres,
+                    CanDelete   = !referencedBillNos.Contains(x.BillNo)
+                };
             }).ToList();
 
             return Ok(vms);

@@ -94,6 +94,12 @@ export const routes: Routes = [
         path: 'settings',
         loadComponent: () => import('./components/settings/settings.component')
           .then(m => m.SettingsComponent)
+      },
+      {
+        path: 'change-password',
+        loadComponent: () => import('./components/change-password/change-password.component')
+          .then(m => m.ChangePasswordComponent),
+        title: 'Change Password'
       }
     ]
   },

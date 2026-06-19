@@ -29,6 +29,102 @@ namespace AestheticEMR.Server.Controllers
             _authorizationService = authorizationService;
         }
 
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userAccountService.GetUserByUserNameAsync(model.UserNameOrEmail)
+                ?? await _userAccountService.GetUserByEmailAsync(model.UserNameOrEmail);
+
+            if (user == null || !user.IsEnabled || string.IsNullOrWhiteSpace(user.Email))
+                return NoContent();
+
+            var resetUrl = string.IsNullOrWhiteSpace(model.ResetUrl)
+                ? $"{Request.Scheme}://{Request.Host}/login?reset=true&userNameOrEmail={{userNameOrEmail}}&token={{token}}"
+                : model.ResetUrl;
+
+            var result = await _userAccountService.SendPasswordResetEmailAsync(user, resetUrl);
+
+            if (!result.Succeeded)
+            {
+                AddModelError(result.Errors);
+                return BadRequest(ModelState);
+            }
+
+            return NoContent();
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userAccountService.GetUserByUserNameAsync(model.UserNameOrEmail)
+                ?? await _userAccountService.GetUserByEmailAsync(model.UserNameOrEmail);
+
+            if (user == null || !user.IsEnabled)
+            {
+                AddModelError("Invalid password reset request.");
+                return BadRequest(ModelState);
+            }
+
+            var token = Uri.UnescapeDataString(model.Token);
+            var result = await _userAccountService.ResetPasswordWithTokenAsync(user, token, model.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                AddModelError(result.Errors);
+                return BadRequest(ModelState);
+            }
+
+            return NoContent();
+        }
+
+        [HttpPost("change-password")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordVM model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!string.Equals(model.NewPassword, model.ConfirmPassword, StringComparison.Ordinal))
+            {
+                AddModelError("New password and confirmation password do not match.", nameof(model.ConfirmPassword));
+                return BadRequest(ModelState);
+            }
+
+            var userId = GetCurrentUserId();
+            var user = await _userAccountService.GetUserByIdAsync(userId);
+
+            if (user == null)
+                return NotFound(userId);
+
+            var result = await _userAccountService.UpdatePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                if (result.Errors.Any(e => e.Contains("Incorrect password", StringComparison.OrdinalIgnoreCase)))
+                    AddModelError("Current password is incorrect.");
+                else
+                    AddModelError(result.Errors);
+
+                return BadRequest(ModelState);
+            }
+
+            return NoContent();
+        }
+
         [HttpGet("users/me")]
         [ProducesResponseType(200, Type = typeof(UserVM))]
         public async Task<IActionResult> GetCurrentUser()

@@ -150,6 +150,18 @@ export class AccountService {
     return this.accountEndpoint.getPermissionsEndpoint<Permission[]>();
   }
 
+  forgotPassword(userNameOrEmail: string, resetUrl: string | null) {
+    return this.accountEndpoint.getForgotPasswordEndpoint({ userNameOrEmail, resetUrl });
+  }
+
+  resetPassword(userNameOrEmail: string, token: string, newPassword: string) {
+    return this.accountEndpoint.getResetPasswordEndpoint({ userNameOrEmail, token, newPassword });
+  }
+
+  changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    return this.accountEndpoint.getChangePasswordEndpoint({ currentPassword, newPassword, confirmPassword });
+  }
+
   private onRolesChanged(roles: Role[] | string[], op: RolesChangedOperation) {
     this.rolesChanged.next({ roles, operation: op });
   }

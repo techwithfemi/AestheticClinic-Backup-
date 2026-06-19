@@ -92,6 +92,11 @@
           <span>{{ 'settings.menu.MyProfile' | translate }}</span>
         </button>
 
+        <button mat-menu-item [routerLink]="['/change-password']">
+          <mat-icon>lock</mat-icon>
+          <span>{{ 'users.editor.ChangePassword' | translate }}</span>
+        </button>
+
         <button mat-menu-item [routerLink]="['/settings']" fragment="preferences">
           <mat-icon>tune</mat-icon>
           <span>{{ 'settings.menu.UserPreferences' | translate }}</span>

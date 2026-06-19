@@ -40,6 +40,41 @@ namespace AestheticEMR.Server.ViewModels.Account
         public string? Configuration { get; set; }
     }
 
+    public class ForgotPasswordVM
+    {
+        [Required(ErrorMessage = "Username or email is required")]
+        public required string UserNameOrEmail { get; set; }
+
+        [Url(ErrorMessage = "Reset URL must be a valid URL")]
+        public string? ResetUrl { get; set; }
+    }
+
+    public class ResetPasswordVM
+    {
+        [Required(ErrorMessage = "Username or email is required")]
+        public required string UserNameOrEmail { get; set; }
+
+        [Required(ErrorMessage = "Reset token is required")]
+        public required string Token { get; set; }
+
+        [Required(ErrorMessage = "New password is required")]
+        [MinLength(6, ErrorMessage = "New password must be at least 6 characters")]
+        public required string NewPassword { get; set; }
+    }
+
+    public class ChangePasswordVM
+    {
+        [Required(ErrorMessage = "Current password is required")]
+        public required string CurrentPassword { get; set; }
+
+        [Required(ErrorMessage = "New password is required")]
+        [MinLength(6, ErrorMessage = "New password must be at least 6 characters")]
+        public required string NewPassword { get; set; }
+
+        [Required(ErrorMessage = "Confirmation password is required")]
+        public required string ConfirmPassword { get; set; }
+    }
+
     public abstract class UserBaseVM : ISanitizeModel
     {
         public virtual void SanitizeModel()

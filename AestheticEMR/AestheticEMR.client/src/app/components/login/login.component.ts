@@ -8,24 +8,29 @@ import { Component, OnInit, OnDestroy, Input, inject } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { AlertService, MessageSeverity, DialogType } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
 import { ConfigurationService } from '../../services/configuration.service';
 import { Utilities } from '../../services/utilities';
 import { UserLogin } from '../../models/user-login.model';
+import { AccountService } from '../../services/account.service';
 
 @Component({
     selector: 'app-login',
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
-    imports: [FormsModule, NgClass]
+    imports: [FormsModule, NgClass, TranslateModule]
 })
 
 export class LoginComponent implements OnInit, OnDestroy {
   private alertService = inject(AlertService);
   private authService = inject(AuthService);
   private configurations = inject(ConfigurationService);
+  private accountService = inject(AccountService);
+  private route = inject(ActivatedRoute);
 
   userLogin = new UserLogin();
   isLoading = false;
@@ -33,11 +38,20 @@ export class LoginComponent implements OnInit, OnDestroy {
   modalClosedCallback: (() => void) | undefined;
   loginStatusSubscription: Subscription | undefined;
 
+  forgotPasswordUserNameOrEmail = '';
+  resetPasswordUserNameOrEmail = '';
+  resetPasswordToken = '';
+  resetPassword = '';
+  resetPasswordConfirmation = '';
+  isForgotPasswordMode = false;
+  isResetPasswordMode = false;
+
   @Input()
   isModal = false;
 
   ngOnInit() {
     this.userLogin.rememberMe = this.authService.rememberMe;
+    this.initializePasswordRecoveryMode();
 
     if (this.getShouldRedirect()) {
       this.authService.redirectLoginUser();
@@ -114,6 +128,104 @@ export class LoginComponent implements OnInit, OnDestroy {
           }, 500);
         }
       });
+  }
+
+  sendResetPasswordLink() {
+    if (!this.forgotPasswordUserNameOrEmail?.trim()) {
+      this.showErrorAlert('Username/email is required', 'Please enter a valid username or email address');
+      return;
+    }
+
+    this.isLoading = true;
+    this.alertService.startLoadingMessage('', 'Generating password reset mail...');
+
+    const resetUrl = `${window.location.origin}/login?reset=true&userNameOrEmail={userNameOrEmail}&token={token}`;
+
+    this.accountService.forgotPassword(this.forgotPasswordUserNameOrEmail.trim(), resetUrl)
+      .subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.isLoading = false;
+          this.alertService.showMessage('Recover Password', 'If the account exists, a password reset email has been sent.', MessageSeverity.success);
+          this.cancelPasswordRecovery();
+        },
+        error: error => {
+          this.alertService.stopLoadingMessage();
+          this.isLoading = false;
+          this.alertService.showStickyMessage('Password Recovery Failed',
+            'An error occurred whilst recovering your password.\nError: ' + Utilities.getHttpResponseMessage(error), MessageSeverity.error, error);
+        }
+      });
+  }
+
+  submitResetPassword() {
+    if (!this.resetPasswordUserNameOrEmail?.trim()) {
+      this.showErrorAlert('Username/email is required', 'Please enter a valid username or email address');
+      return;
+    }
+
+    if (!this.resetPasswordToken?.trim()) {
+      this.showErrorAlert('Reset token is required', 'Please use the reset link from your email.');
+      return;
+    }
+
+    if (!this.resetPassword || this.resetPassword.length < 6) {
+      this.showErrorAlert('New password is required', 'Please enter the new password (minimum of 6 characters)');
+      return;
+    }
+
+    if (this.resetPassword !== this.resetPasswordConfirmation) {
+      this.showErrorAlert('Password mismatch', 'New password and confirmation password do not match');
+      return;
+    }
+
+    this.isLoading = true;
+    this.alertService.startLoadingMessage('', 'Resetting password...');
+
+    this.accountService.resetPassword(this.resetPasswordUserNameOrEmail.trim(), this.resetPasswordToken, this.resetPassword)
+      .subscribe({
+        next: () => {
+          this.alertService.stopLoadingMessage();
+          this.isLoading = false;
+          this.alertService.showMessage('Password Change', 'Your password was successfully reset. Please login.', MessageSeverity.success);
+          this.cancelPasswordRecovery();
+          this.userLogin.userName = this.resetPasswordUserNameOrEmail.trim();
+        },
+        error: error => {
+          this.alertService.stopLoadingMessage();
+          this.isLoading = false;
+          this.alertService.showStickyMessage('Password Reset Failed',
+            'An error occurred whilst resetting your password.\nError: ' + Utilities.getHttpResponseMessage(error), MessageSeverity.error, error);
+        }
+      });
+  }
+
+  openForgotPassword() {
+    this.isForgotPasswordMode = true;
+    this.isResetPasswordMode = false;
+  }
+
+  cancelPasswordRecovery() {
+    this.isForgotPasswordMode = false;
+    this.isResetPasswordMode = false;
+    this.forgotPasswordUserNameOrEmail = '';
+    this.resetPassword = '';
+    this.resetPasswordConfirmation = '';
+    this.resetPasswordToken = '';
+  }
+
+  private initializePasswordRecoveryMode() {
+    const queryMap = this.route.snapshot.queryParamMap;
+    const shouldReset = queryMap.get('reset')?.toLowerCase() === 'true';
+
+    if (!shouldReset) {
+      return;
+    }
+
+    this.isResetPasswordMode = true;
+    this.isForgotPasswordMode = false;
+    this.resetPasswordUserNameOrEmail = queryMap.get('userNameOrEmail') ?? '';
+    this.resetPasswordToken = queryMap.get('token') ?? '';
   }
 
   offerBackendDevServer() {

@@ -27,6 +27,9 @@ export class AccountEndpoint extends EndpointBase {
   get rolesUrl() { return this.configurations.baseUrl + '/api/account/roles'; }
   get roleByRoleNameUrl() { return this.configurations.baseUrl + '/api/account/roles/name'; }
   get permissionsUrl() { return this.configurations.baseUrl + '/api/account/permissions'; }
+  get forgotPasswordUrl() { return this.configurations.baseUrl + '/api/account/forgot-password'; }
+  get resetPasswordUrl() { return this.configurations.baseUrl + '/api/account/reset-password'; }
+  get changePasswordUrl() { return this.configurations.baseUrl + '/api/account/change-password'; }
 
   getUserEndpoint<T>(userId?: string): Observable<T> {
     const endpointUrl = userId ? `${this.usersUrl}/${userId}` : this.currentUserUrl;
@@ -181,6 +184,27 @@ export class AccountEndpoint extends EndpointBase {
     return this.http.get<T>(this.permissionsUrl, this.requestHeaders).pipe(
       catchError(error => {
         return this.handleError(error, () => this.getPermissionsEndpoint<T>());
+      }));
+  }
+
+  getForgotPasswordEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(this.forgotPasswordUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => {
+        return this.handleError(error, () => this.getForgotPasswordEndpoint<T>(payload));
+      }));
+  }
+
+  getResetPasswordEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(this.resetPasswordUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => {
+        return this.handleError(error, () => this.getResetPasswordEndpoint<T>(payload));
+      }));
+  }
+
+  getChangePasswordEndpoint<T>(payload: object): Observable<T> {
+    return this.http.post<T>(this.changePasswordUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+      catchError(error => {
+        return this.handleError(error, () => this.getChangePasswordEndpoint<T>(payload));
       }));
   }
 }

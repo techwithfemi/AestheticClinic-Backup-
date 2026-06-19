@@ -8,6 +8,7 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Account;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using AestheticEMR.Core.Services;
 
 namespace AestheticEMR.Core.Services.Account
 {
@@ -15,11 +16,13 @@ namespace AestheticEMR.Core.Services.Account
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _emailSender;
 
-        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IEmailSender emailSender)
         {
             _context = context;
             _userManager = userManager;
+            _emailSender = emailSender;
         }
 
         public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
@@ -211,6 +214,50 @@ namespace AestheticEMR.Core.Services.Account
         {
             var result = await _userManager.DeleteAsync(user);
             return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
+        }
+
+        public async Task<(bool Succeeded, string[] Errors)> ResetPasswordWithTokenAsync(ApplicationUser user,
+            string token, string newPassword)
+        {
+            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
+        }
+
+        public async Task<(bool Succeeded, string[] Errors)> SendPasswordResetEmailAsync(ApplicationUser user, string resetUrlTemplate)
+        {
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = Uri.EscapeDataString(resetToken);
+            var encodedUserName = Uri.EscapeDataString(user.UserName ?? user.Email ?? string.Empty);
+
+            var resetUrl = resetUrlTemplate
+                .Replace("{token}", encodedToken, StringComparison.OrdinalIgnoreCase)
+                .Replace("{username}", encodedUserName, StringComparison.OrdinalIgnoreCase)
+                .Replace("{userNameOrEmail}", encodedUserName, StringComparison.OrdinalIgnoreCase);
+
+            if (!resetUrl.Contains("{token}", StringComparison.OrdinalIgnoreCase) &&
+                !resetUrl.Contains("token=", StringComparison.OrdinalIgnoreCase))
+            {
+                resetUrl += resetUrl.Contains('?') ? "&" : "?";
+                resetUrl += $"token={encodedToken}";
+            }
+
+            if (!resetUrl.Contains("{username}", StringComparison.OrdinalIgnoreCase) &&
+                !resetUrl.Contains("{userNameOrEmail}", StringComparison.OrdinalIgnoreCase) &&
+                !resetUrl.Contains("userNameOrEmail=", StringComparison.OrdinalIgnoreCase))
+            {
+                resetUrl += resetUrl.Contains('?') ? "&" : "?";
+                resetUrl += $"userNameOrEmail={encodedUserName}";
+            }
+
+            var recipientName = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName ?? "User" : user.FullName;
+            var body = $"Hello {recipientName},<br/><br/>Use the link below to reset your password:<br/><a href=\"{resetUrl}\">Reset password</a><br/><br/>If you didn't request this, you can ignore this email.";
+
+            var result = await _emailSender.SendEmailAsync(recipientName, user.Email!, "Password Reset Request", body, true);
+
+            if (!result.success)
+                return (false, [result.errorMsg ?? "Unable to send password reset email"]);
+
+            return (true, []);
         }
     }
 }
