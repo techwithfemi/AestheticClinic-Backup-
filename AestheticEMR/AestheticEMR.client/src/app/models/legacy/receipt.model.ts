@@ -23,4 +23,5 @@ export interface Receipt {
   valueDate?: string;
   suppres?: boolean;
   canDelete?: boolean;
+  canEdit?: boolean;
 }

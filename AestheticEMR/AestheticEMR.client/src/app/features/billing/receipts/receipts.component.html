@@ -116,9 +116,12 @@
             </button>
 
             <button mat-icon-button type="button" color="accent"
-                    matTooltip="Update receipt"
+                    [disabled]="r.canEdit === false"
+                    [matTooltip]="r.canEdit === false
+                      ? 'Cannot edit: This receipt belongs to a previous bill for this patient. Edit is only allowed on the latest bill.'
+                      : 'Update receipt'"
                     (click)="openEditReceipt(r)">
-              <mat-icon>edit</mat-icon>
+              <mat-icon [class.icon-disabled]="r.canEdit === false">edit</mat-icon>
             </button>
 
             <button mat-icon-button type="button"

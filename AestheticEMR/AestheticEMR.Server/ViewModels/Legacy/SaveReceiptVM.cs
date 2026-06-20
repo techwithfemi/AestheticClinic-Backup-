@@ -35,6 +35,9 @@ public class SaveReceiptVM
 
     /// <summary>Specific amount to pay. When null/omitted the full outstanding balance is collected.</summary>
     public decimal? AmountToPay { get; set; }
+
+    /// <summary>Outstanding balance shown on receipt entry page.</summary>
+    public decimal? AmountBilled { get; set; }
 }
 
 /// <summary>Response returned after a receipt is successfully saved.</summary>

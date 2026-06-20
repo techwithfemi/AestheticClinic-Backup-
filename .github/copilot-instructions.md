@@ -357,6 +357,10 @@ For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBi
 - **Alert banner must show on the UI layer that has focus** (active dialog or parent page).
 - **Never allow alert banners/toasts to render behind modal dialogs or overlays.**
 
+### Bank Account Dropdown
+
+- For receipt bank account dropdown, backend must filter `VwAccountsInfos` by `GroupId = emrAppDefaults.Values['Acct_Banks']`; use `AccountNo` as bank account id and do not use `hRevenueTypes` fallback. In this flow, `AccountNo`, `AccountId`, and `AccountName` are expected to be non-empty after that bank-group filter.
+
 
 
 

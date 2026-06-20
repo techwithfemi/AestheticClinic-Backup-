@@ -881,6 +881,137 @@ public class BillingController(
         return amount.ToString("N2", CultureInfo.InvariantCulture);
     }
 
+    [HttpGet("bank-accounts")]
+    [ProducesResponseType(typeof(IEnumerable<BankAccountVM>), 200)]
+    public async Task<IActionResult> GetBankAccounts()
+    {
+        try
+        {
+            var defaults = await emrAppDefaultsService.GetAsync();
+            var bankGroupId = defaults.Values.GetValueOrDefault("Acct_Banks", string.Empty)?.Trim();
+
+            if (string.IsNullOrWhiteSpace(bankGroupId))
+            {
+                _logger.LogWarning("Acct_Banks is not configured in emrAppDefaults.");
+                return Ok(Array.Empty<BankAccountVM>());
+            }
+
+            var sourceObject = await ResolveBankAccountsSourceObjectAsync();
+            if (string.IsNullOrWhiteSpace(sourceObject))
+            {
+                _logger.LogWarning("Bank accounts source view/table was not found (expected vwAccountsInfo or vwAccountsInfos).");
+                return Ok(Array.Empty<BankAccountVM>());
+            }
+
+            var accounts = new List<BankAccountVM>();
+            var connection = context.Database.GetDbConnection();
+            var shouldClose = connection.State != System.Data.ConnectionState.Open;
+
+            if (shouldClose)
+                await connection.OpenAsync();
+
+            try
+            {
+                await using var cmd = connection.CreateCommand();
+                cmd.CommandText = $@"
+SELECT [AccountNo] AS [AccountId], [AccountName]
+FROM {sourceObject}
+WHERE [GroupId] = @groupId
+ORDER BY [AccountName]";
+
+                var groupParam = cmd.CreateParameter();
+                groupParam.ParameterName = "@groupId";
+                groupParam.Value = bankGroupId;
+                cmd.Parameters.Add(groupParam);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    accounts.Add(new BankAccountVM
+                    {
+                        AccountId = reader["AccountId"]?.ToString() ?? string.Empty,
+                        AccountName = reader["AccountName"]?.ToString() ?? string.Empty
+                    });
+                }
+            }
+            finally
+            {
+                if (shouldClose)
+                    await connection.CloseAsync();
+            }
+
+            return Ok(accounts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving bank accounts");
+            AddModelError("Unable to retrieve bank accounts");
+            return BadRequest(ModelState);
+        }
+    }
+
+    private async Task<string?> ResolveBankAccountsSourceObjectAsync()
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != System.Data.ConnectionState.Open;
+
+        if (shouldClose)
+            await connection.OpenAsync();
+
+        try
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+SELECT TOP (1)
+    QUOTENAME([s].[name]) + '.' + QUOTENAME([o].[name]) AS [ObjectName]
+FROM [sys].[objects] AS [o]
+INNER JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [o].[schema_id]
+WHERE [o].[type] IN ('V','U')
+  AND [o].[name] IN ('vwAccountsInfo','vwAccountsInfos')
+ORDER BY CASE WHEN [o].[name] = 'vwAccountsInfo' THEN 0 ELSE 1 END,
+         CASE WHEN [s].[name] = 'dbo' THEN 0 ELSE 1 END";
+
+            var result = await cmd.ExecuteScalarAsync();
+            return result?.ToString();
+        }
+        finally
+        {
+            if (shouldClose)
+                await connection.CloseAsync();
+        }
+    }
+
+    [HttpGet("private-credit-account")]
+    [ProducesResponseType(typeof(BankAccountVM), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetPrivateCreditAccount()
+    {
+        try
+        {
+            var account = await context.hRevenueTypes
+                .AsNoTracking()
+                .Where(x => !string.IsNullOrWhiteSpace(x.AccountNo))
+                .OrderBy(x => x.Serial ?? int.MaxValue)
+                .Select(x => new BankAccountVM
+                {
+                    AccountId = x.AccountNo!,
+                    AccountName = x.RevType
+                })
+                .FirstOrDefaultAsync();
+
+            if (account is null)
+                return NotFound();
+
+            return Ok(account);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving private credit account");
+            AddModelError("Unable to retrieve private credit account");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet("vwh-record/{consultId}")]
     [ProducesResponseType(typeof(VwhRecordSummaryVM), 200)]
     [ProducesResponseType(404)]

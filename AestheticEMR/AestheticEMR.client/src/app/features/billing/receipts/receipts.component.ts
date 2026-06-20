@@ -208,6 +208,15 @@ export class ReceiptsComponent implements OnInit {
   }
 
   openEditReceipt(receipt: Receipt): void {
+    if (receipt.canEdit === false) {
+      this.alertService.showStickyMessage(
+        'Edit Not Allowed',
+        'This receipt belongs to a previous bill for this patient. Only receipts on the latest bill can be edited.',
+        MessageSeverity.warn
+      );
+      return;
+    }
+
     const data: ReceiptEntryDialogData = {
       receiptNo:   receipt.receiptNo,
       billNo:      receipt.billNo,

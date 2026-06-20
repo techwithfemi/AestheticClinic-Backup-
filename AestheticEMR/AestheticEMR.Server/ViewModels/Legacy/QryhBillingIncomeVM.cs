@@ -32,4 +32,10 @@ public class QryhBillingIncomeVM
     /// beyond this receipt. Set server-side on list load.
     /// </summary>
     public bool CanDelete { get; set; } = true;
+
+    /// <summary>
+    /// False when the receipt belongs to a previous Bill No for the same patient.
+    /// Only receipts on the patient's current/latest Bill No can be edited.
+    /// </summary>
+    public bool CanEdit { get; set; } = true;
 }

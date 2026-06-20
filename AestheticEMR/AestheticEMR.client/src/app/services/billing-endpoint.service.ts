@@ -10,6 +10,7 @@ import { Billing } from '../models/legacy/billing.model';
 export interface SaveReceiptRequest {
   payType: string;
   amountToPay?: number;   // if omitted, backend pays the full balance
+  amountBilled?: number;
   accountNo?: string;
   chequeNo?: string;
   bankCode?: string;
@@ -20,6 +21,7 @@ export interface SaveReceiptRequest {
 
 export interface UpdateReceiptRequest {
   payType: string;
+  amountBilled?: number;
   accountNo?: string;
   chequeNo?: string;
   bankCode?: string;

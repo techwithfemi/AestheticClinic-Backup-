@@ -9,6 +9,8 @@ public class UpdateReceiptVM
     [StringLength(50)]
     public string PayType { get; set; } = string.Empty;
 
+    public decimal? AmountBilled { get; set; }
+
     [StringLength(100)]
     public string? AccountNo { get; set; }
 

@@ -102,6 +102,7 @@
           <mat-icon matPrefix>payments</mat-icon>
           <mat-error *ngIf="form.hasError('amountRequired')">Amount to Pay is required.</mat-error>
           <mat-error *ngIf="form.hasError('amountInvalid')">Amount to Pay must be greater than zero.</mat-error>
+          <mat-error *ngIf="form.hasError('debtNotAllowed')">Debt is not allowed. Amount to Pay must fully clear the current balance.</mat-error>
         </mat-form-field>
       </div>
 

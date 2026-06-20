@@ -23,6 +23,7 @@ import { AttendanceSummaryComponent } from '../../../components/attendance-summa
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { Billing } from '../../../models/legacy/billing.model';
 import { BankAccount } from '../../../models/legacy/bank-account.model';
+import { ModuleSettingsService } from '../../../services/module-settings.service';
 
 export interface ReceiptEntryDialogData {
   billNo: string;
@@ -51,6 +52,11 @@ interface BillingSummary {
   balance: number;     // totalBill - amountPaid
   bDate: string;
   patientName: string;
+}
+
+interface BillingModuleSettings {
+  allowDebt: boolean;
+  defaultPaymentMode: string;
 }
 
 @Component({
@@ -84,6 +90,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
   private readonly billingEndpoint = inject(BillingEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly authService = inject(AuthService);
+  private readonly moduleSettings = inject(ModuleSettingsService);
 
   form!: FormGroup;
   isSaving = false;
@@ -96,6 +103,9 @@ export class ReceiptEntryDialogComponent implements OnInit {
   bankAccounts: BankAccount[] = [];
 
   readonly payTypes = ['Cash', 'Cheque', 'Transfer', 'POS'];
+
+  allowDebt = false;
+  defaultPaymentMode = 'POS';
 
   get isEditMode(): boolean { return !!this.data.receiptNo; }
   get dialogTitle(): string { return this.isEditMode ? 'Update Receipt' : 'Receipt Entry'; }
@@ -133,10 +143,35 @@ export class ReceiptEntryDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.isExactAmountChecked = false;
+    this.initializeForm();
+
+    this.moduleSettings.getModuleSettings<BillingModuleSettings>('billing', {
+      allowDebt: false,
+      defaultPaymentMode: 'POS'
+    }).then(settings => {
+      this.allowDebt = settings.allowDebt === true;
+      this.defaultPaymentMode = (settings.defaultPaymentMode ?? 'POS').toString().trim() || 'POS';
+      this.form.get('payType')?.setValue(this.data.payType ?? this.resolveDefaultPayType(), { emitEvent: false });
+      this.form.updateValueAndValidity({ emitEvent: false });
+    }).catch(() => {
+      this.allowDebt = false;
+      this.defaultPaymentMode = 'POS';
+      this.form.get('payType')?.setValue(this.data.payType ?? this.resolveDefaultPayType(), { emitEvent: false });
+      this.form.updateValueAndValidity({ emitEvent: false });
+    });
+
+    const summaryKey = this.resolveAttendanceSummaryKey();
+    this.loadAttendanceSummary(summaryKey);
+    this.loadBillingSummary(this.data.billNo);
+    this.loadBankAccounts();
+  }
+
+  private initializeForm(): void {
+    const defaultPayType = this.resolveDefaultPayType();
 
     this.form = this.fb.group({
       amountToPay: [this.isEditMode ? this.fmt(0) : null],
-      payType:     [this.data.payType ?? 'Cash', Validators.required],
+      payType:     [this.data.payType ?? defaultPayType, Validators.required],
       bankAccount: [this.data.accountNo ?? ''],
       chequeNo:    [this.data.chequeNo ?? ''],
       bankCode:    [this.data.bankCode ?? ''],
@@ -151,11 +186,12 @@ export class ReceiptEntryDialogComponent implements OnInit {
       this.form.get('amountToPay')?.updateValueAndValidity({ emitEvent: false });
       this.form.updateValueAndValidity({ emitEvent: false });
     });
+  }
 
-    const summaryKey = this.resolveAttendanceSummaryKey();
-    this.loadAttendanceSummary(summaryKey);
-    this.loadBillingSummary(this.data.billNo);
-    this.loadBankAccounts();
+  private resolveDefaultPayType(): string {
+    const configured = this.defaultPaymentMode.trim().toUpperCase();
+    const match = this.payTypes.find(pt => pt.toUpperCase() === configured);
+    return match ?? 'Cash';
   }
 
   private resolveAttendanceSummaryKey(): string {
@@ -196,25 +232,51 @@ export class ReceiptEntryDialogComponent implements OnInit {
           bDate: billing.bDate ?? '',
           patientName: billing.patientName ?? ''
         };
+        this.form?.updateValueAndValidity({ emitEvent: false });
       },
-      error: () => { this.isLoadingBilling = false; this.billingSummary = undefined; }
+      error: () => { this.isLoadingBilling = false; this.billingSummary = undefined; this.form?.updateValueAndValidity({ emitEvent: false }); }
     });
   }
 
   private loadBankAccounts(): void {
     this.isLoadingBankAccounts = true;
-    this.billingEndpoint.getBankAccountsEndpoint<BankAccount[]>().subscribe({
+    this.billingEndpoint.getBankAccountsEndpoint<unknown[]>().subscribe({
       next: accounts => {
         this.isLoadingBankAccounts = false;
-        // Deduplicate by accountId in case the view returns multiple period rows
+
+        const normalized = (accounts ?? [])
+          .map(a => {
+            const item = a as {
+              accountId?: string; AccountId?: string;
+              accountNo?: string; AccountNo?: string;
+              accountName?: string; AccountName?: string;
+            };
+
+            const accountId = (item.accountId ?? item.AccountId ?? item.accountNo ?? item.AccountNo ?? '').toString().trim();
+            const accountName = (item.accountName ?? item.AccountName ?? accountId).toString().trim();
+
+            return { accountId, accountName } as BankAccount;
+          })
+          .filter(a => !!a.accountId);
+
         const seen = new Set<string>();
-        this.bankAccounts = (accounts ?? []).filter(a => {
-          if (seen.has(a.accountId)) return false;
-          seen.add(a.accountId);
+        this.bankAccounts = normalized.filter(a => {
+          const key = a.accountId.toUpperCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
           return true;
         });
       },
-      error: () => { this.isLoadingBankAccounts = false; }
+      error: (error: unknown) => {
+        this.isLoadingBankAccounts = false;
+        this.bankAccounts = [];
+        this.alertService.showStickyMessage(
+          'Load Error',
+          `Unable to retrieve bank accounts.\r\nError: "${this.getErrorMessage(error)}"`,
+          MessageSeverity.error,
+          error
+        );
+      }
     });
   }
 
@@ -231,10 +293,18 @@ export class ReceiptEntryDialogComponent implements OnInit {
 
     const payType = (v.payType ?? '').toString().toUpperCase();
     const resolvedAccountNo = payType !== 'CASH' ? (v.bankAccount || undefined) : undefined;
+    const balanceAmount = this.billingSummary?.balance ?? 0;
+
+    if (balanceAmount <= 0) {
+      this.isSaving = false;
+      this.alertService.showStickyMessage('Validation Error', 'Receipt zero value is not allowed.', MessageSeverity.error);
+      return;
+    }
 
     if (this.isEditMode) {
       const payload: UpdateReceiptRequest = {
         payType:    v.payType,
+        amountBilled: balanceAmount,
         accountNo:  resolvedAccountNo,
         chequeNo:   v.chequeNo || undefined,
         bankCode:   v.bankCode || undefined,
@@ -252,9 +322,16 @@ export class ReceiptEntryDialogComponent implements OnInit {
     } else {
       const rawAmt = String(v.amountToPay ?? '').replace(/,/g, '');
       const parsedAmt = parseFloat(rawAmt);
+      if (!Number.isFinite(parsedAmt) || parsedAmt <= 0) {
+        this.isSaving = false;
+        this.alertService.showStickyMessage('Validation Error', 'Amount to Pay must be greater than zero.', MessageSeverity.error);
+        return;
+      }
+
       const payload: SaveReceiptRequest = {
         payType:      v.payType,
         amountToPay:  parsedAmt,
+        amountBilled: balanceAmount,
         accountNo:    resolvedAccountNo,
         chequeNo:     v.chequeNo || undefined,
         bankCode:     v.bankCode || undefined,
@@ -355,6 +432,10 @@ export class ReceiptEntryDialogComponent implements OnInit {
       return 'Amount to Pay must be greater than zero.';
     }
 
+    if (this.form.hasError('debtNotAllowed')) {
+      return 'Debt is not allowed. Amount to Pay must fully clear the current balance.';
+    }
+
     if (this.form.hasError('bankAccountRequired')) {
       return 'Bank Account is required for non-cash payment.';
     }
@@ -380,6 +461,11 @@ export class ReceiptEntryDialogComponent implements OnInit {
           const amount = parseFloat(rawAmount);
           if (Number.isNaN(amount) || amount <= 0) {
             errors['amountInvalid'] = true;
+          } else if (!this.allowDebt) {
+            const balance = this.billingSummary?.balance ?? 0;
+            if (balance > 0 && amount < balance) {
+              errors['debtNotAllowed'] = true;
+            }
           }
         }
       }

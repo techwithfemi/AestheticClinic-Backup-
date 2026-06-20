@@ -1,5 +1,7 @@
 {
   "autoFollowUpDays": 14,
+  "allowDebt": false,
+  "defaultPaymentMode": "POS",
   "itemCategories": ["Service", "Product", "Drug", "Investigation"],
   "addInvoiceDialogDimensions": {
     "desktop": { "width": "1200px", "maxWidth": "1200px" },
