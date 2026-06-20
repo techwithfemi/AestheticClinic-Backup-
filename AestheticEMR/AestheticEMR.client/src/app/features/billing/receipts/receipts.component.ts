@@ -215,7 +215,12 @@ export class ReceiptsComponent implements OnInit {
       patientName: receipt.fullname,
       balance:     receipt.balance,
       payType:     receipt.payType,
-      remarks:     receipt.remarks
+      accountNo:   receipt.accountNo,
+      chequeNo:    receipt.chequeNo,
+      bankCode:    receipt.bankCode,
+      valueDate:   receipt.valueDate,
+      remarks:     receipt.remarks,
+      amountPaid:  receipt.amountPaid
     };
 
     this.dialog.open(ReceiptEntryDialogComponent, {

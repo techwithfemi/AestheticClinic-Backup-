@@ -20,6 +20,10 @@ public class QryhBillingIncomeVM
     public string? CoyName { get; set; }
     public bool? IsPost { get; set; }
     public string? Remarks { get; set; }
+    public string? AccountNo { get; set; }
+    public string? ChequeNo { get; set; }
+    public string? BankCode { get; set; }
+    public DateTime? ValueDate { get; set; }
     public bool? Suppres { get; set; }
 
     /// <summary>

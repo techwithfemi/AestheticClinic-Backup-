@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace AestheticEMR.Server.Controllers;
 
@@ -362,7 +363,7 @@ public class BillingController(
     /// <summary>
     /// Save receipt data for a billing record.
     /// Writes to: Payments, PaymentDetails, and PaymentTypes.
-    /// Only PRIVATE patients are eligible; balance must be non-zero.
+    /// Only PRIVATE patients are eligible; supports deposit receipts before billing is raised.
     /// </summary>
     [HttpPost("{billNo}/receipt")]
     [ProducesResponseType(typeof(ReceiptSavedVM), 201)]
@@ -376,31 +377,34 @@ public class BillingController(
 
         try
         {
-            // ── Load billing record ──────────────────────────────────────────
-            var billing = await context.Billings.FirstOrDefaultAsync(x => x.billNO == billNo);
-            if (billing is null)
-                return NotFound(billNo);
-
-            // ── Balance guard ────────────────────────────────────────────────
-            var amountBilled = billing.AmountBilled ?? 0;
-            var debtBF       = billing.DebtBF       ?? 0;
-            var discount     = billing.Discount     ?? 0;
-            var tax          = (decimal)(billing.Tax ?? 0);
-            var amountPaid   = billing.AmountPaid   ?? 0;
-            var balance      = debtBF + amountBilled + tax - discount - amountPaid;
-
-            if (balance == 0)
+            var normalizedBillNo = billNo?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedBillNo))
             {
-                AddModelError("Receipt cannot be issued: balance is zero.");
-                return UnprocessableEntity(ModelState);
+                AddModelError("Bill number is required.");
+                return BadRequest(ModelState);
             }
 
-            // ── PRIVATE guard (clientCat from VwhRecord) ─────────────────────
+            var payType = (model.PayType ?? string.Empty).Trim();
+            var isCashPayment = string.Equals(payType, "Cash", StringComparison.OrdinalIgnoreCase);
+            if (!isCashPayment && string.IsNullOrWhiteSpace(model.AccountNo))
+            {
+                AddModelError("Bank Account is required for non-cash payment.");
+                return BadRequest(ModelState);
+            }
+
+            if (!model.AmountToPay.HasValue || model.AmountToPay.Value <= 0)
+            {
+                AddModelError("Amount to Pay must be greater than zero.");
+                return BadRequest(ModelState);
+            }
+
+            var billing = await context.Billings.FirstOrDefaultAsync(x => x.billNO == normalizedBillNo);
+
             var vwhRecord = await context.VwhRecords
                 .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.ConsultId == billNo);
+                .FirstOrDefaultAsync(v => v.ConsultId == normalizedBillNo);
 
-            var defaults  = await emrAppDefaultsService.GetAsync();
+            var defaults = await emrAppDefaultsService.GetAsync();
             var clientCat = (vwhRecord?.ClientCat ?? string.Empty).Trim();
 
             if (!string.Equals(clientCat, defaults.ClientCategoryPrivate, StringComparison.OrdinalIgnoreCase))
@@ -409,149 +413,184 @@ public class BillingController(
                 return UnprocessableEntity(ModelState);
             }
 
-            // ── Build receipt number ─────────────────────────────────────────
-            // Format: RCT-{billNo}-{yyyyMMddHHmmss}
-            var now       = DateTime.Now;
-            var receiptNo = $"RCT-{billNo}-{now:yyyyMMddHHmmss}";
-
-            // Collision guard (unlikely but safe)
+            var now = DateTime.Now;
+            var receiptNo = $"RCT-{normalizedBillNo}-{now:yyyyMMddHHmmss}";
             var collision = await context.Payments.AnyAsync(p => p.ReceiptNo == receiptNo);
             if (collision)
-                receiptNo = $"RCT-{billNo}-{now:yyyyMMddHHmmssfff}";
+                receiptNo = $"RCT-{normalizedBillNo}-{now:yyyyMMddHHmmssfff}";
 
-            // ── Amount being paid: use provided amount or fall back to full balance ──
-            var payAmount = (model.AmountToPay.HasValue && model.AmountToPay.Value > 0)
-                ? model.AmountToPay.Value
-                : balance;
+            var amountBilled = billing?.AmountBilled ?? 0;
+            var debtBF = billing?.DebtBF ?? 0;
+            var discount = billing?.Discount ?? 0;
+            var tax = (decimal)(billing?.Tax ?? 0);
+            var existingAmountPaid = billing?.AmountPaid ?? 0;
+            var balance = debtBF + amountBilled + tax - discount - existingAmountPaid;
+            var payAmount = model.AmountToPay.Value;
 
-            // ── Patient info for denormalised columns ────────────────────────
-            var patient     = await patientService.GetByIdAsync(billing.pNo);
+            var patient = !string.IsNullOrWhiteSpace(vwhRecord?.PNo)
+                ? await patientService.GetByIdAsync(vwhRecord.PNo)
+                : billing is not null
+                    ? await patientService.GetByIdAsync(billing.pNo)
+                    : null;
+
+            var patientNo = billing?.pNo ?? vwhRecord?.PNo;
+            if (string.IsNullOrWhiteSpace(patientNo))
+            {
+                AddModelError($"Unable to resolve patient number for bill '{normalizedBillNo}'.");
+                return UnprocessableEntity(ModelState);
+            }
+
             var patientName = patient is null
-                ? string.Empty
+                ? (vwhRecord?.Fullname ?? string.Empty)
                 : $"{patient.PSurName} {patient.PFirstname}".Trim();
 
             var receivedBy = string.IsNullOrWhiteSpace(model.ReceivedBy)
                 ? GetCurrentUserId()
                 : model.ReceivedBy;
 
-            // ── Revenue account: use provided or fall back to first active ───
-            var accountNo = model.AccountNo;
+            var accountNo = model.AccountNo?.Trim();
             if (string.IsNullOrWhiteSpace(accountNo))
             {
                 var revType = await context.hRevenueTypes.AsNoTracking().FirstOrDefaultAsync();
-                accountNo   = revType?.RevType ?? "CASH";
+                accountNo = revType?.RevType ?? "CASH";
             }
 
-            // ── 1. Payments table ────────────────────────────────────────────
+            var paymentFor = amountBilled == 0 && balance == 0
+                ? $"Deposit for {normalizedBillNo}"
+                : $"Bill {normalizedBillNo}";
+
             var payment = new Payment
             {
-                ReceiptNo     = receiptNo,
-                ReceiptDate   = now,
-                billNO        = billNo,
-                pNO           = billing.pNo,
-                clinicID      = null,
-                paymentFor    = $"Bill {billNo}",
-                AmountBilled  = amountBilled,
-                AmountPaid    = payAmount,
-                AmountInWord  = AmountToWords(payAmount),
-                Receivedby    = receivedBy,
-                payType       = model.PayType,
-                rTime         = now,
-                Remarks       = model.Remarks,
-                RetainCode    = billing.clientID,
-                ChequeNo      = model.ChequeNo,
-                ValueDate     = model.ValueDate,
-                BankCode      = model.BankCode,
-                ChequeDate    = model.ValueDate,
-                isPost        = false,
-                EntryDate     = now,
-                EntryTime     = now,
-                ClientName    = patientName,
-                AppName       = "AestheticEMR",
-                suppres       = false
+                ReceiptNo = receiptNo,
+                ReceiptDate = now,
+                billNO = normalizedBillNo,
+                pNO = patientNo,
+                clinicID = null,
+                paymentFor = paymentFor,
+                AmountBilled = amountBilled,
+                AmountPaid = payAmount,
+                AmountInWord = AmountToWords(payAmount),
+                Receivedby = receivedBy,
+                payType = payType,
+                rTime = now,
+                Remarks = model.Remarks,
+                RetainCode = billing?.clientID ?? vwhRecord?.RetainCode ?? vwhRecord?.Coyname,
+                ChequeNo = model.ChequeNo,
+                ValueDate = model.ValueDate,
+                BankCode = model.BankCode,
+                ChequeDate = model.ValueDate,
+                isPost = false,
+                EntryDate = now,
+                EntryTime = now,
+                ClientName = patientName,
+                AppName = "AestheticEMR",
+                suppres = false
             };
             context.Payments.Add(payment);
 
-            // ── 2. PaymentDetails table (one row per billing detail line) ────
-            var details = await billingService.GetDetailsAsync(billNo);
+            var details = await billingService.GetDetailsAsync(normalizedBillNo);
             var paymentDetails = new List<PaymentDetail>();
-            foreach (var detail in details)
+            if (details.Any())
+            {
+                var detailAmounts = details
+                    .Select(d => d.subTotal ?? (decimal)(d.Price * d.Qty))
+                    .ToList();
+                var allocatedAmounts = AllocatePayment(payAmount, detailAmounts);
+
+                for (var i = 0; i < details.Count(); i++)
+                {
+                    var detail = details.ElementAt(i);
+                    var lineAmount = allocatedAmounts[i];
+                    if (lineAmount <= 0)
+                        continue;
+
+                    var paymentDetail = new PaymentDetail
+                    {
+                        ReceiptNo = receiptNo,
+                        billNO = normalizedBillNo,
+                        ReceiptDate = now,
+                        AmountPaid = lineAmount,
+                        AccountNo = accountNo,
+                        RevType = detail.Category ?? accountNo,
+                        isPost = false,
+                        AmountToPay = lineAmount,
+                        BillItem = detail.drgName,
+                        BillDate = billing?.bDate.ToDateTime(TimeOnly.MinValue) ?? now.Date,
+                        SNoID = detail.SNO > 0 ? detail.SNO : null,
+                        suppres = false
+                    };
+                    paymentDetails.Add(paymentDetail);
+                    context.PaymentDetails.Add(paymentDetail);
+                }
+            }
+            else
             {
                 var paymentDetail = new PaymentDetail
                 {
-                    ReceiptNo   = receiptNo,
-                    billNO      = billNo,
+                    ReceiptNo = receiptNo,
+                    billNO = normalizedBillNo,
                     ReceiptDate = now,
-                    AmountPaid  = detail.subTotal ?? (decimal)(detail.Price * detail.Qty),
-                    AccountNo   = accountNo,
-                    RevType     = detail.Category ?? accountNo,
-                    isPost      = false,
-                    AmountToPay = detail.subTotal ?? (decimal)(detail.Price * detail.Qty),
-                    BillItem    = detail.drgName,
-                    BillDate    = billing.bDate.ToDateTime(TimeOnly.MinValue),
-                    SNoID       = detail.SNO > 0 ? detail.SNO : null,
-                    suppres     = false
+                    AmountPaid = payAmount,
+                    AccountNo = accountNo,
+                    RevType = accountNo,
+                    isPost = false,
+                    AmountToPay = payAmount,
+                    BillItem = paymentFor,
+                    BillDate = billing?.bDate.ToDateTime(TimeOnly.MinValue) ?? now.Date,
+                    suppres = false
                 };
                 paymentDetails.Add(paymentDetail);
                 context.PaymentDetails.Add(paymentDetail);
             }
 
-            // ── 3. PaymentTypes table (payment method record) ────────────────
-            // Single transaction id shared by the receipt's accounting debit & credit legs.
             var tranId = Guid.NewGuid().ToString("N")[..12].ToUpper();
             var paymentType = new PaymentType
             {
-                ReceiptNo   = receiptNo,
-                AmountPaid  = payAmount,
-                PayType     = model.PayType,
+                ReceiptNo = receiptNo,
+                AmountPaid = payAmount,
+                PayType = payType,
                 ReceiptDate = now,
-                isPost      = false,
-                AccountNo   = accountNo,
-                suppres     = false,
-                reversed    = false,
-                EntryDate   = now,
-                EntryTime   = now,
-                ClientName  = patientName,
-                AppName     = "AestheticEMR",
-                TranID      = tranId
+                isPost = false,
+                AccountNo = accountNo,
+                suppres = false,
+                reversed = false,
+                EntryDate = now,
+                EntryTime = now,
+                ClientName = patientName,
+                AppName = "AestheticEMR",
+                TranID = tranId
             };
             context.PaymentTypes.Add(paymentType);
 
-            // ── 4. Update billing.AmountPaid = sum of all receipts for this billNo ──
-            // Sum existing persisted payments plus the one we just staged above.
-            var previouslyPaid = await context.Payments
-                .AsNoTracking()
-                .Where(p => p.billNO == billNo && p.suppres != true && p.ReceiptNo != receiptNo)
-                .SumAsync(p => (decimal?)p.AmountPaid) ?? 0;
+            if (billing is not null)
+            {
+                var previouslyPaid = await context.Payments
+                    .AsNoTracking()
+                    .Where(p => p.billNO == normalizedBillNo && p.suppres != true && p.ReceiptNo != receiptNo)
+                    .SumAsync(p => (decimal?)p.AmountPaid) ?? 0;
 
-            var totalPaid = previouslyPaid + payAmount;
-
-            billing.AmountPaid = totalPaid;
-
-            // Mark as fully paid when balance clears
-            var newBalance = debtBF + amountBilled + tax - discount - totalPaid;
-            billing.isPaid = newBalance <= 0;
+                var totalPaid = previouslyPaid + payAmount;
+                billing.AmountPaid = totalPaid;
+                var newBalance = debtBF + amountBilled + tax - discount - totalPaid;
+                billing.isPaid = newBalance <= 0;
+            }
 
             await context.SaveChangesAsync();
 
-            _logger.LogInformation("Receipt {ReceiptNo} saved for bill {BillNo}", receiptNo, billNo);
+            _logger.LogInformation("Receipt {ReceiptNo} saved for bill {BillNo}", receiptNo, normalizedBillNo);
 
-            // ── 5. Post to Accounting (debit cash/bank, credit receivable) ───
-            // Mirrors the invoice path: same InsertTranxaction sproc. Receipt-first
-            // ordering means an accounting failure leaves the receipt saved/unposted
-            // (re-postable) rather than orphaning a GL entry.
             var posted = await receiptAccountingPostingService.PostReceiptAsync(new ReceiptAccountingPostRequest
             {
-                ReceiptNo           = receiptNo,
-                BillNo              = billNo,
-                TranId              = tranId,
-                PayType             = model.PayType,
-                Amount              = payAmount,
-                EntryDate           = now,
-                CoyId               = billing.clientID ?? defaults.Values.GetValueOrDefault("CoyID", "0001"),
+                ReceiptNo = receiptNo,
+                BillNo = normalizedBillNo,
+                TranId = tranId,
+                PayType = payType,
+                Amount = payAmount,
+                EntryDate = now,
+                CoyId = billing?.clientID ?? vwhRecord?.RetainCode ?? defaults.Values.GetValueOrDefault("CoyID", "0001"),
                 ReceivableAccountNo = vwhRecord?.AcctId,
-                BankAccountNo       = model.AccountNo,
-                PatientName         = patientName
+                BankAccountNo = accountNo,
+                PatientName = patientName
             });
 
             if (posted)
@@ -566,29 +605,22 @@ public class BillingController(
                 _logger.LogInformation("Receipt {ReceiptNo} marked posted to accounting", receiptNo);
             }
 
-            return CreatedAtAction(nameof(GetByBillNo), new { billNo }, new ReceiptSavedVM
+            return CreatedAtAction(nameof(GetByBillNo), new { billNo = normalizedBillNo }, new ReceiptSavedVM
             {
-                ReceiptNo   = receiptNo,
+                ReceiptNo = receiptNo,
                 ReceiptDate = now,
-                AmountPaid  = totalPaid,
-                PayType     = model.PayType
+                AmountPaid = payAmount,
+                PayType = payType
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving receipt for {BillNo}", billNo);
-            AddModelError("Unable to save receipt");
+            AddModelError(ex.GetBaseException().Message);
             return BadRequest(ModelState);
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// List receipts sourced from QryhBillingIncome.
-    /// By default returns current-date records unless includeAll=true.
-    /// When retainId is provided, results are filtered to that company.
-    /// </summary>
     [HttpGet("receipts")]
     [ProducesResponseType(typeof(IEnumerable<QryhBillingIncomeVM>), 200)]
     public async Task<IActionResult> GetReceipts([FromQuery] bool includeAll = false, [FromQuery] string? retainId = null)
@@ -633,6 +665,21 @@ public class BillingController(
                 .OrderByDescending(x => x.ReceiptDate)
                 .ThenByDescending(x => x.RTime)
                 .ToListAsync();
+
+            var receiptNos = rows.Select(x => x.ReceiptNo).Distinct().ToList();
+            var paymentMap = receiptNos.Count == 0
+                ? new Dictionary<string, Payment>(StringComparer.OrdinalIgnoreCase)
+                : await context.Payments
+                    .AsNoTracking()
+                    .Where(x => receiptNos.Contains(x.ReceiptNo) && x.suppres != true)
+                    .ToDictionaryAsync(x => x.ReceiptNo, StringComparer.OrdinalIgnoreCase);
+
+            var paymentTypeMap = receiptNos.Count == 0
+                ? new Dictionary<string, PaymentType>(StringComparer.OrdinalIgnoreCase)
+                : await context.PaymentTypes
+                    .AsNoTracking()
+                    .Where(x => receiptNos.Contains(x.ReceiptNo) && x.suppres != true)
+                    .ToDictionaryAsync(x => x.ReceiptNo, StringComparer.OrdinalIgnoreCase);
 
             // Collect all distinct billNos for a single batch reference check
             var billNos = rows.Select(x => x.BillNo).Distinct().ToList();
@@ -684,35 +731,41 @@ public class BillingController(
             var vms = rows.Select(x =>
             {
                 var hasLiveBilling = billingSnapshotMap.TryGetValue(x.BillNo, out var billing);
+                var payment = paymentMap.GetValueOrDefault(x.ReceiptNo);
+                var paymentType = paymentTypeMap.GetValueOrDefault(x.ReceiptNo);
                 var amountBilled = hasLiveBilling ? billing.AmountBilled : x.AmountBilled;
-                var amountPaid = hasLiveBilling ? billing.AmountPaid : x.AmountPaid;
+                var amountPaid = x.AmountPaid;
                 var tax = hasLiveBilling ? billing.Tax : 0;
                 var balance = hasLiveBilling
-                    ? billing.DebtBf + amountBilled + tax - billing.Discount - amountPaid
+                    ? billing.DebtBf + amountBilled + tax - billing.Discount - (billing.AmountPaid)
                     : (x.Balance ?? 0);
 
                 return new QryhBillingIncomeVM
                 {
                     ReceiptDate = x.ReceiptDate,
-                    RTime       = x.RTime,
-                    ReceiptNo   = x.ReceiptNo,
-                    PNo         = x.Pno,
-                    PaymentFor  = x.PaymentFor,
-                    AmountBilled= amountBilled,
-                    Tax         = tax,
-                    AmountPaid  = amountPaid,
-                    Balance     = balance,
-                    PayType     = x.PayType,
-                    ClinicId    = x.ClinicId,
-                    Fullname    = x.Fullname,
-                    PatNo       = x.PatNo,
-                    ReceivedBy  = x.Receivedby,
-                    BillNo      = x.BillNo,
-                    CoyName     = x.Coyname,
-                    IsPost      = x.IsPost,
-                    Remarks     = x.Remarks,
-                    Suppres     = x.Suppres,
-                    CanDelete   = !referencedBillNos.Contains(x.BillNo)
+                    RTime = x.RTime,
+                    ReceiptNo = x.ReceiptNo,
+                    PNo = x.Pno,
+                    PaymentFor = x.PaymentFor,
+                    AmountBilled = amountBilled,
+                    Tax = tax,
+                    AmountPaid = amountPaid,
+                    Balance = balance,
+                    PayType = x.PayType,
+                    ClinicId = x.ClinicId,
+                    Fullname = x.Fullname,
+                    PatNo = x.PatNo,
+                    ReceivedBy = x.Receivedby,
+                    BillNo = x.BillNo,
+                    CoyName = x.Coyname,
+                    IsPost = x.IsPost,
+                    Remarks = payment?.Remarks ?? x.Remarks,
+                    AccountNo = paymentType?.AccountNo ?? x.AcctId,
+                    ChequeNo = payment?.ChequeNo,
+                    BankCode = payment?.BankCode,
+                    ValueDate = payment?.ValueDate,
+                    Suppres = x.Suppres,
+                    CanDelete = !referencedBillNos.Contains(x.BillNo)
                 };
             }).ToList();
 
@@ -738,22 +791,40 @@ public class BillingController(
 
         try
         {
+            var payTypeValue = (model.PayType ?? string.Empty).Trim();
+            var isCashPayment = string.Equals(payTypeValue, "Cash", StringComparison.OrdinalIgnoreCase);
+            if (!isCashPayment && string.IsNullOrWhiteSpace(model.AccountNo))
+            {
+                AddModelError("Bank Account is required for non-cash payment.");
+                return BadRequest(ModelState);
+            }
+
             var payment = await context.Payments.FirstOrDefaultAsync(p => p.ReceiptNo == receiptNo);
             if (payment is null)
                 return NotFound(receiptNo);
 
-            payment.payType    = model.PayType;
-            payment.Remarks    = model.Remarks;
+            payment.payType = payTypeValue;
+            payment.Remarks = model.Remarks;
             payment.Receivedby = model.ReceivedBy;
-            payment.ChequeNo   = model.ChequeNo;
-            payment.BankCode   = model.BankCode;
-            payment.ValueDate  = model.ValueDate;
+            payment.ChequeNo = model.ChequeNo;
+            payment.BankCode = model.BankCode;
+            payment.ValueDate = model.ValueDate;
             payment.ChequeDate = model.ValueDate;
 
-            // Mirror update into PaymentTypes row for this receipt
             var payType = await context.PaymentTypes.FirstOrDefaultAsync(pt => pt.ReceiptNo == receiptNo);
             if (payType is not null)
-                payType.PayType = model.PayType;
+            {
+                payType.PayType = payTypeValue;
+                payType.AccountNo = model.AccountNo?.Trim();
+            }
+
+            var paymentDetails = await context.PaymentDetails
+                .Where(pd => pd.ReceiptNo == receiptNo)
+                .ToListAsync();
+            foreach (var paymentDetail in paymentDetails)
+            {
+                paymentDetail.AccountNo = model.AccountNo?.Trim() ?? paymentDetail.AccountNo;
+            }
 
             await context.SaveChangesAsync();
 
@@ -763,61 +834,51 @@ public class BillingController(
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating receipt {ReceiptNo}", receiptNo);
-            AddModelError("Unable to update receipt");
+            AddModelError(ex.GetBaseException().Message);
             return BadRequest(ModelState);
         }
     }
 
-    /// <summary>Delete (suppress) a receipt — blocked when billNo is still referenced in operational tables.</summary>
-    [HttpDelete("receipts/{receiptNo}")]
-    [ProducesResponseType(204)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(404)]
-    [ProducesResponseType(422)]
-    public async Task<IActionResult> DeleteReceipt(string receiptNo)
+    private static List<decimal> AllocatePayment(decimal totalAmount, IList<decimal> lineAmounts)
     {
-        try
+        var allocations = Enumerable.Repeat(0m, lineAmounts.Count).ToList();
+        if (totalAmount <= 0 || lineAmounts.Count == 0)
         {
-            var payment = await context.Payments.FirstOrDefaultAsync(p => p.ReceiptNo == receiptNo);
-            if (payment is null)
-                return NotFound(receiptNo);
+            return allocations;
+        }
 
-            var billNo = payment.billNO;
+        var totalLineAmount = lineAmounts.Sum();
+        if (totalLineAmount <= 0)
+        {
+            allocations[0] = totalAmount;
+            return allocations;
+        }
 
-            // Reference guard: block deletion when consultId is in use
-            var isReferenced =
-                await context.HRecords.AnyAsync(x => x.ConsultId == billNo && x.Suppres != true) ||
-                await context.Billings.AnyAsync(x => x.billNO == billNo) ||
-                await context.HDentals.AnyAsync(x => x.ConsultId == billNo) ||
-                await context.HConsultings.AnyAsync(x => x.ConsultId == billNo);
-
-            if (isReferenced)
+        decimal allocatedSoFar = 0;
+        for (var i = 0; i < lineAmounts.Count; i++)
+        {
+            var lineAmount = Math.Max(0, lineAmounts[i]);
+            decimal allocated;
+            if (i == lineAmounts.Count - 1)
             {
-                AddModelError($"Receipt cannot be deleted: Bill No '{billNo}' is still referenced in operational records (attendance, billing, dental, or consulting).");
-                return UnprocessableEntity(ModelState);
+                allocated = totalAmount - allocatedSoFar;
+            }
+            else
+            {
+                allocated = Math.Round(totalAmount * (lineAmount / totalLineAmount), 2, MidpointRounding.AwayFromZero);
+                allocated = Math.Min(allocated, totalAmount - allocatedSoFar);
             }
 
-            // Soft-delete
-            payment.suppres = true;
-
-            // Also suppress linked PaymentTypes rows
-            var payTypes = await context.PaymentTypes
-                .Where(pt => pt.ReceiptNo == receiptNo)
-                .ToListAsync();
-            foreach (var pt in payTypes)
-                pt.suppres = true;
-
-            await context.SaveChangesAsync();
-
-            _logger.LogInformation("Receipt {ReceiptNo} suppressed", receiptNo);
-            return NoContent();
+            allocations[i] = allocated;
+            allocatedSoFar += allocated;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting receipt {ReceiptNo}", receiptNo);
-            AddModelError("Unable to delete receipt");
-            return BadRequest(ModelState);
-        }
+
+        return allocations;
+    }
+
+    private static string AmountToWords(decimal amount)
+    {
+        return amount.ToString("N2", CultureInfo.InvariantCulture);
     }
 
     [HttpGet("vwh-record/{consultId}")]
@@ -827,27 +888,29 @@ public class BillingController(
     {
         try
         {
+            var normalizedConsultId = consultId?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedConsultId))
+            {
+                return NotFound(consultId);
+            }
+
             var record = await context.VwhRecords
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.ConsultId == consultId);
+                .FirstOrDefaultAsync(x => x.ConsultId == normalizedConsultId);
 
             if (record is null)
                 return NotFound(consultId);
 
-            // Load patient photo from HPatient table
             string? patientPhoto = null;
-            if (!string.IsNullOrEmpty(record.PNo))
+            if (!string.IsNullOrWhiteSpace(record.PNo))
             {
                 var patient = await context.HPatients
                     .AsNoTracking()
-                    .Where(p => p.Pno == record.PNo)
-                    .FirstOrDefaultAsync();
-                
+                    .FirstOrDefaultAsync(p => p.Pno == record.PNo);
+
                 if (patient?.PatPix != null && patient.PatPix.Length > 0)
                 {
-                    // Convert byte array to base64 data URI
-                    string base64String = Convert.ToBase64String(patient.PatPix);
-                    patientPhoto = $"data:image/jpeg;base64,{base64String}";
+                    patientPhoto = $"data:image/jpeg;base64,{Convert.ToBase64String(patient.PatPix)}";
                 }
             }
 
@@ -872,87 +935,6 @@ public class BillingController(
         {
             _logger.LogError(ex, "Error retrieving VwhRecord summary for {ConsultId}", consultId);
             AddModelError("Unable to retrieve attendance summary");
-            return BadRequest(ModelState);
-        }
-    }
-
-    private static string AmountToWords(decimal amount)
-    {
-        // Simple implementation: "{amount:N2} only"
-        // Replace with a proper currency-words library if needed.
-        var absAmt = Math.Abs(amount);
-        return $"{absAmt:N2} only";
-    }
-
-    /// <summary>
-    /// Returns bank accounts from vwAccountsInfo for bank-account selection on receipts.
-    /// Excludes the cash account (Acct_Cash) since that is selected implicitly for Cash payments.
-    /// </summary>
-    [HttpGet("bank-accounts")]
-    [ProducesResponseType(typeof(IEnumerable<BankAccountVM>), 200)]
-    public async Task<IActionResult> GetBankAccounts()
-    {
-        try
-        {
-            var defaults = await emrAppDefaultsService.GetAsync();
-            var acctBanks = defaults.Get("Acct_Banks");
-
-            var accountingConnStr = configuration.GetConnectionString("AccountingConnection")
-                ?? throw new InvalidOperationException("AccountingConnection is not configured.");
-
-            var accounts = new List<BankAccountVM>();
-            await using var conn = new SqlConnection(accountingConnStr);
-            await conn.OpenAsync();
-            const string sql = "SELECT DISTINCT AccountName, AccountNo FROM vwAccountsInfo WHERE GroupId = @AcctBanks ORDER BY AccountName";
-            await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@AcctBanks", acctBanks ?? string.Empty);
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                accounts.Add(new BankAccountVM
-                {
-                    AccountName = reader.GetString(0),
-                    AccountId   = reader.GetString(1)
-                });
-            }
-
-            return Ok(accounts);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving bank accounts");
-            AddModelError("Unable to retrieve bank accounts");
-            return BadRequest(ModelState);
-        }
-    }
-
-    /// <summary>
-    /// Returns the credit account ID (AcctId) from the PRIVATE company row in hRetainership.
-    /// </summary>
-    [HttpGet("private-credit-account")]
-    [ProducesResponseType(typeof(string), 200)]
-    [ProducesResponseType(404)]
-    public async Task<IActionResult> GetPrivateCreditAccount()
-    {
-        try
-        {
-            var defaults = await emrAppDefaultsService.GetAsync();
-            var privateCategory = defaults.ClientCategoryPrivate; // "PRIVATE"
-
-            var retainership = await context.HRetainerships
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.RetainName != null &&
-                    r.RetainName.Trim().ToUpper() == privateCategory.ToUpper());
-
-            if (retainership is null)
-                return NotFound("PRIVATE retainership not found");
-
-            return Ok(retainership.AcctId ?? string.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving private credit account");
-            AddModelError("Unable to retrieve private credit account");
             return BadRequest(ModelState);
         }
     }

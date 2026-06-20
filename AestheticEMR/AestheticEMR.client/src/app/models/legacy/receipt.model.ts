@@ -17,6 +17,10 @@ export interface Receipt {
   coyName?: string;
   isPost?: boolean;
   remarks?: string;
+  accountNo?: string;
+  chequeNo?: string;
+  bankCode?: string;
+  valueDate?: string;
   suppres?: boolean;
   canDelete?: boolean;
 }

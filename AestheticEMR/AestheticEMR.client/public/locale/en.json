@@ -21,6 +21,17 @@
       "Cancel": "Cancel"
     }
   },
+  "billingReceipts": {
+    "ReceiptModeTitle": "Receipt mode",
+    "ReceiptModeMessage": "Saving will issue a receipt for",
+    "DepositModeTitle": "Deposit mode",
+    "DepositModeMessage": "Saving will accept a deposit of",
+    "Via": "via",
+    "Saving": "Saving...",
+    "IssueReceipt": "Issue Receipt",
+    "AcceptDeposit": "Accept Deposit",
+    "UpdateReceipt": "Update Receipt"
+  },
   "mainMenu": {
     "Appointments": "Appointments",
     "Customers": "Customers",

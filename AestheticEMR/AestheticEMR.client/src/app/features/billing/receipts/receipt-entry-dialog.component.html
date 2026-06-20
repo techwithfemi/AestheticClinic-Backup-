@@ -92,7 +92,7 @@
       <div class="amount-col">
         <div class="exact-amount-row">
           <span class="exact-amount-lbl">Tick to enter exact amount</span>
-          <mat-checkbox color="primary" (change)="onExactAmountToggle($event.checked)"></mat-checkbox>
+          <mat-checkbox color="primary" [checked]="isExactAmountChecked" (change)="onExactAmountToggle($event.checked)"></mat-checkbox>
         </div>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Amount to Pay</mat-label>
@@ -100,6 +100,8 @@
                  [placeholder]="fmt(billingSummary?.balance ?? 0)"
                  (blur)="formatAmountToPay()" />
           <mat-icon matPrefix>payments</mat-icon>
+          <mat-error *ngIf="form.hasError('amountRequired')">Amount to Pay is required.</mat-error>
+          <mat-error *ngIf="form.hasError('amountInvalid')">Amount to Pay must be greater than zero.</mat-error>
         </mat-form-field>
       </div>
 
@@ -123,6 +125,7 @@
         </mat-option>
       </mat-select>
       <mat-icon matPrefix>account_balance</mat-icon>
+      <mat-error *ngIf="form.hasError('bankAccountRequired')">Bank Account is required for non-cash payment.</mat-error>
     </mat-form-field>
 
     <div class="form-row-2">
@@ -161,11 +164,19 @@
   </form>
 
   <!-- ── Receipt preview notice ────────────────────────────────── -->
-  <div class="receipt-notice" *ngIf="billingSummary && !isEditMode">
-    <mat-icon class="notice-icon">info</mat-icon>
-    Saving will issue a receipt for
-    <strong>{{ fmt(parseAmountToPay() || billingSummary.balance) }}</strong>
-    via <strong>{{ form.get('payType')?.value || '—' }}</strong>.
+  <div class="receipt-notice" *ngIf="!isEditMode">
+    <mat-icon class="notice-icon">{{ isDepositMode ? 'savings' : 'info' }}</mat-icon>
+    <div class="notice-copy">
+      <div class="notice-title">
+        {{ (isDepositMode ? 'billingReceipts.DepositModeTitle' : 'billingReceipts.ReceiptModeTitle') | translate }}
+      </div>
+      <div>
+        {{ (isDepositMode ? 'billingReceipts.DepositModeMessage' : 'billingReceipts.ReceiptModeMessage') | translate }}
+        <strong>{{ fmt(parseAmountToPay()) }}</strong>
+        {{ 'billingReceipts.Via' | translate }}
+        <strong>{{ form.get('payType')?.value || '—' }}</strong>.
+      </div>
+    </div>
   </div>
 
 </mat-dialog-content>
@@ -178,6 +189,6 @@
           [disabled]="form.invalid || isSaving || isLoadingBilling"
           (click)="save()">
     <mat-icon>{{ isEditMode ? 'update' : 'save' }}</mat-icon>
-    {{ isSaving ? 'Saving…' : (isEditMode ? 'Update Receipt' : 'Issue Receipt') }}
+    {{ saveActionLabel | translate }}
   </button>
 </mat-dialog-actions>

@@ -231,7 +231,7 @@ quickapp.client/src/app/
 
 ### Reusable Components
 
-**Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`.
+**Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`. **AttendanceSummaryComponent is the sole source of truth for the receipt dialog header, and no extra patient photo lookup from HPatients should be added for that header flow.** However, it is acceptable to load the patient photo from HPatients and supply it to AttendanceSummaryComponent for the receipt dialog attendance header flow.
 
 ### Services
 

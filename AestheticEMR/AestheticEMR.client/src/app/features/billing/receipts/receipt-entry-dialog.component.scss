@@ -290,6 +290,16 @@ h2[mat-dialog-title] {
     color: #2e7d32;
     flex-shrink: 0;
   }
+
+  .notice-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .notice-title {
+    font-weight: 700;
+  }
 }
 
 /* ── Receipt meta (edit mode) ──────────────────────── */
