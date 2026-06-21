@@ -188,14 +188,14 @@ export class AccountEndpoint extends EndpointBase {
   }
 
   getForgotPasswordEndpoint<T>(payload: object): Observable<T> {
-    return this.http.post<T>(this.forgotPasswordUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+    return this.http.post<T>(this.forgotPasswordUrl, JSON.stringify(payload), this.anonymousHeaders).pipe(
       catchError(error => {
         return this.handleError(error, () => this.getForgotPasswordEndpoint<T>(payload));
       }));
   }
 
   getResetPasswordEndpoint<T>(payload: object): Observable<T> {
-    return this.http.post<T>(this.resetPasswordUrl, JSON.stringify(payload), this.requestHeaders).pipe(
+    return this.http.post<T>(this.resetPasswordUrl, JSON.stringify(payload), this.anonymousHeaders).pipe(
       catchError(error => {
         return this.handleError(error, () => this.getResetPasswordEndpoint<T>(payload));
       }));

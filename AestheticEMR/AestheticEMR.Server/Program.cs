@@ -392,25 +392,38 @@ if (effectiveMode == "MessageBusEventualSync")
 
 /************* SEED DATABASE *************/
 
-if (!app.Configuration.GetValue("DatabaseSeeding:Enabled", true))
-{
-    app.Logger.LogInformation("Database seeding is disabled by configuration.");
-    app.Run();
-    return;
-}
+var enableDatabaseMigrations = app.Configuration.GetValue("DatabaseMigrations:Enabled", true);
+var enableDatabaseSeeding = app.Configuration.GetValue("DatabaseSeeding:Enabled", true);
 
 using var scope = app.Services.CreateScope();
 try
 {
-    var dbSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
-    await dbSeeder.SeedAsync();
+    if (enableDatabaseMigrations)
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
+    else
+    {
+        app.Logger.LogInformation("Database migrations are disabled by configuration.");
+    }
 
-    await OidcServerConfig.RegisterClientApplicationsAsync(scope.ServiceProvider);
+    if (enableDatabaseSeeding)
+    {
+        var dbSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
+        await dbSeeder.SeedAsync();
+
+        await OidcServerConfig.RegisterClientApplicationsAsync(scope.ServiceProvider);
+    }
+    else
+    {
+        app.Logger.LogInformation("Database seeding is disabled by configuration.");
+    }
 }
 catch (Exception ex)
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogCritical(ex, "An error occurred whilst creating/seeding database");
+    logger.LogCritical(ex, "An error occurred whilst applying migrations and/or seeding database");
 
     throw;
 }

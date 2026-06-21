@@ -41,6 +41,15 @@ export class EndpointBase {
     return { headers };
   }
 
+  protected get anonymousHeaders(): { headers: HttpHeaders | Record<string, string | string[]> } {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/plain, */*'
+    });
+
+    return { headers };
+  }
+
   protected get uploadHeaders(): { headers: HttpHeaders | Record<string, string | string[]> } {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.authService.accessToken}`,

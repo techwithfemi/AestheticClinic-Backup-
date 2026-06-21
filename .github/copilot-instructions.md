@@ -370,6 +370,10 @@ When adding Google login or any external authentication buttons to login/auth ca
 3. ✅ Keep card border explicit (`border-style`, `border-width`, `border-color`) so it remains consistent across breakpoints
 4. ❌ Do not use negative margins or overflow-breaking positioning that can clip or visually break the card border
 
+### Configuration Management
+
+When introducing new configuration keys, also update the base `appsettings.json` alongside environment-specific files.
+
 
 
 

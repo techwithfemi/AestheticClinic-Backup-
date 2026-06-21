@@ -20,7 +20,6 @@ namespace AestheticEMR.Core.Infrastructure
     {
         public async Task SeedAsync()
         {
-            await dbContext.Database.MigrateAsync();
             await SeedDefaultUsersAsync();
             await SeedConsentTemplatesAsync();
             await SeedDemoDataAsync();

@@ -469,5 +469,47 @@ namespace AestheticEMR.Server.Controllers
 
             return userVM;
         }
+
+        [HttpPost("test-email")]
+        [AllowAnonymous]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> TestEmailSending([FromQuery] string recipientEmail)
+        {
+            if (string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                AddModelError("recipientEmail query parameter is required");
+                return BadRequest(ModelState);
+            }
+
+            _logger.LogInformation("Testing email sending to {RecipientEmail}", recipientEmail);
+
+            var testBody = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+</head>
+<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h2 style='color: #2c3e50;'>Email Test</h2>
+        <p>This is a test email from VCP Aesthetic Clinic.</p>
+        <p>If you receive this, your email configuration is working correctly!</p>
+        <p>Sent at: " + DateTime.Now + @"</p>
+    </div>
+</body>
+</html>";
+
+            var result = await _userAccountService.SendTestEmailAsync(recipientEmail, testBody);
+
+            if (!result.Succeeded)
+            {
+                AddModelError(string.Join(", ", result.Errors));
+                return BadRequest(ModelState);
+            }
+
+            return Ok(new { message = "Test email sent successfully", recipient = recipientEmail });
+        }
     }
 }

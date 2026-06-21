@@ -250,12 +250,67 @@ namespace AestheticEMR.Core.Services.Account
             }
 
             var recipientName = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName ?? "User" : user.FullName;
-            var body = $"Hello {recipientName},<br/><br/>Use the link below to reset your password:<br/><a href=\"{resetUrl}\">Reset password</a><br/><br/>If you didn't request this, you can ignore this email.";
+            var body = BuildPasswordResetEmailBody(recipientName, resetUrl);
 
             var result = await _emailSender.SendEmailAsync(recipientName, user.Email!, "Password Reset Request", body, true);
 
             if (!result.success)
                 return (false, [result.errorMsg ?? "Unable to send password reset email"]);
+
+            return (true, []);
+        }
+
+        private string BuildPasswordResetEmailBody(string recipientName, string resetUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+</head>
+<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h2 style='color: #2c3e50;'>Password Reset Request</h2>
+        
+        <p>Hello {recipientName},</p>
+        
+        <p>We received a request to reset your password for your account. If you made this request, please click the button below to proceed:</p>
+        
+        <div style='text-align: center; margin: 30px 0;'>
+            <a href='{resetUrl}' style='background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>Reset Your Password</a>
+        </div>
+        
+        <p>Or copy and paste this link in your browser:</p>
+        <p style='word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 3px;'>{resetUrl}</p>
+        
+        <p style='color: #e74c3c;'><strong>Important Security Note:</strong></p>
+        <ul>
+            <li>This link will expire in 24 hours</li>
+            <li>If you did not request this password reset, please ignore this email and your password will remain unchanged</li>
+            <li>Never share your password reset link with anyone</li>
+        </ul>
+        
+        <p>Best regards,<br/>
+        <strong>VCP Aesthetic Clinic Team</strong></p>
+        
+        <hr style='border: none; border-top: 1px solid #ddd; margin: 30px 0;'>
+        
+        <p style='font-size: 12px; color: #888;'>
+            This is an automated email. Please do not reply directly to this message.<br/>
+            If you have questions, please contact our support team.
+        </p>
+    </div>
+</body>
+</html>";
+        }
+
+        public async Task<(bool Succeeded, string[] Errors)> SendTestEmailAsync(string recipientEmail, string htmlBody)
+        {
+            var result = await _emailSender.SendEmailAsync("Test User", recipientEmail, "Test Email", htmlBody, true);
+
+            if (!result.success)
+                return (false, [result.errorMsg ?? "Unable to send test email"]);
 
             return (true, []);
         }
