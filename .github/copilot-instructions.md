@@ -361,6 +361,15 @@ For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBi
 
 - For receipt bank account dropdown, always use `vwAccountsInfo` in Accounting DB as the single source of truth, filter by `emrAppDefaults Acct_Banks` using case/trim-safe `GroupId` matching, use `AccountNo` as account id, and do not use `hRevenueTypes` fallback. In this flow, `AccountNo`, `AccountId`, and `AccountName` are expected to be non-empty after that bank-group filter.
 
+### Login/Auth Card UI Rule
+
+When adding Google login or any external authentication buttons to login/auth cards:
+
+1. ✅ Keep buttons inside the card content container only
+2. ✅ Use `width: 100%`, `max-width: 100%`, and `box-sizing: border-box` on external-login button containers
+3. ✅ Keep card border explicit (`border-style`, `border-width`, `border-color`) so it remains consistent across breakpoints
+4. ❌ Do not use negative margins or overflow-breaking positioning that can clip or visually break the card border
+
 
 
 

@@ -1,47 +1,210 @@
-.boxshadow {
-  position: relative;
-  /*box-shadow: 1px 2px 4px rgba(0, 0, 0, .5);*/
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  padding: 10px;
-  background: white;
+.login-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.75rem, 2vw, 2rem);
+  background: #ffffff;
 }
 
-.boxshadow::after {
-  content: '';
-  position: absolute;
-  z-index: -1; /* hide shadow behind image */
-  box-shadow: 0 15px 20px rgba(0, 0, 0, 0.3);
-  width: 70%;
-  left: 15%; /* one half of the remaining 30% */
-  height: 100px;
-  bottom: 0;
+.login-card {
+  width: min(100%, 520px);
+  box-sizing: border-box;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #ffffff !important;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #3f51b5;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
 }
 
-.card-header {
-  padding: 0.75rem 1.25rem;
+.login-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem) 0.75rem;
 
-  .btn-close {
-    height: 1rem;
+  h2 {
+    margin: 0;
+    font-size: clamp(1.2rem, 1.8vw, 1.4rem);
+    font-weight: 600;
+    color: #1f2a44;
+    line-height: 1.2;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: clamp(0.85rem, 1.3vw, 0.92rem);
+    line-height: 1.35;
   }
 }
 
-.last-control-group {
-  margin-bottom: -0.75rem;
+.login-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.75rem;
 }
 
-.h-90 {
-  height: 90%;
+.login-title-wrap > div {
+  display: block;
 }
 
+.login-title-icon {
+  color: #3f51b5;
+  background: rgba(63, 81, 181, 0.12);
+  border-radius: 999px;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -0.12rem;
+}
 
-@media (min-width: 768px) {
-  .login-container {
-    width: 670px;
+.login-title-glyph {
+  font-size: 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  line-height: 1.25rem;
+  transform: translateY(-0.14rem);
+}
+
+.login-content {
+  padding: 0.75rem clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem);
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.35rem 0 1rem;
+}
+
+.submit-btn,
+.dual-actions button {
+  min-height: 44px;
+}
+
+.submit-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.dual-actions {
+  display: flex;
+  gap: 0.75rem;
+
+  button {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
 }
 
-@media (min-width: 1200px) {
-  .login-container {
-    width: 700px;
+/* Phones */
+@media (max-width: 576px) {
+  .login-card {
+    width: 100%;
+    border-radius: 0.875rem;
   }
+
+  .row-actions,
+  .dual-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .row-actions {
+    margin-top: 0.15rem;
+  }
+
+  .login-title-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .login-title-glyph {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    line-height: 1.1rem;
+    transform: translateY(-0.12rem);
+  }
+}
+
+/* Tablets */
+@media (min-width: 577px) and (max-width: 991px) {
+  .login-card {
+    width: min(100%, 560px);
+  }
+}
+
+/* Large desktops */
+@media (min-width: 1400px) {
+  .login-card {
+    width: min(100%, 560px);
+  }
+}
+
+:host ::ng-deep .login-card .mat-mdc-form-field {
+  width: 100%;
+}
+
+:host ::ng-deep .login-card .mat-mdc-text-field-wrapper {
+  background-color: #ffffff;
+}
+
+:host ::ng-deep .login-card .mdc-notched-outline__leading,
+:host ::ng-deep .login-card .mdc-notched-outline__notch,
+:host ::ng-deep .login-card .mdc-notched-outline__trailing {
+  border-color: #cfd8e3 !important;
+}
+
+:host ::ng-deep .login-card .mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+:host ::ng-deep .login-card .mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+:host ::ng-deep .login-card .mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: #3f51b5 !important;
+  border-width: 2px;
+}
+
+:host ::ng-deep .login-card input:-webkit-autofill,
+:host ::ng-deep .login-card input:-webkit-autofill:hover,
+:host ::ng-deep .login-card input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+.external-login-section {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.external-login-section:empty {
+  display: none;
+}
+
+.external-login-btn {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border-radius: 999px;
 }

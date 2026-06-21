@@ -5,11 +5,17 @@
 // ---------------------------------------
 
 import { Component, OnInit, OnDestroy, Input, inject } from '@angular/core';
-import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AlertService, MessageSeverity, DialogType } from '../../services/alert.service';
 import { AuthService } from '../../services/auth.service';
@@ -22,7 +28,17 @@ import { AccountService } from '../../services/account.service';
     selector: 'app-login',
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
-    imports: [FormsModule, NgClass, TranslateModule]
+    imports: [
+      FormsModule,
+      TranslateModule,
+      MatCardModule,
+      MatFormFieldModule,
+      MatInputModule,
+      MatCheckboxModule,
+      MatButtonModule,
+      MatIconModule,
+      MatProgressSpinnerModule
+    ]
 })
 
 export class LoginComponent implements OnInit, OnDestroy {
@@ -45,6 +61,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   resetPasswordConfirmation = '';
   isForgotPasswordMode = false;
   isResetPasswordMode = false;
+  hidePassword = true;
+  hideResetPassword = true;
+  hideResetPasswordConfirmation = true;
 
   @Input()
   isModal = false;

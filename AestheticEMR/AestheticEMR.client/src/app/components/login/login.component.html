@@ -1,149 +1,162 @@
-<div class="d-flex h-90">
-  <div class="login-container m-auto">
-    <div class="card boxshadow">
-      <div class="card-header bg-primary text-white">
-        <i class="fa fa-lock" aria-hidden="true"></i>
-        @if (isForgotPasswordMode) {
-          Forgot Password
-        } @else if (isResetPasswordMode) {
-          Reset Password
-        } @else {
-          Login
-        }
-        @if (isModal) {
-          <button type="button" class="btn-close btn-close-white fs-sm float-end" aria-label="Close"
-                  (click)="closeModal()" tabindex="-1"></button>
-        }
-      </div>
-      <div class="card-body">
-        <div class="col-md-10 offset-md-1 px-md-3">
-          @if (formResetToggle) {
-            @if (!isForgotPasswordMode && !isResetPasswordMode) {
-              <form class="login" name="loginForm" #f="ngForm" novalidate
-                    (ngSubmit)="f.form.valid ? login() :
-                              (!username.valid && showErrorAlert('Username is required', 'Please enter a valid username'));
-                              (!password.valid && showErrorAlert('Password is required', 'Please enter a valid password'))">
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="login-username">Username:</label>
-                  <div class="col-md-8">
-                    <input type="text" id="login-username" name="username" placeholder="Enter username"
-                           autocomplete="username" class="form-control"
-                           [ngClass]="{'is-valid': f.submitted && username.valid, 'is-invalid' : f.submitted && !username.valid}"
-                           [(ngModel)]="userLogin.userName" #username="ngModel" required />
-                    @if (f.submitted && !username.valid) {
-                      <span class="invalid-feedback">
-                        Username is required
-                      </span>
-                    }
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="login-password">Password:</label>
-                  <div class="col-md-8">
-                    <input type="password" id="login-password" name="password" placeholder="Enter password"
-                           autocomplete="current-password" class="form-control"
-                           [ngClass]="{'is-valid': f.submitted && password.valid, 'is-invalid' : f.submitted && !password.valid}"
-                           [(ngModel)]="userLogin.password" #password="ngModel" required />
-                    @if (f.submitted && !password.valid) {
-                      <span class="invalid-feedback">
-                        Password is required
-                      </span>
-                    }
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <div class="offset-md-4 col-md-8">
-                    <div class="form-check">
-                      <input type="checkbox" class="form-check-input" id="login-rememberme" name="rememberMe"
-                             [(ngModel)]="userLogin.rememberMe">
-                      <label class="form-check-label" for="login-rememberme">Remember me</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <div class="offset-md-4 col-md-8">
-                    <button type="button" class="btn btn-link px-0" (click)="openForgotPassword()" [disabled]="isLoading">
-                      Forgot password?
-                    </button>
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <div class="offset-md-4 col-md-8">
-                    <div class="d-flex align-items-stretch">
-                      <button type="submit" class="btn btn-primary text-nowrap" [disabled]="isLoading">
-                        @if (isLoading) {
-                          <i class='fa fa-circle-o-notch fa-spin'></i> {{'Logging in...'}}
-                        }
-                        @else {
-                          {{'Login'}}
-                        }
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            } @else if (isForgotPasswordMode) {
-              <form class="login" name="forgotPasswordForm" #fp="ngForm" novalidate
-                    (ngSubmit)="fp.form.valid ? sendResetPasswordLink() : showErrorAlert('Username/email is required', 'Please enter a valid username or email address')">
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="forgot-user">Username/Email:</label>
-                  <div class="col-md-8">
-                    <input type="text" id="forgot-user" name="forgotUser" placeholder="Enter username or email"
-                           class="form-control"
-                           [ngClass]="{'is-valid': fp.submitted && forgotUser.valid, 'is-invalid' : fp.submitted && !forgotUser.valid}"
-                           [(ngModel)]="forgotPasswordUserNameOrEmail" #forgotUser="ngModel" required />
-                    @if (fp.submitted && !forgotUser.valid) {
-                      <span class="invalid-feedback">Username or email is required</span>
-                    }
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <div class="offset-md-4 col-md-8 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary" [disabled]="isLoading">
-                      @if (isLoading) { <i class='fa fa-circle-o-notch fa-spin'></i> Processing... } @else { Send reset link }
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" (click)="cancelPasswordRecovery()" [disabled]="isLoading">Cancel</button>
-                  </div>
-                </div>
-              </form>
-            } @else {
-              <form class="login" name="resetPasswordForm" #rp="ngForm" novalidate
-                    (ngSubmit)="rp.form.valid ? submitResetPassword() : showErrorAlert('Password reset form is invalid', 'Please complete all required fields')">
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="reset-user">Username/Email:</label>
-                  <div class="col-md-8">
-                    <input type="text" id="reset-user" name="resetUser" class="form-control"
-                           [(ngModel)]="resetPasswordUserNameOrEmail" #resetUser="ngModel" required />
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="reset-password">New Password:</label>
-                  <div class="col-md-8">
-                    <input type="password" id="reset-password" name="resetPassword" class="form-control"
-                           minlength="6"
-                           [(ngModel)]="resetPassword" #resetPasswordModel="ngModel" required />
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <label class="col-form-label text-md-end col-md-4" for="reset-password-confirm">Confirm Password:</label>
-                  <div class="col-md-8">
-                    <input type="password" id="reset-password-confirm" name="resetPasswordConfirm" class="form-control"
-                           [(ngModel)]="resetPasswordConfirmation" #resetPasswordConfirmModel="ngModel" required />
-                  </div>
-                </div>
-                <div class="mb-3 row">
-                  <div class="offset-md-4 col-md-8 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary" [disabled]="isLoading">
-                      @if (isLoading) { <i class='fa fa-circle-o-notch fa-spin'></i> Saving... } @else { Submit }
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" (click)="cancelPasswordRecovery()" [disabled]="isLoading">Cancel</button>
-                  </div>
-                </div>
-              </form>
-            }
+<div class="login-page">
+  <mat-card class="login-card mat-elevation-z8">
+    <div class="login-header">
+      <div class="login-title-wrap">
+        <span class="login-title-icon" aria-hidden="true">
+          <mat-icon class="login-title-glyph">lock</mat-icon>
+        </span>
+        <div>
+          @if (isForgotPasswordMode) {
+            <h2>Forgot Password</h2>
+            <p>Recover account access securely</p>
+          } @else if (isResetPasswordMode) {
+            <h2>Reset Password</h2>
+            <p>Set your new password to continue</p>
+          } @else {
+            <h2>Welcome Back</h2>
+            <p>Sign in to continue to your dashboard</p>
           }
         </div>
       </div>
+
+      @if (isModal) {
+        <button type="button" mat-icon-button (click)="closeModal()" tabindex="-1" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </div>
-  </div>
+
+    <div class="login-content">
+      @if (formResetToggle) {
+        @if (!isForgotPasswordMode && !isResetPasswordMode) {
+          <form name="loginForm" #f="ngForm" novalidate
+                (ngSubmit)="f.form.valid ? login() :
+                            (!username.valid && showErrorAlert('Username is required', 'Please enter a valid username'));
+                            (!password.valid && showErrorAlert('Password is required', 'Please enter a valid password'))">
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Username</mat-label>
+              <input matInput type="text" id="login-username" name="username" placeholder="Enter username"
+                     autocomplete="username" [(ngModel)]="userLogin.userName" #username="ngModel" required />
+              <mat-icon matSuffix>person</mat-icon>
+              @if (f.submitted && !username.valid) {
+                <mat-error>Username is required</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Password</mat-label>
+              <input matInput [type]="hidePassword ? 'password' : 'text'" id="login-password" name="password"
+                     placeholder="Enter password" autocomplete="current-password"
+                     [(ngModel)]="userLogin.password" #password="ngModel" required />
+              <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword"
+                      [attr.aria-label]="hidePassword ? 'Show password' : 'Hide password'">
+                <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+              </button>
+              @if (f.submitted && !password.valid) {
+                <mat-error>Password is required</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="row-actions">
+              <mat-checkbox id="login-rememberme" name="rememberMe" [(ngModel)]="userLogin.rememberMe">
+                Remember me
+              </mat-checkbox>
+              <button type="button" mat-button color="primary" (click)="openForgotPassword()" [disabled]="isLoading">
+                Forgot password?
+              </button>
+            </div>
+
+            <button type="submit" mat-flat-button color="primary" class="submit-btn" [disabled]="isLoading">
+              @if (isLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Logging in...</span>
+              } @else {
+                <span>Login</span>
+              }
+            </button>
+
+            <div class="external-login-section" aria-label="External login providers"></div>
+          </form>
+        } @else if (isForgotPasswordMode) {
+          <form name="forgotPasswordForm" #fp="ngForm" novalidate
+                (ngSubmit)="fp.form.valid ? sendResetPasswordLink() : showErrorAlert('Username/email is required', 'Please enter a valid username or email address')">
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Username / Email</mat-label>
+              <input matInput type="text" id="forgot-user" name="forgotUser" placeholder="Enter username or email"
+                     [(ngModel)]="forgotPasswordUserNameOrEmail" #forgotUser="ngModel" required />
+              <mat-icon matSuffix>mail</mat-icon>
+              @if (fp.submitted && !forgotUser.valid) {
+                <mat-error>Username or email is required</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="dual-actions">
+              <button type="submit" mat-flat-button color="primary" [disabled]="isLoading">
+                @if (isLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                  <span>Processing...</span>
+                } @else {
+                  <mat-icon>send</mat-icon>
+                  <span>Send reset link</span>
+                }
+              </button>
+              <button type="button" mat-stroked-button (click)="cancelPasswordRecovery()" [disabled]="isLoading">
+                Cancel
+              </button>
+            </div>
+          </form>
+        } @else {
+          <form name="resetPasswordForm" #rp="ngForm" novalidate
+                (ngSubmit)="rp.form.valid ? submitResetPassword() : showErrorAlert('Password reset form is invalid', 'Please complete all required fields')">
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Username / Email</mat-label>
+              <input matInput type="text" id="reset-user" name="resetUser" [(ngModel)]="resetPasswordUserNameOrEmail"
+                     #resetUser="ngModel" required />
+              <mat-icon matSuffix>person</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>New Password</mat-label>
+              <input matInput [type]="hideResetPassword ? 'password' : 'text'" id="reset-password" name="resetPassword"
+                     minlength="6" [(ngModel)]="resetPassword" #resetPasswordModel="ngModel" required />
+              <button type="button" mat-icon-button matSuffix (click)="hideResetPassword = !hideResetPassword"
+                      [attr.aria-label]="hideResetPassword ? 'Show password' : 'Hide password'">
+                <mat-icon>{{ hideResetPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Confirm Password</mat-label>
+              <input matInput [type]="hideResetPasswordConfirmation ? 'password' : 'text'"
+                     id="reset-password-confirm" name="resetPasswordConfirm"
+                     [(ngModel)]="resetPasswordConfirmation" #resetPasswordConfirmModel="ngModel" required />
+              <button type="button" mat-icon-button matSuffix
+                      (click)="hideResetPasswordConfirmation = !hideResetPasswordConfirmation"
+                      [attr.aria-label]="hideResetPasswordConfirmation ? 'Show password' : 'Hide password'">
+                <mat-icon>{{ hideResetPasswordConfirmation ? 'visibility' : 'visibility_off' }}</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <div class="dual-actions">
+              <button type="submit" mat-flat-button color="primary" [disabled]="isLoading">
+                @if (isLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                  <span>Saving...</span>
+                } @else {
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Submit</span>
+                }
+              </button>
+              <button type="button" mat-stroked-button (click)="cancelPasswordRecovery()" [disabled]="isLoading">
+                Cancel
+              </button>
+            </div>
+          </form>
+        }
+      }
+    </div>
+  </mat-card>
 </div>
