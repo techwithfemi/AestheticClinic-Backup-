@@ -240,24 +240,11 @@ export class ReceiptEntryDialogComponent implements OnInit {
 
   private loadBankAccounts(): void {
     this.isLoadingBankAccounts = true;
-    this.billingEndpoint.getBankAccountsEndpoint<unknown[]>().subscribe({
+    this.billingEndpoint.getBankAccountsEndpoint().subscribe({
       next: accounts => {
         this.isLoadingBankAccounts = false;
 
-        const normalized = (accounts ?? [])
-          .map(a => {
-            const item = a as {
-              accountId?: string; AccountId?: string;
-              accountNo?: string; AccountNo?: string;
-              accountName?: string; AccountName?: string;
-            };
-
-            const accountId = (item.accountId ?? item.AccountId ?? item.accountNo ?? item.AccountNo ?? '').toString().trim();
-            const accountName = (item.accountName ?? item.AccountName ?? accountId).toString().trim();
-
-            return { accountId, accountName } as BankAccount;
-          })
-          .filter(a => !!a.accountId);
+        const normalized = (accounts ?? []).filter(a => !!a.accountId?.trim());
 
         const seen = new Set<string>();
         this.bankAccounts = normalized.filter(a => {

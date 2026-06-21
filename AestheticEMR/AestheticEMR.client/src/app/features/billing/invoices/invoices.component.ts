@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
-import { BillingEndpoint, ReceiptSaved, SaveReceiptRequest } from '../../../services/billing-endpoint.service';
+import { BillingEndpoint } from '../../../services/billing-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { Billing } from '../../../models/legacy/billing.model';
 import { InvoicePrintData } from '../../../models/legacy/invoice-print-data.model';
@@ -24,6 +24,7 @@ import { AttendanceEndpoint } from '../../../services/attendance-endpoint.servic
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
 import { HRetainership } from '../../../models/legacy/h-retainership.model';
+import { ReceiptEntryDialogComponent, ReceiptEntryDialogData } from '../receipts/receipt-entry-dialog.component';
 
 interface InvoiceAttendanceOption {
   consultId: string;
@@ -452,7 +453,6 @@ export class InvoicesComponent implements OnInit {
       next: printData => {
         this.alertService.stopLoadingMessage();
 
-        // clientCat comes from VwhRecord.ClientCat (populated by the backend print-data endpoint)
         const clientCat = (printData.clientCat ?? '').trim().toUpperCase();
         if (clientCat !== 'PRIVATE') {
           this.alertService.showStickyMessage(
@@ -464,59 +464,21 @@ export class InvoicesComponent implements OnInit {
           return;
         }
 
-        // Prompt cashier for payment method
-        const payType = window.prompt(
-          `Payment Method for Bill No: ${invoice.billNo}\n` +
-          `Amount Due: ${printData.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}\n\n` +
-          `Enter payment type (Cash / Cheque / Transfer / POS):`,
-          'Cash'
-        );
+        const data: ReceiptEntryDialogData = {
+          billNo: invoice.billNo,
+          pNo: invoice.pNo,
+          patientName: this.getPatientName(invoice.pNo),
+          balance: printData.balance
+        };
 
-        if (payType === null) return; // cancelled
-
-        const trimmedPayType = payType.trim();
-        if (!trimmedPayType) {
-          this.alertService.showStickyMessage('Validation Error', 'Payment type is required.', MessageSeverity.error);
-          return;
-        }
-
-        const payload: SaveReceiptRequest = { payType: trimmedPayType };
-
-        // Collect cheque/transfer details if applicable
-        const upper = trimmedPayType.toUpperCase();
-        if (upper === 'CHEQUE' || upper === 'TRANSFER') {
-          const chequeNo = window.prompt('Cheque / Reference No:') ?? '';
-          const bankCode = window.prompt('Bank Code:') ?? '';
-          payload.chequeNo = chequeNo.trim() || undefined;
-          payload.bankCode = bankCode.trim() || undefined;
-        }
-
-        // Save receipt to database, then open print dialog
-        this.alertService.startLoadingMessage('Saving receipt...');
-        this.billingEndpoint.getSaveReceiptEndpoint<ReceiptSaved>(invoice.billNo, payload).subscribe({
-          next: saved => {
-            this.alertService.stopLoadingMessage();
-
-            this.router.navigate(['/billing/receipts', invoice.billNo, 'preview'], {
-              queryParams: {
-                receiptNo: saved.receiptNo,
-                receiptDate: saved.receiptDate,
-                payType: saved.payType,
-                amountPaid: saved.amountPaid
-              }
-            });
-
-            // Refresh list so updated amountPaid reflects
+        this.dialog.open(ReceiptEntryDialogComponent, {
+          data,
+          width: '840px',
+          disableClose: true
+        }).afterClosed().subscribe(result => {
+          if (result) {
+            this.alertService.showMessage('Success', 'Receipt saved successfully.', MessageSeverity.success);
             this.loadData();
-          },
-          error: error => {
-            this.alertService.stopLoadingMessage();
-            this.alertService.showStickyMessage(
-              'Receipt Error',
-              `Cannot save receipt.\r\nError: "${this.getErrorMessage(error)}"`,
-              MessageSeverity.error,
-              error
-            );
           }
         });
       },
@@ -525,6 +487,7 @@ export class InvoicesComponent implements OnInit {
         this.alertService.showStickyMessage(
           'Receipt Error',
           `Cannot generate receipt.\r\nError: "${this.getErrorMessage(error)}"`,
+
           MessageSeverity.error,
           error
         );

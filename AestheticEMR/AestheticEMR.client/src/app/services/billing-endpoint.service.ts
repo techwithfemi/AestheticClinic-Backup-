@@ -1,11 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 import { Billing } from '../models/legacy/billing.model';
+import { BankAccount } from '../models/legacy/bank-account.model';
 
 export interface SaveReceiptRequest {
   payType: string;
@@ -133,10 +134,12 @@ export class BillingEndpoint extends EndpointBase {
     );
   }
 
-  getBankAccountsEndpoint<T>(): Observable<T> {
-    return this.http.get<T>(`${this.billingsUrl}/bank-accounts`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getBankAccountsEndpoint<T>()))
-    );
+  getBankAccountsEndpoint(): Observable<BankAccount[]> {
+    return this.http.get<BankAccountApiModel[]>(`${this.billingsUrl}/bank-accounts`, this.requestHeaders).pipe(
+      map((accounts): BankAccount[] => (accounts ?? []).map(account => ({
+        accountId: (account.accountId ?? account.AccountId ?? '').toString().trim(),
+        accountName: (account.accountName ?? account.AccountName ?? '').toString().trim()
+      })))    );
   }
 
   getPrivateCreditAccountEndpoint<T>(): Observable<T> {
@@ -144,4 +147,11 @@ export class BillingEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.getPrivateCreditAccountEndpoint<T>()))
     );
   }
+}
+
+interface BankAccountApiModel {
+  accountId?: string;
+  accountName?: string;
+  AccountId?: string;
+  AccountName?: string;
 }

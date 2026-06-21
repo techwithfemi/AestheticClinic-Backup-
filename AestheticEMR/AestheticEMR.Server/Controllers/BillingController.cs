@@ -888,7 +888,12 @@ public class BillingController(
         try
         {
             var defaults = await emrAppDefaultsService.GetAsync();
-            var bankGroupId = defaults.Values.GetValueOrDefault("Acct_Banks", string.Empty)?.Trim();
+            var bankGroupId = defaults.Values.TryGetValue("Acct_Banks", out var configuredBankGroup)
+                ? configuredBankGroup?.Trim()
+                : defaults.Values
+                    .FirstOrDefault(kv => string.Equals(kv.Key, "Acct_Banks", StringComparison.OrdinalIgnoreCase))
+                    .Value?
+                    .Trim();
 
             if (string.IsNullOrWhiteSpace(bankGroupId))
             {
@@ -896,51 +901,63 @@ public class BillingController(
                 return Ok(Array.Empty<BankAccountVM>());
             }
 
-            var sourceObject = await ResolveBankAccountsSourceObjectAsync();
+            var accountingConnectionString = configuration.GetConnectionString("AccountingConnection");
+            if (string.IsNullOrWhiteSpace(accountingConnectionString))
+            {
+                _logger.LogWarning("AccountingConnection is not configured; unable to load bank accounts.");
+                return Ok(Array.Empty<BankAccountVM>());
+            }
+
+            var sourceObject = await ResolveAccountingBankAccountsSourceObjectAsync(accountingConnectionString);
             if (string.IsNullOrWhiteSpace(sourceObject))
             {
-                _logger.LogWarning("Bank accounts source view/table was not found (expected vwAccountsInfo or vwAccountsInfos).");
+                _logger.LogWarning("vwAccountsInfo was not found in Accounting DB.");
                 return Ok(Array.Empty<BankAccountVM>());
             }
 
             var accounts = new List<BankAccountVM>();
-            var connection = context.Database.GetDbConnection();
-            var shouldClose = connection.State != System.Data.ConnectionState.Open;
+            await using var connection = new SqlConnection(accountingConnectionString);
+            await connection.OpenAsync();
 
-            if (shouldClose)
-                await connection.OpenAsync();
-
-            try
+            await using (var cmd = connection.CreateCommand())
             {
-                await using var cmd = connection.CreateCommand();
                 cmd.CommandText = $@"
 SELECT [AccountNo] AS [AccountId], [AccountName]
 FROM {sourceObject}
-WHERE [GroupId] = @groupId
+WHERE UPPER(LTRIM(RTRIM([GroupId]))) = UPPER(@groupId)
+  AND NULLIF(LTRIM(RTRIM([AccountNo])), '') IS NOT NULL
+  AND NULLIF(LTRIM(RTRIM([AccountName])), '') IS NOT NULL
 ORDER BY [AccountName]";
 
-                var groupParam = cmd.CreateParameter();
-                groupParam.ParameterName = "@groupId";
-                groupParam.Value = bankGroupId;
-                cmd.Parameters.Add(groupParam);
+                cmd.Parameters.AddWithValue("@groupId", bankGroupId);
 
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
                     accounts.Add(new BankAccountVM
                     {
-                        AccountId = reader["AccountId"]?.ToString() ?? string.Empty,
-                        AccountName = reader["AccountName"]?.ToString() ?? string.Empty
+                        AccountId = reader["AccountId"]?.ToString()?.Trim() ?? string.Empty,
+                        AccountName = reader["AccountName"]?.ToString()?.Trim() ?? string.Empty
                     });
                 }
             }
-            finally
-            {
-                if (shouldClose)
-                    await connection.CloseAsync();
-            }
 
-            return Ok(accounts);
+            var deduped = accounts
+                .Where(x => !string.IsNullOrWhiteSpace(x.AccountId) && !string.IsNullOrWhiteSpace(x.AccountName))
+                .GroupBy(x => x.AccountId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(x => x.AccountName)
+                .ToList();
+
+            if (deduped.Count == 0)
+            {
+                _logger.LogWarning("No bank accounts found in Accounting DB source {SourceObject} for Acct_Banks={BankGroupId}.", sourceObject, bankGroupId);
+            }
+            else
+            {
+                _logger.LogInformation("Bank accounts loaded from Accounting DB using Acct_Banks={BankGroupId}. Count={Count}", bankGroupId, deduped.Count);
+            }
+            return Ok(deduped);
         }
         catch (Exception ex)
         {
@@ -950,35 +967,23 @@ ORDER BY [AccountName]";
         }
     }
 
-    private async Task<string?> ResolveBankAccountsSourceObjectAsync()
+    private static async Task<string?> ResolveAccountingBankAccountsSourceObjectAsync(string accountingConnectionString)
     {
-        var connection = context.Database.GetDbConnection();
-        var shouldClose = connection.State != System.Data.ConnectionState.Open;
+        await using var connection = new SqlConnection(accountingConnectionString);
+        await connection.OpenAsync();
 
-        if (shouldClose)
-            await connection.OpenAsync();
-
-        try
-        {
-            await using var cmd = connection.CreateCommand();
-            cmd.CommandText = @"
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
 SELECT TOP (1)
     QUOTENAME([s].[name]) + '.' + QUOTENAME([o].[name]) AS [ObjectName]
 FROM [sys].[objects] AS [o]
 INNER JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [o].[schema_id]
-WHERE [o].[type] IN ('V','U')
-  AND [o].[name] IN ('vwAccountsInfo','vwAccountsInfos')
-ORDER BY CASE WHEN [o].[name] = 'vwAccountsInfo' THEN 0 ELSE 1 END,
-         CASE WHEN [s].[name] = 'dbo' THEN 0 ELSE 1 END";
+WHERE [o].[type] IN ('V', 'U')
+  AND [o].[name] = 'vwAccountsInfo'
+ORDER BY CASE WHEN [s].[name] = 'dbo' THEN 0 ELSE 1 END";
 
-            var result = await cmd.ExecuteScalarAsync();
-            return result?.ToString();
-        }
-        finally
-        {
-            if (shouldClose)
-                await connection.CloseAsync();
-        }
+        var result = await cmd.ExecuteScalarAsync();
+        return result?.ToString();
     }
 
     [HttpGet("private-credit-account")]
