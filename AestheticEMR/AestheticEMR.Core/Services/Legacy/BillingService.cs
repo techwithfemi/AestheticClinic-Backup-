@@ -2,6 +2,7 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using AestheticEMR.Core.Services.Shop;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -11,7 +12,9 @@ public class BillingService(
     ApplicationDbContext context,
     IUserIdAccessor userIdAccessor,
     IBillingCrossDatabaseSyncService billingCrossDatabaseSyncService,
-    IEmrAppDefaultsService emrAppDefaultsService) : IBillingService
+    IEmrAppDefaultsService emrAppDefaultsService,
+    IProductService productService,
+    IInventoryAccountingService inventoryAccountingService) : IBillingService
 {
     public async Task<IEnumerable<Billing>> GetAllAsync()
     {
@@ -55,6 +58,8 @@ public class BillingService(
 
         await RecalculateTotalsAsync(normalizedBilling, normalizedDetails);
 
+        var currentUserId = userIdAccessor.GetCurrentUserEmpId();
+
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
@@ -65,6 +70,8 @@ public class BillingService(
             }
 
             await context.SaveChangesAsync();
+
+            await UpdateProductInventoryAsync(normalizedDetails, currentUserId);
 
             await billingCrossDatabaseSyncService.SyncCreateOrUpdateAsync(
                 context.Database.GetDbConnection(),
@@ -101,16 +108,24 @@ public class BillingService(
 
         await RecalculateTotalsAsync(normalizedBilling, normalizedDetails);
 
+        var currentUserId = userIdAccessor.GetCurrentUserEmpId();
+        var oldDetails = await context.BillingDetails
+            .Where(x => x.billNO == normalizedBillNo)
+            .ToListAsync();
+
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            context.BillingDetails.RemoveRange(context.BillingDetails.Where(x => x.billNO == normalizedBillNo));
+            context.BillingDetails.RemoveRange(oldDetails);
             if (normalizedDetails.Count > 0)
             {
                 context.BillingDetails.AddRange(normalizedDetails);
             }
 
             await context.SaveChangesAsync();
+
+            await ReverseProductInventoryAsync(oldDetails, currentUserId);
+            await UpdateProductInventoryAsync(normalizedDetails, currentUserId);
 
             await billingCrossDatabaseSyncService.SyncCreateOrUpdateAsync(
                 context.Database.GetDbConnection(),
@@ -362,6 +377,76 @@ public class BillingService(
         if (hasDuplicates)
         {
             throw new InvalidOperationException("Duplicate bill items are not allowed in invoice details.");
+        }
+    }
+
+    private async Task UpdateProductInventoryAsync(IEnumerable<BillingDetail> details, string? userName)
+    {
+        foreach (var detail in details ?? [])
+        {
+            var category = (detail.Category ?? string.Empty).Trim();
+            var normalizedCategory = category.ToLower();
+
+            if (normalizedCategory == "product")
+            {
+                var itemName = (detail.drgName ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(itemName))
+                {
+                    continue;
+                }
+
+                var product = await productService.GetByNameAsync(itemName);
+                if (product is not null)
+                {
+                    var qtyToDeduct = (int)detail.Qty;
+                    var currentStock = product.UnitsInStock;
+                    var newStock = Math.Max(0, currentStock - qtyToDeduct);
+
+                    product.PreviousUnitsInStock = currentStock;
+                    product.UnitsInStock = newStock;
+
+                    await productService.UpdateAsync(product, userName);
+
+                    // Post accounting transaction: debit COGS, credit Inventory
+                    await inventoryAccountingService.PostInventoryDeductionAsync(
+                        detail.billNO, product, qtyToDeduct);
+                }
+            }
+        }
+    }
+
+    private async Task ReverseProductInventoryAsync(IEnumerable<BillingDetail> details, string? userName)
+    {
+        foreach (var detail in details ?? [])
+        {
+            var category = (detail.Category ?? string.Empty).Trim();
+            var normalizedCategory = category.ToLower();
+
+            if (normalizedCategory == "product")
+            {
+                var itemName = (detail.drgName ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(itemName))
+                {
+                    continue;
+                }
+
+                var product = await productService.GetByNameAsync(itemName);
+                if (product is not null)
+                {
+                    var qtyToRestore = (int)detail.Qty;
+                    var currentStock = product.UnitsInStock;
+                    var newStock = currentStock + qtyToRestore;
+
+                    product.PreviousUnitsInStock = currentStock;
+                    product.UnitsInStock = newStock;
+
+                    await productService.UpdateAsync(product, userName);
+
+                    // Post accounting transaction: credit COGS, debit Inventory (reversal)
+                    await inventoryAccountingService.PostInventoryReversalAsync(
+                        detail.billNO, product, qtyToRestore);
+                }
+            }
         }
     }
 }

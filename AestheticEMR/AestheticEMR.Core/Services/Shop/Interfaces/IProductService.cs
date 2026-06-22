@@ -12,6 +12,7 @@ namespace AestheticEMR.Core.Services.Shop
     {
         Task<IEnumerable<Product>> GetAllAsync();
         Task<Product?> GetByIdAsync(int id);
+        Task<Product?> GetByNameAsync(string name);
         Task<Product> CreateAsync(Product product, string? userName);
         Task<Product> UpdateAsync(Product product, string? userName);
         Task DeleteAsync(int id);

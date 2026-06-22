@@ -292,6 +292,19 @@ VALUES
         {
             if (acctPostTypeReceivable != "AUTO") return;
         }
+
+        // Always clear prior sales postings for this bill's TranIDs before re-inserting current details.
+        var tranIds = details
+            .Select(x => x.TranID)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (tranIds.Count > 0)
+        {
+            await DeleteFromAccountingDbAsync(tranIds, values, cancellationToken);
+        }
+
         // Now connect to Accounting DB and call stored procs as per VB6 logic
         var accountingConnStr = GetAccountingConnectionString();
         await using var conn = new SqlConnection(accountingConnStr);

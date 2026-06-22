@@ -31,6 +31,19 @@ namespace AestheticEMR.Core.Services.Shop
                 .FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<Product?> GetByNameAsync(string name)
+        {
+            var normalizedName = (name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                return null;
+            }
+
+            return await context.Products
+                .Include(x => x.ProductCategory)
+                .FirstOrDefaultAsync(x => x.Name.ToLower() == normalizedName.ToLower());
+        }
+
         public async Task<Product> CreateAsync(Product product, string? userName)
         {
             // Load the category to satisfy the 'required' constraint

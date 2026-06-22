@@ -18,6 +18,10 @@ namespace AestheticEMR.Core.Models.Shop
         public int UnitsInStock { get; set; }
         public bool IsActive { get; set; }
         public bool IsDiscontinued { get; set; }
+        
+        // Track the accounting transaction ID for the current inventory state
+        // Used to reverse/delete accounting entries when inventory is updated
+        public string? LastInventoryTranID { get; set; }
 
         public int? ParentId { get; set; }
         public Product? Parent { get; set; }

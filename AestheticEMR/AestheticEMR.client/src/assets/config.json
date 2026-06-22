@@ -7,7 +7,9 @@
   "screenDisplay": "Good Health ... Good Life",
   "clientName": "VCP HealthCare",
   "clientID": "0001",
-  "clientLogo": "public/assets/img/Mars.png",
-  "altClientLogo": "public/assets/img/clientlogo.png",
+  "clientLogo": "public/assets/img/clientlogo.jpeg",
+  "altClientLogo": "public/assets/img/clientlogo2.png",
+  "clientLogo2": "public/assets/img/Mars.png",
+  "altClientLogo2": "public/assets/img/clientlogo.png",
   "enableAnalytics": true
 }
