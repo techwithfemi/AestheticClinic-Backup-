@@ -9,6 +9,7 @@ using AestheticEMR.Core.Models.Account;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using AestheticEMR.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AestheticEMR.Core.Services.Account
 {
@@ -17,12 +18,15 @@ namespace AestheticEMR.Core.Services.Account
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
+        private readonly ILogger<UserAccountService> _logger;
 
-        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IEmailSender emailSender)
+        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager, 
+            IEmailSender emailSender, ILogger<UserAccountService> logger)
         {
             _context = context;
             _userManager = userManager;
             _emailSender = emailSender;
+            _logger = logger;
         }
 
         public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
@@ -225,39 +229,54 @@ namespace AestheticEMR.Core.Services.Account
 
         public async Task<(bool Succeeded, string[] Errors)> SendPasswordResetEmailAsync(ApplicationUser user, string resetUrlTemplate)
         {
-            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedToken = Uri.EscapeDataString(resetToken);
-            var encodedUserName = Uri.EscapeDataString(user.UserName ?? user.Email ?? string.Empty);
-
-            var resetUrl = resetUrlTemplate
-                .Replace("{token}", encodedToken, StringComparison.OrdinalIgnoreCase)
-                .Replace("{username}", encodedUserName, StringComparison.OrdinalIgnoreCase)
-                .Replace("{userNameOrEmail}", encodedUserName, StringComparison.OrdinalIgnoreCase);
-
-            if (!resetUrl.Contains("{token}", StringComparison.OrdinalIgnoreCase) &&
-                !resetUrl.Contains("token=", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                resetUrl += resetUrl.Contains('?') ? "&" : "?";
-                resetUrl += $"token={encodedToken}";
-            }
+                _logger.LogInformation("Starting password reset email process for user: {UserName}", user.UserName);
 
-            if (!resetUrl.Contains("{username}", StringComparison.OrdinalIgnoreCase) &&
-                !resetUrl.Contains("{userNameOrEmail}", StringComparison.OrdinalIgnoreCase) &&
-                !resetUrl.Contains("userNameOrEmail=", StringComparison.OrdinalIgnoreCase))
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var encodedToken = Uri.EscapeDataString(resetToken);
+                var encodedUserName = Uri.EscapeDataString(user.UserName ?? user.Email ?? string.Empty);
+
+                var resetUrl = resetUrlTemplate
+                    .Replace("{token}", encodedToken, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{username}", encodedUserName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{userNameOrEmail}", encodedUserName, StringComparison.OrdinalIgnoreCase);
+
+                if (!resetUrl.Contains("{token}", StringComparison.OrdinalIgnoreCase) &&
+                    !resetUrl.Contains("token=", StringComparison.OrdinalIgnoreCase))
+                {
+                    resetUrl += resetUrl.Contains('?') ? "&" : "?";
+                    resetUrl += $"token={encodedToken}";
+                }
+
+                if (!resetUrl.Contains("{username}", StringComparison.OrdinalIgnoreCase) &&
+                    !resetUrl.Contains("{userNameOrEmail}", StringComparison.OrdinalIgnoreCase) &&
+                    !resetUrl.Contains("userNameOrEmail=", StringComparison.OrdinalIgnoreCase))
+                {
+                    resetUrl += resetUrl.Contains('?') ? "&" : "?";
+                    resetUrl += $"userNameOrEmail={encodedUserName}";
+                }
+
+                var recipientName = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName ?? "User" : user.FullName;
+                var body = BuildPasswordResetEmailBody(recipientName, resetUrl);
+
+                _logger.LogInformation("Sending password reset email to: {Email}", user.Email);
+                var result = await _emailSender.SendEmailAsync(recipientName, user.Email!, "Password Reset Request", body, true);
+
+                if (!result.success)
+                {
+                    _logger.LogError("Failed to send password reset email to {Email}: {ErrorMsg}", user.Email, result.errorMsg);
+                    return (false, [result.errorMsg ?? "Unable to send password reset email"]);
+                }
+
+                _logger.LogInformation("Successfully sent password reset email to: {Email}", user.Email);
+                return (true, []);
+            }
+            catch (Exception ex)
             {
-                resetUrl += resetUrl.Contains('?') ? "&" : "?";
-                resetUrl += $"userNameOrEmail={encodedUserName}";
+                _logger.LogError(ex, "Exception occurred while sending password reset email for user: {UserName}", user.UserName);
+                return (false, [$"An error occurred while sending password reset email: {ex.Message}"]);
             }
-
-            var recipientName = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName ?? "User" : user.FullName;
-            var body = BuildPasswordResetEmailBody(recipientName, resetUrl);
-
-            var result = await _emailSender.SendEmailAsync(recipientName, user.Email!, "Password Reset Request", body, true);
-
-            if (!result.success)
-                return (false, [result.errorMsg ?? "Unable to send password reset email"]);
-
-            return (true, []);
         }
 
         private string BuildPasswordResetEmailBody(string recipientName, string resetUrl)

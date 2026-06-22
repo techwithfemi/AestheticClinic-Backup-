@@ -315,6 +315,9 @@ if (enableMessageBus)
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IUserIdAccessor, UserIdAccessor>();
 
+// SMTP Configuration Validation
+builder.Services.AddHostedService<SmtpConfigValidationService>();
+
 // Auth Handlers
 builder.Services.AddSingleton<IAuthorizationHandler, ViewUserAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, ManageUserAuthorizationHandler>();

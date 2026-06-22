@@ -13,9 +13,10 @@ using MimeKit;
 
 namespace AestheticEMR.Server.Services.Email
 {
-    public class EmailSender(IOptions<AppSettings> config, ILogger<EmailSender> logger) : IEmailSender
+    public class EmailSender(IOptions<AppSettings> configOptions, ILogger<EmailSender> logger) : IEmailSender
     {
-        private readonly SmtpConfig config = config.Value.SmtpConfig!;
+        private readonly SmtpConfig _smtpConfig = configOptions.Value.SmtpConfig 
+            ?? throw new InvalidOperationException("SmtpConfig is not configured in appsettings.json");
 
         public async Task<(bool success, string? errorMsg)> SendEmailAsync(
             string recipientName,
@@ -24,7 +25,7 @@ namespace AestheticEMR.Server.Services.Email
             string body,
             bool isHtml = true)
         {
-            var from = new MailboxAddress(config.Name, config.EmailAddress);
+            var from = new MailboxAddress(_smtpConfig.Name, _smtpConfig.EmailAddress);
             var to = new MailboxAddress(recipientName, recipientEmail);
 
             return await SendEmailAsync(from, [to], subject, body, isHtml);
@@ -71,7 +72,7 @@ namespace AestheticEMR.Server.Services.Email
                 using (var client = new SmtpClient())
                 {
                     // Disable certificate validation if needed
-                    if (!config.UseSSL)
+                    if (!_smtpConfig.UseSSL)
                     {
                         client.ServerCertificateValidationCallback =
                             (sender2, certificate, chain, sslPolicyErrors) => true;
@@ -79,33 +80,33 @@ namespace AestheticEMR.Server.Services.Email
 
                     // Determine the security option based on port and UseSSL setting
                     SecureSocketOptions secureSocketOptions;
-                    if (config.UseSSL)
+                    if (_smtpConfig.UseSSL)
                     {
                         secureSocketOptions = SecureSocketOptions.SslOnConnect; // Port 465
-                        logger.LogInformation("Connecting with SSL/TLS on connect (port {Port})", config.Port);
+                        logger.LogInformation("Connecting with SSL/TLS on connect (port {Port})", _smtpConfig.Port);
                     }
-                    else if (config.Port == 587)
+                    else if (_smtpConfig.Port == 587)
                     {
                         secureSocketOptions = SecureSocketOptions.StartTls; // Port 587 - StartTLS
-                        logger.LogInformation("Connecting with StartTLS upgrade (port {Port})", config.Port);
+                        logger.LogInformation("Connecting with StartTLS upgrade (port {Port})", _smtpConfig.Port);
                     }
                     else
                     {
                         secureSocketOptions = SecureSocketOptions.None; // Port 25 or 2525 - No encryption
-                        logger.LogInformation("Connecting without encryption (port {Port})", config.Port);
+                        logger.LogInformation("Connecting without encryption (port {Port})", _smtpConfig.Port);
                     }
 
-                    await client.ConnectAsync(config.Host, config.Port, secureSocketOptions).ConfigureAwait(false);
+                    await client.ConnectAsync(_smtpConfig.Host, _smtpConfig.Port, secureSocketOptions).ConfigureAwait(false);
                     logger.LogInformation("Connected to SMTP server {SmtpHost}:{SmtpPort} with security: {SecurityOption}", 
-                        config.Host, config.Port, secureSocketOptions);
+                        _smtpConfig.Host, _smtpConfig.Port, secureSocketOptions);
 
                     client.AuthenticationMechanisms.Remove("XOAUTH2");
 
-                    if (!string.IsNullOrWhiteSpace(config.Username))
+                    if (!string.IsNullOrWhiteSpace(_smtpConfig.Username))
                     {
-                        logger.LogInformation("Authenticating with username: {Username}", config.Username);
-                        await client.AuthenticateAsync(config.Username, config.Password).ConfigureAwait(false);
-                        logger.LogInformation("Successfully authenticated with SMTP server as {Username}", config.Username);
+                        logger.LogInformation("Authenticating with username: {Username}", _smtpConfig.Username);
+                        await client.AuthenticateAsync(_smtpConfig.Username, _smtpConfig.Password).ConfigureAwait(false);
+                        logger.LogInformation("Successfully authenticated with SMTP server as {Username}", _smtpConfig.Username);
                     }
 
                     await client.SendAsync(message).ConfigureAwait(false);

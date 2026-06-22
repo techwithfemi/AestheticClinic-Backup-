@@ -220,6 +220,14 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   openForgotPassword() {
+    const userName = this.userLogin.userName?.trim();
+
+    if (!userName) {
+      this.showErrorAlert('Username is required', 'Please enter your username before using forgot password');
+      return;
+    }
+
+    this.forgotPasswordUserNameOrEmail = userName;
     this.isForgotPasswordMode = true;
     this.isResetPasswordMode = false;
   }
