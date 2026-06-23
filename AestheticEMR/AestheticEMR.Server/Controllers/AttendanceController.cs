@@ -2,11 +2,13 @@ using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Controllers;
 
@@ -16,9 +18,12 @@ public class AttendanceController(
     ILogger<AttendanceController> logger,
     IMapper mapper,
     IAttendanceService attendanceService,
-    IAuditService auditService)
+    IAuditService auditService,
+    IOptions<AppSettings> appSettings)
     : BaseApiController(logger, mapper)
 {
+    private readonly bool _enableAttendanceSms = appSettings.Value.AttendanceNotificationConfig?.EnableSms ?? true;
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<AttendanceVM>), 200)]
     public async Task<IActionResult> GetAll()
@@ -160,7 +165,8 @@ public class AttendanceController(
         {
             var record = _mapper.Map<HRecord>(model);
             record.ConsultId = string.Empty;
-            var created = await attendanceService.CreateAsync(record);
+            var sendSms = _enableAttendanceSms && (model.SendSms ?? true);
+            var created = await attendanceService.CreateAsync(record, sendSms);
 
             await LogAttendanceAuditAsync(
                 "Create",
@@ -200,7 +206,8 @@ public class AttendanceController(
             _mapper.Map(model, existing);
             existing.ConsultId = id;
 
-            var updated = await attendanceService.UpdateAsync(existing);
+            var sendSms = _enableAttendanceSms && (model.SendSms ?? true);
+            var updated = await attendanceService.UpdateAsync(existing, sendSms);
 
             await LogAttendanceAuditAsync(
                 "Update",

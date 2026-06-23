@@ -9,6 +9,12 @@ namespace AestheticEMR.Server.Configuration
     public class AppSettings
     {
         public SmtpConfig? SmtpConfig { get; set; }
+        public WhatsAppConfig? WhatsAppConfig { get; set; }
+        public SmsConfig? SmsConfig { get; set; }
+        public SmsMessageTemplateConfig? SmsMessageTemplateConfig { get; set; }
+        public BirthdayNotificationConfig? BirthdayNotificationConfig { get; set; }
+        public AppointmentNotificationConfig? AppointmentNotificationConfig { get; set; }
+        public AttendanceNotificationConfig? AttendanceNotificationConfig { get; set; }
         public string? ClientBaseUrl { get; set; }
     }
 
@@ -22,5 +28,106 @@ namespace AestheticEMR.Server.Configuration
         public string? Name { get; set; }
         public string? Username { get; set; }
         public string? Password { get; set; }
+    }
+
+    public class WhatsAppConfig
+    {
+        /// <summary>
+        /// Twilio Account SID from https://www.twilio.com/console
+        /// </summary>
+        public required string AccountSid { get; set; }
+
+        /// <summary>
+        /// Twilio Auth Token from https://www.twilio.com/console
+        /// </summary>
+        public required string AuthToken { get; set; }
+
+        /// <summary>
+        /// Twilio WhatsApp-enabled phone number (format: +1234567890 or whatsapp:+1234567890)
+        /// </summary>
+        public required string FromPhoneNumber { get; set; }
+
+        /// <summary>
+        /// Enable WhatsApp messaging feature
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Maximum retries for failed messages
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+    }
+
+    public class SmsConfig
+    {
+        /// <summary>
+        /// Twilio Account SID from https://www.twilio.com/console
+        /// </summary>
+        public required string AccountSid { get; set; }
+
+        /// <summary>
+        /// Twilio Auth Token from https://www.twilio.com/console
+        /// </summary>
+        public required string AuthToken { get; set; }
+
+        /// <summary>
+        /// Twilio SMS-enabled phone number (format: +1234567890)
+        /// </summary>
+        public required string FromPhoneNumber { get; set; }
+
+        /// <summary>
+        /// Enable SMS messaging feature
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Maximum retries for failed messages
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+    }
+
+    public class AppointmentNotificationConfig
+    {
+        /// <summary>
+        /// Enable automatic appointment SMS on create/update operations
+        /// </summary>
+        public bool EnableSms { get; set; } = true;
+    }
+
+    public class AttendanceNotificationConfig
+    {
+        /// <summary>
+        /// Enable automatic attendance SMS on create/update operations
+        /// </summary>
+        public bool EnableSms { get; set; } = true;
+    }
+
+    public class BirthdayNotificationConfig
+    {
+        /// <summary>
+        /// Enable automatic birthday SMS notifications
+        /// </summary>
+        public bool EnableSms { get; set; } = true;
+    }
+
+    public class SmsMessageTemplateConfig
+    {
+        /// <summary>
+        /// Template for appointment SMS notifications.
+        /// Supported placeholders: {PatientName}, {Action}, {Date}, {Time}, {Clinic}
+        /// </summary>
+        public string? AppointmentTemplate { get; set; }
+
+        /// <summary>
+        /// Template for attendance SMS notifications.
+        /// Supported placeholders: {PatientName}, {Action}, {Date}, {Clinic}, {ConsultId}
+        /// </summary>
+        public string? AttendanceTemplate { get; set; }
+
+        /// <summary>
+        /// Template for birthday SMS notifications.
+        /// Supported placeholders: {PatientName}, {DobDayMonth}
+        /// </summary>
+        public string? BirthdayTemplate { get; set; }
     }
 }

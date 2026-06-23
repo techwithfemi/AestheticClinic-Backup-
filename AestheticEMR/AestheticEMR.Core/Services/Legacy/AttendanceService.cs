@@ -1,5 +1,6 @@
 using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Legacy;
+using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -8,15 +9,20 @@ using Microsoft.Extensions.Logging;
 namespace AestheticEMR.Core.Services.Legacy;
 
 public class AttendanceService(
-    ApplicationDbContext context, 
-    IUserIdAccessor userIdAccessor, 
+    ApplicationDbContext context,
+    IUserIdAccessor userIdAccessor,
     ILogger<AttendanceService> logger,
-    IEmrAppDefaultsService emrAppDefaultsService) : IAttendanceService
+    IEmrAppDefaultsService emrAppDefaultsService,
+    ISmsSender smsSender,
+    ISmsTemplateService smsTemplateService) : IAttendanceService
 {
     private readonly ILogger<AttendanceService> _logger = logger;
     private readonly IEmrAppDefaultsService _emrAppDefaultsService = emrAppDefaultsService;
+    private readonly ISmsSender? _smsSender = smsSender;
+    private readonly ISmsTemplateService? _smsTemplateService = smsTemplateService;
 
-    public AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor) : this(context, userIdAccessor, null!, null!)
+    public AttendanceService(ApplicationDbContext context, IUserIdAccessor userIdAccessor)
+        : this(context, userIdAccessor, null!, null!, null!, null!)
     {
     }
 
@@ -114,9 +120,9 @@ public class AttendanceService(
             .ToListAsync();
     }
 
-    public async Task<HRecord> CreateAsync(HRecord record)
+    public async Task<HRecord> CreateAsync(HRecord record, bool sendSms = true)
     {
-        await PopulatePatientDetailsAsync(record);
+        var patient = await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
         var existingForDay = await GetExistingAttendanceForPatientDayAsync(record.PNo, record.RecDate);
@@ -137,6 +143,12 @@ public class AttendanceService(
             await UpdatePatientLastVisitAsync(existingForDay);
             await context.SaveChangesAsync();
             await SaveBillAsync(existingForDay);
+
+            if (sendSms)
+            {
+                await TrySendAttendanceSmsAsync(existingForDay, patient, "recorded");
+            }
+
             return existingForDay;
         }
 
@@ -148,17 +160,29 @@ public class AttendanceService(
         await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
         await SaveBillAsync(record);
+
+        if (sendSms)
+        {
+            await TrySendAttendanceSmsAsync(record, patient, "recorded");
+        }
+
         return record;
     }
 
-    public async Task<HRecord> UpdateAsync(HRecord record)
+    public async Task<HRecord> UpdateAsync(HRecord record, bool sendSms = true)
     {
-        await PopulatePatientDetailsAsync(record);
+        var patient = await PopulatePatientDetailsAsync(record);
         ApplyDefaults(record);
 
         await UpsertAttendanceBillAccumAsync(record);
         await UpdatePatientLastVisitAsync(record);
         await context.SaveChangesAsync();
+
+        if (sendSms)
+        {
+            await TrySendAttendanceSmsAsync(record, patient, "updated");
+        }
+
         return record;
     }
 
@@ -219,7 +243,7 @@ public class AttendanceService(
             x.PNo == pNo && x.RecDate.Date == targetDate);
     }
 
-    private async Task PopulatePatientDetailsAsync(HRecord record)
+    private async Task<HPatient> PopulatePatientDetailsAsync(HRecord record)
     {
         record.PNo = NormalizeText(record.PNo) ?? throw new InvalidOperationException("Patient number is required.");
 
@@ -239,6 +263,83 @@ public class AttendanceService(
         record.ClientCat = incomingClientCat ?? patient.ClientCatId;
         record.Coyname = incomingCoyName ?? patient.CoyName;
         record.HmoRef = incomingHmoRef ?? patient.HmoRef;
+
+        return patient;
+    }
+
+    private async Task TrySendAttendanceSmsAsync(HRecord record, HPatient patient, string action)
+    {
+        if (_smsSender is null || _smsTemplateService is null)
+        {
+            _logger?.LogWarning("Skipping attendance SMS because SMS sender or template service is not configured");
+            return;
+        }
+
+        var patientPhone = NormalizePhoneNumber(patient.PPhoneNo ?? patient.Nokphone);
+        if (string.IsNullOrWhiteSpace(patientPhone))
+        {
+            _logger?.LogInformation("Skipping attendance SMS for patient {PatientNo} because no phone number is available", record.PNo);
+            return;
+        }
+
+        var patientName = BuildPatientDisplayName(patient);
+        var message = _smsTemplateService.BuildAttendanceMessage(
+            patientName,
+            record.RecDate,
+            record.ClinicType,
+            record.ConsultId,
+            action);
+
+        var (success, messageId, errorMsg) = await _smsSender.SendSmsMessageAsync(patientPhone, message);
+
+        if (!success)
+        {
+            _logger?.LogWarning("Attendance SMS send failed for patient {PatientNo} ({Phone}): {Error}", record.PNo, patientPhone, errorMsg ?? "Unknown error");
+            return;
+        }
+
+        _logger?.LogInformation("Attendance SMS sent for patient {PatientNo} ({Phone}), messageId: {MessageId}", record.PNo, patientPhone, messageId ?? "n/a");
+    }
+
+    private static string BuildPatientDisplayName(HPatient patient)
+    {
+        var fullName = string.Join(" ", new[]
+        {
+            NormalizeText(patient.Title),
+            NormalizeText(patient.PFirstname),
+            NormalizeText(patient.PSurName)
+        }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+        return string.IsNullOrWhiteSpace(fullName)
+            ? "Patient"
+            : fullName;
+    }
+
+    private static string? NormalizePhoneNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().Replace(" ", string.Empty).Replace("-", string.Empty);
+
+        if (normalized.StartsWith("00", StringComparison.Ordinal))
+        {
+            normalized = $"+{normalized[2..]}";
+        }
+
+        if (!normalized.StartsWith("+", StringComparison.Ordinal))
+        {
+            normalized = $"+{normalized.TrimStart('+')}";
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private void ApplyDefaults(HRecord record)
@@ -294,11 +395,6 @@ public class AttendanceService(
         billAccum.isBilled = false;
         billAccum.revType = "CONSULTATION";
         billAccum.AppVersion = 1;
-    }
-
-    private static string? NormalizeText(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private async Task<string> GenerateConsultIdAsync()

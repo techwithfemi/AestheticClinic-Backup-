@@ -28,4 +28,6 @@ public class AppointmentVM
 
     public DateTime? EntryDate { get; set; }
     public DateTime? EntryTime { get; set; }
+
+    public bool? SendSms { get; set; }
 }

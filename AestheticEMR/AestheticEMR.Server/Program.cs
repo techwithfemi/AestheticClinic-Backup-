@@ -19,6 +19,8 @@ using AestheticEMR.Server.Authorization.Requirements;
 using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.Services.Email;
+using AestheticEMR.Server.Services.Sms;
+using AestheticEMR.Server.Services.WhatsApp;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -313,7 +315,13 @@ if (enableMessageBus)
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();
+builder.Services.AddScoped<IWhatsAppSender, WhatsAppSender>();
+builder.Services.AddScoped<ISmsSender, SmsSender>();
+builder.Services.AddScoped<ISmsTemplateService, SmsTemplateService>();
 builder.Services.AddScoped<IUserIdAccessor, UserIdAccessor>();
+
+// SMS/Birthday Services
+builder.Services.AddHostedService<BirthdaySmsHostedService>();
 
 // SMTP Configuration Validation
 builder.Services.AddHostedService<SmtpConfigValidationService>();
@@ -433,6 +441,8 @@ catch (Exception ex)
 
     throw;
 }
+
+
 
 /************* RUN APP *************/
 

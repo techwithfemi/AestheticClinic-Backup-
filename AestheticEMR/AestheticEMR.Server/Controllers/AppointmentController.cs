@@ -1,17 +1,25 @@
 ﻿using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Controllers;
 
 [Route("api/[controller]")]
 [Authorize]
-public class AppointmentController(ILogger<AppointmentController> logger, IMapper mapper, IAppointmentService appointmentService)
+public class AppointmentController(
+    ILogger<AppointmentController> logger,
+    IMapper mapper,
+    IAppointmentService appointmentService,
+    IOptions<AppSettings> appSettings)
     : BaseApiController(logger, mapper)
 {
+    private readonly bool _enableAppointmentSms = appSettings.Value.AppointmentNotificationConfig?.EnableSms ?? true;
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<AppointmentVM>), 200)]
     public async Task<IActionResult> GetAll()
@@ -100,7 +108,8 @@ public class AppointmentController(ILogger<AppointmentController> logger, IMappe
         {
             var appointment = _mapper.Map<hAppointment>(model);
             appointment.ID = 0;
-            var created = await appointmentService.CreateAsync(appointment);
+            var sendSms = _enableAppointmentSms && (model.SendSms ?? true);
+            var created = await appointmentService.CreateAsync(appointment, sendSms);
             return CreatedAtAction(nameof(GetById), new { id = created.ID }, _mapper.Map<AppointmentVM>(created));
         }
         catch (Exception ex)
@@ -133,7 +142,8 @@ public class AppointmentController(ILogger<AppointmentController> logger, IMappe
             _mapper.Map(model, existing);
             existing.ID = id;
 
-            var updated = await appointmentService.UpdateAsync(existing);
+            var sendSms = _enableAppointmentSms && (model.SendSms ?? true);
+            var updated = await appointmentService.UpdateAsync(existing, sendSms);
             return Ok(_mapper.Map<AppointmentVM>(updated));
         }
         catch (Exception ex)
