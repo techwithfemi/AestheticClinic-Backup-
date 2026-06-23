@@ -21,10 +21,19 @@ namespace AestheticEMR.Server.Services.Sms
                 return;
             }
 
-            logger.LogInformation("Birthday SMS hosted service started.");
+            logger.LogInformation("Birthday SMS hosted service started. Messages will be sent at 00:00 daily.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                var now = DateTime.Now;
+                var nextMidnight = now.Date.AddDays(1);
+                var delay = nextMidnight - now;
+
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay, stoppingToken);
+                }
+
                 try
                 {
                     await SendBirthdayMessagesAsync(stoppingToken);
@@ -33,8 +42,6 @@ namespace AestheticEMR.Server.Services.Sms
                 {
                     logger.LogError(ex, "Error while sending birthday SMS messages");
                 }
-
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
             }
         }
 
@@ -51,23 +58,25 @@ namespace AestheticEMR.Server.Services.Sms
                 .Where(p => p.Dob.HasValue
                             && p.Dob.Value.Month == today.Month
                             && p.Dob.Value.Day == today.Day
-                            && !string.IsNullOrWhiteSpace(p.Pno))
+                            && !string.IsNullOrWhiteSpace(p.Pno)
+                            && !string.IsNullOrWhiteSpace(p.PPhoneNo))
                 .ToListAsync(cancellationToken);
 
             foreach (var patient in patients)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var phone = NormalizePhoneNumber(patient.PPhoneNo ?? patient.Nokphone);
-                if (string.IsNullOrWhiteSpace(phone) || !patient.Dob.HasValue)
+                var phone = NormalizePhoneNumber(patient.PPhoneNo);
+                if (!IsValidPhoneNumber(phone) || !patient.Dob.HasValue)
                 {
+                    logger.LogInformation("Skipping birthday SMS for patient {PatientNo} due to invalid phone number", patient.Pno);
                     continue;
                 }
 
                 var patientName = BuildPatientDisplayName(patient.Title, patient.PFirstname, patient.PSurName);
                 var message = smsTemplateService.BuildBirthdayMessage(patientName, patient.Dob.Value);
 
-                var (success, messageId, errorMsg) = await smsSender.SendSmsMessageAsync(phone, message);
+                var (success, messageId, errorMsg) = await smsSender.SendSmsMessageAsync(phone!, message);
 
                 if (!success)
                 {
@@ -116,6 +125,18 @@ namespace AestheticEMR.Server.Services.Sms
             }
 
             return normalized;
+        }
+
+        private static bool IsValidPhoneNumber(string? phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return false;
+            }
+
+            return phoneNumber.StartsWith("+", StringComparison.Ordinal)
+                   && phoneNumber.Length >= 10
+                   && phoneNumber[1..].All(char.IsDigit);
         }
     }
 }
