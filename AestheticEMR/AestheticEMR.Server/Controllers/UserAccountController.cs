@@ -122,6 +122,21 @@ namespace AestheticEMR.Server.Controllers
                 return BadRequest(ModelState);
             }
 
+            // Send password changed confirmation email (non-blocking)
+            try
+            {
+                var emailResult = await _userAccountService.SendPasswordChangedEmailAsync(user);
+                if (!emailResult.Succeeded)
+                {
+                    _logger.LogWarning("Failed to send password changed confirmation email to user {UserId}: {Errors}", 
+                        userId, string.Join(", ", emailResult.Errors));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while sending password changed confirmation email to user {UserId}", userId);
+            }
+
             return NoContent();
         }
 

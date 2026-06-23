@@ -4,6 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 
+// Material imports
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 import { fadeInOut } from '../../services/animations';
 import { AccountService } from '../../services/account.service';
 import { AlertService, MessageSeverity } from '../../services/alert.service';
@@ -14,7 +22,18 @@ import { Utilities } from '../../services/utilities';
   templateUrl: './change-password.component.html',
   styleUrl: './change-password.component.scss',
   animations: [fadeInOut],
-  imports: [FormsModule, RouterLink, TranslateModule, NgClass]
+  imports: [
+    FormsModule,
+    RouterLink,
+    TranslateModule,
+    NgClass,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule
+  ]
 })
 export class ChangePasswordComponent {
   private accountService = inject(AccountService);
@@ -25,9 +44,26 @@ export class ChangePasswordComponent {
   confirmPassword = '';
   isSaving = false;
   showValidationErrors = false;
+  hideCurrentPassword = true;
+  hideNewPassword = true;
+  hideConfirmPassword = true;
 
   get passwordsDoNotMatch(): boolean {
     return !!this.newPassword && !!this.confirmPassword && this.newPassword !== this.confirmPassword;
+  }
+
+  togglePasswordVisibility(field: 'current' | 'new' | 'confirm') {
+    switch (field) {
+      case 'current':
+        this.hideCurrentPassword = !this.hideCurrentPassword;
+        break;
+      case 'new':
+        this.hideNewPassword = !this.hideNewPassword;
+        break;
+      case 'confirm':
+        this.hideConfirmPassword = !this.hideConfirmPassword;
+        break;
+    }
   }
 
   showValidationAlerts() {

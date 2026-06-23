@@ -333,5 +333,90 @@ namespace AestheticEMR.Core.Services.Account
 
             return (true, []);
         }
+
+        public async Task<(bool Succeeded, string[] Errors)> SendPasswordChangedEmailAsync(ApplicationUser user)
+        {
+            try
+            {
+                _logger.LogInformation("Starting password changed email process for user: {UserName}", user.UserName);
+
+                var recipientName = string.IsNullOrWhiteSpace(user.FullName) ? user.UserName ?? "User" : user.FullName;
+                var body = BuildPasswordChangedEmailBody(recipientName);
+
+                _logger.LogInformation("Sending password changed confirmation email to: {Email}", user.Email);
+                var result = await _emailSender.SendEmailAsync(recipientName, user.Email!, "Password Changed Successfully", body, true);
+
+                if (!result.success)
+                {
+                    _logger.LogError("Failed to send password changed email to {Email}: {ErrorMsg}", user.Email, result.errorMsg);
+                    return (false, [result.errorMsg ?? "Unable to send password changed confirmation email"]);
+                }
+
+                _logger.LogInformation("Successfully sent password changed confirmation email to: {Email}", user.Email);
+                return (true, []);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while sending password changed email for user: {UserName}", user.UserName);
+                return (false, [$"An error occurred while sending password changed confirmation email: {ex.Message}"]);
+            }
+        }
+
+        private string BuildPasswordChangedEmailBody(string recipientName)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #4CAF50; color: white; padding: 20px; border-radius: 4px 4px 0 0; text-align: center; }}
+        .content {{ background-color: #f9f9f9; padding: 20px; border-radius: 0 0 4px 4px; }}
+        .footer {{ margin-top: 20px; font-size: 12px; color: #888; }}
+        .highlight {{ background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 15px 0; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h2>Password Changed Successfully</h2>
+        </div>
+        
+        <div class='content'>
+            <p>Dear <strong>{recipientName}</strong>,</p>
+            
+            <p>We wanted to confirm that your password has been successfully changed on <strong>{DateTime.UtcNow:MMMM dd, yyyy 'at' hh:mm tt} UTC</strong>.</p>
+            
+            <div class='highlight'>
+                <strong>⚠️ Security Notice:</strong><br/>
+                If you did not make this change, please contact our support team immediately or reset your password right away.
+            </div>
+            
+            <p><strong>What you can do:</strong></p>
+            <ul>
+                <li>Use your new password on your next login</li>
+                <li>Keep your password secure and do not share it with anyone</li>
+                <li>If you suspect unauthorized access, reset your password immediately</li>
+            </ul>
+            
+            <p>If you have any questions or did not authorize this change, please contact our support team.</p>
+            
+            <p>Best regards,<br/>
+            <strong>VCP Aesthetic Clinic Team</strong></p>
+            
+            <hr style='border: none; border-top: 1px solid #ddd; margin: 30px 0;'>
+            
+            <p style='font-size: 12px; color: #888;'>
+                This is an automated email. Please do not reply directly to this message.<br/>
+                If you have questions, please contact our support team.
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+        }
     }
 }

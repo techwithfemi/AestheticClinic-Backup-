@@ -21,6 +21,7 @@ namespace AestheticEMR.Core.Services.Account
         Task<IList<string>> GetUserRolesAsync(ApplicationUser user);
         Task<List<(ApplicationUser User, string[] Roles)>> GetUsersAndRolesAsync(int page, int pageSize);
         Task<(bool Succeeded, string[] Errors)> SendPasswordResetEmailAsync(ApplicationUser user, string resetUrlTemplate);
+        Task<(bool Succeeded, string[] Errors)> SendPasswordChangedEmailAsync(ApplicationUser user);
         Task<(bool Succeeded, string[] Errors)> SendTestEmailAsync(string recipientEmail, string htmlBody);
         Task<(bool Succeeded, string[] Errors)> ResetPasswordWithTokenAsync(ApplicationUser user, string token, string newPassword);
         Task<(bool Succeeded, string[] Errors)> ResetPasswordAsync(ApplicationUser user, string newPassword);
