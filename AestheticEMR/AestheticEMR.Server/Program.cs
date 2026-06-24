@@ -1,4 +1,4 @@
-// ---------------------------------------
+﻿// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -281,7 +281,7 @@ builder.Services.AddScoped<IInventoryAccountingService, InventoryAccountingServi
 
 if (enableMessageBus)
 {
-    // MassTransit – only registered when message bus sync is enabled
+    // MassTransit ΓÇô only registered when message bus sync is enabled
     var rabbitMqHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
     var rabbitMqUser = builder.Configuration["RabbitMQ:Username"] ?? "guest";
     var rabbitMqPass = builder.Configuration["RabbitMQ:Password"] ?? "guest";

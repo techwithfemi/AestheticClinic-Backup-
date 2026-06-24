@@ -16,6 +16,7 @@
     </Description>
     <Copyright>Copyright © 2024 www.ebenmonney.com</Copyright>
     <PackageProjectUrl>https://www.ebenmonney.com/quickapp</PackageProjectUrl>
+    <UserSecretsId>ad259105-d773-4f00-a6f6-db987a652539</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
