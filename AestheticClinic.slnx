@@ -5,4 +5,8 @@
   </Project>
   <Project Path="AestheticEMR/AestheticEMR.Core/AestheticEMR.Core.csproj" />
   <Project Path="AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj" />
+  <Project Path="..\..\DataAccess\DataAccessLibrary\DataAccess\DataAccess.csproj" />
 </Solution>
+
+
+

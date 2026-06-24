@@ -45,6 +45,9 @@ var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:En
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
                 throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+var accountingConnectionString = builder.Configuration.GetConnectionString("AccountingConnection") ??
+                throw new InvalidOperationException("Connection string 'AccountingConnection' not found.");
+
 var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -61,19 +64,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseOpenIddict();
 });
 
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//{
-//    options.UseSqlServer(
-//        builder.Configuration.GetConnectionString("DefaultConnection"),
-//        b => b.MigrationsAssembly("AestheticEMR.Core")); // Add this line!
-//        options.UseOpenIddict();
-//});
-
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseSqlServer(
-//        builder.Configuration.GetConnectionString("DefaultConnection"),
-//        b => b.MigrationsAssembly("AestheticEMR.Core") // Add this line!
-//    )));
+builder.Services.AddDbContext<AccountingDbContext>(options =>
+{
+    options.UseSqlServer(accountingConnectionString);
+});
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()

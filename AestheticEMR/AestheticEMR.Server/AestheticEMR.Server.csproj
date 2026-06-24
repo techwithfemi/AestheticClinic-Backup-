@@ -55,6 +55,7 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
     <ProjectReference Include="..\AestheticEMR.Core\AestheticEMR.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\DataAccess\DataAccessLibrary\DataAccess\DataAccess.csproj" />
   </ItemGroup>
 
   <ItemGroup>

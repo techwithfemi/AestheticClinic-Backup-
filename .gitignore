@@ -365,3 +365,6 @@ FodyWeavers.xsd*.bak
 
 # dotnet user-secrets (safety net - these live outside the repo anyway)
 secrets.json
+
+# Filled-in web.config contains real passwords — never commit it
+web.config

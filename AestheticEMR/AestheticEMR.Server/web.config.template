@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  TEMPLATE — safe to commit (all values are blank).
+
+  USAGE:
+    1. Copy this file to web.config in the same folder.
+    2. Fill in every CHANGE_ME value with the real secret.
+    3. Upload web.config to the server / SmarterASP.NET file manager.
+    4. NEVER commit web.config — it is in .gitignore.
+-->
+<configuration>
+  <location path="." inheritInChildApplications="false">
+    <system.webServer>
+
+      <handlers>
+        <add name="aspNetCore" path="*" verb="*"
+             modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+      </handlers>
+
+      <aspNetCore processPath="dotnet"
+                  arguments=".\AestheticEMR.Server.dll"
+                  stdoutLogEnabled="false"
+                  stdoutLogFile=".\logs\stdout"
+                  hostingModel="inprocess">
+
+        <environmentVariables>
+
+          <!-- ── Runtime environment ───────────────────────── -->
+          <environmentVariable name="ASPNETCORE_ENVIRONMENT" value="Production" />
+
+          <!-- ── Database connection strings ──────────────── -->
+          <environmentVariable name="ConnectionStrings__DefaultConnection"
+            value="Server=CHANGE_ME;Database=Hospital;User ID=CHANGE_ME;Password=CHANGE_ME;TrustServerCertificate=true;MultipleActiveResultSets=true" />
+
+          <environmentVariable name="ConnectionStrings__SmartHRConnection"
+            value="Server=CHANGE_ME;Database=SmartHR;User ID=CHANGE_ME;Password=CHANGE_ME;TrustServerCertificate=true;MultipleActiveResultSets=true" />
+
+          <environmentVariable name="ConnectionStrings__AccountingConnection"
+            value="Server=CHANGE_ME;Database=Accounting;User ID=CHANGE_ME;Password=CHANGE_ME;TrustServerCertificate=true;MultipleActiveResultSets=true" />
+
+          <!-- ── RabbitMQ ───────────────────────────────────── -->
+          <environmentVariable name="RabbitMQ__Password"          value="CHANGE_ME" />
+
+          <!-- ── SMTP mail ──────────────────────────────────── -->
+          <environmentVariable name="SmtpConfig__Password"        value="CHANGE_ME" />
+
+          <!-- ── SMS (Twilio) ───────────────────────────────── -->
+          <environmentVariable name="SmsConfig__AccountSid"       value="CHANGE_ME" />
+          <environmentVariable name="SmsConfig__AuthToken"        value="CHANGE_ME" />
+          <environmentVariable name="SmsConfig__FromPhoneNumber"  value="CHANGE_ME" />
+
+          <!-- ── WhatsApp (Twilio) ──────────────────────────── -->
+          <environmentVariable name="WhatsAppConfig__AccountSid"      value="CHANGE_ME" />
+          <environmentVariable name="WhatsAppConfig__AuthToken"        value="CHANGE_ME" />
+          <environmentVariable name="WhatsAppConfig__FromPhoneNumber"  value="CHANGE_ME" />
+
+          <!-- ── OIDC certificate (leave blank for ephemeral) ─ -->
+          <environmentVariable name="OIDC__Certificates__Password" value="" />
+
+        </environmentVariables>
+      </aspNetCore>
+
+    </system.webServer>
+  </location>
+</configuration>
