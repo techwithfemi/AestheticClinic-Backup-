@@ -18,7 +18,7 @@ import { User } from '../../models/user.model';
 interface NavigationItem {
   route?: string;
   icon?: string;
-  subItems?: Array<{ path?: string; fragment?: string; label: string; icon?: string }>;
+  subItems?: { path?: string; fragment?: string; label: string; icon?: string }[];
 }
 
 @Component({
@@ -39,7 +39,7 @@ export class MainLayoutComponent implements OnInit {
   appConfig = inject(AppConfigService);
   private readonly mobileBreakpoint = 992;
 
-  menuEntries: Array<{ title: string; item: NavigationItem }> = [];
+  menuEntries: { title: string; item: NavigationItem }[] = [];
 
   get userRoles(): string[] {
     return this.authService.currentUser?.roles || [];
@@ -88,20 +88,35 @@ export class MainLayoutComponent implements OnInit {
   }
 
   private get isManagementUser(): boolean {
-    return this.normalizedRoles.includes('management');
+    return this.normalizedRoles.includes('management') || this.normalizedRoles.includes('admin');
   }
 
-  private canAccessDynamicSection(sectionName: string): boolean {
-    const normalizedSection = sectionName.trim().toLowerCase();
+  private hasRoleAccess(roleName: string): boolean {
+    const normalizedRole = roleName.trim().toLowerCase();
 
-    if (normalizedSection === 'aesthetics') {
+    if (this.isManagementUser) {
+      return true;
+    }
+
+    if (normalizedRole === 'aesthetics') {
       return this.normalizedRoles.includes('aesthetics') || this.normalizedRoles.includes('laser');
     }
 
-    return this.normalizedRoles.includes(normalizedSection);
+    const aliases = new Set<string>([normalizedRole]);
+    if (normalizedRole.endsWith('s')) {
+      aliases.add(normalizedRole.slice(0, -1));
+    } else {
+      aliases.add(`${normalizedRole}s`);
+    }
+
+    return this.normalizedRoles.some(role => aliases.has(role));
   }
 
-  private filterReportSubItems(subItems: Array<{ path?: string; fragment?: string; label: string; icon?: string }>): Array<{ path?: string; fragment?: string; label: string; icon?: string }> {
+  private canAccessDynamicSection(sectionName: string): boolean {
+    return this.hasRoleAccess(sectionName);
+  }
+
+  private filterReportSubItems(subItems: { path?: string; fragment?: string; label: string; icon?: string }[]): { path?: string; fragment?: string; label: string; icon?: string }[] {
     if (this.isManagementUser) {
       return subItems;
     }
@@ -118,7 +133,7 @@ export class MainLayoutComponent implements OnInit {
         return allowedRoles.has('aesthetics') || allowedRoles.has('laser');
       }
 
-      return allowedRoles.has(reportPrefix);
+      return allowedRoles.has(reportPrefix) || allowedRoles.has(reportPrefix.endsWith('s') ? reportPrefix.slice(0, -1) : `${reportPrefix}s`);
     });
   }
 

@@ -74,6 +74,16 @@ export const routes: Routes = [
           .then(m => m.managementRoutes)
       },
       {
+        path: 'accounting',
+        loadChildren: () => import('./features/accounting/accounting.routes')
+          .then(m => m.accountingRoutes)
+      },
+      {
+        path: 'employees',
+        loadChildren: () => import('./features/employees/employees.routes')
+          .then(m => m.employeesRoutes)
+      },
+      {
         path: 'aesthetics',
         loadChildren: () => import('./features/aesthetics/aesthetics.routes')
           .then(m => m.aestheticsRoutes)

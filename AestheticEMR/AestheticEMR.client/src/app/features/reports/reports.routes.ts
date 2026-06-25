@@ -107,6 +107,31 @@ export const reportsRoutes: Routes = [
       .then(m => m.BillingRevenueReportComponent)
   },
   {
+    path: 'accounting-journal-entries-report',
+    loadComponent: () => import('./accounting/accounting-journal-entries-report.component')
+      .then(m => m.AccountingJournalEntriesReportComponent)
+  },
+  {
+    path: 'accounting-expenses-report',
+    loadComponent: () => import('./accounting/accounting-expenses-report.component')
+      .then(m => m.AccountingExpensesReportComponent)
+  },
+  {
+    path: 'accounting-incomes-report',
+    loadComponent: () => import('./accounting/accounting-incomes-report.component')
+      .then(m => m.AccountingIncomesReportComponent)
+  },
+  {
+    path: 'employees-info-report',
+    loadComponent: () => import('./employees/employees-info-report.component')
+      .then(m => m.EmployeesInfoReportComponent)
+  },
+  {
+    path: 'employees-department-report',
+    loadComponent: () => import('./employees/employees-department-report.component')
+      .then(m => m.EmployeesDepartmentReportComponent)
+  },
+  {
     path: 'admin-users-report',
     loadComponent: () => import('./admin/admin-users-report.component')
       .then(m => m.AdminUsersReportComponent)

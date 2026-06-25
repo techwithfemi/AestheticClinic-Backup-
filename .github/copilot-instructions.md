@@ -103,6 +103,27 @@ QuickApp.Server/
 
 **Service Registration** (in `Program.cs`): builder.Services.AddScoped<IProductService, ProductService>();
 
+### Data Access Platforms
+
+This project supports **two data access technologies**: Entity Framework Core for standard CRUD on owned entities (writes, migrations, change tracking), and Dapper via DataAccessLibrary for read-heavy queries, complex multi-table joins, reporting views, and cross-database queries. Use EF Core for writes and Dapper for reads/reporting. Always use parameterized queries. Inject IDataAccessService for Dapper alongside ApplicationDbContext.
+
+| Technology | When to Use |
+|---|---|
+| **Entity Framework Core** | Standard CRUD on owned entities, migrations, change tracking, and relationship navigation |
+| **Dapper** (via `DataAccessLibrary`) | Read-heavy queries, complex multi-table joins, reporting views, cross-database queries, and any scenario where raw SQL performance matters |
+
+**Data Access Rules:**
+
+1. ✅ **Use EF Core** for write operations on EF-tracked entities (insert, update, delete)
+2. ✅ **Use Dapper** for read-heavy or reporting queries (e.g., views like `VwhConsultingDetailsForBillingAlt`)
+3. ✅ **Use Dapper** for cross-database queries (e.g., Accounting DB, EMR DB)
+4. ✅ **Use Dapper** when raw SQL is clearer or more performant than LINQ
+5. ✅ **Inject `IDataAccessService` (DataAccessLibrary)** for Dapper queries alongside `ApplicationDbContext`
+6. ✅ **Use parameterized queries** always — never string-concatenate SQL
+7. ✅ **Respect explicit overrides** — if the user explicitly specifies Dapper or EF Core for an operation, use exactly that technology regardless of the defaults above
+8. ❌ **DO NOT mix EF change-tracking with Dapper writes** on the same entity in one transaction
+9. ❌ **DO NOT default to one technology for everything** — choose per scenario
+
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -138,14 +159,16 @@ All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute): [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() {...}2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
+   public async Task<IActionResult> GetUsers() {...}
+2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-   }
+}
+
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -191,6 +214,7 @@ public async Task<IActionResult> Delete(int id)
         return BadRequest(ModelState);
     }
 }
+
 **Error Handling Rules:**
 
 1. ✅ **Use custom exceptions** for domain-specific errors
@@ -272,7 +296,7 @@ quickapp.client/src/app/
 1. ✅ **Use lazy loading** with `loadComponent`
 2. ✅ **Use `AuthGuard`** for protected routes
 3. ✅ **Set `title`** for each route
-4. ✅ **Use `path: '**'` for 404 route (must be last)
+4. ✅ **Use `path: '**'` for 404 route (must be last)**
 5. ❌ **DO NOT use eager loading** - always lazy load feature components
 
 **Example:**{
@@ -281,6 +305,7 @@ quickapp.client/src/app/
   canActivate: [AuthGuard],
   title: 'Products'
 }
+
 ### Translation Files
 
 **Important**: When adding new UI text, add translation keys to all locale files.
@@ -290,6 +315,7 @@ quickapp.client/src/app/
 
 **Usage in Templates:**<h4>{{ 'Products' | translate }}</h4>
 <p>{{ 'Description' | translate }}</p>
+
 **Translation Rules:**
 
 1. ✅ **Add keys to `en.json` first** (primary language)
@@ -321,6 +347,7 @@ quickapp.client/src/app/
       }
     });
 }
+
 ### Patient Management
 
 **Private Patients Identification:**
@@ -373,6 +400,28 @@ When adding Google login or any external authentication buttons to login/auth ca
 ### Configuration Management
 
 When introducing new configuration keys, also update the base `appsettings.json` alongside environment-specific files.
+
+### Custom Rules for Entry Form UI
+
+**Entry form UI implementation design:**
+- Create a listing/worklist page (search, table, add/edit actions), like Dental Clinical Session.
+- Create a separate dialog component (for both New and Edit), as seen in DentalEncounterDialogComponent.
+- Use one reusable dialog for create/update:
+  - Open empty for new entry.
+  - Open prefilled for edit entry.
+- Implement full CRUD operations for the UI.
+- Save from dialog, close dialog, then refresh parent list.
+- Create a header section in the add/edit dialog page.
+- When a patient is selected, it should display the AttendanceSummary component (patient attendance summary) in the header section of the dialog page.
+- If the add/edit dialog page has tabs, keep patient header/summary and tabbed form inside the dialog, not the main page.
+- Use Angular Material/material icons instead of Bootstrap.
+- Material table/grid should have page size = 10.
+- use @ng-select/ng-select as select dropdown with searchable 
+- The dialog can only be explicitly closed using the close (X) icon or cancel button.
+- The entry form UI must be responsive (for mobile, tablet, and desktop devices).
+
+So in short: separate “entry form UI” from “records/list page UI” and reuse the same dialog for new/edit across modules
+
 
 
 
