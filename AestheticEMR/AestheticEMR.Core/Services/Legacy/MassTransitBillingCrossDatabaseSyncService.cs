@@ -9,7 +9,7 @@ namespace AestheticEMR.Core.Services.Legacy;
 /// <summary>
 /// Cross-database billing sync using MassTransit Outbox (separate-machines topology).
 /// The Outbox guarantees at-least-once delivery even if the broker is temporarily unavailable.
-/// Consumers in SmartHR and Accounting will apply idempotent upserts/deletes.
+/// Consumers in Accounting will apply idempotent upserts/deletes.
 /// </summary>
 public class MassTransitBillingCrossDatabaseSyncService(
     BillingEventPublisher publisher,

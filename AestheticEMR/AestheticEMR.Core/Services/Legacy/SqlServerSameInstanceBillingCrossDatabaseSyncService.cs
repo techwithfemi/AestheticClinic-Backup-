@@ -50,10 +50,6 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCros
         }
         foreach (var databaseName in targetDatabases)
         {
-            // Skip SmartHR for all direct table operations
-            if (string.Equals(databaseName, "SmartHR", StringComparison.OrdinalIgnoreCase))
-                continue;
-
             if (string.Equals(databaseName, accountingDb, StringComparison.OrdinalIgnoreCase))
             {
                 // Only post to accounting via stored procs
@@ -93,9 +89,6 @@ public class SqlServerSameInstanceBillingCrossDatabaseSyncService : IBillingCros
         }
         foreach (var databaseName in targetDatabases)
         {
-            if (string.Equals(databaseName, "SmartHR", StringComparison.OrdinalIgnoreCase))
-                continue;
-
             if (string.Equals(databaseName, accountingDb, StringComparison.OrdinalIgnoreCase))
             {
                 await DeleteFromAccountingDbAsync(tranIds, values, cancellationToken);

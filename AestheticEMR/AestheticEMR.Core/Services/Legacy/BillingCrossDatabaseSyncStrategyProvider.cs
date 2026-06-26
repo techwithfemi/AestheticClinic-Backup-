@@ -10,8 +10,8 @@ public class BillingCrossDatabaseSyncStrategyProvider(
     ILogger<BillingCrossDatabaseSyncStrategyProvider> logger) : IBillingCrossDatabaseSyncStrategyProvider
 {
     private static readonly StringComparer NameComparer = StringComparer.OrdinalIgnoreCase;
-    // Accounting first (99.9% of deployments); SmartHR is secondary/optional
-    private static readonly IReadOnlyList<string> SecondaryConnectionNames = ["AccountingConnection", "SmartHRConnection"];
+    // Accounting is the supported secondary database
+    private static readonly IReadOnlyList<string> SecondaryConnectionNames = ["AccountingConnection"];
 
     private readonly SemaphoreSlim initializeLock = new(1, 1);
     private BillingCrossDatabaseSyncStatus status = new();

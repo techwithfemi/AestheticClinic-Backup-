@@ -294,9 +294,7 @@ if (enableMessageBus)
             o.UseBusOutbox();
         });
 
-        x.AddConsumer<SmartHRBillingUpsertedConsumer>();
         x.AddConsumer<AccountingBillingUpsertedConsumer>();
-        x.AddConsumer<SmartHRBillingDeletedConsumer>();
         x.AddConsumer<AccountingBillingDeletedConsumer>();
 
         x.UsingRabbitMq((ctx, cfg) =>

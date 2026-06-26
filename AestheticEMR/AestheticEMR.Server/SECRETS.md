@@ -36,7 +36,6 @@ dotnet user-secrets remove "SmtpConfig:Password" --project AestheticEMR.Server
 | Key | Description |
 |-----|-------------|
 | `ConnectionStrings:DefaultConnection` | Full Hospital DB connection string (inc. password) |
-| `ConnectionStrings:SmartHRConnection` | Full SmartHR DB connection string (inc. password) |
 | `ConnectionStrings:AccountingConnection` | Full Accounting DB connection string (inc. password) |
 | `RabbitMQ:Password` | RabbitMQ broker password |
 | `SmtpConfig:Password` | SMTP mail server password |
@@ -58,7 +57,6 @@ These are the variable names you set on every production host:
 |---|---|
 | `ASPNETCORE_ENVIRONMENT` | *(must be set to `Production`)* |
 | `ConnectionStrings__DefaultConnection` | `ConnectionStrings:DefaultConnection` |
-| `ConnectionStrings__SmartHRConnection` | `ConnectionStrings:SmartHRConnection` |
 | `ConnectionStrings__AccountingConnection` | `ConnectionStrings:AccountingConnection` |
 | `RabbitMQ__Password` | `RabbitMQ:Password` |
 | `SmtpConfig__Password` | `SmtpConfig:Password` |
