@@ -11,6 +11,8 @@ using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Dental;
 using AestheticEMR.Core.Services.Dental.Interfaces;
+using AestheticEMR.Core.Services.Employees;
+using AestheticEMR.Core.Services.Employees.Interfaces;
 using AestheticEMR.Core.Services.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Core.Services.Shop;
@@ -68,6 +70,9 @@ builder.Services.AddDbContext<AccountingDbContext>(options =>
 {
     options.UseSqlServer(accountingConnectionString);
 });
+
+// Employees module uses the Hospital DB (ApplicationDbContext / DefaultConnection)
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -441,4 +446,6 @@ catch (Exception ex)
 /************* RUN APP *************/
 
 app.Run();
+
+
 

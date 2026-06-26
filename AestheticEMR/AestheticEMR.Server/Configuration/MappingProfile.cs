@@ -7,16 +7,19 @@
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Dental;
+using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Server.ViewModels.Account;
 using AestheticEMR.Server.ViewModels.Aesthetic;
 using AestheticEMR.Server.ViewModels.Dental;
+using AestheticEMR.Server.ViewModels.Employees;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AestheticEMR.Server.ViewModels.Shop;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using EmployeeEntity = AestheticEMR.Core.Models.Employees.Employees;
 
 namespace AestheticEMR.Server.Configuration
 {
@@ -260,6 +263,34 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.RevClinic, map => map.MapFrom(s => s.RevClinic))
                 .ForMember(d => d.BillTo, map => map.MapFrom(s => s.BillTo))
                 .ForMember(d => d.CoyName, map => map.MapFrom(s => s.CoyName));
+
+            // Employee mappings
+            CreateMap<EmployeeEntity, EmployeeVM>()
+                .ForMember(d => d.Active, map => map.MapFrom(s =>
+                    !string.IsNullOrWhiteSpace(s.EmpStatusCode) &&
+                    s.EmpStatusCode.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase)))
+                .ForMember(d => d.DesignationName, map => map.Ignore())
+                .ForMember(d => d.DeptName, map => map.Ignore());
+
+            CreateMap<EmployeeVM, EmployeeEntity>()
+                .ForMember(d => d.EmpStatusCode, map => map.MapFrom(s => s.Active ? "ACTIVE" : "INACTIVE"))
+                .ForMember(d => d.OtherName, map => map.Ignore())
+                .ForMember(d => d.UnitId, map => map.Ignore())
+                .ForMember(d => d.EmpCatCode, map => map.Ignore())
+                .ForMember(d => d.HireDate, map => map.Ignore())
+                .ForMember(d => d.SalaryScale, map => map.Ignore())
+                .ForMember(d => d.GrossSal, map => map.Ignore())
+                .ForMember(d => d.NhsNo, map => map.Ignore())
+                .ForMember(d => d.NsitfNo, map => map.Ignore())
+                .ForMember(d => d.JobDesc, map => map.Ignore())
+                .ForMember(d => d.FirstGrtName, map => map.Ignore())
+                .ForMember(d => d.FirstGrtAddress, map => map.Ignore())
+                .ForMember(d => d.SecondGrtName, map => map.Ignore())
+                .ForMember(d => d.SecondGrtAddress, map => map.Ignore())
+                .ForMember(d => d.MedAllw, map => map.Ignore());
+
+            CreateMap<Designation, DesignationVM>();
+            CreateMap<EmpDepartments, EmpDepartmentVM>();
         }
 
         private static string StripBase64Prefix(string base64)

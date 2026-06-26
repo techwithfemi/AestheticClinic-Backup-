@@ -10,6 +10,7 @@ using MassTransit;
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Dental;
+using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Account;
@@ -121,6 +122,15 @@ namespace AestheticEMR.Core.Infrastructure
         public DbSet<vwEmpCashier> vwEmpCashiers { get; set; }
         public DbSet<vwEmpName> vwEmpNames { get; set; }
         public DbSet<vwEmployee> vwEmployees { get; set; }
+
+        // Employees module (Hospital DB)
+        public DbSet<Employees> HrEmployees { get; set; }
+        public DbSet<Designation> Designations { get; set; }
+        public DbSet<EmpDepartments> EmpDepartments { get; set; }
+        public DbSet<Idgen> HrIdgens { get; set; }
+        public DbSet<EmployeeStatus> EmployeeStatuses { get; set; }
+        public DbSet<EmployeeCat> EmployeeCats { get; set; }
+        public DbSet<Organization> Organizations { get; set; }
         public DbSet<AestheticPatient> AestheticPatients { get; set; }
         public DbSet<AestheticConsultation> AestheticConsultations { get; set; }
         public DbSet<AestheticPhoto> AestheticPhotos { get; set; }
@@ -1463,6 +1473,71 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.ToView("vwEmployees");
             });
 
+            // Employees Module (Hospital DB)
+            builder.Entity<Employees>(entity =>
+            {
+                entity.HasKey(e => e.EmpId);
+                entity.ToTable("Employees");
+                entity.Property(e => e.EmpId).HasColumnName("EmpID").HasMaxLength(50);
+                entity.Property(e => e.FirstName).HasMaxLength(100);
+                entity.Property(e => e.LastName).HasMaxLength(100);
+                entity.Property(e => e.OtherName).HasMaxLength(100);
+                entity.Property(e => e.DeptId).HasColumnName("DeptID").HasMaxLength(50);
+                entity.Property(e => e.UnitId).HasColumnName("UnitID").HasMaxLength(50);
+                entity.Property(e => e.DesignationId).HasColumnName("DesignationID").HasMaxLength(50);
+                entity.Property(e => e.EmpCatCode).HasMaxLength(50);
+                entity.Property(e => e.EmpStatusCode).HasMaxLength(50);
+                entity.Property(e => e.Sex).HasMaxLength(10);
+                entity.Property(e => e.GrossSal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.MedAllw).HasColumnType("decimal(18,2)");
+            });
+
+            builder.Entity<Designation>(entity =>
+            {
+                entity.HasKey(e => e.DesignationId);
+                entity.ToTable("Designation");
+                entity.Property(e => e.DesignationId).HasColumnName("DesignationID").HasMaxLength(50);
+                entity.Property(e => e.DesignationName).HasMaxLength(150);
+            });
+
+            builder.Entity<EmpDepartments>(entity =>
+            {
+                entity.HasKey(e => e.DeptId);
+                entity.ToTable("EmpDepartments");
+                entity.Property(e => e.DeptId).HasColumnName("DeptID").HasMaxLength(50);
+                entity.Property(e => e.DeptName).HasMaxLength(150);
+            });
+
+            builder.Entity<Idgen>(entity =>
+            {
+                entity.HasKey(e => e.DesName);
+                entity.ToTable("IDgen");
+                entity.Property(e => e.DesName).HasColumnName("desName").HasMaxLength(50);
+                entity.Property(e => e.Id).HasColumnName("id").HasColumnType("decimal(18, 0)");
+            });
+
+            builder.Entity<EmployeeStatus>(entity =>
+            {
+                entity.HasKey(e => e.EmpStatusCode);
+                entity.ToTable("EmployeeStatus");
+                entity.Property(e => e.EmpStatusCode).HasMaxLength(50);
+            });
+
+            builder.Entity<EmployeeCat>(entity =>
+            {
+                entity.HasKey(e => e.EmpCatCode);
+                entity.ToTable("EmployeeCat");
+                entity.Property(e => e.EmpCatCode).HasMaxLength(50);
+            });
+
+            builder.Entity<Organization>(entity =>
+            {
+                entity.HasKey(e => e.OrgId);
+                entity.ToTable("Organization");
+                entity.Property(e => e.OrgId).HasColumnName("OrgID").HasMaxLength(50);
+                entity.Property(e => e.OrgName).HasMaxLength(150);
+            });
+
             builder.Entity<VwhRecord>(entity =>
             {
                 entity.HasNoKey();
@@ -1975,6 +2050,14 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
+
+
+
+
+
+
 
 
 
