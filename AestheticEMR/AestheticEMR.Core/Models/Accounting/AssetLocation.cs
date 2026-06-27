@@ -7,7 +7,7 @@ public partial class AssetLocation
 {
     public string? LocationCode { get; set; }
 
-    public string? LocationName { get; set; }
+    public string? LocName { get; set; }
 
     public byte SNo { get; set; }
 }

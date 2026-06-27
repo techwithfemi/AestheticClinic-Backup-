@@ -12,11 +12,11 @@ public partial class QryEmployees
 
     public string? DeptName { get; set; }
 
-    public string? DesignationName { get; set; }
+    public string? desName { get; set; }
 
-    public string? EmpCatDesc { get; set; }
+    public string? catName { get; set; }
 
-    public string? EmpStatusDesc { get; set; }
+    public string? statName { get; set; }
 
     public DateTime? HireDate { get; set; }
 

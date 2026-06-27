@@ -4,6 +4,7 @@ using AestheticEMR.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AestheticEMR.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260626090606_correctCodesForEmpCat")]
+    partial class correctCodesForEmpCat
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -785,16 +788,19 @@ namespace AestheticEMR.Server.Migrations
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Employees.Designation", b =>
                 {
-                    b.Property<string>("desID")
+                    b.Property<string>("DesignationId")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
-                        .HasColumnName("desID");
+                        .HasColumnName("DesignationID");
 
-                    b.Property<string>("desName")
+                    b.Property<string>("DesignationDesc")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DesignationName")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.HasKey("desID");
+                    b.HasKey("DesignationId");
 
                     b.ToTable("Designation", (string)null);
                 });
@@ -813,7 +819,7 @@ namespace AestheticEMR.Server.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("Location")
+                    b.Property<string>("OrgId")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("DeptId");
@@ -823,28 +829,28 @@ namespace AestheticEMR.Server.Migrations
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Employees.EmployeeCat", b =>
                 {
-                    b.Property<string>("catID")
+                    b.Property<string>("EmpCatCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("catName")
+                    b.Property<string>("EmpCatDesc")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("catID");
+                    b.HasKey("EmpCatCode");
 
                     b.ToTable("EmployeeCat", (string)null);
                 });
 
             modelBuilder.Entity("AestheticEMR.Core.Models.Employees.EmployeeStatus", b =>
                 {
-                    b.Property<string>("statID")
+                    b.Property<string>("EmpStatusCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("statName")
+                    b.Property<string>("EmpStatusDesc")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("statID");
+                    b.HasKey("EmpStatusCode");
 
                     b.ToTable("EmployeeStatus", (string)null);
                 });
@@ -864,7 +870,7 @@ namespace AestheticEMR.Server.Migrations
                     b.Property<string>("Designation")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
-                        .HasColumnName("Designation");
+                        .HasColumnName("DesignationID");
 
                     b.Property<DateTime?>("Dob")
                         .HasColumnType("datetime2");

@@ -1484,9 +1484,9 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.Property(e => e.OtherName).HasMaxLength(100);
                 entity.Property(e => e.DeptId).HasColumnName("DeptID").HasMaxLength(50);
                 entity.Property(e => e.UnitId).HasColumnName("UnitID").HasMaxLength(50);
-                entity.Property(e => e.DesignationId).HasColumnName("DesignationID").HasMaxLength(50);
-                entity.Property(e => e.EmpCatCode).HasMaxLength(50);
-                entity.Property(e => e.EmpStatusCode).HasMaxLength(50);
+                entity.Property(e => e.Designation).HasColumnName("Designation").HasMaxLength(50);
+                entity.Property(e => e.EmpCat).HasMaxLength(50);
+                entity.Property(e => e.EmpStatus).HasMaxLength(50);
                 entity.Property(e => e.Sex).HasMaxLength(10);
                 entity.Property(e => e.GrossSal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.MedAllw).HasColumnType("decimal(18,2)");
@@ -1494,10 +1494,10 @@ namespace AestheticEMR.Core.Infrastructure
 
             builder.Entity<Designation>(entity =>
             {
-                entity.HasKey(e => e.DesignationId);
+                entity.HasKey(e => e.desID);
                 entity.ToTable("Designation");
-                entity.Property(e => e.DesignationId).HasColumnName("DesignationID").HasMaxLength(50);
-                entity.Property(e => e.DesignationName).HasMaxLength(150);
+                entity.Property(e => e.desID).HasColumnName("desID").HasMaxLength(50);
+                entity.Property(e => e.desName).HasMaxLength(150);
             });
 
             builder.Entity<EmpDepartments>(entity =>
@@ -1510,24 +1510,24 @@ namespace AestheticEMR.Core.Infrastructure
 
             builder.Entity<Idgen>(entity =>
             {
-                entity.HasKey(e => e.DesName);
+                entity.HasKey(e => e.DestName);
                 entity.ToTable("IDgen");
-                entity.Property(e => e.DesName).HasColumnName("desName").HasMaxLength(50);
+                entity.Property(e => e.DestName).HasColumnName("DestName").HasMaxLength(50);
                 entity.Property(e => e.Id).HasColumnName("id").HasColumnType("decimal(18, 0)");
             });
 
             builder.Entity<EmployeeStatus>(entity =>
             {
-                entity.HasKey(e => e.EmpStatusCode);
+                entity.HasKey(e => e.statID);
                 entity.ToTable("EmployeeStatus");
-                entity.Property(e => e.EmpStatusCode).HasMaxLength(50);
+                entity.Property(e => e.statID).HasMaxLength(50);
             });
 
             builder.Entity<EmployeeCat>(entity =>
             {
-                entity.HasKey(e => e.EmpCatCode);
+                entity.HasKey(e => e.catID);
                 entity.ToTable("EmployeeCat");
-                entity.Property(e => e.EmpCatCode).HasMaxLength(50);
+                entity.Property(e => e.catID).HasMaxLength(50);
             });
 
             builder.Entity<Organization>(entity =>

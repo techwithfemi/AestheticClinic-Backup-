@@ -716,7 +716,7 @@ public partial class AccountingDbContext : DbContext
                 .HasMaxLength(5)
                 .IsUnicode(false)
                 .HasComputedColumnSql("('LC-'+right('00'+CONVERT([varchar](2),[SNo],(0)),(2)))", false);
-            entity.Property(e => e.LocationName)
+            entity.Property(e => e.LocName)
                 .HasMaxLength(50)
                 .IsUnicode(false);
         });

@@ -37,6 +37,12 @@ public class DesignationVM
     public string? DesignationName { get; set; }
 }
 
+public class DepartmentVM
+{
+    public required string DeptId { get; set; }
+    public string? DeptName { get; set; }
+}
+
 public class EmpDepartmentVM
 {
     public required string DeptId { get; set; }

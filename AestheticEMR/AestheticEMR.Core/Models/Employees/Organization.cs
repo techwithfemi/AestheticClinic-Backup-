@@ -6,7 +6,9 @@ public partial class Organization
 
     public string? OrgName { get; set; }
 
-    public string? OrgDesc { get; set; }
+    public string? OrgAddress1 { get; set; }
 
-    public bool? Akive { get; set; }
+    public string? OrgAddress2 { get; set; }
+    public string? OrgAddress3 { get; set; }
+    public string? OrgLogo { get; set; }
 }

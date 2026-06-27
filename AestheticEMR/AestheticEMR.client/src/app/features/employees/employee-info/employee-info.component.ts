@@ -27,6 +27,8 @@ export interface EmployeeDialogData {
   employee: Employee | null;
   designations: Designation[];
   departments: EmpDepartment[];
+  loadingLookups?: boolean;
+  lookupError?: string;
 }
 
 @Component({
@@ -84,10 +86,16 @@ export interface EmployeeDialogData {
               [items]="data.designations"
               bindLabel="designationName"
               bindValue="designationId"
-              placeholder="Select Designation"
+              [placeholder]="designationPlaceholder"
               [(ngModel)]="form.designationId"
-              [clearable]="true">
+              [clearable]="true"
+              [disabled]="data.loadingLookups || hasDesignations === false">
             </ng-select>
+            @if (data.lookupError && hasDesignations === false) {
+              <small class="lookup-hint lookup-error">Failed to load: {{ data.lookupError }}</small>
+            } @else if (hasDesignations === false && !data.loadingLookups) {
+              <small class="lookup-hint lookup-empty">No designations available.</small>
+            }
           </div>
           <div class="ng-select-wrapper">
             <span class="ng-select-label">Department</span>
@@ -95,10 +103,16 @@ export interface EmployeeDialogData {
               [items]="data.departments"
               bindLabel="deptName"
               bindValue="deptId"
-              placeholder="Select Department"
+              [placeholder]="departmentPlaceholder"
               [(ngModel)]="form.deptId"
-              [clearable]="true">
+              [clearable]="true"
+              [disabled]="data.loadingLookups || hasDepartments === false">
             </ng-select>
+            @if (data.lookupError && hasDepartments === false) {
+              <small class="lookup-hint lookup-error">Failed to load: {{ data.lookupError }}</small>
+            } @else if (hasDepartments === false && !data.loadingLookups) {
+              <small class="lookup-hint lookup-empty">No departments available.</small>
+            }
           </div>
         </div>
 
@@ -148,6 +162,9 @@ export interface EmployeeDialogData {
     mat-form-field { width: 100%; }
     .ng-select-wrapper { display: flex; flex-direction: column; }
     .ng-select-label { font-size: 12px; color: rgba(0,0,0,.6); margin-bottom: 4px; }
+    .lookup-hint { font-size: 11px; margin-top: 4px; line-height: 1.2; }
+    .lookup-empty { color: #888; font-style: italic; }
+    .lookup-error { color: #c62828; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 16px 16px; }
     @media (max-width: 575.98px) {
       .form-row.two-col { grid-template-columns: 1fr; }
@@ -166,6 +183,17 @@ export class EmployeeDialogComponent {
   dobDate: Date | null = null;
 
   sexOptions = ['Male', 'Female'];
+
+  get hasDesignations(): boolean { return (this.data.designations?.length ?? 0) > 0; }
+  get hasDepartments(): boolean { return (this.data.departments?.length ?? 0) > 0; }
+  get designationPlaceholder(): string {
+    if (this.data.loadingLookups) return 'Loading designations...';
+    return this.hasDesignations ? 'Select Designation' : 'No designations available';
+  }
+  get departmentPlaceholder(): string {
+    if (this.data.loadingLookups) return 'Loading departments...';
+    return this.hasDepartments ? 'Select Department' : 'No departments available';
+  }
 
   form: Employee = {
     empId: this.data.employee?.empId ?? '',
@@ -347,6 +375,9 @@ export class EmployeeInfoComponent implements OnInit {
   departments: EmpDepartment[] = [];
   searchText = '';
   loadingIndicator = false;
+  loadingLookups = false;
+  lookupError = '';
+  private _lookupsCompleted = 0;
 
   ngOnInit() {
     this.loadLookups();
@@ -354,8 +385,37 @@ export class EmployeeInfoComponent implements OnInit {
   }
 
   loadLookups() {
-    this.endpoint.getDesignationsEndpoint().subscribe({ next: d => (this.designations = d) });
-    this.endpoint.getDepartmentsEndpoint().subscribe({ next: d => (this.departments = d) });
+    this.loadingLookups = true;
+    this.endpoint.getDesignationsEndpoint().subscribe({
+      next: d => {
+        this.designations = d ?? [];
+        this.maybeFinishLookups();
+      },
+      error: err => {
+        this.designations = [];
+        this.lookupError = this.getErrorMessage(err);
+        this.maybeFinishLookups();
+      }
+    });
+    this.endpoint.getDepartmentsEndpoint().subscribe({
+      next: d => {
+        this.departments = d ?? [];
+        this.maybeFinishLookups();
+      },
+      error: err => {
+        this.departments = [];
+        this.lookupError = this.getErrorMessage(err);
+        this.maybeFinishLookups();
+      }
+    });
+  }
+
+  private maybeFinishLookups() {
+    // Called after each lookup resolves; only flips flags once both have answered.
+    this._lookupsCompleted = (this._lookupsCompleted ?? 0) + 1;
+    if (this._lookupsCompleted >= 2) {
+      this.loadingLookups = false;
+    }
   }
 
   loadData() {
@@ -402,7 +462,13 @@ export class EmployeeInfoComponent implements OnInit {
       width: '600px',
       maxWidth: '98vw',
       disableClose: true,
-      data: { employee: null, designations: this.designations, departments: this.departments } as EmployeeDialogData
+      data: {
+        employee: null,
+        designations: this.designations,
+        departments: this.departments,
+        loadingLookups: this.loadingLookups,
+        lookupError: this.lookupError,
+      } as EmployeeDialogData
     });
     ref.afterClosed().subscribe((result: Employee | undefined) => {
       if (result) {
@@ -418,7 +484,13 @@ export class EmployeeInfoComponent implements OnInit {
       width: '600px',
       maxWidth: '98vw',
       disableClose: true,
-      data: { employee: { ...employee }, designations: this.designations, departments: this.departments } as EmployeeDialogData
+      data: {
+        employee: { ...employee },
+        designations: this.designations,
+        departments: this.departments,
+        loadingLookups: this.loadingLookups,
+        lookupError: this.lookupError,
+      } as EmployeeDialogData
     });
     ref.afterClosed().subscribe((result: Employee | undefined) => {
       if (result) {

@@ -23,6 +23,22 @@ public class EmployeeController(
         return Ok(empId);
     }
 
+    [HttpGet("designations")]
+    [ProducesResponseType(typeof(IEnumerable<DesignationVM>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDesignations()
+    {
+        var designations = await employeeService.GetDesignationsAsync();
+        return Ok(_mapper.Map<IEnumerable<DesignationVM>>(designations));
+    }
+
+    [HttpGet("departments")]
+    [ProducesResponseType(typeof(IEnumerable<EmpDepartmentVM>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDepartments()
+    {
+        var departments = await employeeService.GetDepartmentsAsync();
+        return Ok(_mapper.Map<IEnumerable<EmpDepartmentVM>>(departments));
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EmployeeVM>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
@@ -57,28 +73,40 @@ public class EmployeeController(
 
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(EmployeeVM), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(string id, [FromBody] EmployeeVM vm)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        if (!string.Equals(id, vm.EmpId, StringComparison.OrdinalIgnoreCase))
+        // Defense in depth: route param is the source of truth for the PK.
+        // Legacy IDs (e.g. "HR/001") and new IDs (e.g. "HR-0000001") both work.
+        if (string.IsNullOrWhiteSpace(id))
         {
-            AddModelError("ID mismatch.");
+            AddModelError("Missing employee id in route.");
             return BadRequest(ModelState);
         }
+        vm.EmpId = id;
 
         try
         {
             var employee = _mapper.Map<EmployeeEntity>(vm);
+            employee.EmpId = id; // ensure PK is never lost through mapping
             var updated = await employeeService.UpdateAsync(employee);
             return Ok(_mapper.Map<EmployeeVM>(updated));
         }
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update employee {EmpId}", id);
+            return Problem(
+                title: "Update failed",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status400BadRequest);
         }
     }
 
@@ -96,21 +124,5 @@ public class EmployeeController(
         {
             return NotFound();
         }
-    }
-
-    [HttpGet("designations")]
-    [ProducesResponseType(typeof(IEnumerable<DesignationVM>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetDesignations()
-    {
-        var designations = await employeeService.GetDesignationsAsync();
-        return Ok(_mapper.Map<IEnumerable<DesignationVM>>(designations));
-    }
-
-    [HttpGet("departments")]
-    [ProducesResponseType(typeof(IEnumerable<EmpDepartmentVM>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetDepartments()
-    {
-        var departments = await employeeService.GetDepartmentsAsync();
-        return Ok(_mapper.Map<IEnumerable<EmpDepartmentVM>>(departments));
     }
 }

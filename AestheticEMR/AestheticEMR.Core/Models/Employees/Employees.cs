@@ -14,11 +14,11 @@ public partial class Employees
 
     public string? UnitId { get; set; } =null!; 
 
-    public string? DesignationId { get; set; } // foreign key signation
+    public string? Designation { get; set; } // foreign key signation
 
-    public string? EmpCatCode { get; set; } = null!;
+    public string? EmpCat { get; set; } // foreign key signation
 
-    public string? EmpStatusCode { get; set; } = null!;
+    public string? EmpStatus { get; set; } // foreign key signation
 
     public DateTime? HireDate { get; set; } = null!;
 

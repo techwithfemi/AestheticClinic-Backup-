@@ -6,7 +6,7 @@ public partial class EmpDepartments
 
     public string? DeptName { get; set; }
 
-    public string? DeptDesc { get; set; }
+    public string? DeptAddress { get; set; }
 
-    public string? OrgId { get; set; }
+    public string? Location { get; set; }
 }

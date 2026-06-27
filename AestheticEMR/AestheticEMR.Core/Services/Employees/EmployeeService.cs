@@ -11,11 +11,11 @@ namespace AestheticEMR.Core.Services.Employees;
 public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeService> logger) : IEmployeeService
 {
     private const string EmpIdCode = "Employee";
-    private const string EmpIdPrefix = "HR/";
+    private const string EmpIdPrefix = "HR-";
 
     public async Task<string> GenerateEmpIdAsync()
     {
-        var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DesName == EmpIdCode);
+        var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == EmpIdCode);
         var nextId = (idgen?.Id ?? 0) + 1;
         return $"{EmpIdPrefix}{Convert.ToInt64(nextId):D7}";
     }
@@ -39,12 +39,12 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DesName == EmpIdCode);
+            var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == EmpIdCode);
 
             decimal nextId;
             if (idgen == null)
             {
-                idgen = new Idgen { DesName = EmpIdCode, Id = 1 };
+                idgen = new Idgen { DestName = EmpIdCode, Id = 1 };
                 context.HrIdgens.Add(idgen);
                 nextId = 1;
             }
@@ -78,8 +78,11 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
         existing.FirstName = employee.FirstName;
         existing.LastName = employee.LastName;
         existing.DeptId = employee.DeptId;
-        existing.DesignationId = employee.DesignationId;
-        existing.EmpStatusCode = employee.EmpStatusCode;
+        // Only overwrite Designation when the incoming value is non-empty;
+        // protects legacy records whose VM didn't round-trip the FK.
+        if (!string.IsNullOrWhiteSpace(employee.Designation))
+            existing.Designation = employee.Designation;
+        existing.EmpStatus = employee.EmpStatus;
         existing.Dob = employee.Dob;
         existing.Sex = employee.Sex;
 
@@ -102,7 +105,7 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
     {
         return await context.Designations
             .AsNoTracking()
-            .OrderBy(d => d.DesignationName)
+            .OrderBy(d => d.desName)
             .ToListAsync();
     }
 

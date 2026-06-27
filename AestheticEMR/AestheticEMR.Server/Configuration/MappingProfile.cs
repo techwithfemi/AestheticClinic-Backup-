@@ -267,16 +267,21 @@ namespace AestheticEMR.Server.Configuration
             // Employee mappings
             CreateMap<EmployeeEntity, EmployeeVM>()
                 .ForMember(d => d.Active, map => map.MapFrom(s =>
-                    !string.IsNullOrWhiteSpace(s.EmpStatusCode) &&
-                    s.EmpStatusCode.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase)))
+                    !string.IsNullOrWhiteSpace(s.EmpStatus) &&
+                    s.EmpStatus.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase)))
+                // Employees entity has a property literally called "Designation"
+                // (legacy schema) that holds the FK to Designation.desID.
+                .ForMember(d => d.DesignationId, map => map.MapFrom(s => s.Designation))
                 .ForMember(d => d.DesignationName, map => map.Ignore())
                 .ForMember(d => d.DeptName, map => map.Ignore());
 
             CreateMap<EmployeeVM, EmployeeEntity>()
-                .ForMember(d => d.EmpStatusCode, map => map.MapFrom(s => s.Active ? "ACTIVE" : "INACTIVE"))
+                .ForMember(d => d.EmpStatus, map => map.MapFrom(s => s.Active ? "ACTIVE" : "INACTIVE"))
+                // Employees entity column is named "Designation" (legacy), VM uses DesignationId.
+                .ForMember(d => d.Designation, map => map.MapFrom(s => s.DesignationId))
                 .ForMember(d => d.OtherName, map => map.Ignore())
                 .ForMember(d => d.UnitId, map => map.Ignore())
-                .ForMember(d => d.EmpCatCode, map => map.Ignore())
+                .ForMember(d => d.EmpCat, map => map.Ignore())
                 .ForMember(d => d.HireDate, map => map.Ignore())
                 .ForMember(d => d.SalaryScale, map => map.Ignore())
                 .ForMember(d => d.GrossSal, map => map.Ignore())
@@ -289,8 +294,15 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.SecondGrtAddress, map => map.Ignore())
                 .ForMember(d => d.MedAllw, map => map.Ignore());
 
-            CreateMap<Designation, DesignationVM>();
+            // Designation entity uses legacy lowercase columns (desID / desName) — map explicitly.
+            CreateMap<Designation, DesignationVM>()
+                .ForMember(d => d.DesignationId, map => map.MapFrom(s => s.desID))
+                .ForMember(d => d.DesignationName, map => map.MapFrom(s => s.desName));
+            CreateMap<Designation, DepartmentVM>()
+                .ForMember(d => d.DeptId, map => map.MapFrom(s => s.desID))
+                .ForMember(d => d.DeptName, map => map.MapFrom(s => s.desName));
             CreateMap<EmpDepartments, EmpDepartmentVM>();
+            CreateMap<EmpDepartments, DepartmentVM>();
         }
 
         private static string StripBase64Prefix(string base64)
