@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -241,10 +241,31 @@ export class EmployeeDialogComponent {
       },
       error: (err: unknown) => {
         this.saving = false;
-        const msg = (err as { message?: string })?.message ?? 'An error occurred.';
+        const msg = this.getApiError(err);
         this.alertService.showStickyMessage('Save Error', msg, MessageSeverity.error);
       }
     });
+  }
+
+  private getApiError(err: unknown): string {
+    // Drill into HttpErrorResponse to surface the actual server message.
+    const e = err as { error?: unknown; message?: string; status?: number; statusText?: string };
+    if (e?.error) {
+      const body = e.error;
+      if (typeof body === 'string') return body;
+      if (typeof body === 'object') {
+        const b = body as { detail?: string; title?: string; message?: string; errors?: Record<string, string[]> };
+        if (b.detail) return `${b.title ?? 'Error'}: ${b.detail}`;
+        if (b.message) return b.message;
+        if (b.errors) {
+          const flat = Object.entries(b.errors).map(([k, v]) => `${k}: ${(v ?? []).join(', ')}`).join('\n');
+          if (flat) return flat;
+        }
+        try { return JSON.stringify(body); } catch { /* fall through */ }
+      }
+    }
+    if (e?.status) return `${e.status} ${e.statusText ?? ''} - ${e.message ?? 'Request failed'}`.trim();
+    return (err as { message?: string })?.message ?? 'An error occurred.';
   }
 
   close() { this.dialogRef.close(); }
@@ -331,7 +352,7 @@ export class EmployeeDialogComponent {
                   <button mat-icon-button color="primary" (click)="openEditDialog(row)" matTooltip="Edit">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-icon-button color="warn" (click)="deleteEmployee(row)" matTooltip="Delete">
+                  <button mat-icon-button color="warn" (click)="deleteEmployee(row)" matTooltip="Delete" [disabled]="true">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>
@@ -356,12 +377,13 @@ export class EmployeeDialogComponent {
     .table-container { overflow-x: auto; }
     .emp-table { width: 100%; }
     .actions-cell { white-space: nowrap; }
+    .actions-cell button[disabled] { opacity: 0.4; }
     .empty { padding: 24px; text-align: center; color: #888; }
     @media (max-width: 992px) { .emp-page { padding: 16px; } }
     @media (max-width: 575.98px) { .emp-page { padding: 12px; } .page-header { flex-direction: column; } }
   `]
 })
-export class EmployeeInfoComponent implements OnInit {
+export class EmployeeInfoComponent implements OnInit, AfterViewInit {
   private dialog = inject(MatDialog);
   private alertService = inject(AlertService);
   private endpoint = inject(EmployeeEndpoint);
@@ -382,6 +404,14 @@ export class EmployeeInfoComponent implements OnInit {
   ngOnInit() {
     this.loadLookups();
     this.loadData();
+  }
+
+  ngAfterViewInit() {
+    // Hook paginator once the view is ready, even if data already loaded.
+    if (this.paginator) {
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.paginator.pageSize = 10;
+    }
   }
 
   loadLookups() {
@@ -428,6 +458,7 @@ export class EmployeeInfoComponent implements OnInit {
         this.rowsCache = employees;
         this.dataSource.data = employees;
         if (this.paginator) this.dataSource.paginator = this.paginator;
+        if (this.dataSource.paginator) this.dataSource.paginator.pageSize = 10;
       },
       error: err => {
         this.alertService.stopLoadingMessage();

@@ -72,23 +72,37 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
 
     public async Task<EmployeeEntity> UpdateAsync(EmployeeEntity employee)
     {
-        var existing = await context.HrEmployees.FirstOrDefaultAsync(e => e.EmpId == employee.EmpId)
-            ?? throw new KeyNotFoundException($"Employee {employee.EmpId} not found.");
+        // Bulletproof update: only touch the columns we own, regardless of how
+        // the entity was constructed. Avoids EF tracking edge-cases on legacy rows
+        // (different ID formats, unrelated columns, etc.).
+        var rows = await context.HrEmployees
+            .Where(e => e.EmpId == employee.EmpId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.FirstName, employee.FirstName)
+                .SetProperty(e => e.LastName, employee.LastName)
+                .SetProperty(e => e.DeptId, employee.DeptId)
+                .SetProperty(e => e.Sex, employee.Sex)
+                .SetProperty(e => e.Dob, employee.Dob)
+                .SetProperty(e => e.EmpStatus, employee.EmpStatus));
 
-        existing.FirstName = employee.FirstName;
-        existing.LastName = employee.LastName;
-        existing.DeptId = employee.DeptId;
-        // Only overwrite Designation when the incoming value is non-empty;
-        // protects legacy records whose VM didn't round-trip the FK.
+        if (rows == 0)
+            throw new KeyNotFoundException($"Employee {employee.EmpId} not found.");
+
+        // Designation is mapped via the entity's "Designation" column; only overwrite
+        // when a non-empty value is supplied so we don't wipe legacy rows on partial VMs.
         if (!string.IsNullOrWhiteSpace(employee.Designation))
-            existing.Designation = employee.Designation;
-        existing.EmpStatus = employee.EmpStatus;
-        existing.Dob = employee.Dob;
-        existing.Sex = employee.Sex;
+        {
+            await context.HrEmployees
+                .Where(e => e.EmpId == employee.EmpId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(e => e.Designation, employee.Designation));
+        }
 
-        await context.SaveChangesAsync();
+        var refreshed = await context.HrEmployees.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.EmpId == employee.EmpId);
+
         logger.LogInformation("Updated employee {EmpId}", employee.EmpId);
-        return existing;
+        return refreshed ?? employee;
     }
 
     public async Task DeleteAsync(string empId)
