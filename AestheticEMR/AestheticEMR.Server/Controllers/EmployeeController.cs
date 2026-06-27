@@ -47,7 +47,7 @@ public class EmployeeController(
         return Ok(_mapper.Map<IEnumerable<EmployeeVM>>(employees));
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{**id}")]
     [ProducesResponseType(typeof(EmployeeVM), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id)
@@ -71,7 +71,7 @@ public class EmployeeController(
         return CreatedAtAction(nameof(GetById), new { id = created.EmpId }, _mapper.Map<EmployeeVM>(created));
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{**id}")]
     [ProducesResponseType(typeof(EmployeeVM), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -110,7 +110,7 @@ public class EmployeeController(
         }
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{**id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id)

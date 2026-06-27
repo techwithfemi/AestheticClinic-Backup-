@@ -13,7 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
+import { MatNativeDateModule, MAT_DATE_FORMATS } from '@angular/material/core';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { fadeInOut } from '../../../services/animations';
@@ -46,6 +46,21 @@ export interface EmployeeDialogData {
     MatDatepickerModule,
     MatNativeDateModule,
     NgSelectModule,
+  ],
+  // Display DOB as YYYY-MM-DD (ISO-8601); value still bound as Date for ngModel.
+  providers: [
+    {
+      provide: MAT_DATE_FORMATS,
+      useValue: {
+        parse: { dateInput: 'YYYY-MM-DD' },
+        display: {
+          dateInput: 'YYYY-MM-DD',
+          monthYearLabel: 'YYYY MMM',
+          dateA11yLabel: 'YYYY-MM-DD',
+          monthYearA11yLabel: 'MMMM YYYY',
+        },
+      },
+    },
   ],
   template: `
     <div class="emp-dialog">
@@ -120,7 +135,7 @@ export interface EmployeeDialogData {
         <div class="form-row two-col">
           <mat-form-field appearance="outline">
             <mat-label>Date of Birth</mat-label>
-            <input matInput [matDatepicker]="dobPicker" [(ngModel)]="dobDate" (ngModelChange)="onDobChange($event)" placeholder="DD/MM/YYYY" />
+            <input matInput [matDatepicker]="dobPicker" [(ngModel)]="dobDate" (ngModelChange)="onDobChange($event)" placeholder="YYYY-MM-DD" />
             <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
             <mat-datepicker #dobPicker></mat-datepicker>
           </mat-form-field>
@@ -362,8 +377,9 @@ export class EmployeeDialogComponent {
               <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
             </table>
           </div>
-          <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons></mat-paginator>
         }
+        <!-- Paginator always rendered so @ViewChild resolves on first ngAfterViewInit -->
+        <mat-paginator [class.hidden]="loadingIndicator || dataSource.data.length === 0" [pageSize]="10" [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons></mat-paginator>
       </mat-card>
     </div>
   `,
@@ -379,6 +395,7 @@ export class EmployeeDialogComponent {
     .actions-cell { white-space: nowrap; }
     .actions-cell button[disabled] { opacity: 0.4; }
     .empty { padding: 24px; text-align: center; color: #888; }
+    .hidden { display: none; }
     @media (max-width: 992px) { .emp-page { padding: 16px; } }
     @media (max-width: 575.98px) { .emp-page { padding: 12px; } .page-header { flex-direction: column; } }
   `]

@@ -26,7 +26,7 @@ export class EmployeeEndpoint extends EndpointBase {
   }
 
   getEmployeeByIdEndpoint<T = Employee>(id: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}/${encodeURIComponent(id)}`, this.requestHeaders).pipe(
+    return this.http.get<T>(`${this.baseUrl}/${id}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getEmployeeByIdEndpoint<T>(id)))
     );
   }
@@ -38,13 +38,13 @@ export class EmployeeEndpoint extends EndpointBase {
   }
 
   updateEmployeeEndpoint<T = Employee>(id: string, employee: Employee): Observable<T> {
-    return this.http.put<T>(`${this.baseUrl}/${encodeURIComponent(id)}`, JSON.stringify(employee), this.requestHeaders).pipe(
+    return this.http.put<T>(`${this.baseUrl}/${id}`, JSON.stringify(employee), this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.updateEmployeeEndpoint<T>(id, employee)))
     );
   }
 
   deleteEmployeeEndpoint<T>(id: string): Observable<T> {
-    return this.http.delete<T>(`${this.baseUrl}/${encodeURIComponent(id)}`, this.requestHeaders).pipe(
+    return this.http.delete<T>(`${this.baseUrl}/${id}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.deleteEmployeeEndpoint<T>(id)))
     );
   }
