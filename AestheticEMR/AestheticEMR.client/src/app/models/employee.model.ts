@@ -15,6 +15,8 @@ export interface Employee {
 export interface Designation {
   designationId: string;
   designationName?: string;
+  /** Number of employees currently assigned to this designation. Populated by the list endpoint. */
+  inUseCount?: number;
 }
 
 export interface EmpDepartment {

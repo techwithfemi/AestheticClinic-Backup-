@@ -297,7 +297,12 @@ namespace AestheticEMR.Server.Configuration
             // Designation entity uses legacy lowercase columns (desID / desName) — map explicitly.
             CreateMap<Designation, DesignationVM>()
                 .ForMember(d => d.DesignationId, map => map.MapFrom(s => s.desID))
-                .ForMember(d => d.DesignationName, map => map.MapFrom(s => s.desName));
+                .ForMember(d => d.DesignationName, map => map.MapFrom(s => s.desName))
+                .ForMember(d => d.InUseCount, map => map.Ignore());
+            // Reverse map for create/update payloads. VM uses DesignationId/Name; entity stores desID/desName.
+            CreateMap<DesignationVM, Designation>()
+                .ForMember(d => d.desID, map => map.MapFrom(s => s.DesignationId))
+                .ForMember(d => d.desName, map => map.MapFrom(s => s.DesignationName));
             CreateMap<Designation, DepartmentVM>()
                 .ForMember(d => d.DeptId, map => map.MapFrom(s => s.desID))
                 .ForMember(d => d.DeptName, map => map.MapFrom(s => s.desName));

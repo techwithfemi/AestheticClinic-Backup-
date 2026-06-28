@@ -83,7 +83,8 @@
       "icon": "badge",
       "subItems": [
         { "label": "Employee Info", "path": "employee-info", "icon": "badge" },
-        { "label": "Department", "path": "department", "icon": "groups" }
+        { "label": "Department", "path": "department", "icon": "groups" },
+        { "label": "Designation", "path": "designation", "icon": "workspace_premium" }
       ]
     },
     "Management": {

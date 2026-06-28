@@ -103,6 +103,27 @@ QuickApp.Server/
 
 **Service Registration** (in `Program.cs`): builder.Services.AddScoped<IProductService, ProductService>();
 
+### Data Access Platforms
+
+This project supports **two data access technologies**: Entity Framework Core for standard CRUD on owned entities (writes, migrations, change tracking), and Dapper via DataAccessLibrary for read-heavy queries, complex multi-table joins, reporting views, and cross-database queries. Use EF Core for writes and Dapper for reads/reporting. Always use parameterized queries. Inject IDataAccessService for Dapper alongside ApplicationDbContext.
+
+| Technology | When to Use |
+|---|---|
+| **Entity Framework Core** | Standard CRUD on owned entities, migrations, change tracking, and relationship navigation |
+| **Dapper** (via `DataAccessLibrary`) | Read-heavy queries, complex multi-table joins, reporting views, cross-database queries, and any scenario where raw SQL performance matters |
+
+**Data Access Rules:**
+
+1. ✅ **Use EF Core** for write operations on EF-tracked entities (insert, update, delete)
+2. ✅ **Use Dapper** for read-heavy or reporting queries (e.g., views like `VwhConsultingDetailsForBillingAlt`)
+3. ✅ **Use Dapper** for cross-database queries (e.g., Accounting DB, EMR DB)
+4. ✅ **Use Dapper** when raw SQL is clearer or more performant than LINQ
+5. ✅ **Inject `IDataAccessService` (DataAccessLibrary)** for Dapper queries alongside `ApplicationDbContext`
+6. ✅ **Use parameterized queries** always — never string-concatenate SQL
+7. ✅ **Respect explicit overrides** — if the user explicitly specifies Dapper or EF Core for an operation, use exactly that technology regardless of the defaults above
+8. ❌ **DO NOT mix EF change-tracking with Dapper writes** on the same entity in one transaction
+9. ❌ **DO NOT default to one technology for everything** — choose per scenario
+
 ### Controllers
 
 **ALL controllers MUST inherit from `BaseApiController`** which provides:
@@ -138,14 +159,16 @@ All endpoints must be protected. Use one of these approaches:
 
 1. **Policy-based authorization** (attribute): [HttpGet("users")]
 [Authorize(AuthPolicies.ViewAllUsersPolicy)]
-public async Task<IActionResult> GetUsers() {...}2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
+   public async Task<IActionResult> GetUsers() {...}
+2. **Inline authorization checks** (for resource-based authorization): [HttpGet("users/{id}")]
 public async Task<IActionResult> GetUserById(string id)
 {
     if (!(await _authorizationService.AuthorizeAsync(User, id,
         UserAccountManagementOperations.ReadOperationRequirement)).Succeeded)
         return new ChallengeResult();
     // ... rest of method
-   }
+}
+
 **Authorization Rules:**
 
 1. ✅ **All endpoints must be protected** - no exceptions
@@ -191,6 +214,7 @@ public async Task<IActionResult> Delete(int id)
         return BadRequest(ModelState);
     }
 }
+
 **Error Handling Rules:**
 
 1. ✅ **Use custom exceptions** for domain-specific errors
@@ -231,7 +255,7 @@ quickapp.client/src/app/
 
 ### Reusable Components
 
-**Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`.
+**Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`. **AttendanceSummaryComponent is the sole source of truth for the receipt dialog header, and no extra patient photo lookup from HPatients should be added for that header flow.** However, it is acceptable to load the patient photo from HPatients and supply it to AttendanceSummaryComponent for the receipt dialog attendance header flow.
 
 ### Services
 
@@ -272,7 +296,7 @@ quickapp.client/src/app/
 1. ✅ **Use lazy loading** with `loadComponent`
 2. ✅ **Use `AuthGuard`** for protected routes
 3. ✅ **Set `title`** for each route
-4. ✅ **Use `path: '**'` for 404 route (must be last)
+4. ✅ **Use `path: '**'` for 404 route (must be last)**
 5. ❌ **DO NOT use eager loading** - always lazy load feature components
 
 **Example:**{
@@ -281,6 +305,7 @@ quickapp.client/src/app/
   canActivate: [AuthGuard],
   title: 'Products'
 }
+
 ### Translation Files
 
 **Important**: When adding new UI text, add translation keys to all locale files.
@@ -290,6 +315,7 @@ quickapp.client/src/app/
 
 **Usage in Templates:**<h4>{{ 'Products' | translate }}</h4>
 <p>{{ 'Description' | translate }}</p>
+
 **Translation Rules:**
 
 1. ✅ **Add keys to `en.json` first** (primary language)
@@ -321,6 +347,7 @@ quickapp.client/src/app/
       }
     });
 }
+
 ### Patient Management
 
 **Private Patients Identification:**
@@ -339,48 +366,63 @@ quickapp.client/src/app/
 **Billing Debt Flow Logic:**
 - In this codebase's billing debt flow logic, DebtBF (debt brought forward from previous transaction) must be included in debt calculations/running balance.
 
-### Tariff Module Settings
+**Multi-Clinic Data Isolation (HConsulting):**
+- **Each clinic must have its own entry** in the `HConsulting` table (e.g., dental clinic, aesthetics clinic, etc.)
+- **Each consultation is identified by `consultID`** and belongs to a specific clinic
+- **Clinic pages can ONLY update their own records** - filter queries by the clinic identifier and consultation ID
+- **DO NOT allow cross-clinic access** - enforce clinic isolation at the service/controller level
+- **All HConsulting CRUD operations MUST validate** that the current clinic owns the record before allowing read/write
+- ✅ **Reference**: Filter HConsulting queries using clinic context from `GetCurrentUserId()` or clinic claim in JWT token
+- ❌ **DO NOT allow generic HConsulting access** without clinic validation
 
-For tariff module settings, use top-level key `tariffUpload` instead of `inventoryProductsUpload`.
+### Billing Consultation UI
+
+For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBillingAlt` records exist per `consultId/billNo`, the component should iterate all records while using minimal screen space (compact layout).
+
+### Alert Banner Focus Rule
+
+- **Alert banner must show on the UI layer that has focus** (active dialog or parent page).
+- **Never allow alert banners/toasts to render behind modal dialogs or overlays.**
+
+### Bank Account Dropdown
+
+- For receipt bank account dropdown, always use `vwAccountsInfo` in Accounting DB as the single source of truth, filter by `emrAppDefaults Acct_Banks` using case/trim-safe `GroupId` matching, use `AccountNo` as account id, and do not use `hRevenueTypes` fallback. In this flow, `AccountNo`, `AccountId`, and `AccountName` are expected to be non-empty after that bank-group filter.
+
+### Login/Auth Card UI Rule
+
+When adding Google login or any external authentication buttons to login/auth cards:
+
+1. ✅ Keep buttons inside the card content container only
+2. ✅ Use `width: 100%`, `max-width: 100%`, and `box-sizing: border-box` on external-login button containers
+3. ✅ Keep card border explicit (`border-style`, `border-width`, `border-color`) so it remains consistent across breakpoints
+4. ❌ Do not use negative margins or overflow-breaking positioning that can clip or visually break the card border
+
+### Configuration Management
+
+When introducing new configuration keys, also update the base `appsettings.json` alongside environment-specific files.
+
+### Custom Rules for Entry Form UI
+
+**Entry form UI implementation design:**
+- Create a listing/worklist page (search, table, add/edit actions), like Dental Clinical Session.
+- Create a separate dialog component (for both New and Edit), as seen in DentalEncounterDialogComponent.
+- Use one reusable dialog for create/update:
+  - Open empty for new entry.
+  - Open prefilled for edit entry.
+- Implement full CRUD operations for the UI.
+- Save from dialog, close dialog, then refresh parent list.
+- Create a header section in the add/edit dialog page.
+- When a patient is selected, it should display the AttendanceSummary component (patient attendance summary) in the header section of the dialog page.
+- If the add/edit dialog page has tabs, keep patient header/summary and tabbed form inside the dialog, not the main page.
+- Use Angular Material/material icons instead of Bootstrap.
+- Material table/grid should have page size = 10.
+- use @ng-select/ng-select as select dropdown with searchable 
+- The dialog can only be explicitly closed using the close (X) icon or cancel button.
+- The entry form UI must be responsive (for mobile, tablet, and desktop devices).
+
+So in short: separate “entry form UI” from “records/list page UI” and reuse the same dialog for new/edit across modules
 
 
-### Reports Module Settings
-custom instructions for reports module:
--------------
-- reports are READ-ONLY. Only the Read operation of CRUD is relevant: the report UI must only read/display data. Do NOT add Create, Update, or Delete actions (no add button, no edit/delete row actions, no edit dialog) to a report. Only the read (GET) endpoint(s) for the report's underlying entity are required on the backend.
-- except otherwise specified, use spa services report page (app/features/reports/spa/spa-services-report.component) as report guide.
-- Summary cards — Totals 
-- Results sorted newest-first
-- use angular material / material icons
-- add dropdown element with source (patient [consultID]) from attendance
-- the  dropdown element label shld be 'select patient' and not 'patient [consultID]'
-- by default, the  dropdown element source shld be today's attendance list
 
-- dropdown list shld Include patients for all clinics on attendace
-- the  first item in dropdown element shld be 'select patient' 
-- show patient name  (instead of 'u') and user fullname (instead of user id) in the grid/table 
-- for print report dialog when displayed shld show reports only for that dept/role in the sidebar. for 'management' role, it can display all reports in the sidebar
-- show patient name  (instead of 'u') and full name (instead of user id)
-- add angular material table to to the report body  (as datagrid)
-- add two date pickers and search field at the section head of the report
-- the two date pickers shld show todays date by default
-- the two date pickers format shld be dd-MMM-YYYY
-- except for searches, records displayed in the grid should depend on the date range. Add a button to click to display the records
-- by default, it should display records for the current date
-- grid/table shld display records at a time (pagesixe = 10)
-- run report and clear buttons not working
 
-----------------
-
-- add 'export to Excel CSV PDF' links 
-- the names ( Excel, CSV, PDF) shld be links 
-- add 'export to Excel CSV PDF' links above the 'print' button. the names ( Excel, CSV, PDF) shld be links 
-- add 'export to Excel CSV PDF' links the names ( Excel, CSV, PDF) shld be links
---------------------
-- let the export links be before 'refresh' button. same row. add 'Export to ' before excel link
-- the links shld work, shld be well styled and beautiful. 
-- remove any underline
-- add downloadable functionality (sent to download folder). 
-- the excel file shld be in true .xlsx format.
-- as said earlier, use spa services report page as report guide.
 

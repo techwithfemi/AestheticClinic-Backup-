@@ -456,5 +456,19 @@
                       "DateOfBirth":  "Date of Birth",
                       "NewEmployee":  "New Employee",
                       "EditEmployee":  "Edit Employee"
-                  }
+                  },
+    "designations":  {
+                          "PageTitle":  "Designations",
+                          "Subtitle":  "Manage job titles used to classify employees.",
+                          "AddDesignation":  "Add Designation",
+                          "Search":  "Search by id or name...",
+                          "DesignationId":  "Designation ID",
+                          "DesignationName":  "Designation Name",
+                          "InUse":  "In Use",
+                          "NewDesignation":  "New Designation",
+                          "EditDesignation":  "Edit Designation",
+                          "NameRequired":  "Designation name is required.",
+                          "CannotDeleteInUse":  "Cannot delete: designation is in use",
+                          "IdLimitReached":  "Designation id limit reached. Cannot generate a new designation."
+                      }
 }

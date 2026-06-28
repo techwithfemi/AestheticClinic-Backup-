@@ -15,5 +15,10 @@ export const employeesRoutes: Routes = [
     path: 'department',
     loadComponent: () => import('./department/department.component')
       .then(m => m.DepartmentComponent)
+  },
+  {
+    path: 'designation',
+    loadComponent: () => import('./designation/designation.component')
+      .then(m => m.DesignationComponent)
   }
 ];
