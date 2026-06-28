@@ -307,7 +307,12 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.DeptId, map => map.MapFrom(s => s.desID))
                 .ForMember(d => d.DeptName, map => map.MapFrom(s => s.desName));
             CreateMap<EmpDepartments, EmpDepartmentVM>();
-            CreateMap<EmpDepartments, DepartmentVM>();
+            // EmpDepartments ↔ DepartmentVM: property names line up, just ignore the
+            // server-hydrated InUseCount so it never leaks back into a write payload.
+            CreateMap<EmpDepartments, DepartmentVM>()
+                .ForMember(d => d.InUseCount, map => map.Ignore());
+            CreateMap<DepartmentVM, EmpDepartments>()
+                .ForMember(d => d.DeptId, map => map.MapFrom(s => s.DeptId));
         }
 
         private static string StripBase64Prefix(string base64)

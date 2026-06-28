@@ -1506,6 +1506,8 @@ namespace AestheticEMR.Core.Infrastructure
                 entity.ToTable("EmpDepartments");
                 entity.Property(e => e.DeptId).HasColumnName("DeptID").HasMaxLength(50);
                 entity.Property(e => e.DeptName).HasMaxLength(150);
+                entity.Property(e => e.DeptAddress).HasMaxLength(200);
+                entity.Property(e => e.Location).HasMaxLength(100);
             });
 
             builder.Entity<Idgen>(entity =>

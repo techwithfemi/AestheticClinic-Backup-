@@ -74,6 +74,7 @@ builder.Services.AddDbContext<AccountingDbContext>(options =>
 // Employees module uses the Hospital DB (ApplicationDbContext / DefaultConnection)
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IDesignationService, DesignationService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()

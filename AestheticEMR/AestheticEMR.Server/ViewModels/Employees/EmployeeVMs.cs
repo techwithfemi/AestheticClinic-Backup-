@@ -54,8 +54,29 @@ public class DesignationVM
 
 public class DepartmentVM
 {
-    public required string DeptId { get; set; }
+    /// <summary>
+    /// Department id (e.g. "01", "02", "99"). The server auto-generates this on
+    /// create and ignores any client value, so it is optional in POST payloads.
+    /// Required on PUT because the id is the route segment and PK.
+    /// </summary>
+    [StringLength(50)]
+    public string? DeptId { get; set; }
+
+    [Required(AllowEmptyStrings = false), StringLength(150)]
     public string? DeptName { get; set; }
+
+    [StringLength(200)]
+    public string? DeptAddress { get; set; }
+
+    [StringLength(100)]
+    public string? Location { get; set; }
+
+    /// <summary>
+    /// Populated by the list endpoint. The number of employees currently
+    /// using this department. Lets the UI warn before delete and disable it
+    /// when &gt; 0. Not part of any create/update payload.
+    /// </summary>
+    public int? InUseCount { get; set; }
 }
 
 public class EmpDepartmentVM

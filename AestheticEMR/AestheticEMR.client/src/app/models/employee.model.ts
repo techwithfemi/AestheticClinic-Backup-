@@ -23,3 +23,13 @@ export interface EmpDepartment {
   deptId: string;
   deptName?: string;
 }
+
+/** Full department shape used by the Department entry-form UI (mirrors `DepartmentVM`). */
+export interface Department {
+  deptId?: string;
+  deptName?: string;
+  deptAddress?: string;
+  location?: string;
+  /** Number of employees currently assigned to this department. Populated by the list endpoint. */
+  inUseCount?: number;
+}
