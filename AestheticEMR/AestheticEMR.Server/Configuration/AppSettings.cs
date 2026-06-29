@@ -133,7 +133,7 @@ namespace AestheticEMR.Server.Configuration
     }
 
     public class LogRetentionConfig
-    { public bool EnableSms { get;
+    {
         public bool Enabled { get; set; } = true;
         public int RetentionDays { get; set; } = 7;
         public int CleanupIntervalHours { get; set; } = 24;

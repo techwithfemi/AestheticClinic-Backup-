@@ -22,7 +22,7 @@ jobs:
     # 2. Build the Angular 21 Frontend
     - name: Install & Build Angular
       run: |
-        cd AestheticEMR/AestheticEMR.Client  # Change to your actual Angular folder path
+        cd AestheticEMR/AestheticEMR.client  # Change to your actual Angular folder path
         npm ci
         npx ng build --configuration production
 
