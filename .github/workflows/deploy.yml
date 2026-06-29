@@ -1,0 +1,46 @@
+name: Deploy Aesthetic EMR (Hybrid .NET 10 & Angular 21)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 1. Setup Node.js for Angular 21
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22' # Angular 21 natively pairs with Node 22+
+
+    # 2. Build the Angular 21 Frontend
+    - name: Install & Build Angular
+      run: |
+        cd AestheticEMR/AestheticEMR.Client  # Change to your actual Angular folder path
+        npm ci
+        npx ng build --configuration production
+
+    # 3. Setup .NET 10 SDK
+    - name: Setup .NET 10 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    # 4. Publish the .NET App (Which naturally bundles the compiled wwwroot files)
+    - name: Publish .NET Backend
+      run: dotnet publish AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj --configuration Release --output ./publish
+
+    # 5. Push the combined bundle to SmarterASP.net
+    - name: Web Deploy to SmarterASP.net
+      uses: aarhusit/deploy@main
+      with:
+        csproj-filepath: 'AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj'
+      env:
+        USERNAME: ${{ secrets.SMARTERASP_USERNAME }}
+        PASSWORD: ${{ secrets.SMARTERASP_PASSWORD }}

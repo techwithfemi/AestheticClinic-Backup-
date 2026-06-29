@@ -15,6 +15,7 @@ namespace AestheticEMR.Server.Configuration
         public BirthdayNotificationConfig? BirthdayNotificationConfig { get; set; }
         public AppointmentNotificationConfig? AppointmentNotificationConfig { get; set; }
         public AttendanceNotificationConfig? AttendanceNotificationConfig { get; set; }
+        public LogRetentionConfig? LogRetentionConfig { get; set; }
         public string? ClientBaseUrl { get; set; }
     }
 
@@ -129,5 +130,12 @@ namespace AestheticEMR.Server.Configuration
         /// Supported placeholders: {PatientName}, {DobDayMonth}
         /// </summary>
         public string? BirthdayTemplate { get; set; }
+    }
+
+    public class LogRetentionConfig
+    { public bool EnableSms { get;
+        public bool Enabled { get; set; } = true;
+        public int RetentionDays { get; set; } = 7;
+        public int CleanupIntervalHours { get; set; } = 24;
     }
 }

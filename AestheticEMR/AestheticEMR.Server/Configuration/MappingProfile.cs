@@ -11,7 +11,9 @@ using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
+using AestheticEMR.Core.Services.Accounting.Models;
 using AestheticEMR.Server.ViewModels.Account;
+using AestheticEMR.Server.ViewModels.Accounting;
 using AestheticEMR.Server.ViewModels.Aesthetic;
 using AestheticEMR.Server.ViewModels.Dental;
 using AestheticEMR.Server.ViewModels.Employees;
@@ -313,6 +315,16 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.InUseCount, map => map.Ignore());
             CreateMap<DepartmentVM, EmpDepartments>()
                 .ForMember(d => d.DeptId, map => map.MapFrom(s => s.DeptId));
+
+            // Journal Entries (Accounting module)
+            CreateMap<JournalListQueryVM, JournalListQuery>();
+            CreateMap<JournalListQuery, JournalListQueryVM>();
+            CreateMap<JournalListItem, JournalListItemVM>().ReverseMap();
+            CreateMap<JournalAccountLookup, JournalAccountLookupVM>().ReverseMap();
+            CreateMap<JournalCostCenterLookup, JournalCostCenterLookupVM>().ReverseMap();
+            CreateMap<JournalLine, JournalLineVM>().ReverseMap();
+            CreateMap<JournalEntry, JournalEntryVM>().ReverseMap();
+            CreateMap<PagedJournalResult, PagedJournalResultVM>().ReverseMap();
         }
 
         private static string StripBase64Prefix(string base64)

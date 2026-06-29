@@ -162,7 +162,8 @@ export class MainLayoutComponent implements OnInit {
 
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
-        // Keep static top entries (e.g. Dashboard) even when they are root links with no subItems.
+        // Canonical navigation lives at public/assets/navigation.json (served at /assets/navigation.json).
+        // Legacy mirrors like src/assets/navigation222.json are slated for removal.
         const top = Object.entries(json.Static_Top || {})
           .map(([title, item]) => ({ title, item }));
         const dynamic = Object.entries(json.Dynamic_Roles || {})

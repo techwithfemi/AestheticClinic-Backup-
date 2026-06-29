@@ -162,6 +162,11 @@ namespace AestheticEMR.Core.Infrastructure
 
                 logger.LogInformation("Inbuilt account generation completed");
             }
+
+            // Module-scoped roles. Seeded unconditionally so databases that
+            // already have users still pick up the new role gates.
+            await EnsureRoleAsync("accounting", "Accounting module role", []);
+            await EnsureRoleAsync("employees", "Employees module role", []);
         }
 
         private async Task EnsureRoleAsync(string roleName, string description, string[] claims)

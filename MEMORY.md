@@ -85,6 +85,23 @@ For any new clinical/data entry module, build it like Dental Clinical Session:
 - ❌ No negative margins / overflow-breaking positioning
 - Source: AGENTS.md → "Login/Auth Card UI Rule"
 
+### 🛡️ Authorization pattern (after journal-entries-info 403)
+
+- **Don't use `[Authorize(Roles = "...")]` on controllers** — role strings drift (e.g. `administrator` vs `Admin` vs `Accounting`). Causes 403 / OpenIddict ID2095 "insufficient_access".
+- **Use policy-based `[Authorize(Policy = AuthPolicies.XxxPolicy)]`** instead. Patterns:
+  - Class-level `[Authorize(Policy = AuthPolicies.ViewXxxPolicy)]` for read endpoints (GET)
+  - Per-method `[Authorize(Policy = AuthPolicies.ManageXxxPolicy)]` for write endpoints (POST/PUT/DELETE)
+- **Permissions are defined in `ApplicationPermissions.cs`** under the relevant group (`Management Permissions`, `Role Permissions`, etc.) and registered in `AllPermissions`.
+- **Policies are defined in `AuthPolicies.cs`** and registered in `Program.cs → AddAuthorizationBuilder()`.
+- **Policy assertions should fall back** to:
+  - The corresponding `ManageXxx` permission claim (Manage ⇒ can View)
+  - `ManageUsers` / `ManageRoles` claims (admins always pass)
+  - Role strings (`Admin`, `administrator`, `Xxx`) for legacy/seeded users
+- Existing view policies: `ViewUsers`, `ManageUsers`, `ViewRoles`, `ManageRoles`, `AssignRoles`, `ViewRoleByRoleName`, `ViewAuditLogs`
+- Existing mgmt policies added: `ViewAccounting`, `ManageAccounting`, `ViewEmployees`, `ManageEmployees`
+- Claim type is `CustomClaims.Permission` ("permission")
+- Source: this codebase — `Authorization/AuthPolicies.cs`, `Core/Services/Account/ApplicationPermissions.cs`, `Program.cs`
+
 ---
 
 ## Backend quick rules

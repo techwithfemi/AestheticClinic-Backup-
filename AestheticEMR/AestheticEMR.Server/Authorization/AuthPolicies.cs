@@ -28,5 +28,17 @@ namespace AestheticEMR.Server.Authorization
 
         /// <summary>Policy to allow viewing audit trail reports.</summary>
         public const string ViewAuditLogsPolicy = "View Audit Logs";
+
+        /// <summary>Policy to allow access to Accounting module (journal entries, expenses, incomes, etc.).</summary>
+        public const string ViewAccountingPolicy = "View Accounting";
+
+        /// <summary>Policy to allow creating, editing and deleting Accounting records.</summary>
+        public const string ManageAccountingPolicy = "Manage Accounting";
+
+        /// <summary>Policy to allow access to Employees module.</summary>
+        public const string ViewEmployeesPolicy = "View Employees";
+
+        /// <summary>Policy to allow creating, editing and deleting Employee records.</summary>
+        public const string ManageEmployeesPolicy = "Manage Employees";
     }
 }

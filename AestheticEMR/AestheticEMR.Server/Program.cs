@@ -8,6 +8,8 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Account;
+using AestheticEMR.Core.Services.Accounting;
+using AestheticEMR.Core.Services.Accounting.Interfaces;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Dental;
 using AestheticEMR.Core.Services.Dental.Interfaces;
@@ -16,11 +18,14 @@ using AestheticEMR.Core.Services.Employees.Interfaces;
 using AestheticEMR.Core.Services.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Core.Services.Shop;
+using DataAccess.DbAccess;
+using DataAccess.Services;
 using AestheticEMR.Server.Authorization;
 using AestheticEMR.Server.Authorization.Requirements;
 using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.Services.Email;
+using AestheticEMR.Server.Services.Logging;
 using AestheticEMR.Server.Services.Sms;
 using AestheticEMR.Server.Services.WhatsApp;
 using MassTransit;
@@ -38,14 +43,55 @@ using System.Security.Cryptography.X509Certificates;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using AestheticEMR.Core.Services.Legacy.Messaging;
 using AestheticEMR.Core.Services.Legacy.Messaging.Consumers;
+using Serilog;
+using Serilog.Context;
+using Serilog.Events;
+using Serilog.Sinks.MSSqlServer;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
+var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+var columnOptions = new ColumnOptions
+{
+    AdditionalColumns =
+    [
+        new SqlColumn { ColumnName = "UserId", PropertyName = "UserId", DataType = SqlDbType.NVarChar, DataLength = 128, AllowNull = true },
+        new SqlColumn { ColumnName = "RequestPath", PropertyName = "RequestPath", DataType = SqlDbType.NVarChar, DataLength = 512, AllowNull = true },
+        new SqlColumn { ColumnName = "Clinic", PropertyName = "Clinic", DataType = SqlDbType.NVarChar, DataLength = 128, AllowNull = true }
+    ]
+};
+
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.MSSqlServer(
+            connectionString: defaultConnectionString,
+            sinkOptions: new MSSqlServerSinkOptions
+            {
+                TableName = "Logs",
+                AutoCreateSqlTable = true
+            },
+            columnOptions: columnOptions,
+            restrictedToMinimumLevel: LogEventLevel.Information);
+
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        loggerConfiguration.WriteTo.Console();
+    }
+});
+
 
 /************* ADD SERVICES *************/
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
-                throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = defaultConnectionString;
 
 var accountingConnectionString = builder.Configuration.GetConnectionString("AccountingConnection") ??
                 throw new InvalidOperationException("Connection string 'AccountingConnection' not found.");
@@ -75,6 +121,13 @@ builder.Services.AddDbContext<AccountingDbContext>(options =>
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IDesignationService, DesignationService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+
+// Cross-DB Dapper channel. Pass "Default" or "AccountingConnection" as connectionId.
+builder.Services.AddSingleton<ISqlDataAccess, SqlDataAccess>();
+builder.Services.AddScoped(typeof(IServicesData<>), typeof(ServicesData<>));
+
+// Accounting module - journal entries (AccountingConnection via Dapper)
+builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -199,7 +252,41 @@ builder.Services.AddAuthorizationBuilder()
         policy.RequireAssertion(context =>
             context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ViewAuditLogs)
             || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
-            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)));
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)))
+    .AddPolicy(AuthPolicies.ViewAccountingPolicy, policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ViewAccounting)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageAccounting)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)
+            || context.User.IsInRole("Admin")
+            || context.User.IsInRole("administrator")
+            || context.User.IsInRole("Accounting")))
+    .AddPolicy(AuthPolicies.ManageAccountingPolicy, policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageAccounting)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)
+            || context.User.IsInRole("Admin")
+            || context.User.IsInRole("administrator")
+            || context.User.IsInRole("Accounting")))
+    .AddPolicy(AuthPolicies.ViewEmployeesPolicy, policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ViewEmployees)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageEmployees)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)
+            || context.User.IsInRole("Admin")
+            || context.User.IsInRole("administrator")
+            || context.User.IsInRole("Employees")))
+    .AddPolicy(AuthPolicies.ManageEmployeesPolicy, policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageEmployees)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageUsers)
+            || context.User.HasClaim(CustomClaims.Permission, ApplicationPermissions.ManageRoles)
+            || context.User.IsInRole("Admin")
+            || context.User.IsInRole("administrator")
+            || context.User.IsInRole("Employees")));
 
 builder.Services.AddCors();
 builder.Services.AddControllers();
@@ -325,6 +412,9 @@ builder.Services.AddHostedService<BirthdaySmsHostedService>();
 // SMTP Configuration Validation
 builder.Services.AddHostedService<SmtpConfigValidationService>();
 
+// Serilog SQL logs retention cleanup
+builder.Services.AddHostedService<SerilogLogRetentionHostedService>();
+
 // Auth Handlers
 builder.Services.AddSingleton<IAuthorizationHandler, ViewUserAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, ManageUserAuthorizationHandler>();
@@ -334,13 +424,26 @@ builder.Services.AddSingleton<IAuthorizationHandler, AssignRolesAuthorizationHan
 // DB Creation and Seeding
 builder.Services.AddTransient<IDatabaseSeeder, DatabaseSeeder>();
 
-//File Logger
-builder.Logging.AddFile(builder.Configuration.GetSection("Logging"));
-
 //Email Templates
 EmailTemplates.Initialize(builder.Environment);
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.User.FindFirst("sub")?.Value;
+
+        var clinic = httpContext.User.FindFirst("clinic")?.Value
+            ?? httpContext.User.FindFirst("Clinic")?.Value;
+
+        diagnosticContext.Set("UserId", userId);
+        diagnosticContext.Set("RequestPath", httpContext.Request.Path.Value);
+        diagnosticContext.Set("Clinic", clinic);
+    };
+});
 
 /************* CONFIGURE REQUEST PIPELINE *************/
 
@@ -349,6 +452,7 @@ app.UseForwardedHeaders();
 app.UseDefaultFiles();
 app.MapStaticAssets();
 app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
 if (app.Environment.IsDevelopment())
 {
@@ -446,6 +550,10 @@ catch (Exception ex)
 /************* RUN APP *************/
 
 app.Run();
+
+
+
+
 
 
 

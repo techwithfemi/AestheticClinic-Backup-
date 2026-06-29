@@ -1,0 +1,123 @@
+<div class="page-shell" @fadeInOut>
+  <div class="page-header">
+    <div class="page-title-block">
+      <mat-icon class="page-icon">receipt_long</mat-icon>
+      <div>
+        <h2 class="page-title">Journal Entries</h2>
+        <p class="page-subtitle">Chart-of-accounts journal vouchers · Accounting DB</p>
+      </div>
+    </div>
+    <div class="page-actions">
+      <button mat-flat-button color="primary" (click)="openNewDialog()" [disabled]="loadingIndicator">
+        <mat-icon>add</mat-icon>
+        New Journal Entry
+      </button>
+    </div>
+  </div>
+
+  <section class="filter-card">
+    <div class="filter-grid">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search Tran No</mat-label>
+        <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearch()" placeholder="e.g. 10045" />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>From Date</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>To Date</mat-label>
+        <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+
+      <div class="filter-actions">
+        <button mat-stroked-button color="primary" (click)="onSearch()" [disabled]="loadingIndicator">
+          <mat-icon>filter_list</mat-icon>
+          Apply
+        </button>
+        <button mat-button (click)="onClearFilters()" [disabled]="loadingIndicator">
+          <mat-icon>clear</mat-icon>
+          Clear
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="table-card">
+    <div class="table-spinner" *ngIf="loadingIndicator">
+      <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
+    </div>
+
+    <table mat-table [dataSource]="rows" [trackBy]="trackByTranNo" class="journal-table">
+      <ng-container matColumnDef="tranNo">
+        <th mat-header-cell *matHeaderCellDef>Tran No</th>
+        <td mat-cell *matCellDef="let row" class="mono">{{ row.tranNo }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="tranDate">
+        <th mat-header-cell *matHeaderCellDef>Tran Date</th>
+        <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'mediumDate' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="lineCount">
+        <th mat-header-cell *matHeaderCellDef class="num">Lines</th>
+        <td mat-cell *matCellDef="let row" class="num">{{ row.lineCount }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalDebit">
+        <th mat-header-cell *matHeaderCellDef class="num">Total Debit</th>
+        <td mat-cell *matCellDef="let row" class="num dr">{{ row.totalDebit | number:'1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalCredit">
+        <th mat-header-cell *matHeaderCellDef class="num">Total Credit</th>
+        <td mat-cell *matCellDef="let row" class="num cr">{{ row.totalCredit | number:'1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="costCenter">
+        <th mat-header-cell *matHeaderCellDef>Cost Center</th>
+        <td mat-cell *matCellDef="let row">{{ row.costCenterName || row.costCenterId || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef class="action-col">Actions</th>
+        <td mat-cell *matCellDef="let row" class="action-col">
+          <button mat-icon-button color="primary" (click)="openEditDialog(row)" matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="confirmDelete(row)" matTooltip="Delete">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+      <tr class="mat-row no-data" *matNoDataRow>
+        <td class="mat-cell empty-cell" [attr.colspan]="displayedColumns.length">
+          <ng-container *ngIf="!loadingIndicator">
+            <mat-icon>inbox</mat-icon>
+            <p>No journal entries match the current filters.</p>
+          </ng-container>
+        </td>
+      </tr>
+    </table>
+
+    <mat-paginator
+      [length]="totalCount"
+      [pageSize]="pageSize"
+      [pageIndex]="currentPage - 1"
+      [pageSizeOptions]="[10, 25, 50, 100]"
+      (page)="onPageChange($event)"
+      [disabled]="loadingIndicator">
+    </mat-paginator>
+  </section>
+</div>

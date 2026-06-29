@@ -1,4 +1,5 @@
 using AestheticEMR.Core.Services.Employees.Interfaces;
+using AestheticEMR.Server.Authorization;
 using AestheticEMR.Server.ViewModels.Employees;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace AestheticEMR.Server.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+[Authorize(Policy = AuthPolicies.ViewEmployeesPolicy)]
 public class EmployeeController(
     ILogger<EmployeeController> logger,
     IMapper mapper,
@@ -17,6 +18,7 @@ public class EmployeeController(
 {
     [HttpGet("generate-id")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [Authorize(Policy = AuthPolicies.ManageEmployeesPolicy)]
     public async Task<IActionResult> GenerateId()
     {
         var empId = await employeeService.GenerateEmpIdAsync();
@@ -61,6 +63,7 @@ public class EmployeeController(
     [HttpPost]
     [ProducesResponseType(typeof(EmployeeVM), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [Authorize(Policy = AuthPolicies.ManageEmployeesPolicy)]
     public async Task<IActionResult> Create([FromBody] EmployeeVM vm)
     {
         if (!ModelState.IsValid)
@@ -75,6 +78,7 @@ public class EmployeeController(
     [ProducesResponseType(typeof(EmployeeVM), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = AuthPolicies.ManageEmployeesPolicy)]
     public async Task<IActionResult> Update(string id, [FromBody] EmployeeVM vm)
     {
         if (!ModelState.IsValid)
@@ -113,6 +117,7 @@ public class EmployeeController(
     [HttpDelete("{**id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = AuthPolicies.ManageEmployeesPolicy)]
     public async Task<IActionResult> Delete(string id)
     {
         try

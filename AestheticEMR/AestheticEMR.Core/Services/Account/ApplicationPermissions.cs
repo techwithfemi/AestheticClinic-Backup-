@@ -59,13 +59,39 @@ namespace AestheticEMR.Core.Services.Account
             ManagementPermissionGroupName,
             "Permission to view audit trail reports");
 
+        public static readonly ApplicationPermission ViewAccounting = new(
+            "View Accounting",
+            "accounting.view",
+            ManagementPermissionGroupName,
+            "Permission to view accounting records (journal entries, expenses, incomes, etc.)");
+
+        public static readonly ApplicationPermission ManageAccounting = new(
+            "Manage Accounting",
+            "accounting.manage",
+            ManagementPermissionGroupName,
+            "Permission to create, edit and delete accounting records");
+
+        public static readonly ApplicationPermission ViewEmployees = new(
+            "View Employees",
+            "employees.view",
+            ManagementPermissionGroupName,
+            "Permission to view employee records");
+
+        public static readonly ApplicationPermission ManageEmployees = new(
+            "Manage Employees",
+            "employees.manage",
+            ManagementPermissionGroupName,
+            "Permission to create, edit and delete employee records");
+
         /************* ALL PERMISSIONS *************/
 
         public static readonly ReadOnlyCollection<ApplicationPermission> AllPermissions =
             new List<ApplicationPermission> {
                 ViewUsers, ManageUsers,
                 ViewRoles, ManageRoles, AssignRoles,
-                ViewAuditLogs
+                ViewAuditLogs,
+                ViewAccounting, ManageAccounting,
+                ViewEmployees, ManageEmployees
             }.AsReadOnly();
 
         /************* HELPER METHODS *************/

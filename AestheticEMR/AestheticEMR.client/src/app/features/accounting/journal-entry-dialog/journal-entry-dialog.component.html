@@ -1,0 +1,170 @@
+<div class="dialog-host">
+  <div class="dialog-header" mat-dialog-title>
+    <div class="title-block">
+      <mat-icon class="title-icon">edit_note</mat-icon>
+      <h2>{{ isEdit ? 'Edit Journal Entry' : 'New Journal Entry' }}</h2>
+    </div>
+    <button mat-icon-button type="button" class="close-btn" (click)="cancel()" aria-label="Close dialog">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <section class="header-section">
+      <div class="header-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Tran No</mat-label>
+          <input matInput [(ngModel)]="tranNo" name="tranNo" [disabled]="isEdit" required />
+          <mat-hint *ngIf="!isEdit">Auto-generated</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Tran Date</mat-label>
+          <input matInput [matDatepicker]="headerPicker" [(ngModel)]="tranDate" name="tranDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="headerPicker"></mat-datepicker-toggle>
+          <mat-datepicker #headerPicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="cost-center">
+          <mat-label>Cost Center / Dept</mat-label>
+          <mat-select [(ngModel)]="costCenterId" name="costCenterId" required>
+            <mat-option *ngFor="let cc of costCenters" [value]="cc.centerId">
+              {{ cc.centerId }} — {{ cc.centerName }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </section>
+
+    <mat-divider></mat-divider>
+
+    <section class="lines-section">
+      <div class="lines-header">
+        <h3>Journal Lines</h3>
+        <button mat-stroked-button color="primary" type="button" (click)="addRow()">
+          <mat-icon>add</mat-icon>
+          Add Row
+        </button>
+      </div>
+
+      <div class="lines-table-wrapper">
+        <table mat-table [dataSource]="lines" [trackBy]="trackByRowId" class="lines-table">
+
+          <ng-container matColumnDef="account">
+            <th mat-header-cell *matHeaderCellDef>Account</th>
+            <td mat-cell *matCellDef="let row">
+              <ng-select
+                [items]="accounts"
+                bindLabel="accountName"
+                bindValue="accountNo"
+                [(ngModel)]="row.accountNo"
+                (change)="onAccountChange(row)"
+                placeholder="Search account..."
+                [searchable]="true"
+                [clearable]="true"
+                appendTo="body"
+                class="account-select">
+              </ng-select>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="accountNo">
+            <th mat-header-cell *matHeaderCellDef>Account No</th>
+            <td mat-cell *matCellDef="let row" class="mono">{{ row.accountNo || '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="debit">
+            <th mat-header-cell *matHeaderCellDef class="num">Debit</th>
+            <td mat-cell *matCellDef="let row" class="num">
+              <input
+                matInput
+                type="number"
+                min="0"
+                step="0.01"
+                [(ngModel)]="row.debit"
+                (ngModelChange)="onAmountChange()"
+                class="amount-input" />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="credit">
+            <th mat-header-cell *matHeaderCellDef class="num">Credit</th>
+            <td mat-cell *matCellDef="let row" class="num">
+              <input
+                matInput
+                type="number"
+                min="0"
+                step="0.01"
+                [(ngModel)]="row.credit"
+                (ngModelChange)="onAmountChange()"
+                class="amount-input" />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>Description</th>
+            <td mat-cell *matCellDef="let row">
+              <input matInput type="text" [(ngModel)]="row.description" placeholder="Optional" />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="tranDate">
+            <th mat-header-cell *matHeaderCellDef>Tran Date</th>
+            <td mat-cell *matCellDef="let row">
+              <input
+                matInput
+                [matDatepicker]="rowPicker"
+                [(ngModel)]="row.tranDate"
+                (dateChange)="onDateChange(row)"
+                (blur)="onDateChange(row)" />
+              <mat-datepicker-toggle matIconSuffix [for]="rowPicker"></mat-datepicker-toggle>
+              <mat-datepicker #rowPicker></mat-datepicker>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="action-col"></th>
+            <td mat-cell *matCellDef="let row" class="action-col">
+              <button mat-icon-button color="warn" type="button" (click)="removeRow(row)" matTooltip="Remove row">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="totals-section">
+      <div class="totals-row">
+        <div class="totals-cell">
+          <span class="label">Total Debit</span>
+          <span class="value dr">{{ totalDebit | number:'1.2-2' }}</span>
+        </div>
+        <div class="totals-cell">
+          <span class="label">Total Credit</span>
+          <span class="value cr">{{ totalCredit | number:'1.2-2' }}</span>
+        </div>
+        <div class="totals-cell" [class.balanced]="balance === 0 && totalDebit > 0" [class.unbalanced]="balance !== 0">
+          <span class="label">Tran Balance</span>
+          <span class="value">{{ balance | number:'1.2-2' }}</span>
+        </div>
+      </div>
+      <p class="balance-hint" *ngIf="balance !== 0">Transaction is not balanced. Total Debit must equal Total Credit.</p>
+      <p class="balance-hint ok" *ngIf="balance === 0 && totalDebit > 0">
+        <mat-icon>check_circle</mat-icon> Balanced — ready to save.
+      </p>
+    </section>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-button type="button" (click)="cancel()" [disabled]="saving">Cancel</button>
+    <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="!canSave || saving">
+      <mat-icon *ngIf="!saving">save</mat-icon>
+      <mat-progress-spinner *ngIf="saving" diameter="16" mode="indeterminate"></mat-progress-spinner>
+      {{ saving ? 'Saving…' : 'Save' }}
+    </button>
+  </mat-dialog-actions>
+</div>
