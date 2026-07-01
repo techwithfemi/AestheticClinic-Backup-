@@ -9,8 +9,10 @@ import {
   JournalAccountLookup,
   JournalCostCenterLookup,
   JournalEntry,
+  JournalListLineQuery,
   JournalListQuery,
   JournalNextTranNo,
+  PagedJournalLinesResult,
   PagedJournalResult,
 } from '../models/accounting/journal-entry.model';
 
@@ -40,6 +42,29 @@ export class JournalEndpoint extends EndpointBase {
 
     return this.http.get<T>(this.journalUrl, { ...this.requestHeaders, params }).pipe(
       catchError(error => this.handleError(error, () => this.getJournalEntriesEndpoint<T>(query)))
+    );
+  }
+
+  /**
+   * Flat line-level list backed by `vwTranx`. One row per journal line
+   * with derived Dr/Cr amounts and a running SN. `tranDate` defaults to
+   * the current date on first load; sending a non-empty `search` lets
+   * the user find any TranNo across all dates.
+   */
+  getJournalEntryLinesEndpoint<T>(query: JournalListLineQuery): Observable<T> {
+    let params = new HttpParams()
+      .set('Page', String(query.page ?? 1))
+      .set('PageSize', String(query.pageSize ?? 10));
+
+    if (query.search) {
+      params = params.set('Search', query.search);
+    }
+    if (query.tranDate) {
+      params = params.set('TranDate', query.tranDate);
+    }
+
+    return this.http.get<T>(`${this.journalUrl}/lines`, { ...this.requestHeaders, params }).pipe(
+      catchError(error => this.handleError(error, () => this.getJournalEntryLinesEndpoint<T>(query)))
     );
   }
 

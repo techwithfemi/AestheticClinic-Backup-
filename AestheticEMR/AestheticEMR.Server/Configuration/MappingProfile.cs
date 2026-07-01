@@ -325,6 +325,11 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<JournalLine, JournalLineVM>().ReverseMap();
             CreateMap<JournalEntry, JournalEntryVM>().ReverseMap();
             CreateMap<PagedJournalResult, PagedJournalResultVM>().ReverseMap();
+
+            // Journal flat-line list (vwTranx)
+            CreateMap<JournalListLineQueryVM, JournalListLineQuery>();
+            CreateMap<JournalListLine, JournalListLineVM>().ReverseMap();
+            CreateMap<PagedJournalLinesResult, PagedJournalLinesResultVM>().ReverseMap();
         }
 
         private static string StripBase64Prefix(string base64)

@@ -18,23 +18,9 @@
   <section class="filter-card">
     <div class="filter-grid">
       <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search Tran No</mat-label>
-        <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearch()" placeholder="e.g. 10045" />
+        <mat-label>Search Tran No / Account / Description</mat-label>
+        <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearch()" placeholder="e.g. 10045 or 'bank'" />
         <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>From Date</mat-label>
-        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
-        <mat-datepicker #fromPicker></mat-datepicker>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>To Date</mat-label>
-        <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
-        <mat-datepicker #toPicker></mat-datepicker>
       </mat-form-field>
 
       <div class="filter-actions">
@@ -55,10 +41,10 @@
       <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
     </div>
 
-    <table mat-table [dataSource]="rows" [trackBy]="trackByTranNo" class="journal-table">
-      <ng-container matColumnDef="tranNo">
-        <th mat-header-cell *matHeaderCellDef>Tran No</th>
-        <td mat-cell *matCellDef="let row" class="mono">{{ row.tranNo }}</td>
+    <table mat-table [dataSource]="rows" [trackBy]="trackBySNo" class="journal-table">
+      <ng-container matColumnDef="sn">
+        <th mat-header-cell *matHeaderCellDef class="num">SN</th>
+        <td mat-cell *matCellDef="let row" class="num mono">{{ row.sn }}</td>
       </ng-container>
 
       <ng-container matColumnDef="tranDate">
@@ -66,33 +52,47 @@
         <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'mediumDate' }}</td>
       </ng-container>
 
-      <ng-container matColumnDef="lineCount">
-        <th mat-header-cell *matHeaderCellDef class="num">Lines</th>
-        <td mat-cell *matCellDef="let row" class="num">{{ row.lineCount }}</td>
+      <ng-container matColumnDef="accountName">
+        <th mat-header-cell *matHeaderCellDef>Account Name</th>
+        <td mat-cell *matCellDef="let row">{{ row.accountName }}</td>
       </ng-container>
 
-      <ng-container matColumnDef="totalDebit">
-        <th mat-header-cell *matHeaderCellDef class="num">Total Debit</th>
-        <td mat-cell *matCellDef="let row" class="num dr">{{ row.totalDebit | number:'1.2-2' }}</td>
+      <ng-container matColumnDef="accountNo">
+        <th mat-header-cell *matHeaderCellDef>Account No</th>
+        <td mat-cell *matCellDef="let row" class="mono">{{ row.accountNo }}</td>
       </ng-container>
 
-      <ng-container matColumnDef="totalCredit">
-        <th mat-header-cell *matHeaderCellDef class="num">Total Credit</th>
-        <td mat-cell *matCellDef="let row" class="num cr">{{ row.totalCredit | number:'1.2-2' }}</td>
+      <ng-container matColumnDef="debit">
+        <th mat-header-cell *matHeaderCellDef class="num">Debit</th>
+        <td mat-cell *matCellDef="let row" class="num dr">{{ row.debit | number:'1.2-2' }}</td>
       </ng-container>
 
-      <ng-container matColumnDef="costCenter">
-        <th mat-header-cell *matHeaderCellDef>Cost Center</th>
-        <td mat-cell *matCellDef="let row">{{ row.costCenterName || row.costCenterId || '—' }}</td>
+      <ng-container matColumnDef="credit">
+        <th mat-header-cell *matHeaderCellDef class="num">Credit</th>
+        <td mat-cell *matCellDef="let row" class="num cr">{{ row.credit | number:'1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.description || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="tranNo">
+        <th mat-header-cell *matHeaderCellDef>Tran No</th>
+        <td mat-cell *matCellDef="let row" class="mono">{{ row.tranNo }}</td>
       </ng-container>
 
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef class="action-col">Actions</th>
         <td mat-cell *matCellDef="let row" class="action-col">
-          <button mat-icon-button color="primary" (click)="openEditDialog(row)" matTooltip="Edit">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" (click)="confirmDelete(row)" matTooltip="Delete">
+          <button
+            mat-icon-button
+            color="warn"
+            (click)="confirmDelete(row)"
+            [disabled]="!canDelete"
+            [matTooltip]="canDelete ? 'Delete' : 'Only Management role can delete'"
+            matTooltipPosition="left"
+            aria-label="Delete journal entry">
             <mat-icon>delete_outline</mat-icon>
           </button>
         </td>

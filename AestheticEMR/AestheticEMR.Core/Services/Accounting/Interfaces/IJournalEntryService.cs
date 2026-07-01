@@ -6,6 +6,12 @@ public interface IJournalEntryService
 {
     Task<PagedJournalResult> GetPagedAsync(JournalListQuery query, CancellationToken ct = default);
 
+    /// <summary>
+    /// Flat line-level paged view of <c>vwTranx</c>. Used by the
+    /// journal-entries-info list grid (one row per journal line).
+    /// </summary>
+    Task<PagedJournalLinesResult> GetPagedLinesAsync(JournalListLineQuery query, CancellationToken ct = default);
+
     Task<JournalEntry?> GetByTranNoAsync(string tranNo, CancellationToken ct = default);
 
     Task<string> GenerateNextTranNoAsync(CancellationToken ct = default);

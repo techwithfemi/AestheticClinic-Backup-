@@ -55,7 +55,7 @@ SELECT  t.TranNo,
         ISNULL(SUM(CASE WHEN j.Amount > 0 THEN j.Amount ELSE 0 END), 0) AS TotalDebit,
         ISNULL(SUM(CASE WHEN j.Amount < 0 THEN -j.Amount ELSE 0 END), 0) AS TotalCredit
 FROM    vwTranxNo t
-LEFT JOIN dbo.TranxJournal j ON j.TranNo = t.TranNo
+LEFT JOIN dbo.Tranxaction j ON j.TranNo = t.TranNo
 WHERE   {whereClause}
 GROUP BY t.TranNo
 ORDER BY MIN(t.TranDate) DESC, t.TranNo DESC
@@ -82,6 +82,80 @@ OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
         };
     }
 
+    public async Task<PagedJournalLinesResult> GetPagedLinesAsync(JournalListLineQuery query, CancellationToken ct = default)
+    {
+        var search = query.Search?.Trim();
+        var page = query.Page <= 0 ? 1 : query.Page;
+        var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 200);
+
+        // Default: when no search is supplied, restrict to the supplied TranDate
+        // (the front-end sends today by default). When the user types a search,
+        // ignore the date filter so they can find any TranNo across all dates.
+        var filters = new List<string> { "1=1" };
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            filters.Add("(TranNo LIKE @Search OR AccountName LIKE @Search OR Description LIKE @Search)");
+        }
+        else if (query.TranDate is not null)
+        {
+            filters.Add("TranDate >= @TranDateFrom AND TranDate < @TranDateTo");
+        }
+
+        var whereClause = string.Join(" AND ", filters);
+
+        // Mirrors the user's preferred projection:
+        //   select ROW_NUMBER() OVER (ORDER BY SNo) AS SN, TranDate, AccountName, AccountNo,
+        //          'Debit'  = case when Amount > 0 then Amount else 0 end,
+        //          'Credit' = case when Amount < 0 then abs(Amount) else 0 end,
+        //          Description, TranNo, CatName2 as TranCat, BillNo, CenterName as CostCenter,
+        //          EntryDate, Period, UserName, SNo, Remarks, CoyID, isClose
+        //   from vwTranx
+        var countSql = $"SELECT COUNT(*) FROM vwTranx WHERE {whereClause};";
+        var pageSql = $@"
+SELECT  ROW_NUMBER() OVER (ORDER BY v.SNo) AS SN,
+        v.TranDate,
+        v.AccountName,
+        v.AccountNo,
+        CASE WHEN v.Amount > 0 THEN v.Amount ELSE 0 END                              AS Debit,
+        CASE WHEN v.Amount < 0 THEN ABS(v.Amount) ELSE 0 END                          AS Credit,
+        v.Description,
+        v.TranNo,
+        v.CatName2                                                                   AS TranCat,
+        v.BillNo,
+        v.CenterName                                                                 AS CostCenter,
+        v.EntryDate,
+        v.Period,
+        v.UserName,
+        v.SNo,
+        v.Remarks,
+        v.CoyID,
+        v.isClose
+FROM    vwTranx v
+WHERE   {whereClause}
+ORDER BY v.SNo
+OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
+
+        var parameters = new
+        {
+            Search = $"%{search}%",
+            TranDateFrom = query.TranDate?.Date,
+            TranDateTo = query.TranDate?.Date.AddDays(1),
+            Offset = (page - 1) * pageSize,
+            PageSize = pageSize
+        };
+
+        var totalRows = await db.LoadDataText<int, dynamic>(countSql, parameters, AcctConn);
+        var rows = await db.LoadDataText<JournalListLineRaw, dynamic>(pageSql, parameters, AcctConn);
+
+        return new PagedJournalLinesResult
+        {
+            TotalCount = totalRows.FirstOrDefault(),
+            Page = page,
+            PageSize = pageSize,
+            Items = rows.Select(MapListLine).ToList()
+        };
+    }
+
     public async Task<JournalEntry?> GetByTranNoAsync(string tranNo, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(tranNo))
@@ -93,7 +167,7 @@ OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
 SELECT  TOP 1 TranNo,
         TranDate,
         CostCenterID AS CostCenterId
-FROM    dbo.TranxJournal
+FROM    dbo.Tranxaction
 WHERE   TranNo = @TranNo
 ORDER BY TranDate;";
 
@@ -104,7 +178,7 @@ SELECT  AccountNo,
         Description,
         TranDate,
         CostCenterID AS CostCenterId
-FROM    dbo.TranxJournal
+FROM    dbo.Tranxaction
 WHERE   TranNo = @TranNo
 ORDER BY TranNo, TranDate;";
 
@@ -129,14 +203,27 @@ ORDER BY TranNo, TranDate;";
 
     public async Task<string> GenerateNextTranNoAsync(CancellationToken ct = default)
     {
-        // Mirrors genTranID in the legacy VB:
-        //   - AUTO_TRAN_NO = "YES" → SELECT MAX(TranNo) + 1 FROM vwTranxNo
-        //   - AUTO_TRAN_NO = "NO"  → leave blank, user types it
+        // Mirrors genTranID in legacy VB, preferring getTranID sproc.
         var defaults = await emrDefaults.GetAsync(ct);
         var autoTranNo = defaults.Get("AUTO_TRAN_NO", "YES");
         if (!string.Equals(autoTranNo, "YES", StringComparison.OrdinalIgnoreCase))
         {
             return string.Empty;
+        }
+
+        try
+        {
+            var rows = await db.LoadData<GetTranIdRaw, dynamic>("getTranID", new { }, AcctConn);
+            var row = rows.FirstOrDefault();
+            var tranId = row?.TranID ?? row?.TranNo ?? row?.Id;
+            if (!string.IsNullOrWhiteSpace(tranId))
+            {
+                return tranId.Trim();
+            }
+        }
+        catch
+        {
+            // fall back to MAX+1 query below
         }
 
         var sql = "SELECT ISNULL(MAX(CAST(TranNo AS BIGINT)), 0) + 1 FROM vwTranxNo;";
@@ -148,10 +235,12 @@ ORDER BY TranNo, TranDate;";
     public async Task<List<JournalAccountLookup>> GetAccountsAsync(CancellationToken ct = default)
     {
         var sql = @"
-SELECT  AccountNo,
-        AccountName
-FROM    vwAccountsInfoCombo
-WHERE   AccountNo IS NOT NULL AND AccountName IS NOT NULL
+SELECT DISTINCT
+        LTRIM(RTRIM(AccountNo))   AS AccountNo,
+        LTRIM(RTRIM(AccountName)) AS AccountName
+FROM    dbo.ChartOfAccountMaster
+WHERE   ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND   ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
 ORDER BY AccountName;";
         var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
         return rows.ToList();
@@ -206,7 +295,7 @@ ORDER BY CenterName;";
         Validate(entry);
 
         // Mirrors UpdateTranxactionJournal's "delete-then-reinsert" pattern from the VB code.
-        var deleteSql = "DELETE FROM dbo.TranxJournal WHERE TranNo = @TranNo;";
+        var deleteSql = "DELETE FROM dbo.Tranxaction WHERE TranNo = @TranNo;";
         await db.SaveDataText(deleteSql, new { TranNo = entry.TranNo }, AcctConn);
 
         var defaults = await emrDefaults.GetAsync(ct);
@@ -226,8 +315,8 @@ ORDER BY CenterName;";
             throw new ArgumentException("TranNo is required", nameof(tranNo));
         }
 
-        var sql = "DELETE FROM dbo.TranxJournal WHERE TranNo = @TranNo;";
-        await db.SaveDataText(sql, new { TranNo = tranNo }, AcctConn);
+        const string deleteProc = "deleteTranxaction";
+        await db.SaveData(deleteProc, new { TranNo = tranNo }, AcctConn);
         logger.LogInformation("Journal entry {TranNo} deleted by {User}", tranNo, currentUser);
     }
 
@@ -235,7 +324,7 @@ ORDER BY CenterName;";
     {
         // Mirrors the per-row InsertTranxactionJournal loop in Tran.saveJournal.
         // If both Debit and Credit are set on a row, two rows are inserted (Dr + Cr).
-        const string insertProc = "InsertTranxactionJournal";
+        const string insertProc = "insertTranxaction";
         var defaultCostCenter = defaults.Get("AcctCostCenter", "0001");
 
         foreach (var line in entry.Lines)
@@ -387,6 +476,28 @@ ORDER BY CenterName;";
         TotalCredit = r.TotalCredit
     };
 
+    private static JournalListLine MapListLine(JournalListLineRaw r) => new()
+    {
+        SN = r.SN,
+        TranDate = r.TranDate,
+        AccountName = r.AccountName ?? string.Empty,
+        AccountNo = r.AccountNo ?? string.Empty,
+        Debit = r.Debit,
+        Credit = r.Credit,
+        Description = r.Description,
+        TranNo = r.TranNo ?? string.Empty,
+        TranCat = r.TranCat,
+        BillNo = r.BillNo,
+        CostCenter = r.CostCenter,
+        EntryDate = r.EntryDate,
+        Period = r.Period,
+        UserName = r.UserName,
+        SNo = r.SNo,
+        Remarks = r.Remarks,
+        CoyID = r.CoyID ?? string.Empty,
+        IsClose = r.IsClose
+    };
+
     private static JournalLine MapLineFromRow(JournalLineRaw r)
     {
         var dr = r.Amount >= 0 ? r.Amount : 0;
@@ -411,6 +522,33 @@ ORDER BY CenterName;";
         public decimal TotalCredit { get; set; }
     }
 
+    /// <summary>
+    /// Raw row shape from the <c>vwTranx</c> projection in
+    /// <see cref="GetPagedLinesAsync"/>. Dapper matches columns to
+    /// properties case-insensitively.
+    /// </summary>
+    private class JournalListLineRaw
+    {
+        public long SN { get; set; }
+        public DateTime TranDate { get; set; }
+        public string? AccountName { get; set; }
+        public string? AccountNo { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+        public string? Description { get; set; }
+        public string? TranNo { get; set; }
+        public string? TranCat { get; set; }
+        public string? BillNo { get; set; }
+        public string? CostCenter { get; set; }
+        public DateTime EntryDate { get; set; }
+        public string? Period { get; set; }
+        public string? UserName { get; set; }
+        public long SNo { get; set; }
+        public string? Remarks { get; set; }
+        public string? CoyID { get; set; }
+        public bool IsClose { get; set; }
+    }
+
     private class JournalHeaderRaw
     {
         public string TranNo { get; set; } = string.Empty;
@@ -426,5 +564,12 @@ ORDER BY CenterName;";
         public string? Description { get; set; }
         public DateTime TranDate { get; set; }
         public string? CostCenterId { get; set; }
+    }
+
+    private class GetTranIdRaw
+    {
+        public string? TranID { get; set; }
+        public string? TranNo { get; set; }
+        public string? Id { get; set; }
     }
 }

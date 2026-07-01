@@ -8,8 +8,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -18,10 +16,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { JournalEndpoint } from '../../../services/journal-endpoint.service';
+import { AccountService } from '../../../services/account.service';
 import {
   JournalEntry,
-  JournalListItem,
-  PagedJournalResult,
+  JournalListLine,
+  PagedJournalLinesResult,
 } from '../../../models/accounting/journal-entry.model';
 import {
   JournalEntryDialogComponent,
@@ -39,8 +38,6 @@ import {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatDialogModule,
@@ -55,24 +52,44 @@ export class JournalEntriesInfoComponent implements OnInit {
   private alertService = inject(AlertService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private accountService = inject(AccountService);
+
+  // Only the 'Management' role can delete journal entries.
+  // Case-insensitive on purpose — role strings drift in the wild
+  // (see MEMORY.md → "Authorization pattern (after journal-entries-info 403)").
+  get canDelete(): boolean {
+    const roles = this.accountService.currentUser?.roles ?? [];
+    return roles.some(r => (r ?? '').trim().toLowerCase() === 'management');
+  }
 
   readonly pageSize = 10;
-  readonly displayedColumns = ['tranNo', 'tranDate', 'lineCount', 'totalDebit', 'totalCredit', 'costCenter', 'actions'];
+  // Display order matches the user's preferred vwTranx projection.
+  // Slimmed to the eight columns the user wants visible — everything else
+  // (tranCat, billNo, costCenter, entryDate, period, userName, sNo, remarks,
+  // actions) is intentionally hidden from the grid.
+  readonly displayedColumns = [
+    'sn',
+    'tranDate',
+    'accountName',
+    'accountNo',
+    'debit',
+    'credit',
+    'description',
+    'tranNo',
+    'actions',
+  ];
 
-  rows = new MatTableDataSource<JournalListItem>([]);
-  rowsCache: JournalListItem[] = [];
+  rows = new MatTableDataSource<JournalListLine>([]);
+  rowsCache: JournalListLine[] = [];
 
   currentPage = 1;
   totalCount = 0;
   loadingIndicator = false;
 
   searchText = '';
-  fromDate: Date | null = null;
-  toDate: Date | null = null;
 
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.totalCount / this.pageSize));
-  }
+  /** Date filter for the default load (today). Cleared when the user searches. */
+  filterDate: Date = this.startOfDay(new Date());
 
   ngOnInit(): void {
     this.loadPage();
@@ -85,8 +102,8 @@ export class JournalEntriesInfoComponent implements OnInit {
 
   onClearFilters(): void {
     this.searchText = '';
-    this.fromDate = null;
-    this.toDate = null;
+    // Reset the implicit date filter back to today.
+    this.filterDate = this.startOfDay(new Date());
     this.currentPage = 1;
     this.loadPage();
   }
@@ -101,14 +118,20 @@ export class JournalEntriesInfoComponent implements OnInit {
     this.openDialog(null);
   }
 
-  openEditDialog(item: JournalListItem): void {
+  openEditDialog(row: JournalListLine): void {
+    const tranNo = row.tranNo;
+    if (!tranNo) {
+      this.alertService.showMessage('Cannot edit', 'This row has no Tran No.', MessageSeverity.warn);
+      return;
+    }
+
     this.loadingIndicator = true;
     this.journalEndpoint
-      .getJournalEntryEndpoint<JournalEntry>(item.tranNo)
+      .getJournalEntryEndpoint<JournalEntry>(tranNo)
       .toPromise()
       .then(entry => {
         if (!entry) {
-          this.alertService.showMessage('Not found', `Journal entry ${item.tranNo} was not found.`, MessageSeverity.warn);
+          this.alertService.showMessage('Not found', `Journal entry ${tranNo} was not found.`, MessageSeverity.warn);
           return;
         }
         this.openDialog(entry);
@@ -120,16 +143,31 @@ export class JournalEntriesInfoComponent implements OnInit {
       .finally(() => (this.loadingIndicator = false));
   }
 
-  confirmDelete(item: JournalListItem): void {
-    const ok = window.confirm(`Delete journal entry ${item.tranNo}? This cannot be undone.`);
+  confirmDelete(row: JournalListLine): void {
+    if (!this.canDelete) {
+      this.alertService.showMessage(
+        'Not allowed',
+        'Only the Management role can delete journal entries.',
+        MessageSeverity.warn,
+      );
+      return;
+    }
+
+    const tranNo = row.tranNo;
+    if (!tranNo) {
+      this.alertService.showMessage('Cannot delete', 'This row has no Tran No.', MessageSeverity.warn);
+      return;
+    }
+
+    const ok = window.confirm(`Delete journal entry ${tranNo}? This cannot be undone.`);
     if (!ok) return;
 
     this.loadingIndicator = true;
     this.journalEndpoint
-      .deleteJournalEntryEndpoint<void>(item.tranNo)
+      .deleteJournalEntryEndpoint<void>(tranNo)
       .toPromise()
       .then(() => {
-        this.snackBar.open(`Journal entry ${item.tranNo} deleted.`, 'Dismiss', { duration: 4000 });
+        this.snackBar.open(`Journal entry ${tranNo} deleted.`, 'Dismiss', { duration: 4000 });
         this.loadPage();
       })
       .catch(err => {
@@ -159,16 +197,19 @@ export class JournalEntriesInfoComponent implements OnInit {
   private loadPage(): void {
     this.loadingIndicator = true;
 
+    const search = this.searchText?.trim();
     const query = {
-      search: this.searchText?.trim() || undefined,
-      fromDate: this.fromDate?.toISOString() || undefined,
-      toDate: this.toDate?.toISOString() || undefined,
+      search: search || undefined,
+      // Default to today when the user has not entered a search; if they
+      // search, the service drops the date filter so they can find any
+      // TranNo across all dates.
+      tranDate: search ? undefined : this.filterDate.toISOString(),
       page: this.currentPage,
       pageSize: this.pageSize,
     };
 
     this.journalEndpoint
-      .getJournalEntriesEndpoint<PagedJournalResult>(query)
+      .getJournalEntryLinesEndpoint<PagedJournalLinesResult>(query)
       .toPromise()
       .then(result => {
         this.totalCount = result?.totalCount ?? 0;
@@ -186,7 +227,13 @@ export class JournalEntriesInfoComponent implements OnInit {
       .finally(() => (this.loadingIndicator = false));
   }
 
-  trackByTranNo(_index: number, item: JournalListItem): string {
-    return item.tranNo;
+  trackBySNo(_index: number, item: JournalListLine): number {
+    return item.sNo;
+  }
+
+  private startOfDay(d: Date): Date {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
   }
 }

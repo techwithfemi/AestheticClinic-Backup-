@@ -52,7 +52,7 @@
 
 .filter-card .filter-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: center;
 
@@ -120,6 +120,28 @@
     text-align: right;
   }
 
+  .account-cell {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+
+    .account-name {
+      font-weight: 500;
+    }
+
+    .account-no {
+      color: rgba(0, 0, 0, 0.55);
+      font-size: 0.75rem;
+    }
+  }
+
+  .ellipsis {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .no-data .empty-cell {
     text-align: center;
     padding: 32px 16px;
@@ -142,10 +164,7 @@
     padding: 16px;
   }
   .filter-card .filter-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .filter-card .filter-grid .search-field {
-    grid-column: span 2;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -153,13 +172,10 @@
   .page-shell {
     padding: 12px;
   }
-  .filter-card .filter-grid {
-    grid-template-columns: 1fr;
-  }
-  .filter-card .filter-grid .search-field {
-    grid-column: span 1;
-  }
   .page-header .page-title-block .page-title {
     font-size: 1.2rem;
+  }
+  .journal-table .ellipsis {
+    max-width: 140px;
   }
 }

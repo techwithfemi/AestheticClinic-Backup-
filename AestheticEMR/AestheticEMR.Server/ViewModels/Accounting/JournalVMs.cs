@@ -49,7 +49,6 @@ public class JournalEntryVM
     [Required(ErrorMessage = "Tran Date is required")]
     public DateTime TranDate { get; set; }
 
-    [Required(ErrorMessage = "Cost Center is required")]
     [StringLength(40)]
     public string CostCenterId { get; set; } = string.Empty;
 
@@ -108,6 +107,54 @@ public class PagedJournalResultVM
     public int PageSize { get; set; }
 
     public List<JournalListItemVM> Items { get; set; } = new();
+}
+
+/// <summary>
+/// Flat row from <c>vwTranx</c> for the journal-entries-info list grid.
+/// See <see cref="JournalListLine"/> in Core/Services/Accounting/Models.
+/// </summary>
+public class JournalListLineVM
+{
+    public long SN { get; set; }
+    public DateTime TranDate { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public decimal Debit { get; set; }
+    public decimal Credit { get; set; }
+    public string? Description { get; set; }
+    public string TranNo { get; set; } = string.Empty;
+    public string? TranCat { get; set; }
+    public string? BillNo { get; set; }
+    public string? CostCenter { get; set; }
+    public DateTime EntryDate { get; set; }
+    public string? Period { get; set; }
+    public string? UserName { get; set; }
+    public long SNo { get; set; }
+    public string? Remarks { get; set; }
+    public string CoyID { get; set; } = string.Empty;
+    public bool IsClose { get; set; }
+}
+
+public class JournalListLineQueryVM
+{
+    [StringLength(40)]
+    public string? Search { get; set; }
+
+    public DateTime? TranDate { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+
+    [Range(1, 200)]
+    public int PageSize { get; set; } = 10;
+}
+
+public class PagedJournalLinesResultVM
+{
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public List<JournalListLineVM> Items { get; set; } = new();
 }
 
 public class JournalNextTranNoVM

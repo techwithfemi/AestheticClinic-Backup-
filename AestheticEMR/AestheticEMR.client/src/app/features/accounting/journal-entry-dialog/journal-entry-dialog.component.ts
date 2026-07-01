@@ -7,7 +7,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -21,7 +20,6 @@ import { JournalEndpoint } from '../../../services/journal-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import {
   JournalAccountLookup,
-  JournalCostCenterLookup,
   JournalEntry,
   JournalEntryDialogData,
   JournalEntryDialogResult,
@@ -45,7 +43,6 @@ interface JournalLineRow extends JournalLine {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatDatepickerModule,
     MatNativeDateModule,
     MatTableModule,
@@ -75,10 +72,8 @@ export class JournalEntryDialogComponent implements OnInit {
 
   tranNo = '';
   tranDate: Date = new Date();
-  costCenterId = '';
 
   accounts: JournalAccountLookup[] = [];
-  costCenters: JournalCostCenterLookup[] = [];
 
   lines = new MatTableDataSource<JournalLineRow>([]);
   totalDebit = 0;
@@ -87,16 +82,12 @@ export class JournalEntryDialogComponent implements OnInit {
 
   get canSave(): boolean {
     if (!this.tranNo?.trim()) return false;
-    if (!this.costCenterId?.trim()) return false;
     if (!this.tranDate) return false;
     if (this.lines.data.length === 0) return false;
     if (this.totalDebit !== this.totalCredit) return false;
     if (this.totalDebit === 0) return false;
-    return this.lines.data.every(l =>
-      !!l.accountNo?.trim() &&
-      !!l.tranDate &&
-      ((l.debit > 0) !== (l.credit > 0)) // exactly one of Dr/Cr non-zero
-    );
+
+    return this.lines.data.every(l => !!l.accountNo?.trim() && !!l.tranDate && ((l.debit > 0) !== (l.credit > 0)));
   }
 
   ngOnInit(): void {
@@ -121,7 +112,7 @@ export class JournalEntryDialogComponent implements OnInit {
   private hydrateFromEntry(entry: JournalEntry): void {
     this.tranNo = entry.tranNo;
     this.tranDate = entry.tranDate ? new Date(entry.tranDate) : new Date();
-    this.costCenterId = entry.costCenterId ?? '';
+
     const rows: JournalLineRow[] = (entry.lines ?? []).map(l => ({
       accountNo: l.accountNo,
       accountName: l.accountName,
@@ -131,23 +122,30 @@ export class JournalEntryDialogComponent implements OnInit {
       tranDate: l.tranDate ? new Date(l.tranDate) : this.tranDate,
       rowId: this.makeRowId(),
     }));
+
     this.lines.data = rows.length > 0 ? rows : [this.makeBlankRow()];
   }
 
   private loadLookups(): void {
     this.loading = true;
-    Promise.all([
-      this.journalEndpoint.getJournalAccountsEndpoint<JournalAccountLookup[]>().toPromise(),
-      this.journalEndpoint.getJournalCostCentersEndpoint<JournalCostCenterLookup[]>().toPromise(),
-    ])
-      .then(([accounts, costCenters]) => {
-        this.accounts = accounts ?? [];
-        this.costCenters = costCenters ?? [];
+    this.journalEndpoint
+      .getJournalAccountsEndpoint<unknown[]>()
+      .toPromise()
+      .then(accounts => {
+        this.accounts = (accounts ?? [])
+          .map(a => {
+            const obj = (a ?? {}) as Record<string, unknown>;
+            return {
+              accountNo: String(obj['accountNo'] ?? obj['AccountNo'] ?? '').trim(),
+              accountName: String(obj['accountName'] ?? obj['AccountName'] ?? '').trim(),
+            };
+          })
+          .filter(a => !!a.accountNo && !!a.accountName);
       })
       .catch(err => {
         this.alertService.showStickyMessage(
           'Load failed',
-          'Could not load lookups (accounts / cost centers). ' + (err?.message ?? ''),
+          'Could not load accounts. ' + (err?.message ?? ''),
           MessageSeverity.error,
           err
         );
@@ -165,7 +163,7 @@ export class JournalEntryDialogComponent implements OnInit {
         }
       })
       .catch(() => {
-        // non-fatal: leave blank so user can type
+        // non-fatal
       });
   }
 
@@ -180,10 +178,17 @@ export class JournalEntryDialogComponent implements OnInit {
   }
 
   onAccountChange(row: JournalLineRow): void {
-    const acct = this.accounts.find(a => a.accountNo === row.accountNo);
+    const selectedAccountNo = (row.accountNo ?? '').trim();
+    const acct = this.accounts.find(a => (a.accountNo ?? '').trim().toLowerCase() === selectedAccountNo.toLowerCase());
+
     if (acct) {
       row.accountName = acct.accountName;
+      row.accountNo = acct.accountNo;
+    } else {
+      row.accountName = '';
+      row.accountNo = '';
     }
+
     this.lines.data = [...this.lines.data];
   }
 
@@ -192,7 +197,6 @@ export class JournalEntryDialogComponent implements OnInit {
   }
 
   onDateChange(row: JournalLineRow): void {
-    // Ensure date is valid; if invalid, fall back to header date.
     const parsed = row.tranDate instanceof Date ? row.tranDate : new Date(row.tranDate);
     if (!row.tranDate || isNaN(parsed.getTime())) {
       row.tranDate = this.tranDate;
@@ -214,8 +218,7 @@ export class JournalEntryDialogComponent implements OnInit {
     if (!this.canSave) {
       this.alertService.showMessage(
         'Cannot save',
-        'Please check the form. Every row needs an account, a date, and exactly one of Debit/Credit. ' +
-          'Totals must balance and be greater than zero.',
+        'Please check the form. Every row needs an account, a date, and exactly one of Debit/Credit. Totals must balance and be greater than zero.',
         MessageSeverity.warn
       );
       return;
@@ -224,7 +227,7 @@ export class JournalEntryDialogComponent implements OnInit {
     const payload: JournalEntry = {
       tranNo: this.tranNo.trim(),
       tranDate: this.tranDate.toISOString(),
-      costCenterId: this.costCenterId,
+      costCenterId: '',
       lines: this.lines.data.map(l => {
         const date = l.tranDate instanceof Date ? l.tranDate : new Date(l.tranDate);
         return {
@@ -255,18 +258,28 @@ export class JournalEntryDialogComponent implements OnInit {
       .finally(() => (this.saving = false));
   }
 
-  private extractErrorMessage(err: any): string | null {
-    // Prefer ASP.NET ModelState errors, fall back to statusText, fall back to message.
-    const modelErrors = err?.error?.errors;
+  private extractErrorMessage(err: unknown): string | null {
+    const e = (err ?? {}) as Record<string, unknown>;
+    const errorObj = (e['error'] ?? {}) as Record<string, unknown>;
+    const modelErrors = errorObj['errors'];
+
     if (modelErrors && typeof modelErrors === 'object') {
-      const first = Object.values(modelErrors).flat() as string[];
-      if (first.length) return first[0];
+      const first = Object.values(modelErrors as Record<string, unknown>).flat() as string[];
+      if (first.length) {
+        return first[0];
+      }
     }
-    return err?.error?.title ?? err?.statusText ?? err?.message ?? null;
+
+    return (
+      (errorObj['title'] as string | undefined) ??
+      (e['statusText'] as string | undefined) ??
+      (e['message'] as string | undefined) ??
+      null
+    );
   }
 
   private makeBlankRow(): JournalLineRow {
-    const row: JournalLineRow = {
+    return {
       rowId: this.makeRowId(),
       accountNo: '',
       accountName: '',
@@ -275,7 +288,6 @@ export class JournalEntryDialogComponent implements OnInit {
       description: '',
       tranDate: this.tranDate,
     };
-    return row;
   }
 
   private makeRowId(): string {
