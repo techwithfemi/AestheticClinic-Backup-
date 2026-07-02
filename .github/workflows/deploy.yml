@@ -35,7 +35,15 @@ jobs:
       - name: Web Deploy to SmarterASP.net
         uses: aarhusit/deploy@main
         with:
-          csproj-filepath: "AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj"
-        env:
-          USERNAME: ${{ secrets.SMARTERASP_USERNAME }}
-          PASSWORD: ${{ secrets.SMARTERASP_PASSWORD }}
+         # 1. Point it to your server URL secret
+         server-url: ${{ secrets.DEPLOY_SERVER_URL }}
+
+         # 2. Append the /emr virtual directory to your site name
+         site-name: "omagebi-001-site1/emr"
+
+         # 3. Reference your credentials
+         username: ${{ secrets.DEPLOY_USERNAME }}
+         password: ${{ secrets.DEPLOY_PASSWORD }}
+    
+         # 4. Point it to your backend startup project
+         csproj-filepath: "AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj"

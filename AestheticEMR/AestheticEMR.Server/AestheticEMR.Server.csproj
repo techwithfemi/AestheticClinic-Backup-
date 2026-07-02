@@ -7,7 +7,6 @@
     <SpaRoot>..\AestheticEMR.client</SpaRoot>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:4200</SpaProxyServerUrl>
-	<DeployIisAppPath>omagebi-001-site1/emr</DeployIisAppPath>  
     <Version>10.21.0</Version>
     <Company>www.ebenmonney.com</Company>
     <Authors>$(Company)</Authors>
