@@ -128,6 +128,7 @@ builder.Services.AddScoped(typeof(IServicesData<>), typeof(ServicesData<>));
 
 // Accounting module - journal entries (AccountingConnection via Dapper)
 builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -452,7 +453,7 @@ app.UseForwardedHeaders();
 app.UseDefaultFiles();
 app.MapStaticAssets();
 app.UseStaticFiles();
-app.MapFallbackToFile("index.html");
+//app.MapFallbackToFile("index.html"); // in line 491
 
 if (app.Environment.IsDevelopment())
 {
@@ -550,6 +551,12 @@ catch (Exception ex)
 /************* RUN APP *************/
 
 app.Run();
+
+
+
+
+
+
 
 
 

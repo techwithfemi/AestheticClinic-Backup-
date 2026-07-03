@@ -6,11 +6,13 @@
 
 export type PermissionNames =
   'View Users' | 'Manage Users' |
-  'View Roles' | 'Manage Roles' | 'Assign Roles';
+  'View Roles' | 'Manage Roles' | 'Assign Roles' |
+  'View Accounting' | 'Manage Accounting';
 
 export type PermissionValues =
   'users.view' | 'users.manage' |
-  'roles.view' | 'roles.manage' | 'roles.assign';
+  'roles.view' | 'roles.manage' | 'roles.assign' |
+  'accounting.view' | 'accounting.manage';
 
 export interface Permission {
   name: PermissionNames;
@@ -26,4 +28,7 @@ export class Permissions {
   public static readonly viewRoles: PermissionValues = 'roles.view';
   public static readonly manageRoles: PermissionValues = 'roles.manage';
   public static readonly assignRoles: PermissionValues = 'roles.assign';
+
+  public static readonly viewAccounting: PermissionValues = 'accounting.view';
+  public static readonly manageAccounting: PermissionValues = 'accounting.manage';
 }

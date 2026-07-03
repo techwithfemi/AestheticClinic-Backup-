@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "Welcome":  "æ¬¢è¿Ž",
                 "Notifications":  "é€šçŸ¥",
@@ -80,7 +80,7 @@
                                  "AccountDisabled":  "æ­¤è´¦å·å·²è¢«ç¦ç”¨",
                                  "DeveloperDemoApiNotice":  "äº²çˆ±çš„å¼€å‘è€…ï¼\næ‚¨çš„åŽç«¯Web APIæœåŠ¡ä¼¼ä¹Žæœªè¿è¡Œ...\næ˜¯å¦è¦ä¸´æ—¶åˆ‡æ¢åˆ°ä»¥ä¸‹åœ¨çº¿æ¼”ç¤ºAPIï¼Ÿï¼ˆæˆ–æŒ‡å®šå…¶ä»–APIï¼‰",
                                  "ApiChanged":  "APIå·²æ›´æ”¹ï¼",
-                                 "ApiChangedTo":  "ç›®æ ‡Web APIå·²æ›´æ”¹ä¸ºï¼š{{API}}"
+                                 "ApiChangedTo":  "ç›®æ ´Web APIå·²æ›´æ”¹ä¸ºï¼š{{API}}"
                              }
               },
     "retainerships":  {
@@ -281,7 +281,7 @@
                               }
                  },
     "preferences":  {
-                        "ReloadPreferences":  "é‡æ–°åŠ è½½åå¥½è®¾ç½®ï¼š",
+                        "ReloadPreferences":  "é‡æ–°åŠ è½载åå¥½è®¾ç½®ï¼š",
                         "ReloadPreferencesHint":  "åŠ è½½é»˜è®¤åå¥½è®¾ç½®ï¼ˆæœ¬åœ°æ›´æ”¹å°†è¢«æ”¾å¼ƒï¼‰",
                         "Language":  "è¯­è¨€ï¼š",
                         "Default":  "é»˜è®¤",
@@ -290,7 +290,7 @@
                         "German":  "Deutsch",
                         "Spanish":  "EspaÃ±ol",
                         "Portuguese":  "PortuguÃªs",
-                        "Chinese":  "ç®€ä½“ä¸­æ–‡",
+                        "Chinese":  "ç®简ä½“ä¸­æ–‡",
                         "Korean":  "í•œêµ­ì–´",
                         "Arabic":  "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©",
                         "LanguageHint":  "é€‰æ‹©æ‚¨è´¦æˆ·çš„é¦–é€‰è¯­è¨€",
@@ -357,13 +357,13 @@
                                  "ChangePassword":  "ä¿®æ”¹å¯†ç ",
                                  "CurrentPassword":  "å½“å‰å¯†ç ï¼š",
                                  "NewPassword":  "æ–°å¯†ç ï¼š",
-                                 "NewPasswordRequired":  "æ–°å¯†ç ä¸ºå¿…å¡«é¡¹ï¼ˆè‡³å°‘6ä¸ªå­—ç¬¦ï¼‰",
+                                 "NewPasswordRequired":  "æ–°å¯†ç ä¸šå¿…å¡«é¡¹ï¼ˆè‡³å°‘6ä¸ªå­—ç¬¦ï¼‰",
                                  "ConfirmPassword":  "ç¡®è®¤å¯†ç ï¼š",
                                  "ConfirmationPasswordRequired":  "ç¡®è®¤å¯†ç ä¸ºå¿…å¡«é¡¹",
                                  "PasswordMismatch":  "æ–°å¯†ç ä¸Žç¡®è®¤å¯†ç ä¸åŒ¹é…",
                                  "Roles":  "è§’è‰²ï¼š",
                                  "RoleAssignment":  "è§’è‰²åˆ†é…",
-                                 "RoleAssignmentHint":  "é€‰æ‹©ä¸€ä¸ªæˆ–å¤šä¸ªè§’è‰²ã€‚åˆ›å»ºæˆ–æ›´æ–°å¸æˆ·æ—¶ä¸Žç”¨æˆ·ä¸€èµ·ä¿å­˜ã€‚",
+                                 "RoleAssignmentHint":  "é€‰æ‹©ä¸€ä¸ªæˆ–å¤šä¸ªè§’è‰²ã€‚åˆ›å»ºæˆ–æ›´æ–°å¸æˆ·æ—¶ä¸Žç”¨æˆ·ä¸一èµ·ä¿å­˜ã€‚",
                                  "ProfilePhoto":  "Profile Photo:",
                                  "PhotoUploadHint":  "Upload a JPG or PNG image up to 2MB.",
                                  "RemovePhoto":  "Remove Photo",
@@ -470,5 +470,41 @@
                           "NameRequired":  "Designation name is required.",
                           "CannotDeleteInUse":  "Cannot delete: designation is in use",
                           "IdLimitReached":  "Designation id limit reached. Cannot generate a new designation."
-                      }
+                      },
+    "expenses":  {
+                     "PageTitle":  "Expenses",
+                     "Subtitle":  "Manage expense journal entries.",
+                     "AddExpense":  "Add Expense",
+                     "NewExpense":  "New Expense",
+                     "EditExpense":  "Edit Expense",
+                     "EntryHeader":  "Expense entry details",
+                     "Search":  "Search description or account...",
+                     "FromDate":  "From Date",
+                     "ToDate":  "To Date",
+                     "ViewMode":  "View Mode",
+                     "ViewAll":  "View All",
+                     "ViewPosted":  "View Posted",
+                     "ViewUnposted":  "View Unposted",
+                     "Apply":  "Apply",
+                     "Clear":  "Clear",
+                     "SNo":  "S/No",
+                     "TranDate":  "Date",
+                     "ExpenseAccount":  "Expense Account",
+                     "PayingAccount":  "Paying Account",
+                     "Amount":  "Amount",
+                     "Description":  "Description",
+                     "Status":  "Status",
+                     "Posted":  "Posted",
+                     "Unposted":  "Unposted",
+                     "Actions":  "Actions",
+                     "NoData":  "No expense entries match the current filters.",
+                     "SelectExpenseAccount":  "Select expense account",
+                     "SelectPayingAccount":  "Select paying account",
+                     "PostDirectly":  "Post directly on save",
+                     "PostDirectlyHelp":  "Saving will post this expense immediately to the accounting ledger.",
+                     "SaveAsUnpostedHelp":  "Saving will keep this expense as unposted for later posting.",
+                     "Save":  "Save",
+                     "Saving":  "Saving...",
+                     "Cancel":  "Cancel"
+                 }
 }

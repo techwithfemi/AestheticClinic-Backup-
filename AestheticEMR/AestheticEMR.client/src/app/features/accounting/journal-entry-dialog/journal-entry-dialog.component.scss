@@ -92,7 +92,8 @@
 
     .mat-column-debit,
     .mat-column-credit {
-      width: 110px;
+      width: 140px;
+      min-width: 140px;
     }
 
     .mat-column-description {
@@ -100,8 +101,8 @@
     }
 
     .mat-column-tranDate {
-      width: 180px;
-      max-width: 180px;
+      width: 156px;
+      max-width: 156px;
     }
 
     th.mat-header-cell {
@@ -120,7 +121,7 @@
 
     .num {
       text-align: right;
-      width: 110px;
+      width: 140px;
     }
 
     .mono {
@@ -166,19 +167,20 @@
     }
 
     .date-cell {
-      min-width: 180px;
+      min-width: 156px;
       white-space: nowrap;
     }
 
     .line-date-field {
-      width: 170px;
+      width: 146px;
       margin: 0;
     }
 
     .date-input {
       border: 0 !important;
-      padding: 0;
+      padding: 0 4px 0 0;
       height: auto;
+      box-sizing: border-box;
     }
   }
 }
@@ -303,6 +305,13 @@
   height: 36px;
 }
 
+:host ::ng-deep .line-date-field .mdc-notched-outline__leading,
+:host ::ng-deep .line-date-field .mdc-notched-outline__notch,
+:host ::ng-deep .line-date-field .mdc-notched-outline__trailing {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  border-width: 1px !important;
+}
+
 :host ::ng-deep .line-date-field .mat-mdc-form-field-flex {
   height: 36px;
   align-items: center;
@@ -312,6 +321,16 @@
   min-height: 36px;
   padding-top: 6px;
   padding-bottom: 6px;
+}
+
+:host ::ng-deep .line-date-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+:host ::ng-deep .line-date-field .mat-mdc-icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
 }
 
 :host ::ng-deep .line-date-field .mat-datepicker-toggle-default-icon {

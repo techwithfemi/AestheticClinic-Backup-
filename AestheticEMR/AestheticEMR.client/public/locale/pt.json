@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "Welcome":  "Bem-vindo!",
                 "Notifications":  "NotificaÃ§Ãµes",
@@ -458,17 +458,53 @@
                       "EditEmployee":  "Edit Employee"
                   },
     "designations":  {
-                          "PageTitle":  "Designations",
-                          "Subtitle":  "Manage job titles used to classify employees.",
-                          "AddDesignation":  "Add Designation",
-                          "Search":  "Search by id or name...",
-                          "DesignationId":  "Designation ID",
-                          "DesignationName":  "Designation Name",
-                          "InUse":  "In Use",
-                          "NewDesignation":  "New Designation",
-                          "EditDesignation":  "Edit Designation",
-                          "NameRequired":  "Designation name is required.",
-                          "CannotDeleteInUse":  "Cannot delete: designation is in use",
-                          "IdLimitReached":  "Designation id limit reached. Cannot generate a new designation."
-                      }
+                          "PageTitle":  "Designações",
+                          "Subtitle":  "Gerenciar cargos usados para classificar funcionários.",
+                          "AddDesignation":  "Adicionar Designação",
+                          "Search":  "Pesquisar por id ou nome...",
+                          "DesignationId":  "ID da Designação",
+                          "DesignationName":  "Nome da Designação",
+                          "InUse":  "Em Uso",
+                          "NewDesignation":  "Nova Designação",
+                          "EditDesignation":  "Editar Designação",
+                          "NameRequired":  "Nome da designação é obrigatório.",
+                          "CannotDeleteInUse":  "Não é possível excluir: a designação está em uso",
+                          "IdLimitReached":  "Limite de id da designação alcançado. Não é possível gerar uma nova designação."
+                      },
+    "expenses":  {
+                     "PageTitle":  "Despesas",
+                     "Subtitle":  "Gerenciar lançamentos do diário de despesas.",
+                     "AddExpense":  "Adicionar Despesa",
+                     "NewExpense":  "Nova Despesa",
+                     "EditExpense":  "Editar Despesa",
+                     "EntryHeader":  "Detalhes da entrada de despesa",
+                     "Search":  "Pesquisar descrição ou conta...",
+                     "FromDate":  "De Data",
+                     "ToDate":  "Até à Data",
+                     "ViewMode":  "Modo de Visualização",
+                     "ViewAll":  "Ver Tudo",
+                     "ViewPosted":  "Ver Publicado",
+                     "ViewUnposted":  "Ver Não Publicado",
+                     "Apply":  "Aplicar",
+                     "Clear":  "Limpar",
+                     "SNo":  "S/No",
+                     "TranDate":  "Data",
+                     "ExpenseAccount":  "Conta de Despesas",
+                     "PayingAccount":  "Conta a Receber",
+                     "Amount":  "Quantia",
+                     "Description":  "Descrição",
+                     "Status":  "Estado",
+                     "Posted":  "Publicado",
+                     "Unposted":  "Não Publicado",
+                     "Actions":  "Ações",
+                     "NoData":  "Nenhuma entrada de despesa correspondente aos filtros atuais.",
+                     "SelectExpenseAccount":  "Selecione a conta de despesas",
+                     "SelectPayingAccount":  "Selecione a conta a pagar",
+                     "PostDirectly":  "Postar diretamente ao salvar",
+                     "PostDirectlyHelp":  "Salvará esta despesa imediatamente no livro contábil.",
+                     "SaveAsUnpostedHelp":  "Salvará esta despesa como não publicada para postagem posterior.",
+                     "Save":  "Salvar",
+                     "Saving":  "Salvando...",
+                     "Cancel":  "Cancelar"
+                 }
 }

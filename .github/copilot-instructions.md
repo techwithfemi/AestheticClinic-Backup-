@@ -420,7 +420,9 @@ When introducing new configuration keys, also update the base `appsettings.json`
 - The dialog can only be explicitly closed using the close (X) icon or cancel button.
 - The entry form UI must be responsive (for mobile, tablet, and desktop devices).
 
-So in short: separate “entry form UI” from “records/list page UI” and reuse the same dialog for new/edit across modules
+### Date Format for Expenses
+
+- Use 'dd-MMM-yyyy' date format for the expenses page and expenses dialog date inputs/displays.
 
 
 

@@ -1,4 +1,4 @@
-﻿{
+{
     "app":  {
                 "Welcome":  "Bienvenido",
                 "Notifications":  "Notificaciones",
@@ -470,5 +470,41 @@
                           "NameRequired":  "Designation name is required.",
                           "CannotDeleteInUse":  "Cannot delete: designation is in use",
                           "IdLimitReached":  "Designation id limit reached. Cannot generate a new designation."
-                      }
+                      },
+    "expenses":  {
+                     "PageTitle":  "Expenses",
+                     "Subtitle":  "Manage expense journal entries.",
+                     "AddExpense":  "Add Expense",
+                     "NewExpense":  "New Expense",
+                     "EditExpense":  "Edit Expense",
+                     "EntryHeader":  "Expense entry details",
+                     "Search":  "Search description or account...",
+                     "FromDate":  "From Date",
+                     "ToDate":  "To Date",
+                     "ViewMode":  "View Mode",
+                     "ViewAll":  "View All",
+                     "ViewPosted":  "View Posted",
+                     "ViewUnposted":  "View Unposted",
+                     "Apply":  "Apply",
+                     "Clear":  "Clear",
+                     "SNo":  "S/No",
+                     "TranDate":  "Date",
+                     "ExpenseAccount":  "Expense Account",
+                     "PayingAccount":  "Paying Account",
+                     "Amount":  "Amount",
+                     "Description":  "Description",
+                     "Status":  "Status",
+                     "Posted":  "Posted",
+                     "Unposted":  "Unposted",
+                     "Actions":  "Actions",
+                     "NoData":  "No expense entries match the current filters.",
+                     "SelectExpenseAccount":  "Select expense account",
+                     "SelectPayingAccount":  "Select paying account",
+                     "PostDirectly":  "Post directly on save",
+                     "PostDirectlyHelp":  "Saving will post this expense immediately to the accounting ledger.",
+                     "SaveAsUnpostedHelp":  "Saving will keep this expense as unposted for later posting.",
+                     "Save":  "Save",
+                     "Saving":  "Saving...",
+                     "Cancel":  "Cancel"
+                 }
 }

@@ -192,6 +192,21 @@ export class JournalEntryDialogComponent implements OnInit {
     this.lines.data = [...this.lines.data];
   }
 
+  onAccountTab(event: Event): void {
+    event.preventDefault();
+
+    const source = event.target as HTMLElement | null;
+    const rowElement = source?.closest('tr');
+    const debitInput = rowElement?.querySelector('input.debit-input') as HTMLInputElement | null;
+
+    if (!debitInput) {
+      return;
+    }
+
+    debitInput.focus();
+    debitInput.select();
+  }
+
   onAmountChange(): void {
     this.recomputeTotals();
   }

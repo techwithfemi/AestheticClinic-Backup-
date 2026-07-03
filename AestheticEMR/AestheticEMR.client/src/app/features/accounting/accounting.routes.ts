@@ -14,7 +14,8 @@ export const accountingRoutes: Routes = [
   {
     path: 'expenses',
     loadComponent: () => import('./expenses/expenses.component')
-      .then(m => m.ExpensesComponent)
+      .then(m => m.ExpensesComponent),
+    title: 'Expenses'
   },
   {
     path: 'incomes',
