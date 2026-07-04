@@ -124,16 +124,10 @@ public class ExpenseService(
     {
         const string sql = @"
 SELECT DISTINCT
-       LTRIM(RTRIM(AccountNo))   AS AccountNo,
-       LTRIM(RTRIM(AccountName)) AS AccountName
-FROM   vwAccountsInfo
-WHERE  NULLIF(LTRIM(RTRIM(AccountNo)), '') IS NOT NULL
-  AND  NULLIF(LTRIM(RTRIM(AccountName)), '') IS NOT NULL
-  AND (
-        UPPER(ISNULL(GroupName, ''))     LIKE '%EXPENSE%'
-     OR UPPER(ISNULL(CatName, ''))       LIKE '%EXPENSE%'
-     OR UPPER(ISNULL(CatMasterName, '')) LIKE '%EXPENSE%'
-      )
+       LTRIM(RTRIM(AccountName)) AS AccountName,
+       LTRIM(RTRIM(AccountNo))   AS AccountNo
+FROM   vwAccountsInfoCombo
+WHERE  SUBSTRING(GroupID, 1, 1) = '5'
 ORDER BY AccountName;";
 
         var accounts = (await db.LoadDataText<ExpenseAccountLookup, dynamic>(sql, new { }, AcctConn)).ToList();
@@ -143,43 +137,15 @@ ORDER BY AccountName;";
 
     public async Task<List<ExpenseAccountLookup>> GetPayingAccountsAsync(CancellationToken ct = default)
     {
-        var bankGroupId = await accountingDbContext.AppDefaults
-            .AsNoTracking()
-            .Where(x => x.ID != null && x.ID.ToUpper() == "ACCT_BANKS")
-            .Select(x => x.IDVal)
-            .FirstOrDefaultAsync(ct);
-
-        string sql;
-        object parameters;
-
-        if (!string.IsNullOrWhiteSpace(bankGroupId))
-        {
-            sql = @"
+        const string sql = @"
 SELECT DISTINCT
-       LTRIM(RTRIM(AccountNo))   AS AccountNo,
-       LTRIM(RTRIM(AccountName)) AS AccountName
-FROM   vwAccountsInfo
-WHERE  UPPER(LTRIM(RTRIM(GroupID))) = UPPER(@GroupId)
-  AND  NULLIF(LTRIM(RTRIM(AccountNo)), '') IS NOT NULL
-  AND  NULLIF(LTRIM(RTRIM(AccountName)), '') IS NOT NULL
+       LTRIM(RTRIM(AccountName)) AS AccountName,
+       LTRIM(RTRIM(AccountNo))   AS AccountNo
+FROM   vwAccountsInfoCombo
+WHERE  Remarks IN ('Cheque','Cash')
 ORDER BY AccountName;";
-            parameters = new { GroupId = bankGroupId.Trim() };
-        }
-        else
-        {
-            logger.LogWarning("Acct_Banks is not configured in Accounting AppDefaults. Falling back to vwBanksAndCash for paying accounts.");
-            sql = @"
-SELECT DISTINCT
-       LTRIM(RTRIM(AccountNo))   AS AccountNo,
-       LTRIM(RTRIM(AccountName)) AS AccountName
-FROM   vwBanksAndCash
-WHERE  NULLIF(LTRIM(RTRIM(AccountNo)), '') IS NOT NULL
-  AND  NULLIF(LTRIM(RTRIM(AccountName)), '') IS NOT NULL
-ORDER BY AccountName;";
-            parameters = new { };
-        }
 
-        var accounts = (await db.LoadDataText<ExpenseAccountLookup, object>(sql, parameters, AcctConn)).ToList();
+        var accounts = (await db.LoadDataText<ExpenseAccountLookup, dynamic>(sql, new { }, AcctConn)).ToList();
         logger.LogInformation("Loaded {Count} paying accounts for expenses dialog.", accounts.Count);
         return accounts;
     }
