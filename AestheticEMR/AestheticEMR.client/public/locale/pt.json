@@ -506,5 +506,29 @@
                      "Save":  "Salvar",
                      "Saving":  "Salvando...",
                      "Cancel":  "Cancelar"
-                 }
+                 },
+    "chartOfAccounts":  {
+                            "PageTitle":  "Chart of Accounts",
+                            "Subtitle":  "Create and maintain your chart of account records",
+                            "AddAccount":  "Add Account",
+                            "Search":  "Search account no, name, group or description",
+                            "Apply":  "Apply",
+                            "Clear":  "Clear",
+                            "Refresh":  "Refresh",
+                            "AccountNo":  "Account No",
+                            "AccountName":  "Account Name",
+                            "AccountGroup":  "Account Group",
+                            "Description":  "Description",
+                            "OpeningBal":  "Opening Bal",
+                            "ClosingBal":  "Closing Prd Bal",
+                            "Actions":  "Actions",
+                            "NoData":  "No chart of accounts found",
+                            "NewAccount":  "New Account",
+                            "EditAccount":  "Edit Account",
+                            "DialogSubtitle":  "Maintain account details and grouping",
+                            "SelectGroup":  "Select account group",
+                            "Cancel":  "Cancel",
+                            "Save":  "Save",
+                            "Saving":  "Saving..."
+                        }
 }

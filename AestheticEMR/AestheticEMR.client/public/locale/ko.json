@@ -154,8 +154,6 @@
                                     "EnterUsername":  "ì‚¬ìš©ìž ì´ë¦„ì„ ìž…ë ¥í•˜ì‹­ì‹œì˜¤ (ìµœì†Œ 2 ìž ë° ìµœëŒ€ 200 ìž).",
                                     "EmailRequired":  "ì´ë©”ì¼ì´ í•„ìš”í•©ë‹ˆë‹¤.",
                                     "EnterEmail":  "ì´ë©”ì¼ ì£¼ì†Œë¥¼ ìž…ë ¥í•˜ì‹­ì‹œì˜¤ (ìµœëŒ€ 200 ìž).",
-                                    "InvalidEmail":  "ìž˜ëª»ëœ ì´ë©”ì¼",
-                                    "EnterValidEmail":  "ìœ íš¨í•œ ì´ë©”ì¼ ì£¼ì†Œë¥¼ ìž…ë ¥í•˜ì„¸ìš”",
                                     "NewPasswordRequired":  "ìƒˆ ì•”í˜¸ê°€ í•„ìš”í•©ë‹ˆë‹¤.",
                                     "EnterNewValidPassword":  "ìƒˆ ì•”í˜¸ë¥¼ ìž…ë ¥í•˜ì‹­ì‹œì˜¤ (ìµœì†Œ 6 ìž).",
                                     "ConfirmationPasswordRequired":  "í™•ì¸ ì•”í˜¸ê°€ í•„ìš”í•©ë‹ˆë‹¤.",
@@ -362,7 +360,7 @@
                                  "PasswordMismatch":  "ìƒˆ ë¹„ë°€ë²ˆí˜¸ì™€ í™•ì¸ ë¹„ë°€ë²ˆí˜¸ê°€ ì¼ì¹˜í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.",
                                  "Roles":  "ì—­í•  :",
                                  "RoleAssignment":  "ì—­í•  í• ë‹¹",
-                                 "RoleAssignmentHint":  "í•˜ë‚˜ ì´ìƒì˜ ì—­í• ì„ ì„ íƒí•˜ì„¸ìš”. ê³„ì •ì„ ë§Œë“¤ê±°ë‚˜ ì—…ë°ì´íŠ¸í•  ë•Œ ì‚¬ìš©ìžì™€ í•¨ê»˜ ì €ìž¥ë©ë‹ˆë‹¤.",
+                                 "RoleAssignmentHint":  "í•˜ë‚˜ ì ´ìƒì ˜ ì—­í• ì„ ì„ íƒí•˜ì„¸ìš”. ê³„ì •ì„ ë§Œë“¤ê±°ë‚˜ ì—…ë°ì´íŠ¸í•  ë•Œ ì‚¬ìš©ìžì™€ í•¨ê»˜ ì €ìž¥ë©ë‹ˆë‹¤.",
                                  "ProfilePhoto":  "Profile Photo:",
                                  "PhotoUploadHint":  "Upload a JPG or PNG image up to 2MB.",
                                  "RemovePhoto":  "Remove Photo",
@@ -505,5 +503,29 @@
                      "Save":  "Save",
                      "Saving":  "Saving...",
                      "Cancel":  "Cancel"
-                 }
+                 },
+    "chartOfAccounts":  {
+                            "PageTitle":  "Chart of Accounts",
+                            "Subtitle":  "Create and maintain your chart of account records",
+                            "AddAccount":  "Add Account",
+                            "Search":  "Search account no, name, group or description",
+                            "Apply":  "Apply",
+                            "Clear":  "Clear",
+                            "Refresh":  "Refresh",
+                            "AccountNo":  "Account No",
+                            "AccountName":  "Account Name",
+                            "AccountGroup":  "Account Group",
+                            "Description":  "Description",
+                            "OpeningBal":  "Opening Bal",
+                            "ClosingBal":  "Closing Prd Bal",
+                            "Actions":  "Actions",
+                            "NoData":  "No chart of accounts found",
+                            "NewAccount":  "New Account",
+                            "EditAccount":  "Edit Account",
+                            "DialogSubtitle":  "Maintain account details and grouping",
+                            "SelectGroup":  "Select account group",
+                            "Cancel":  "Cancel",
+                            "Save":  "Save",
+                            "Saving":  "Saving..."
+                        }
 }

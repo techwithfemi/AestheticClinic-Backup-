@@ -12,6 +12,12 @@ export const accountingRoutes: Routes = [
       .then(m => m.JournalEntriesInfoComponent)
   },
   {
+    path: 'chart-of-accounts',
+    loadComponent: () => import('./chart-of-accounts/chart-of-accounts.component')
+      .then(m => m.ChartOfAccountsComponent),
+    title: 'Chart of Accounts'
+  },
+  {
     path: 'expenses',
     loadComponent: () => import('./expenses/expenses.component')
       .then(m => m.ExpensesComponent),
