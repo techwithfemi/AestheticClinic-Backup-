@@ -128,7 +128,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                 [clearable]="true"
                 [loading]="loadingExpenseAccounts"
                 [placeholder]="translationKey('expenses.SelectExpenseAccount')"
-                appendTo="body">
+                appendTo=".dialog-host">
                 <ng-template ng-option-tmp let-item="item">
                   <div class="option-row">
                     <span>{{ item.accountName }}</span>
@@ -150,7 +150,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                 [clearable]="true"
                 [loading]="loadingPayingAccounts"
                 [placeholder]="translationKey('expenses.SelectPayingAccount')"
-                appendTo="body">
+                appendTo=".dialog-host">
                 <ng-template ng-option-tmp let-item="item">
                   <div class="option-row">
                     <span>{{ item.accountName }}</span>
