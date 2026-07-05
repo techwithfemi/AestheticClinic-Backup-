@@ -424,6 +424,10 @@ When introducing new configuration keys, also update the base `appsettings.json`
 
 - Use 'dd-MMM-yyyy' date format for the expenses page and expenses dialog date inputs/displays.
 
+### Optimistic UI Updates
+
+- User prefers not to show optimistic/fake records in grids before server-confirmed save/update; UI should only reflect records after authoritative reload.
+
 
 
 

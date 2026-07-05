@@ -21,6 +21,7 @@ import { ChartOfAccountEndpoint } from '../../../services/chart-of-account-endpo
 import { Permissions } from '../../../models/permission.model';
 import {
   ChartOfAccountDefaults,
+  ChartOfAccountDialogResult,
   ChartOfAccountEntry,
   ChartOfAccountGroupLookup,
   ChartOfAccountListItem,
@@ -135,7 +136,7 @@ import { ChartOfAccountDialogComponent } from './chart-of-account-dialog.compone
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns" (dblclick)="openEditDialog(row)"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns" (dblclick)="openEditDialog(row)" [class.row-flash]="isFlashingRow(row.sNo)"></tr>
 
           <tr class="mat-row no-data" *matNoDataRow>
             <td class="mat-cell empty-cell" [attr.colspan]="displayedColumns.length">
@@ -176,6 +177,11 @@ import { ChartOfAccountDialogComponent } from './chart-of-account-dialog.compone
     .coa-table td.mat-cell, .coa-table th.mat-header-cell { padding: 8px 12px; }
     .mono { font-family: 'Consolas', 'Menlo', monospace; font-size: .85rem; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .coa-table tr.mat-row.row-flash td.mat-cell { animation: rowFlash 1.4s ease-out; }
+    @keyframes rowFlash {
+      0% { background: rgba(63, 81, 181, 0.24); }
+      100% { background: transparent; }
+    }
     .ellipsis { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .action-col { width: 110px; text-align: right; }
     .empty-cell { text-align: center; padding: 32px 16px; color: rgba(0,0,0,.5); }
@@ -194,6 +200,9 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly searchChanged$ = new Subject<string>();
   private readonly gridStateKey = 'chartOfAccounts.gridState';
+  private readonly flashingRowIds = new Set<number>();
+  private readonly flashTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  private pendingFlashSNo?: number;
 
   readonly displayedColumns = ['accountNo', 'accountName', 'groupName', 'accountDesc', 'accountOpAmt', 'accountClAmt', 'actions'];
   readonly pageSize = 10;
@@ -244,6 +253,12 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    for (const timer of this.flashTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.flashTimers.clear();
+    this.flashingRowIds.clear();
   }
 
   onSearchTextChanged(value: string): void {
@@ -320,6 +335,10 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
     return item.sNo;
   }
 
+  isFlashingRow(sNo: number): boolean {
+    return this.flashingRowIds.has(sNo);
+  }
+
   private openDialog(entry: ChartOfAccountEntry | null): void {
     const ref = this.dialog.open(ChartOfAccountDialogComponent, {
       data: {
@@ -334,11 +353,27 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
       restoreFocus: true,
     });
 
-    ref.afterClosed().subscribe(result => {
+    ref.afterClosed().subscribe((result: ChartOfAccountDialogResult | undefined) => {
       if (result?.saved) {
+        this.pendingFlashSNo = result.sNo;
         this.loadData();
       }
     });
+  }
+
+  private flashRow(sNo: number): void {
+    const existingTimer = this.flashTimers.get(sNo);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    this.flashingRowIds.add(sNo);
+    const timer = setTimeout(() => {
+      this.flashingRowIds.delete(sNo);
+      this.flashTimers.delete(sNo);
+    }, 1400);
+
+    this.flashTimers.set(sNo, timer);
   }
 
   private deleteAccountConfirmed(row: ChartOfAccountListItem): void {
@@ -401,6 +436,12 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
         this.totalCount = result?.totalCount ?? 0;
         this.rowsCache = [...items];
         this.rows.data = items;
+
+        if (this.pendingFlashSNo && items.some(x => x.sNo === this.pendingFlashSNo)) {
+          this.flashRow(this.pendingFlashSNo);
+        }
+        this.pendingFlashSNo = undefined;
+
         this.persistGridState();
       },
       error: error => {
@@ -409,6 +450,7 @@ export class ChartOfAccountsComponent implements OnInit, OnDestroy {
         this.rows.data = [];
         this.rowsCache = [];
         this.totalCount = 0;
+        this.pendingFlashSNo = undefined;
         this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
       }
     });

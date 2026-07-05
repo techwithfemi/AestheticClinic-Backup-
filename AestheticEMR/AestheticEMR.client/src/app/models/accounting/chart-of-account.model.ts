@@ -58,4 +58,6 @@ export interface ChartOfAccountDialogData {
 export interface ChartOfAccountDialogResult {
   saved: boolean;
   sNo?: number;
+  operation?: 'create' | 'update';
+  entry?: ChartOfAccountEntry;
 }

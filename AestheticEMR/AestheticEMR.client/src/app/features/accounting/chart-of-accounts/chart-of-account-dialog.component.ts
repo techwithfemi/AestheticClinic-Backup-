@@ -204,7 +204,12 @@ export class ChartOfAccountDialogComponent implements OnInit {
 
     request$.subscribe({
       next: saved => {
-        this.dialogRef.close({ saved: true, sNo: saved?.sNo ?? undefined });
+        this.dialogRef.close({
+          saved: true,
+          sNo: saved?.sNo ?? undefined,
+          operation: this.isEdit ? 'update' : 'create',
+          entry: saved,
+        });
       },
       error: error => {
         this.saving = false;
