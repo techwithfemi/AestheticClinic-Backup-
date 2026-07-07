@@ -22,29 +22,43 @@ public class ExpenseService(
         var page = query.Page <= 0 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 200);
         var search = query.Search?.Trim();
-        var startDate = query.FromDate?.Date ?? DateTime.Today;
-        var endDate = query.ToDate?.Date ?? startDate;
 
-        var where = @"
-WHERE TranDate BETWEEN @StartDate AND @EndDate";
-
+        var whereParts = new List<string>();
         var parameters = new DynamicParameters();
-        parameters.Add("StartDate", startDate);
-        parameters.Add("EndDate", endDate);
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue)
+        {
+            whereParts.Add("TranDate BETWEEN @StartDate AND @EndDate");
+            parameters.Add("StartDate", query.FromDate.Value.Date);
+            parameters.Add("EndDate", query.ToDate.Value.Date);
+        }
+        else if (query.FromDate.HasValue)
+        {
+            whereParts.Add("TranDate >= @StartDate");
+            parameters.Add("StartDate", query.FromDate.Value.Date);
+        }
+        else if (query.ToDate.HasValue)
+        {
+            whereParts.Add("TranDate <= @EndDate");
+            parameters.Add("EndDate", query.ToDate.Value.Date);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            where += @"
-  AND (
+            whereParts.Add(@"(
        Description LIKE @Search
     OR AccountName LIKE @Search
     OR AccountNo LIKE @Search
     OR TranNo LIKE @Search
     OR UserName LIKE @Search
     OR Period LIKE @Search
-  )";
+  )");
             parameters.Add("Search", $"%{search}%");
         }
+
+        var where = whereParts.Count == 0
+            ? string.Empty
+            : $"WHERE {string.Join("\n  AND ", whereParts)}";
 
         parameters.Add("Skip", (page - 1) * pageSize);
         parameters.Add("Take", pageSize);
@@ -106,6 +120,8 @@ SELECT TOP 1
     isClose AS IsClose,
     UserName,
     TranID AS TranId,
+    Period,
+    CoyID,
     Remarks
 FROM vwTranx src
 WHERE SNo = @SNo
@@ -134,6 +150,8 @@ WITH DebitLines AS (
         Description,
         UserName,
         TranID,
+        Period,
+        CoyID,
         isClose,
         ROW_NUMBER() OVER (ORDER BY SNo) AS RowNum
     FROM vwTranx
@@ -152,6 +170,8 @@ CreditLines AS (
         Description,
         UserName,
         TranID,
+        Period,
+        CoyID,
         isClose,
         ROW_NUMBER() OVER (ORDER BY SNo) AS RowNum
     FROM vwTranx
@@ -172,6 +192,8 @@ SELECT
     d.isClose AS IsClose,
     d.UserName,
     d.TranID AS TranId,
+    d.Period,
+    d.CoyID,
     @Remarks AS Remarks
 FROM DebitLines d
 LEFT JOIN CreditLines c ON c.RowNum = d.RowNum
@@ -379,7 +401,18 @@ ORDER BY SNo;";
         }
 
         await EnsureEditableAsync(existingEntries.First().SNo ?? 0, ct);
-        await DeleteByTranIdAsync(normalizedTranId, currentUserName, ct);
+
+        var deleteSource = request.Entries.FirstOrDefault(x =>
+            string.Equals(x.TranId?.Trim(), normalizedTranId, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(x.Period)
+            && !string.IsNullOrWhiteSpace(x.CoyID));
+
+        if (deleteSource is null)
+        {
+            throw new InvalidOperationException("Period and CoyID are required from the UI row/record for update delete operation.");
+        }
+
+        await DeleteByTranIdAsync(normalizedTranId, currentUserName, deleteSource.Period!.Trim(), deleteSource.CoyID!.Trim(), ct);
 
         return await CreateBatchAsync(new ExpenseBatchSaveRequest
         {
@@ -402,15 +435,25 @@ ORDER BY SNo;";
             throw new InvalidOperationException("Expense entry transaction id was not found.");
         }
 
-        await DeleteByTranIdAsync(tranId, existing.UserName ?? string.Empty, ct);
+        if (string.IsNullOrWhiteSpace(existing.Period) || string.IsNullOrWhiteSpace(existing.CoyID))
+        {
+            throw new InvalidOperationException("Period and CoyID are required from the current expense record for delete operation.");
+        }
+
+        await DeleteByTranIdAsync(tranId, existing.UserName ?? string.Empty, existing.Period.Trim(), existing.CoyID.Trim(), ct);
     }
 
-    public async Task DeleteByTranIdAsync(string tranId, string currentUserName, CancellationToken ct = default)
+    public async Task DeleteByTranIdAsync(string tranId, string currentUserName, string period, string coyID, CancellationToken ct = default)
     {
         var normalizedTranId = tranId?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedTranId))
         {
             throw new InvalidOperationException("Transaction id is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(period) || string.IsNullOrWhiteSpace(coyID))
+        {
+            throw new InvalidOperationException("Period and CoyID are required for delete operation.");
         }
 
         var existingEntries = await GetByTranIdAsync(normalizedTranId, ct);
@@ -423,9 +466,10 @@ ORDER BY SNo;";
 
         await db.SaveData("Deletetranxaction", new
         {
-            TranID = normalizedTranId,
+            Period = period.Trim(),
+            CoyID = coyID.Trim(),
             TranNo = normalizedTranId,
-            userName = currentUserName
+            Username = string.IsNullOrWhiteSpace(currentUserName) ? (existingEntries.First().UserName ?? string.Empty) : currentUserName
         }, AcctConn);
 
         var remaining = (await db.LoadDataText<int, dynamic>(@"
@@ -549,10 +593,35 @@ WHERE SNo = @SNo
             var balance = balanceRows.FirstOrDefault();
             if (balance != 0m)
             {
-                await db.SaveData("Deletetranxaction", new { TranID = tranId, TranNo = tranId, userName = currentUserName }, AcctConn);
+                await db.SaveData("Deletetranxaction", new
+                {
+                    Period = period,
+                    CoyID = coyId,
+                    TranNo = tranId,
+                    Username = currentUserName
+                }, AcctConn);
                 throw new InvalidOperationException("Account posting failed because the transaction did not balance.");
             }
         }
+    }
+
+    private static DeleteContext GetDeleteContext(IEnumerable<ExpenseEntry> entries, string tranNo)
+    {
+        var candidate = entries.FirstOrDefault(e =>
+            !string.IsNullOrWhiteSpace(e.Period)
+            && !string.IsNullOrWhiteSpace(e.CoyID)
+            && string.Equals(e.TranId?.Trim(), tranNo, StringComparison.OrdinalIgnoreCase));
+
+        if (candidate is null)
+        {
+            throw new InvalidOperationException("Period and CoyID are required from the current expense record for delete operation.");
+        }
+
+        return new DeleteContext
+        {
+            Period = candidate.Period!.Trim(),
+            CoyID = candidate.CoyID!.Trim()
+        };
     }
 
     private async Task MarkTransactionAsExpenseAsync(string tranId)
@@ -671,6 +740,12 @@ WHERE TranNo = @TranNo
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public DateTime TranDate { get; set; }
+    }
+
+    private sealed class DeleteContext
+    {
+        public string Period { get; set; } = string.Empty;
+        public string CoyID { get; set; } = string.Empty;
     }
 
     private sealed class GetPeriodRaw

@@ -104,9 +104,13 @@ export class ExpenseEndpoint extends EndpointBase {
     );
   }
 
-  getDeleteExpenseByTranIdEndpoint<T>(tranId: string): Observable<T> {
-    return this.http.delete<T>(`${this.expensesUrl}/tran-id/${encodeURIComponent(tranId)}`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getDeleteExpenseByTranIdEndpoint<T>(tranId)))
+  getDeleteExpenseByTranIdEndpoint<T>(tranId: string, period: string, coyID: string): Observable<T> {
+    const params = new HttpParams()
+      .set('period', period)
+      .set('coyID', coyID);
+
+    return this.http.delete<T>(`${this.expensesUrl}/tran-id/${encodeURIComponent(tranId)}`, { ...this.requestHeaders, params }).pipe(
+      catchError(error => this.handleError(error, () => this.getDeleteExpenseByTranIdEndpoint<T>(tranId, period, coyID)))
     );
   }
 }

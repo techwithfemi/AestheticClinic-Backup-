@@ -334,15 +334,23 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
 
   deleteExpense(row: ExpenseListItem): void {
     const tranId = row.tranNo?.trim();
+    const period = row.period?.trim();
+    const coyID = row.coyID?.trim();
+
     if (!tranId) {
       this.alertService.showMessage('Validation', 'Transaction id is required for delete.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!period || !coyID) {
+      this.alertService.showMessage('Validation', 'Period and CoyID are required for delete.', MessageSeverity.warn);
       return;
     }
 
     this.alertService.showDialog(
       `Delete expense transaction ${tranId}?\n\nThis action cannot be undone.`,
       DialogType.confirm,
-      () => this.confirmDelete(tranId)
+      () => this.confirmDelete(tranId, period, coyID)
     );
   }
 
@@ -350,9 +358,9 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
     return item.sNo;
   }
 
-  private confirmDelete(tranId: string): void {
+  private confirmDelete(tranId: string, period: string, coyID: string): void {
     this.loadingIndicator = true;
-    this.expenseEndpoint.getDeleteExpenseByTranIdEndpoint<void>(tranId).subscribe({
+    this.expenseEndpoint.getDeleteExpenseByTranIdEndpoint<void>(tranId, period, coyID).subscribe({
       next: () => {
         this.alertService.showMessage('Deleted', 'Expense transaction has been removed.', MessageSeverity.success);
         this.loadData();
@@ -379,6 +387,14 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
 
     ref.afterClosed().subscribe(result => {
       if (result?.saved) {
+        this.currentPage = 1;
+
+        const savedTranId = result?.tranId?.trim();
+        if (savedTranId) {
+          this.skipNextSearchEffect = true;
+          this.searchText.set(savedTranId);
+        }
+
         this.loadData();
       }
     });

@@ -16,5 +16,5 @@ public interface IExpenseService
     Task<ExpenseEntry> UpdateAsync(ExpenseEntry entry, string currentUserName, CancellationToken ct = default);
     Task<ExpenseBatchSaveResult> UpdateByTranIdAsync(string tranId, ExpenseBatchSaveRequest request, string currentUserName, CancellationToken ct = default);
     Task DeleteAsync(long sNo, CancellationToken ct = default);
-    Task DeleteByTranIdAsync(string tranId, string currentUserName, CancellationToken ct = default);
+    Task DeleteByTranIdAsync(string tranId, string currentUserName, string period, string coyID, CancellationToken ct = default);
 }

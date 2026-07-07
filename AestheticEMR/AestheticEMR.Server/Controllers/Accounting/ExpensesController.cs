@@ -228,16 +228,16 @@ public class ExpensesController(
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
-    public async Task<IActionResult> DeleteByTranId(string tranId, CancellationToken ct)
+    public async Task<IActionResult> DeleteByTranId(string tranId, [FromQuery] string period, [FromQuery] string coyID, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(tranId))
+        if (string.IsNullOrWhiteSpace(tranId) || string.IsNullOrWhiteSpace(period) || string.IsNullOrWhiteSpace(coyID))
         {
-            return BadRequest(new { tranId });
+            return BadRequest(new { tranId, period, coyID });
         }
 
         try
         {
-            await expenseService.DeleteByTranIdAsync(tranId, GetCurrentUserName(), ct);
+            await expenseService.DeleteByTranIdAsync(tranId, GetCurrentUserName(), period, coyID, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)

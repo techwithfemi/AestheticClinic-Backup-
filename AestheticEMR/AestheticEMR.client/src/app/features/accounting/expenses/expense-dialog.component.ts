@@ -524,6 +524,11 @@ export class ExpenseDialogComponent implements OnInit {
       return;
     }
 
+    if (this.isEdit && payload.some(entry => !entry.period?.trim() || !entry.coyID?.trim())) {
+      this.alertService.showMessage('Validation', 'Period and CoyID are required from the grid record for edit save.', MessageSeverity.warn);
+      return;
+    }
+
     this.saving = true;
 
     if (this.isEdit) {
@@ -670,6 +675,8 @@ export class ExpenseDialogComponent implements OnInit {
     return {
       ...entry,
       tranId: this.tranId || entry.tranId?.trim() || '',
+      period: entry.period?.trim() ?? null,
+      coyID: entry.coyID?.trim() ?? null,
       tranDate,
       accountDebit: entry.accountDebit?.trim() ?? '',
       accountCredit: entry.accountCredit?.trim() ?? '',
@@ -685,7 +692,7 @@ export class ExpenseDialogComponent implements OnInit {
     const tranDate = entry.tranDate instanceof Date ? entry.tranDate : new Date(entry.tranDate);
     return {
       sNo: entry.sNo,
-      tranDate: tranDate.toISOString(),
+      tranDate: this.toDateOnlyParam(tranDate),
       accountDebit: entry.accountDebit.trim(),
       accountCredit: entry.accountCredit.trim(),
       debitAccountName: entry.debitAccountName?.trim() ?? '',
@@ -696,8 +703,17 @@ export class ExpenseDialogComponent implements OnInit {
       isClose: entry.isClose,
       userName: entry.userName,
       tranId: this.tranId,
+      period: entry.period?.trim() ?? null,
+      coyID: entry.coyID?.trim() ?? null,
       remarks: entry.remarks,
     };
+  }
+
+  private toDateOnlyParam(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private isCurrentDraftValid(): boolean {

@@ -20,6 +20,8 @@ public class ExpenseEntry
     public bool IsClose { get; set; }
     public string? UserName { get; set; }
     public string? TranId { get; set; }
+    public string? Period { get; set; }
+    public string? CoyID { get; set; }
     public string? Remarks { get; set; }
 }
 

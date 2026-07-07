@@ -315,9 +315,43 @@ ORDER BY CenterName;";
             throw new ArgumentException("TranNo is required", nameof(tranNo));
         }
 
+        var deleteContext = await GetDeleteContextAsync(tranNo, ct);
+
         const string deleteProc = "deleteTranxaction";
-        await db.SaveData(deleteProc, new { TranNo = tranNo }, AcctConn);
+        await db.SaveData(deleteProc, new
+        {
+            Period = deleteContext.Period,
+            CoyID = deleteContext.CoyID,
+            TranNo = tranNo,
+            Username = string.IsNullOrWhiteSpace(currentUser) ? "system" : currentUser
+        }, AcctConn);
+
         logger.LogInformation("Journal entry {TranNo} deleted by {User}", tranNo, currentUser);
+    }
+
+    private async Task<DeleteContext> GetDeleteContextAsync(string tranNo, CancellationToken ct)
+    {
+        var context = (await db.LoadDataText<DeleteContext, dynamic>(@"
+SELECT TOP 1
+    LTRIM(RTRIM(ISNULL(Period, ''))) AS Period,
+    LTRIM(RTRIM(ISNULL(CoyID, ''))) AS CoyID
+FROM vwTranx
+WHERE TranNo = @TranNo
+ORDER BY SNo DESC;",
+            new { TranNo = tranNo },
+            AcctConn)).FirstOrDefault();
+
+        if (context is not null && !string.IsNullOrWhiteSpace(context.Period) && !string.IsNullOrWhiteSpace(context.CoyID))
+        {
+            return context;
+        }
+
+        var defaults = await emrDefaults.GetAsync(ct);
+        return new DeleteContext
+        {
+            Period = !string.IsNullOrWhiteSpace(context?.Period) ? context.Period : GetPeriodFromDate(DateTime.Today, defaults),
+            CoyID = !string.IsNullOrWhiteSpace(context?.CoyID) ? context.CoyID : defaults.Get("CoyID", "0001")
+        };
     }
 
     private async Task InsertLinesAsync(JournalEntry entry, string currentUser, EmrAppDefaults defaults, string coyId)
@@ -467,14 +501,23 @@ ORDER BY CenterName;";
         return $"{date.Year}-{date.Month:D2}";
     }
 
-    private static JournalListItem MapListItem(JournalListItemRaw r) => new()
+    private sealed class DeleteContext
     {
-        TranNo = r.TranNo ?? string.Empty,
-        TranDate = r.TranDate,
-        LineCount = r.LineCount,
-        TotalDebit = r.TotalDebit,
-        TotalCredit = r.TotalCredit
-    };
+        public string Period { get; set; } = string.Empty;
+        public string CoyID { get; set; } = string.Empty;
+    }
+
+    private static JournalListItem MapListItem(JournalListItemRaw raw)
+    {
+        return new JournalListItem
+        {
+            TranNo = raw.TranNo ?? string.Empty,
+            TranDate = raw.TranDate,
+            LineCount = raw.LineCount,
+            TotalDebit = raw.TotalDebit,
+            TotalCredit = raw.TotalCredit
+        };
+    }
 
     private static JournalListLine MapListLine(JournalListLineRaw r) => new()
     {

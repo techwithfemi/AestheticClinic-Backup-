@@ -37,10 +37,17 @@ public class ExpenseEntryVM
     public bool IsClose { get; set; }
     public string? UserName { get; set; }
     public string? TranId { get; set; }
+
+    [StringLength(50)]
+    public string? Period { get; set; }
+
+    [StringLength(50)]
+    public string? CoyID { get; set; }
+
     public string? Remarks { get; set; }
 }
 
-public class ExpenseBatchSaveVM
+public class ExpenseBatchSaveVM : IValidatableObject
 {
     [StringLength(50)]
     public string? TranId { get; set; }
@@ -48,6 +55,27 @@ public class ExpenseBatchSaveVM
     [Required]
     [MinLength(1)]
     public List<ExpenseEntryVM> Entries { get; set; } = new();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(TranId))
+        {
+            yield break;
+        }
+
+        for (var i = 0; i < Entries.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(Entries[i].Period))
+            {
+                yield return new ValidationResult("Period is required for update entries.", [$"Entries[{i}].Period"]);
+            }
+
+            if (string.IsNullOrWhiteSpace(Entries[i].CoyID))
+            {
+                yield return new ValidationResult("CoyID is required for update entries.", [$"Entries[{i}].CoyID"]);
+            }
+        }
+    }
 }
 
 public class ExpenseBatchSaveResultVM

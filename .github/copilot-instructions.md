@@ -437,6 +437,7 @@ For accounting transactions (Tranxaction, TranxactionJournalTemp, TranxactionJou
 - **Insert operations must use the `InsertTranxaction` stored procedure.**
 - **Insert operations for `TranxactionJournal` must use `InsertTranxactionJournal` to insert into `TranxactionJournal`.**
 - **`TranxactionJournalTemp` uses direct SQL insert (no stored procedure).**
+- When implementing accounting delete/update flows, do not use fallback values for delete stored procedure parameters; use explicit parameters from the UI grid row/record.
 
 ### Expense Posting Flow
 

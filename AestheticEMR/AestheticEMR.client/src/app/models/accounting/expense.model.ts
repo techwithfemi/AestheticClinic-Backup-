@@ -18,6 +18,8 @@ export interface ExpenseEntry {
   isClose: boolean;
   userName?: string | null;
   tranId?: string | null;
+  period?: string | null;
+  coyID?: string | null;
   remarks?: string | null;
 }
 
