@@ -172,6 +172,9 @@ ORDER BY GroupName;";
 
         var defaults = await emrDefaults.GetAsync(ct);
         var accountNo = entry.AccountNo.Trim();
+        var coyId = defaults.Get("CoyID", "0001");
+        var period = defaults.Get("Period", "0000");
+        var userName = defaults.Get("UserName", "SYSTEM");
 
         if (string.Equals(defaults.Get("AUTO_ACCT_NO", "YES"), "YES", StringComparison.OrdinalIgnoreCase))
         {
@@ -182,66 +185,56 @@ ORDER BY GroupName;";
             }
         }
 
-        const string sql = @"
-INSERT INTO dbo.ChartOfAccountMaster
-(
-    AccountID,
-    AccountNo,
-    GroupID,
-    AccountName,
-    AccountOpAmt,
-    AccountClAmt,
-    AccountDesc,
-    Hidden,
-    isContra
-)
-VALUES
-(
-    @AccountID,
-    @AccountNo,
-    @GroupID,
-    @AccountName,
-    @AccountOpAmt,
-    @AccountClAmt,
-    @AccountDesc,
-    0,
-    0
-);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS SNo;";
-
-        var accountId = CreateAccountId(defaults.Get("CoyID", "0001"), accountNo);
-
-        var rows = await db.LoadDataText<CreateIdentityRow, dynamic>(sql, new
+        try
         {
-            AccountID = accountId,
-            AccountNo = accountNo,
-            GroupID = entry.GroupID.Trim(),
-            AccountName = entry.AccountName.Trim(),
-            AccountOpAmt = 0m,
-            AccountClAmt = 0m,
-            AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim()
-        }, AcctConn);
+            // Call stored procedure to insert into both ChartOfAccountMaster and ChartOfAccounts
+            // The sproc assigns AccountID and handles both table inserts
+            await db.SaveData("ChartOfAccounts_INSERT", new
+            {
+                AccountNo = accountNo,
+                AccountName = entry.AccountName.Trim(),
+                GroupID = entry.GroupID.Trim(),
+                AccountOpAmt = 0m,
+                AccountClAmt = 0m,
+                AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
+                UserName = userName,
+                Period = period,
+                CoyID = coyId
+            }, AcctConn);
 
-        var sNo = rows.FirstOrDefault()?.SNo ?? 0;
-        if (sNo <= 0)
-        {
-            throw new InvalidOperationException("Unable to create account.");
+            logger.LogInformation("Chart of account created. AccountNo: {AccountNo}, GroupID: {GroupID}, CoyID: {CoyID}, Period: {Period}", 
+                accountNo, entry.GroupID.Trim(), coyId, period);
+
+            // Retrieve the newly created account by AccountNo and CoyID
+            const string retrieveSql = @"
+SELECT TOP 1
+    m.SNo,
+    LTRIM(RTRIM(m.AccountNo)) AS AccountNo,
+    LTRIM(RTRIM(m.AccountName)) AS AccountName,
+    LTRIM(RTRIM(m.GroupID)) AS GroupID,
+    LTRIM(RTRIM(g.GroupName)) AS GroupName,
+    m.AccountDesc,
+    m.AccountOpAmt,
+    m.AccountClAmt
+FROM dbo.ChartOfAccountMaster m
+LEFT JOIN vwGroupItemsWithoutDepr g ON LTRIM(RTRIM(g.GroupID)) = LTRIM(RTRIM(m.GroupID))
+WHERE LTRIM(RTRIM(m.AccountNo)) = @AccountNo
+ORDER BY m.SNo DESC;";
+            var rows = await db.LoadDataText<ChartOfAccountEntry, dynamic>(retrieveSql, new { AccountNo = accountNo }, AcctConn);
+            var created = rows.FirstOrDefault();
+            
+            if (created is null)
+            {
+                throw new InvalidOperationException("Unable to retrieve the created account.");
+            }
+
+            return created;
         }
-
-        logger.LogInformation("Chart of account created. SNo: {SNo}, AccountNo: {AccountNo}", sNo, accountNo);
-
-        var created = await GetByIdAsync(sNo, ct);
-        return created ?? new ChartOfAccountEntry
+        catch (Exception ex)
         {
-            SNo = sNo,
-            AccountNo = accountNo,
-            AccountName = entry.AccountName.Trim(),
-            GroupID = entry.GroupID.Trim(),
-            AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
-            AccountOpAmt = 0m,
-            AccountClAmt = 0m,
-        };
+            logger.LogError(ex, "Error creating chart of account. AccountNo: {AccountNo}", accountNo);
+            throw;
+        }
     }
 
     public async Task<ChartOfAccountEntry> UpdateAsync(ChartOfAccountEntry entry, CancellationToken ct = default)
@@ -261,6 +254,7 @@ SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS SNo;";
 
         var defaults = await emrDefaults.GetAsync(ct);
         var autoAcctNo = string.Equals(defaults.Get("AUTO_ACCT_NO", "YES"), "YES", StringComparison.OrdinalIgnoreCase);
+        var userName = defaults.Get("UserName", "SYSTEM");
 
         var accountNo = existing.AccountNo;
         var groupChanged = !string.Equals(existing.GroupID.Trim(), entry.GroupID.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -278,45 +272,41 @@ SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS SNo;";
             accountNo = entry.AccountNo.Trim();
         }
 
-        const string sql = @"
-UPDATE dbo.ChartOfAccountMaster
-SET
-    AccountID = @AccountID,
-    AccountNo = @AccountNo,
-    GroupID = @GroupID,
-    AccountName = @AccountName,
-    AccountDesc = @AccountDesc,
-    AccountOpAmt = @AccountOpAmt,
-    AccountClAmt = @AccountClAmt
-WHERE SNo = @SNo;";
-
-        var accountId = CreateAccountId(defaults.Get("CoyID", "0001"), accountNo);
-
-        await db.SaveDataText(sql, new
+        try
         {
-            SNo = entry.SNo.Value,
-            AccountID = accountId,
-            AccountNo = accountNo,
-            GroupID = entry.GroupID.Trim(),
-            AccountName = entry.AccountName.Trim(),
-            AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
-            AccountOpAmt = existing.AccountOpAmt,
-            AccountClAmt = existing.AccountClAmt
-        }, AcctConn);
+            // Call stored procedure to update ChartOfAccountMaster and ChartOfAccounts
+            await db.SaveData("ChartOfAccounts_UPDATE", new
+            {
+                SNo = entry.SNo.Value,
+                AccountNo = accountNo,
+                AccountName = entry.AccountName.Trim(),
+                GroupID = entry.GroupID.Trim(),
+                AccountOpAmt = existing.AccountOpAmt,
+                AccountClAmt = existing.AccountClAmt,
+                AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
+                UserName = userName
+            }, AcctConn);
 
-        logger.LogInformation("Chart of account updated. SNo: {SNo}, AccountNo: {AccountNo}", entry.SNo.Value, accountNo);
+            logger.LogInformation("Chart of account updated. SNo: {SNo}, AccountNo: {AccountNo}, UserName: {UserName}", 
+                entry.SNo.Value, accountNo, userName);
 
-        var updated = await GetByIdAsync(entry.SNo.Value, ct);
-        return updated ?? new ChartOfAccountEntry
+            var updated = await GetByIdAsync(entry.SNo.Value, ct);
+            return updated ?? new ChartOfAccountEntry
+            {
+                SNo = entry.SNo.Value,
+                AccountNo = accountNo,
+                AccountName = entry.AccountName.Trim(),
+                GroupID = entry.GroupID.Trim(),
+                AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
+                AccountOpAmt = existing.AccountOpAmt,
+                AccountClAmt = existing.AccountClAmt,
+            };
+        }
+        catch (Exception ex)
         {
-            SNo = entry.SNo.Value,
-            AccountNo = accountNo,
-            AccountName = entry.AccountName.Trim(),
-            GroupID = entry.GroupID.Trim(),
-            AccountDesc = string.IsNullOrWhiteSpace(entry.AccountDesc) ? null : entry.AccountDesc.Trim(),
-            AccountOpAmt = existing.AccountOpAmt,
-            AccountClAmt = existing.AccountClAmt,
-        };
+            logger.LogError(ex, "Error updating chart of account. SNo: {SNo}", entry.SNo.Value);
+            throw;
+        }
     }
 
     public async Task DeleteAsync(long sNo, CancellationToken ct = default)
@@ -337,10 +327,26 @@ WHERE SNo = @SNo;";
             throw new InvalidOperationException("Account cannot be deleted. It may already have transactions or does not exist.");
         }
 
-        const string deleteSql = "DELETE FROM dbo.ChartOfAccountMaster WHERE SNo = @SNo;";
-        await db.SaveDataText(deleteSql, new { SNo = sNo }, AcctConn);
+        var defaults = await emrDefaults.GetAsync(ct);
+        var userName = defaults.Get("UserName", "SYSTEM");
 
-        logger.LogInformation("Chart of account deleted. SNo: {SNo}, AccountNo: {AccountNo}", sNo, candidate.AccountNo);
+        try
+        {
+            // Call stored procedure to delete from both ChartOfAccountMaster and ChartOfAccounts
+            await db.SaveData("ChartOfAccounts_DELETE", new
+            {
+                SNo = sNo,
+                UserName = userName
+            }, AcctConn);
+
+            logger.LogInformation("Chart of account deleted. SNo: {SNo}, AccountNo: {AccountNo}, UserName: {UserName}", 
+                sNo, candidate.AccountNo, userName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting chart of account. SNo: {SNo}, AccountNo: {AccountNo}", sNo, candidate.AccountNo);
+            throw;
+        }
     }
 
     private async Task ValidateAsync(ChartOfAccountEntry entry, ChartOfAccountEntry? existing, CancellationToken ct)

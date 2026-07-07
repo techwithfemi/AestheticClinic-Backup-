@@ -110,7 +110,7 @@ import { ChartOfAccountDialogComponent } from './chart-of-account-dialog.compone
 
           <ng-container matColumnDef="accountDesc">
             <th mat-header-cell *matHeaderCellDef mat-sort-header="accountDesc">{{ 'chartOfAccounts.Description' | translate }}</th>
-            <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.accountDesc || '—' }}</td>
+            <td mat-cell *matCellDef="let row" class="desc-cell">{{ row.accountDesc || '—' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="accountOpAmt">
@@ -170,11 +170,12 @@ import { ChartOfAccountDialogComponent } from './chart-of-account-dialog.compone
     .filter-grid { display: grid; gap: 12px; }
     .filter-grid.one-col { grid-template-columns: 1fr; }
     .filter-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .table-card { position: relative; }
+    .table-card { position: relative; overflow-x: auto; }
     .table-spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.6); z-index: 2; }
-    .coa-table { width: 100%; }
-    .coa-table th.mat-header-cell { background: #f5f5f7; color: rgba(0,0,0,.7); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+    .coa-table { width: 100%; table-layout: auto; }
+    .coa-table th.mat-header-cell { background: #f5f5f7; color: rgba(0,0,0,.7); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
     .coa-table td.mat-cell, .coa-table th.mat-header-cell { padding: 8px 12px; }
+    .coa-table td.mat-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mono { font-family: 'Consolas', 'Menlo', monospace; font-size: .85rem; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .coa-table tr.mat-row.row-flash td.mat-cell { animation: rowFlash 1.4s ease-out; }
@@ -182,13 +183,14 @@ import { ChartOfAccountDialogComponent } from './chart-of-account-dialog.compone
       0% { background: rgba(63, 81, 181, 0.24); }
       100% { background: transparent; }
     }
-    .ellipsis { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .action-col { width: 110px; text-align: right; }
+    .ellipsis { white-space: normal; overflow: visible; text-overflow: clip; word-wrap: break-word; }
+    .desc-cell { white-space: normal; overflow: visible; word-wrap: break-word; }
+    .action-col { white-space: nowrap; text-align: right; }
     .empty-cell { text-align: center; padding: 32px 16px; color: rgba(0,0,0,.5); }
     .empty-cell mat-icon { font-size: 36px; height: 36px; width: 36px; opacity: .6; }
     .empty-cell p { margin: 8px 0 0; }
     @media (max-width: 992px) { .page-shell { padding: 16px; } }
-    @media (max-width: 575.98px) { .page-shell { padding: 12px; } .page-title { font-size: 1.2rem; } .ellipsis { max-width: 140px; } }
+    @media (max-width: 575.98px) { .page-shell { padding: 12px; } .page-title { font-size: 1.2rem; } }
   `],
   animations: [fadeInOut],
 })

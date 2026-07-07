@@ -16,7 +16,7 @@ import {
   NativeDateAdapter,
 } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTableModule } from '@angular/material/table';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -24,6 +24,7 @@ import { ExpenseEndpoint } from '../../../services/expense-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import {
   ExpenseAccountLookup,
+  ExpenseBatchSaveResult,
   ExpenseDialogData,
   ExpenseDialogResult,
   ExpenseEntry,
@@ -65,6 +66,10 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
   }
 }
 
+interface ExpenseGridEntry extends ExpenseEntry {
+  rowId: string;
+}
+
 @Component({
   selector: 'app-expense-dialog',
   standalone: true,
@@ -79,7 +84,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     MatDatepickerModule,
     MatNativeDateModule,
     MatProgressSpinnerModule,
-    MatSlideToggleModule,
+    MatTableModule,
     NgSelectModule,
     TranslateModule,
   ],
@@ -105,18 +110,46 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
           <div class="header-card__title">{{ 'expenses.EntryHeader' | translate }}</div>
           <div class="form-grid">
             <mat-form-field appearance="outline">
+              <mat-label>{{ 'expenses.TranId' | translate }}</mat-label>
+              <input matInput [ngModel]="tranId" readonly />
+              @if (showFieldError('tranId')) {
+                <mat-error>{{ 'expenses.Required' | translate }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
               <mat-label>{{ 'expenses.TranDate' | translate }}</mat-label>
-              <input matInput [matDatepicker]="tranDatePicker" [(ngModel)]="model.tranDate" />
+              <input
+                matInput
+                [matDatepicker]="tranDatePicker"
+                [(ngModel)]="model.tranDate"
+                [required]="true"
+                (ngModelChange)="onDraftChanged()"
+                (blur)="markTouched('tranDate')" />
               <mat-datepicker-toggle matIconSuffix [for]="tranDatePicker"></mat-datepicker-toggle>
               <mat-datepicker #tranDatePicker></mat-datepicker>
+              @if (showFieldError('tranDate')) {
+                <mat-error>{{ 'expenses.Required' | translate }}</mat-error>
+              }
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>{{ 'expenses.Amount' | translate }}</mat-label>
-              <input matInput type="number" min="0.01" step="0.01" [(ngModel)]="model.amount" />
+              <input
+                matInput
+                type="text"
+                inputmode="decimal"
+                [ngModel]="amountInput"
+                (ngModelChange)="onAmountInputChange($event)"
+                (focus)="onAmountInputFocus()"
+                (blur)="onAmountInputBlur()"
+                [required]="true" />
+              @if (showFieldError('amount')) {
+                <mat-error>{{ 'expenses.Required' | translate }}</mat-error>
+              }
             </mat-form-field>
 
-            <div class="field-block span-2">
+            <div class="field-block">
               <div class="field-label">{{ 'expenses.ExpenseAccount' | translate }}</div>
               <ng-select
                 [items]="expenseAccounts"
@@ -125,7 +158,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                 [(ngModel)]="model.accountDebit"
                 (ngModelChange)="onDebitAccountChange()"
                 [searchable]="true"
-                [clearable]="true"
+                [clearable]="false"
                 [loading]="loadingExpenseAccounts"
                 [placeholder]="translationKey('expenses.SelectExpenseAccount')"
                 appendTo=".dialog-host">
@@ -136,9 +169,12 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                   </div>
                 </ng-template>
               </ng-select>
+              @if (showFieldError('accountDebit')) {
+                <small class="error-text">{{ 'expenses.Required' | translate }}</small>
+              }
             </div>
 
-            <div class="field-block span-2">
+            <div class="field-block">
               <div class="field-label">{{ 'expenses.PayingAccount' | translate }}</div>
               <ng-select
                 [items]="payingAccounts"
@@ -147,7 +183,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                 [(ngModel)]="model.accountCredit"
                 (ngModelChange)="onCreditAccountChange()"
                 [searchable]="true"
-                [clearable]="true"
+                [clearable]="false"
                 [loading]="loadingPayingAccounts"
                 [placeholder]="translationKey('expenses.SelectPayingAccount')"
                 appendTo=".dialog-host">
@@ -158,21 +194,104 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
                   </div>
                 </ng-template>
               </ng-select>
+              @if (showFieldError('accountCredit')) {
+                <small class="error-text">{{ 'expenses.Required' | translate }}</small>
+              }
             </div>
 
             <mat-form-field appearance="outline" class="span-2">
               <mat-label>{{ 'expenses.Description' | translate }}</mat-label>
-              <textarea matInput rows="3" [(ngModel)]="model.description"></textarea>
+              <textarea
+                matInput
+                rows="3"
+                [(ngModel)]="model.description"
+                [required]="true"
+                (ngModelChange)="onDraftChanged()"
+                (blur)="markTouched('description')"></textarea>
+              @if (showFieldError('description')) {
+                <mat-error>{{ 'expenses.Required' | translate }}</mat-error>
+              }
             </mat-form-field>
 
-            <div class="toggle-row span-2">
-              <mat-slide-toggle [(ngModel)]="model.postDirectly">
-                {{ 'expenses.PostDirectly' | translate }}
-              </mat-slide-toggle>
-              <span class="toggle-help">
-                {{ model.postDirectly ? ('expenses.PostDirectlyHelp' | translate) : ('expenses.SaveAsUnpostedHelp' | translate) }}
-              </span>
+            <div class="grid-action-row span-2">
+              <button mat-flat-button color="primary" type="button" (click)="addOrUpdateGrid()" [disabled]="saving || loadingExpenseAccounts || loadingPayingAccounts">
+                <mat-icon>{{ editingRowId ? 'edit' : 'add' }}</mat-icon>
+                {{ (editingRowId ? 'expenses.UpdateLine' : 'expenses.AddToGrid') | translate }}
+              </button>
+              <button mat-stroked-button type="button" (click)="resetDraftForm()" [disabled]="saving">
+                <mat-icon>refresh</mat-icon>
+                {{ 'expenses.ClearLine' | translate }}
+              </button>
             </div>
+          </div>
+        </section>
+
+        <section class="lines-section">
+          <div class="section-title">{{ 'expenses.GridEntries' | translate }}</div>
+
+          <div class="lines-grid">
+            <table mat-table [dataSource]="gridEntries" class="lines-table">
+              <ng-container matColumnDef="tranId">
+                <th mat-header-cell *matHeaderCellDef>{{ 'expenses.TranId' | translate }}</th>
+                <td mat-cell *matCellDef="let row" class="mono">{{ row.tranId }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="tranDate">
+                <th mat-header-cell *matHeaderCellDef>{{ 'expenses.TranDate' | translate }}</th>
+                <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'dd-MMM-yyyy' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="debitAccountName">
+                <th mat-header-cell *matHeaderCellDef>{{ 'expenses.ExpenseAccount' | translate }}</th>
+                <td mat-cell *matCellDef="let row">
+                  <div class="account-cell">
+                    <span>{{ row.debitAccountName }}</span>
+                    <small>{{ row.accountDebit }}</small>
+                  </div>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="creditAccountName">
+                <th mat-header-cell *matHeaderCellDef>{{ 'expenses.PayingAccount' | translate }}</th>
+                <td mat-cell *matCellDef="let row">
+                  <div class="account-cell">
+                    <span>{{ row.creditAccountName }}</span>
+                    <small>{{ row.accountCredit }}</small>
+                  </div>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="description">
+                <th mat-header-cell *matHeaderCellDef>{{ 'expenses.Description' | translate }}</th>
+                <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef class="num">{{ 'expenses.Amount' | translate }}</th>
+                <td mat-cell *matCellDef="let row" class="num">{{ row.amount | number:'1.2-2' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="action-col">{{ 'expenses.Actions' | translate }}</th>
+                <td mat-cell *matCellDef="let row" class="action-col">
+                  <button mat-icon-button type="button" color="primary" (click)="editGridEntry(row)" [disabled]="saving" [attr.aria-label]="translationKey('expenses.EditLine')">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" (click)="deleteGridEntry(row)" [disabled]="saving" [attr.aria-label]="translationKey('expenses.Delete')">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedGridColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedGridColumns;"></tr>
+
+              <tr class="mat-row no-data-row" *matNoDataRow>
+                <td class="mat-cell empty-cell" [attr.colspan]="displayedGridColumns.length">
+                  {{ 'expenses.NoGridEntries' | translate }}
+                </td>
+              </tr>
+            </table>
           </div>
         </section>
       </mat-dialog-content>
@@ -191,24 +310,38 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     </div>
   `,
   styles: [`
-    .dialog-host { display: flex; flex-direction: column; min-width: 640px; max-width: 100vw; }
+    .dialog-host { display: flex; flex-direction: column; min-width: 900px; max-width: 100vw; max-height: 90vh; }
     .dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid rgba(0,0,0,.08); }
     .title-block { display: flex; align-items: center; gap: 8px; }
     .title-icon { color: #3f51b5; }
     .title-block h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
-    .dialog-content { padding: 20px 24px 0; max-height: 75vh; overflow-y: auto; }
-    .header-card { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; padding: 16px; background: #fff; }
+    .close-btn { margin: -8px; }
+    .dialog-content { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .header-card { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; padding: 16px; background: #fff; margin-bottom: 20px; }
     .header-card__title { font-size: .95rem; font-weight: 600; margin-bottom: 16px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .span-2 { grid-column: span 2; }
     .field-block { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .field-label { font-size: .85rem; font-weight: 500; color: rgba(0,0,0,.7); }
-    .toggle-row { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
-    .toggle-help { font-size: .8rem; color: rgba(0,0,0,.6); }
     .option-row { display: flex; justify-content: space-between; gap: 12px; }
     .option-row small { color: rgba(0,0,0,.6); }
-    .dialog-actions { padding: 12px 24px; border-top: 1px solid rgba(0,0,0,.08); margin: 0; }
+    .grid-action-row { display: flex; justify-content: flex-start; gap: 12px; }
+    .error-text { color: #b00020; font-size: .75rem; margin-top: -2px; }
+    .mono { font-family: 'Consolas', 'Menlo', monospace; font-size: .85rem; }
     mat-form-field { width: 100%; }
+    .lines-section { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; padding: 16px; background: #f9f9f9; }
+    .section-title { font-size: .95rem; font-weight: 600; margin-bottom: 12px; }
+    .lines-grid { overflow-x: auto; }
+    .lines-table { width: 100%; }
+    .lines-table th { padding: 8px 12px; background: rgba(0,0,0,.04); font-weight: 600; font-size: .85rem; text-align: left; }
+    .lines-table td { padding: 8px 12px; font-size: .9rem; }
+    .lines-table tr:hover { background: rgba(0,0,0,.02); }
+    .account-cell { display: flex; flex-direction: column; gap: 2px; }
+    .account-cell small { color: rgba(0,0,0,.6); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .action-col { width: 108px; text-align: center; white-space: nowrap; }
+    .empty-cell { text-align: center; padding: 20px 12px; color: rgba(0,0,0,.5); }
+    .dialog-actions { padding: 12px 24px; border-top: 1px solid rgba(0,0,0,.08); margin: 0; }
     :host ::ng-deep .ng-select { width: 100%; }
     :host ::ng-deep .ng-select .ng-select-container { min-height: 56px; }
     :host ::ng-deep .ng-dropdown-panel { z-index: 3000 !important; }
@@ -216,6 +349,8 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
       .dialog-host { min-width: 0; }
       .form-grid { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
+      .grid-action-row { justify-content: stretch; flex-direction: column; }
+      .grid-action-row button { width: 100%; }
     }
   `]
 })
@@ -229,9 +364,25 @@ export class ExpenseDialogComponent implements OnInit {
   saving = false;
   loadingExpenseAccounts = false;
   loadingPayingAccounts = false;
+  validationRequested = false;
+  editingRowId: string | null = null;
+  tranId = '';
 
   expenseAccounts: ExpenseAccountLookup[] = [];
   payingAccounts: ExpenseAccountLookup[] = [];
+  gridEntries: ExpenseGridEntry[] = [];
+  amountInput = '0.00';
+
+  readonly displayedGridColumns = ['tranId', 'tranDate', 'debitAccountName', 'creditAccountName', 'description', 'amount', 'actions'];
+
+  readonly touched: Record<string, boolean> = {
+    tranId: false,
+    tranDate: false,
+    amount: false,
+    accountDebit: false,
+    accountCredit: false,
+    description: false,
+  };
 
   model: ExpenseEntry = {
     tranDate: new Date(),
@@ -240,20 +391,25 @@ export class ExpenseDialogComponent implements OnInit {
     amount: 0,
     description: '',
     isPost: false,
-    postDirectly: false,
     isClose: false,
+    tranId: '',
   };
 
   ngOnInit(): void {
-    this.isEdit = !!this.data?.entry;
-    if (this.data?.entry) {
-      this.model = {
-        ...this.data.entry,
-        postDirectly: !!this.data.entry.isPost,
-        tranDate: this.data.entry.tranDate ? new Date(this.data.entry.tranDate) : new Date(),
-      };
-    }
+    this.isEdit = !!(this.data?.isEdit || this.data?.entries?.length || this.data?.entry);
+    this.tranId = this.data?.tranId?.trim()
+      ?? this.data?.entry?.tranId?.trim()
+      ?? this.data?.entries?.[0]?.tranId?.trim()
+      ?? '';
 
+    const entries = this.data?.entries?.length
+      ? this.data.entries
+      : this.data?.entry
+        ? [this.data.entry]
+        : [];
+
+    this.gridEntries = entries.map(entry => this.createGridEntry({ ...entry, tranId: this.tranId || entry.tranId }));
+    this.resetDraftForm(false);
     this.loadLookups();
   }
 
@@ -261,14 +417,87 @@ export class ExpenseDialogComponent implements OnInit {
     return key;
   }
 
+  markTouched(field: string): void {
+    this.touched[field] = true;
+  }
+
   onDebitAccountChange(): void {
-    const selected = this.expenseAccounts.find(x => x.accountNo === this.model.accountDebit);
+    this.markTouched('accountDebit');
+    const selected = this.findAccountByValue(this.expenseAccounts, this.model.accountDebit);
+    this.model.accountDebit = selected?.accountNo ?? this.model.accountDebit?.trim() ?? '';
     this.model.debitAccountName = selected?.accountName ?? '';
+    this.onDraftChanged();
   }
 
   onCreditAccountChange(): void {
-    const selected = this.payingAccounts.find(x => x.accountNo === this.model.accountCredit);
+    this.markTouched('accountCredit');
+    const selected = this.findAccountByValue(this.payingAccounts, this.model.accountCredit);
+    this.model.accountCredit = selected?.accountNo ?? this.model.accountCredit?.trim() ?? '';
     this.model.creditAccountName = selected?.accountName ?? '';
+    this.onDraftChanged();
+  }
+
+  onDraftChanged(): void {
+    this.model.tranId = this.tranId;
+  }
+
+  onAmountInputChange(value: string): void {
+    this.touched['amount'] = true;
+    this.amountInput = value;
+    this.model.amount = this.parseAmount(value);
+    this.onDraftChanged();
+  }
+
+  onAmountInputFocus(): void {
+    this.amountInput = this.model.amount ? String(this.model.amount) : '';
+  }
+
+  onAmountInputBlur(): void {
+    this.markTouched('amount');
+    this.amountInput = this.formatAmount(this.model.amount);
+  }
+
+  addOrUpdateGrid(): void {
+    this.validationRequested = true;
+    this.model.tranId = this.tranId;
+    this.onDebitAccountChange();
+    this.onCreditAccountChange();
+    this.markTouched('tranDate');
+    this.markTouched('description');
+
+    if (!this.isCurrentDraftValid()) {
+      this.alertService.showMessage('Validation', 'Please complete all required expense fields before adding to the grid.', MessageSeverity.warn);
+      return;
+    }
+
+    const gridEntry = this.createGridEntry(this.model, this.editingRowId ?? undefined);
+
+    if (this.editingRowId) {
+      this.gridEntries = this.gridEntries.map(entry => entry.rowId === this.editingRowId ? gridEntry : entry);
+    } else {
+      this.gridEntries = [...this.gridEntries, gridEntry];
+    }
+
+    this.resetDraftForm();
+  }
+
+  editGridEntry(entry: ExpenseGridEntry): void {
+    this.editingRowId = entry.rowId;
+    this.model = {
+      ...entry,
+      tranDate: entry.tranDate instanceof Date ? new Date(entry.tranDate) : new Date(entry.tranDate),
+      tranId: this.tranId,
+    };
+    this.amountInput = this.formatAmount(entry.amount);
+    this.validationRequested = false;
+    this.resetTouched();
+  }
+
+  deleteGridEntry(entry: ExpenseGridEntry): void {
+    this.gridEntries = this.gridEntries.filter(x => x.rowId !== entry.rowId);
+    if (this.editingRowId === entry.rowId) {
+      this.resetDraftForm();
+    }
   }
 
   cancel(): void {
@@ -276,40 +505,67 @@ export class ExpenseDialogComponent implements OnInit {
   }
 
   save(): void {
-    if (!this.isValid()) {
+    this.validationRequested = true;
+    this.touched['tranId'] = true;
+
+    if (!this.tranId.trim()) {
+      this.alertService.showMessage('Validation', 'Transaction id is required.', MessageSeverity.warn);
+      return;
+    }
+
+    if (this.gridEntries.length === 0) {
+      this.alertService.showMessage('Validation', 'Please add at least one expense entry to the grid.', MessageSeverity.warn);
+      return;
+    }
+
+    const payload = this.gridEntries.map(entry => this.buildPayload(entry));
+    if (payload.some(entry => !this.isValid(entry))) {
       this.alertService.showMessage('Validation', 'Please complete all required expense fields.', MessageSeverity.warn);
       return;
     }
 
-    const tranDate = this.model.tranDate instanceof Date ? this.model.tranDate : new Date(this.model.tranDate);
-    const payload: ExpenseEntry = {
-      ...this.model,
-      tranDate: tranDate.toISOString(),
-      amount: Number(this.model.amount) || 0,
-      description: this.model.description.trim(),
-      accountDebit: this.model.accountDebit.trim(),
-      accountCredit: this.model.accountCredit.trim(),
-      postDirectly: !!this.model.postDirectly,
-    };
-
     this.saving = true;
-    const request = this.isEdit && this.model.sNo
-      ? this.expenseEndpoint.getUpdateExpenseEndpoint<ExpenseEntry>(this.model.sNo, payload)
-      : this.expenseEndpoint.getNewExpenseEndpoint<ExpenseEntry>(payload);
 
-    request.subscribe({
+    if (this.isEdit) {
+      this.expenseEndpoint.getUpdateExpenseByTranIdEndpoint<ExpenseBatchSaveResult>(this.tranId, payload).subscribe({
+        next: saved => {
+          this.onSaveSuccess(saved.entries[0]?.sNo ?? undefined, this.tranId);
+        },
+        error: (error: unknown) => {
+          this.onSaveError(error);
+        },
+        complete: () => {
+          this.saving = false;
+        }
+      });
+      return;
+    }
+
+    this.expenseEndpoint.getNewExpensesBatchEndpoint<ExpenseBatchSaveResult>(payload, this.tranId).subscribe({
       next: saved => {
-        this.alertService.showMessage('Success', 'Expense saved successfully.', MessageSeverity.success);
-        this.dialogRef.close({ saved: true, sNo: saved.sNo ?? undefined });
+        this.onSaveSuccess(saved.entries[0]?.sNo ?? undefined, this.tranId);
       },
-      error: error => {
-        this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error, error);
-        this.saving = false;
+      error: (error: unknown) => {
+        this.onSaveError(error);
       },
       complete: () => {
         this.saving = false;
       }
     });
+  }
+
+  showFieldError(field: string): boolean {
+    return (this.validationRequested || this.touched[field]) && !this.isFieldValid(field);
+  }
+
+  private onSaveSuccess(sNo?: number, tranId?: string): void {
+    this.alertService.showMessage('Success', 'Expense saved successfully.', MessageSeverity.success);
+    this.dialogRef.close({ saved: true, sNo, tranId });
+  }
+
+  private onSaveError(error: unknown): void {
+    this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error, error);
+    this.saving = false;
   }
 
   private loadLookups(): void {
@@ -322,7 +578,7 @@ export class ExpenseDialogComponent implements OnInit {
           accountNo: account.accountNo?.trim() ?? '',
           accountName: account.accountName?.trim() ?? ''
         }));
-        this.onDebitAccountChange();
+        this.syncGridAccountNames();
       },
       error: error => {
         this.alertService.showStickyMessage('Load Error', 'Unable to load expense accounts.', MessageSeverity.error, error);
@@ -338,7 +594,7 @@ export class ExpenseDialogComponent implements OnInit {
           accountNo: account.accountNo?.trim() ?? '',
           accountName: account.accountName?.trim() ?? ''
         }));
-        this.onCreditAccountChange();
+        this.syncGridAccountNames();
       },
       error: error => {
         this.alertService.showStickyMessage('Load Error', 'Unable to load paying accounts.', MessageSeverity.error, error);
@@ -349,12 +605,159 @@ export class ExpenseDialogComponent implements OnInit {
     });
   }
 
-  private isValid(): boolean {
-    return !!this.model.tranDate
-      && !!this.model.accountDebit?.trim()
-      && !!this.model.accountCredit?.trim()
-      && !!this.model.description?.trim()
-      && Number(this.model.amount) > 0;
+  private syncGridAccountNames(): void {
+    this.gridEntries = this.gridEntries.map(entry => this.createGridEntry(entry, entry.rowId));
+    if (this.editingRowId) {
+      const editing = this.gridEntries.find(entry => entry.rowId === this.editingRowId);
+      if (editing) {
+        this.model = { ...editing, tranDate: new Date(editing.tranDate) };
+      }
+    } else {
+      this.onDebitAccountChange();
+      this.onCreditAccountChange();
+    }
+  }
+
+  resetDraftForm(preserveSelections = true): void {
+    const firstGridEntry = this.gridEntries[0];
+    const currentTranDate = this.model.tranDate instanceof Date ? this.model.tranDate : new Date(this.model.tranDate);
+    const tranDate = preserveSelections
+      ? currentTranDate
+      : firstGridEntry?.tranDate instanceof Date
+        ? new Date(firstGridEntry.tranDate)
+        : firstGridEntry?.tranDate
+          ? new Date(firstGridEntry.tranDate)
+          : new Date();
+
+    const accountCredit = preserveSelections
+      ? this.model.accountCredit
+      : firstGridEntry?.accountCredit ?? '';
+
+    const creditAccountName = preserveSelections
+      ? this.model.creditAccountName
+      : firstGridEntry?.creditAccountName ?? '';
+
+    this.model = {
+      tranDate,
+      accountDebit: '',
+      debitAccountName: '',
+      accountCredit,
+      creditAccountName,
+      amount: 0,
+      description: '',
+      isPost: false,
+      isClose: false,
+      tranId: this.tranId,
+    };
+
+    this.editingRowId = null;
+    this.validationRequested = false;
+    this.amountInput = this.formatAmount(0);
+    this.resetTouched();
+  }
+
+  private resetTouched(): void {
+    Object.keys(this.touched).forEach(key => {
+      this.touched[key] = false;
+    });
+  }
+
+  private createGridEntry(entry: ExpenseEntry, rowId?: string): ExpenseGridEntry {
+    const tranDate = entry.tranDate instanceof Date ? entry.tranDate : new Date(entry.tranDate);
+    const debitAccount = this.findAccountByValue(this.expenseAccounts, entry.accountDebit);
+    const creditAccount = this.findAccountByValue(this.payingAccounts, entry.accountCredit);
+
+    return {
+      ...entry,
+      tranId: this.tranId || entry.tranId?.trim() || '',
+      tranDate,
+      accountDebit: entry.accountDebit?.trim() ?? '',
+      accountCredit: entry.accountCredit?.trim() ?? '',
+      debitAccountName: debitAccount?.accountName ?? entry.debitAccountName?.trim() ?? '',
+      creditAccountName: creditAccount?.accountName ?? entry.creditAccountName?.trim() ?? '',
+      description: entry.description?.trim() ?? '',
+      amount: Number(entry.amount) || 0,
+      rowId: rowId ?? this.makeRowId(),
+    };
+  }
+
+  private buildPayload(entry: ExpenseGridEntry): ExpenseEntry {
+    const tranDate = entry.tranDate instanceof Date ? entry.tranDate : new Date(entry.tranDate);
+    return {
+      sNo: entry.sNo,
+      tranDate: tranDate.toISOString(),
+      accountDebit: entry.accountDebit.trim(),
+      accountCredit: entry.accountCredit.trim(),
+      debitAccountName: entry.debitAccountName?.trim() ?? '',
+      creditAccountName: entry.creditAccountName?.trim() ?? '',
+      amount: Number(entry.amount) || 0,
+      description: entry.description.trim(),
+      isPost: entry.isPost,
+      isClose: entry.isClose,
+      userName: entry.userName,
+      tranId: this.tranId,
+      remarks: entry.remarks,
+    };
+  }
+
+  private isCurrentDraftValid(): boolean {
+    return this.isValid({ ...this.model, tranId: this.tranId });
+  }
+
+  private isFieldValid(field: string): boolean {
+    switch (field) {
+      case 'tranId':
+        return !!this.tranId.trim();
+      case 'tranDate':
+        return !!this.model.tranDate;
+      case 'amount':
+        return Number(this.model.amount) > 0;
+      case 'accountDebit':
+        return !!this.findAccountByValue(this.expenseAccounts, this.model.accountDebit);
+      case 'accountCredit':
+        return !!this.findAccountByValue(this.payingAccounts, this.model.accountCredit);
+      case 'description':
+        return !!this.model.description?.trim();
+      default:
+        return true;
+    }
+  }
+
+  private isValid(entry: ExpenseEntry): boolean {
+    return !!entry.tranId?.trim()
+      && !!entry.tranDate
+      && !!this.findAccountByValue(this.expenseAccounts, entry.accountDebit)
+      && !!this.findAccountByValue(this.payingAccounts, entry.accountCredit)
+      && !!entry.description?.trim()
+      && Number(entry.amount) > 0;
+  }
+
+  private parseAmount(value: string | number | null | undefined): number {
+    const text = String(value ?? '').replace(/,/g, '').trim();
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private formatAmount(value: number | null | undefined): string {
+    const amount = Number(value) || 0;
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  private makeRowId(): string {
+    return Math.random().toString(36).slice(2, 11);
+  }
+
+  private findAccountByValue(accounts: ExpenseAccountLookup[], value: string | null | undefined): ExpenseAccountLookup | undefined {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      return undefined;
+    }
+
+    return accounts.find(x => x.accountNo === normalized)
+      ?? accounts.find(x => x.accountName.toLowerCase() === normalized.toLowerCase());
   }
 
   private getErrorMessage(error: unknown): string {

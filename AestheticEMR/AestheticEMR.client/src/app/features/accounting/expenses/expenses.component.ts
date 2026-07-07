@@ -21,15 +21,16 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { fadeInOut } from '../../../services/animations';
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AccountService } from '../../../services/account.service';
 import { ExpenseEndpoint } from '../../../services/expense-endpoint.service';
 import { Permissions } from '../../../models/permission.model';
 import { ExpenseDialogComponent } from './expense-dialog.component';
 import {
+  ExpenseDialogData,
   ExpenseEntry,
   ExpenseListItem,
-  ExpenseViewMode,
+  ExpenseTranIdResponse,
   PagedExpenseResult,
 } from '../../../models/accounting/expense.model';
 
@@ -131,15 +132,6 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
             <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
             <mat-datepicker #toPicker></mat-datepicker>
           </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'expenses.ViewMode' | translate }}</mat-label>
-            <select matNativeControl [(ngModel)]="viewMode">
-              <option value="all">{{ 'expenses.ViewAll' | translate }}</option>
-              <option value="unposted">{{ 'expenses.ViewUnposted' | translate }}</option>
-              <option value="posted">{{ 'expenses.ViewPosted' | translate }}</option>
-            </select>
-          </mat-form-field>
         </div>
 
         <div class="filter-actions">
@@ -165,6 +157,11 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
           <ng-container matColumnDef="sNo">
             <th mat-header-cell *matHeaderCellDef>{{ 'expenses.SNo' | translate }}</th>
             <td mat-cell *matCellDef="let row" class="mono">{{ row.sNo }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="tranId">
+            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.TranId' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="mono">{{ row.tranId }}</td>
           </ng-container>
 
           <ng-container matColumnDef="tranDate">
@@ -202,23 +199,14 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
             <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.description || '—' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.Status' | translate }}</th>
-            <td mat-cell *matCellDef="let row">
-              <span class="status-pill" [class.posted]="row.isPost" [class.unposted]="!row.isPost">
-                {{ row.isPost ? ('expenses.Posted' | translate) : ('expenses.Unposted' | translate) }}
-              </span>
-            </td>
-          </ng-container>
-
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef class="action-col">{{ 'expenses.Actions' | translate }}</th>
             <td mat-cell *matCellDef="let row" class="action-col">
-              <button mat-icon-button color="primary" (click)="openEditDialog(row)" [disabled]="!canEdit(row)" aria-label="Edit expense">
+              <button mat-icon-button color="primary" (click)="openEditDialog(row)" aria-label="Edit expense" [disabled]="loadingIndicator || !canManageExpenses">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" (click)="deleteExpense(row)" [disabled]="!canDelete(row)" aria-label="Delete expense">
-                <mat-icon>delete_outline</mat-icon>
+              <button mat-icon-button color="warn" (click)="deleteExpense(row)" aria-label="Delete expense" [disabled]="loadingIndicator || !canManageExpenses">
+                <mat-icon>delete</mat-icon>
               </button>
             </td>
           </ng-container>
@@ -268,10 +256,7 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     .account-name { font-weight: 500; }
     .account-no { color: rgba(0,0,0,.55); font-size: .75rem; }
     .ellipsis { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .status-pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
-    .status-pill.posted { background: rgba(46,125,50,.12); color: #2e7d32; }
-    .status-pill.unposted { background: rgba(239,108,0,.12); color: #ef6c00; }
-    .action-col { width: 110px; text-align: right; }
+    .action-col { width: 126px; text-align: right; }
     .empty-cell { text-align: center; padding: 32px 16px; color: rgba(0,0,0,.5); }
     .empty-cell mat-icon { font-size: 36px; height: 36px; width: 36px; opacity: .6; }
     .empty-cell p { margin: 8px 0 0; }
@@ -286,7 +271,7 @@ export class ExpensesComponent implements OnInit {
   private dialog = inject(MatDialog);
   private accountService = inject(AccountService);
 
-  readonly displayedColumns = ['sNo', 'tranDate', 'debitAccountName', 'creditAccountName', 'amount', 'description', 'status', 'actions'];
+  readonly displayedColumns = ['sNo', 'tranId', 'tranDate', 'debitAccountName', 'creditAccountName', 'amount', 'description', 'actions'];
   readonly pageSize = 10;
 
   rows = new MatTableDataSource<ExpenseListItem>([]);
@@ -299,7 +284,6 @@ export class ExpensesComponent implements OnInit {
   searchText = '';
   fromDate: Date = this.startOfDay(new Date());
   toDate: Date = this.startOfDay(new Date());
-  viewMode: ExpenseViewMode = 'all';
 
   get canManageExpenses(): boolean {
     return this.accountService.userHasPermission(Permissions.manageAccounting);
@@ -318,7 +302,6 @@ export class ExpensesComponent implements OnInit {
     this.searchText = '';
     this.fromDate = this.startOfDay(new Date());
     this.toDate = this.startOfDay(new Date());
-    this.viewMode = 'all';
     this.currentPage = 1;
     this.loadData();
   }
@@ -334,17 +317,39 @@ export class ExpensesComponent implements OnInit {
       return;
     }
 
-    this.openDialog(null);
+    this.loadingIndicator = true;
+    this.expenseEndpoint.getNextTranIdEndpoint<ExpenseTranIdResponse>().subscribe({
+      next: result => {
+        this.openDialog({ entry: null, tranId: result?.tranId ?? '', isEdit: false });
+      },
+      error: error => {
+        this.loadingIndicator = false;
+        this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
+      },
+      complete: () => {
+        this.loadingIndicator = false;
+      }
+    });
   }
 
   openEditDialog(row: ExpenseListItem): void {
-    if (!this.canEdit(row)) {
+    const tranId = row.tranId?.trim();
+    if (!tranId) {
+      this.alertService.showMessage('Validation', 'Transaction id is required for editing.', MessageSeverity.warn);
       return;
     }
 
     this.loadingIndicator = true;
-    this.expenseEndpoint.getExpenseByIdEndpoint<ExpenseEntry>(row.sNo).subscribe({
-      next: entry => this.openDialog(entry),
+    this.expenseEndpoint.getExpenseEntriesByTranIdEndpoint<ExpenseEntry[]>(tranId).subscribe({
+      next: entries => {
+        const loadedEntries = entries ?? [];
+        this.openDialog({
+          entry: loadedEntries[0] ?? null,
+          entries: loadedEntries,
+          tranId,
+          isEdit: true,
+        });
+      },
       error: error => {
         this.loadingIndicator = false;
         this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
@@ -356,33 +361,44 @@ export class ExpensesComponent implements OnInit {
   }
 
   deleteExpense(row: ExpenseListItem): void {
-    if (!this.canDelete(row)) {
+    const tranId = row.tranId?.trim();
+    if (!tranId) {
+      this.alertService.showMessage('Validation', 'Transaction id is required for delete.', MessageSeverity.warn);
       return;
     }
 
     this.alertService.showDialog(
-      `Delete expense entry ${row.sNo}?`,
-      1,
-      () => this.deleteExpenseConfirmed(row),
+      `Delete expense transaction ${tranId}?\n\nThis action cannot be undone.`,
+      DialogType.confirm,
+      () => this.confirmDelete(tranId)
     );
-  }
-
-  canEdit(row: ExpenseListItem): boolean {
-    return this.canManageExpenses && !row.isPost && !row.isClose;
-  }
-
-  canDelete(row: ExpenseListItem): boolean {
-    return this.canManageExpenses && !row.isPost && !row.isClose;
   }
 
   trackBySNo(_index: number, item: ExpenseListItem): number {
     return item.sNo;
   }
 
-  private openDialog(entry: ExpenseEntry | null): void {
+  private confirmDelete(tranId: string): void {
+    this.loadingIndicator = true;
+    this.expenseEndpoint.getDeleteExpenseByTranIdEndpoint<void>(tranId).subscribe({
+      next: () => {
+        this.alertService.showMessage('Deleted', 'Expense transaction has been removed.', MessageSeverity.success);
+        this.loadData();
+      },
+      error: error => {
+        this.loadingIndicator = false;
+        this.alertService.showStickyMessage('Delete Error', this.getErrorMessage(error), MessageSeverity.error, error);
+      },
+      complete: () => {
+        this.loadingIndicator = false;
+      }
+    });
+  }
+
+  private openDialog(data: ExpenseDialogData): void {
     const ref = this.dialog.open(ExpenseDialogComponent, {
-      data: { entry },
-      width: '900px',
+      data,
+      width: '1100px',
       maxWidth: '95vw',
       disableClose: true,
       autoFocus: 'first-tabbable',
@@ -396,20 +412,6 @@ export class ExpensesComponent implements OnInit {
     });
   }
 
-  private deleteExpenseConfirmed(row: ExpenseListItem): void {
-    this.loadingIndicator = true;
-    this.expenseEndpoint.getDeleteExpenseEndpoint<void>(row.sNo).subscribe({
-      next: () => {
-        this.alertService.showMessage('Success', 'Expense deleted successfully.', MessageSeverity.success);
-        this.loadData();
-      },
-      error: error => {
-        this.loadingIndicator = false;
-        this.alertService.showStickyMessage('Delete Error', this.getErrorMessage(error), MessageSeverity.error, error);
-      }
-    });
-  }
-
   private loadData(): void {
     this.alertService.startLoadingMessage();
     this.loadingIndicator = true;
@@ -418,7 +420,6 @@ export class ExpensesComponent implements OnInit {
       search: this.searchText.trim() || undefined,
       fromDate: this.fromDate?.toISOString(),
       toDate: this.toDate?.toISOString(),
-      viewMode: this.viewMode,
       page: this.currentPage,
       pageSize: this.pageSize,
     }).subscribe({

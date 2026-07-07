@@ -17,11 +17,26 @@ public class ExpenseEntry
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public bool IsPost { get; set; }
-    public bool PostDirectly { get; set; }
     public bool IsClose { get; set; }
     public string? UserName { get; set; }
     public string? TranId { get; set; }
     public string? Remarks { get; set; }
+}
+
+public class ExpenseBatchSaveRequest
+{
+    public string? TranId { get; set; }
+    public List<ExpenseEntry> Entries { get; set; } = new();
+}
+
+public class ExpenseBatchSaveResult
+{
+    public List<ExpenseEntry> Entries { get; set; } = new();
+}
+
+public class ExpenseTranIdResult
+{
+    public string TranId { get; set; } = string.Empty;
 }
 
 public class ExpenseListItem
@@ -46,7 +61,6 @@ public class ExpenseListQuery
     public string? Search { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
-    public string ViewMode { get; set; } = "all";
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }

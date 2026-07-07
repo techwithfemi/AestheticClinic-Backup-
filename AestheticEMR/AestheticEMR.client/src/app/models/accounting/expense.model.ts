@@ -1,4 +1,4 @@
-export type ExpenseViewMode = 'all' | 'posted' | 'unposted';
+export type ExpenseViewMode = 'all';
 
 export interface ExpenseAccountLookup {
   accountNo: string;
@@ -15,7 +15,6 @@ export interface ExpenseEntry {
   amount: number;
   description: string;
   isPost: boolean;
-  postDirectly?: boolean;
   isClose: boolean;
   userName?: string | null;
   tranId?: string | null;
@@ -56,9 +55,36 @@ export interface PagedExpenseResult {
 
 export interface ExpenseDialogData {
   entry: ExpenseEntry | null;
+  entries?: ExpenseEntry[] | null;
+  tranId?: string | null;
+  isEdit?: boolean;
 }
 
 export interface ExpenseDialogResult {
   saved: boolean;
   sNo?: number;
+  tranId?: string;
+}
+
+export interface ExpenseBatchSaveRequest {
+  tranId?: string | null;
+  entries: ExpenseEntry[];
+}
+
+export interface ExpenseBatchSaveResult {
+  entries: ExpenseEntry[];
+}
+
+export interface ExpenseTranIdResponse {
+  tranId: string;
+}
+
+export interface TransactionLine {
+  sNo: number;
+  tranNo: string;
+  accountNo: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+  description?: string | null;
 }

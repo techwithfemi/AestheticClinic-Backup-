@@ -1,17 +1,14 @@
-using AestheticEMR.Core.Infrastructure;
-using AestheticEMR.Core.Models.Accounting;
 using AestheticEMR.Core.Services.Accounting.Interfaces;
 using AestheticEMR.Core.Services.Accounting.Models;
 using AestheticEMR.Core.Services.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using Dapper;
 using DataAccess.DbAccess;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace AestheticEMR.Core.Services.Accounting;
 
 public class ExpenseService(
-    AccountingDbContext accountingDbContext,
     IEmrAppDefaultsService emrAppDefaultsService,
     ISqlDataAccess db,
     ILogger<ExpenseService> logger) : IExpenseService
@@ -25,66 +22,91 @@ public class ExpenseService(
         var page = query.Page <= 0 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 200);
         var search = query.Search?.Trim();
-        var viewMode = (query.ViewMode ?? "all").Trim().ToLowerInvariant();
         var fromDate = query.FromDate?.Date;
         var toDateExclusive = query.ToDate?.Date.AddDays(1);
 
-        var expenseQuery = accountingDbContext.vwTranxJournalTemps
-            .AsNoTracking()
-            .Where(x => (x.Remarks ?? string.Empty) == ExpensesRemarks);
+        var where = @" WHERE ISNULL(Remarks, '') = @Remarks ";
+        var parameters = new DynamicParameters();
+        parameters.Add("Remarks", ExpensesRemarks);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var pattern = $"%{search}%";
-            expenseQuery = expenseQuery.Where(x =>
-                EF.Functions.Like(x.Description ?? string.Empty, pattern) ||
-                EF.Functions.Like(x.AccountNameDebit ?? string.Empty, pattern) ||
-                EF.Functions.Like(x.AccountNameCredit ?? string.Empty, pattern) ||
-                EF.Functions.Like(x.AccountDebit ?? string.Empty, pattern) ||
-                EF.Functions.Like(x.AccountCredit ?? string.Empty, pattern) ||
-                EF.Functions.Like(x.UserName ?? string.Empty, pattern));
+            where += @"
+ AND (
+      ISNULL(Description, '') LIKE @Search
+   OR ISNULL(AccountName, '') LIKE @Search
+   OR ISNULL(TranNo, '') LIKE @Search
+   OR ISNULL(UserName, '') LIKE @Search
+ )";
+            parameters.Add("Search", $"%{search}%");
         }
 
         if (fromDate is not null)
         {
-            expenseQuery = expenseQuery.Where(x => x.TranDate >= fromDate.Value);
+            where += " AND TranDate >= @FromDate";
+            parameters.Add("FromDate", fromDate.Value);
         }
 
         if (toDateExclusive is not null)
         {
-            expenseQuery = expenseQuery.Where(x => x.TranDate < toDateExclusive.Value);
+            where += " AND TranDate < @ToDateExclusive";
+            parameters.Add("ToDateExclusive", toDateExclusive.Value);
         }
 
-        expenseQuery = viewMode switch
-        {
-            "posted" => expenseQuery.Where(x => x.IsPost),
-            "unposted" => expenseQuery.Where(x => !x.IsPost),
-            _ => expenseQuery
-        };
+        parameters.Add("Skip", (page - 1) * pageSize);
+        parameters.Add("Take", pageSize);
 
-        var totalCount = await expenseQuery.CountAsync(ct);
-        var items = await expenseQuery
-            .OrderByDescending(x => x.TranDate)
-            .ThenByDescending(x => x.SNo)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(x => new ExpenseListItem
-            {
-                SNo = x.SNo,
-                TranDate = x.TranDate,
-                AccountDebit = x.AccountDebit,
-                AccountCredit = x.AccountCredit,
-                DebitAccountName = x.AccountNameDebit,
-                CreditAccountName = x.AccountNameCredit,
-                Amount = x.Amount,
-                Description = x.Description,
-                IsPost = x.IsPost,
-                IsClose = x.isClose ?? false,
-                UserName = x.UserName,
-                TranId = x.TranID,
-                Remarks = x.Remarks
-            })
-            .ToListAsync(ct);
+        var totalCount = (await db.LoadDataText<int, DynamicParameters>(
+            $"SELECT COUNT(DISTINCT TranNo) FROM vwTranx {where};",
+            parameters,
+            AcctConn)).FirstOrDefault();
+
+        var items = (await db.LoadDataText<ExpenseListItem, DynamicParameters>($@"
+WITH ExpensesByTran AS (
+    SELECT
+        TranNo,
+        TranDate,
+        Amount,
+        AccountNo,
+        AccountName,
+        Description,
+        UserName,
+        TranID,
+        isClose,
+        ROW_NUMBER() OVER (PARTITION BY TranNo ORDER BY CASE WHEN Amount > 0 THEN 0 ELSE 1 END, SNo) AS LineNum
+    FROM vwTranx
+    {where}
+)
+SELECT
+    (SELECT MIN(SNo) FROM vwTranx WHERE TranNo = e.TranNo AND ISNULL(Remarks, '') = @Remarks) AS SNo,
+    e.TranDate,
+    (SELECT TOP 1 AccountNo FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount > 0 ORDER BY LineNum) AS AccountDebit,
+    (SELECT TOP 1 AccountNo FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount < 0 ORDER BY LineNum) AS AccountCredit,
+    (SELECT TOP 1 AccountName FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount > 0 ORDER BY LineNum) AS DebitAccountName,
+    (SELECT TOP 1 AccountName FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount < 0 ORDER BY LineNum) AS CreditAccountName,
+    ABS(e.Amount) AS Amount,
+    e.Description,
+    1 AS IsPost,
+    e.IsClose,
+    e.UserName,
+    e.TranID AS TranId,
+    @Remarks AS Remarks
+FROM (
+    SELECT DISTINCT
+        TranNo,
+        TranDate,
+        Amount,
+        Description,
+        IsClose,
+        UserName,
+        TranID
+    FROM ExpensesByTran
+    WHERE Amount > 0
+) e
+ORDER BY e.TranDate DESC, e.TranNo DESC
+OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;",
+            parameters,
+            AcctConn)).ToList();
 
         return new PagedExpenseResult
         {
@@ -97,27 +119,105 @@ public class ExpenseService(
 
     public async Task<ExpenseEntry?> GetByIdAsync(long sNo, CancellationToken ct = default)
     {
-        return await accountingDbContext.vwTranxJournalTemps
-            .AsNoTracking()
-            .Where(x => x.SNo == sNo && (x.Remarks ?? string.Empty) == ExpensesRemarks)
-            .Select(x => new ExpenseEntry
-            {
-                SNo = x.SNo,
-                TranDate = x.TranDate,
-                AccountDebit = x.AccountDebit,
-                AccountCredit = x.AccountCredit,
-                DebitAccountName = x.AccountNameDebit,
-                CreditAccountName = x.AccountNameCredit,
-                Amount = x.Amount,
-                Description = x.Description ?? string.Empty,
-                IsPost = x.IsPost,
-                PostDirectly = x.IsPost,
-                IsClose = x.isClose ?? false,
-                UserName = x.UserName,
-                TranId = x.TranID,
-                Remarks = x.Remarks
-            })
-            .FirstOrDefaultAsync(ct);
+        return (await db.LoadDataText<ExpenseEntry, dynamic>(@"
+SELECT TOP 1
+    SNo,
+    TranDate,
+    (SELECT TOP 1 AccountNo FROM vwTranx WHERE TranNo = src.TranNo AND Amount > 0 ORDER BY SNo) AS AccountDebit,
+    (SELECT TOP 1 AccountNo FROM vwTranx WHERE TranNo = src.TranNo AND Amount < 0 ORDER BY SNo) AS AccountCredit,
+    (SELECT TOP 1 AccountName FROM vwTranx WHERE TranNo = src.TranNo AND Amount > 0 ORDER BY SNo) AS DebitAccountName,
+    (SELECT TOP 1 AccountName FROM vwTranx WHERE TranNo = src.TranNo AND Amount < 0 ORDER BY SNo) AS CreditAccountName,
+    ABS(CASE WHEN Amount < 0 THEN Amount * -1 ELSE Amount END) AS Amount,
+    Description,
+    1 AS IsPost,
+    isClose AS IsClose,
+    UserName,
+    TranID AS TranId,
+    Remarks
+FROM vwTranx src
+WHERE SNo = @SNo
+  AND ISNULL(Remarks, '') = @Remarks;",
+            new { SNo = sNo, Remarks = ExpensesRemarks },
+            AcctConn)).FirstOrDefault();
+    }
+
+    public async Task<List<ExpenseEntry>> GetByTranIdAsync(string tranId, CancellationToken ct = default)
+    {
+        var normalizedTranId = tranId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedTranId))
+        {
+            return [];
+        }
+
+        var rows = await db.LoadDataText<ExpenseEntry, dynamic>(@"
+WITH DebitLines AS (
+    SELECT
+        SNo,
+        TranNo,
+        TranDate,
+        AccountNo,
+        AccountName,
+        Amount,
+        Description,
+        UserName,
+        TranID,
+        isClose,
+        ROW_NUMBER() OVER (ORDER BY SNo) AS RowNum
+    FROM vwTranx
+    WHERE TranNo = @TranNo
+      AND ISNULL(Remarks, '') = @Remarks
+      AND Amount > 0
+),
+CreditLines AS (
+    SELECT
+        SNo,
+        TranNo,
+        TranDate,
+        AccountNo,
+        AccountName,
+        Amount,
+        Description,
+        UserName,
+        TranID,
+        isClose,
+        ROW_NUMBER() OVER (ORDER BY SNo) AS RowNum
+    FROM vwTranx
+    WHERE TranNo = @TranNo
+      AND ISNULL(Remarks, '') = @Remarks
+      AND Amount < 0
+)
+SELECT
+    d.SNo,
+    d.TranDate,
+    d.AccountNo AS AccountDebit,
+    ISNULL(c.AccountNo, '') AS AccountCredit,
+    d.AccountName AS DebitAccountName,
+    ISNULL(c.AccountName, '') AS CreditAccountName,
+    d.Amount AS Amount,
+    COALESCE(NULLIF(LTRIM(RTRIM(d.Description)), ''), c.Description, '') AS Description,
+    1 AS IsPost,
+    d.isClose AS IsClose,
+    d.UserName,
+    d.TranID AS TranId,
+    @Remarks AS Remarks
+FROM DebitLines d
+LEFT JOIN CreditLines c ON c.RowNum = d.RowNum
+ORDER BY d.SNo;",
+            new { TranNo = normalizedTranId, Remarks = ExpensesRemarks },
+            AcctConn);
+
+        return rows.ToList();
+    }
+
+    public async Task<ExpenseTranIdResult> GenerateTranIdAsync(CancellationToken ct = default)
+    {
+        var tranId = await GenerateTranNoAsync();
+        if (string.IsNullOrWhiteSpace(tranId))
+        {
+            throw new InvalidOperationException("Unable to generate transaction id.");
+        }
+
+        return new ExpenseTranIdResult { TranId = tranId };
     }
 
     public async Task<List<ExpenseAccountLookup>> GetExpenseAccountsAsync(CancellationToken ct = default)
@@ -142,7 +242,7 @@ SELECT DISTINCT
        LTRIM(RTRIM(AccountName)) AS AccountName,
        LTRIM(RTRIM(AccountNo))   AS AccountNo
 FROM   vwAccountsInfoCombo
-WHERE  Remarks IN ('Cheque','Cash')
+WHERE  LTRIM(RTRIM(ISNULL(Remarks, ''))) IN ('Cheque','Cash')
 ORDER BY AccountName;";
 
         var accounts = (await db.LoadDataText<ExpenseAccountLookup, dynamic>(sql, new { }, AcctConn)).ToList();
@@ -150,34 +250,112 @@ ORDER BY AccountName;";
         return accounts;
     }
 
+    public async Task<List<JournalLine>> GetTransactionLinesByTranIdAsync(string tranId, CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT  SNo,
+        TranNo,
+        AccountNo,
+        AccountName,
+        Amount,
+        Description,
+        TranDate
+FROM    dbo.Tranxaction
+WHERE   TranNo = @TranNo
+ORDER BY SNo;";
+
+        var rows = await db.LoadDataText<TransactionLineRaw, dynamic>(
+            sql,
+            new { TranNo = tranId },
+            AcctConn);
+
+        return rows.Select(row => new JournalLine
+        {
+            AccountNo = row.AccountNo ?? string.Empty,
+            AccountName = row.AccountName ?? string.Empty,
+            Debit = row.Amount > 0 ? row.Amount : 0,
+            Credit = row.Amount < 0 ? -row.Amount : 0,
+            Description = row.Description,
+            TranDate = row.TranDate
+        }).ToList();
+    }
+
     public async Task<ExpenseEntry> CreateAsync(ExpenseEntry entry, string currentUserName, CancellationToken ct = default)
     {
-        await ValidateAsync(entry, ct);
+        var result = await CreateBatchAsync(new ExpenseBatchSaveRequest { Entries = [entry] }, currentUserName, ct);
+        return result.Entries.First();
+    }
 
-        var defaults = await emrAppDefaultsService.GetAsync(ct);
-        var expense = new TranxactionJournalTemp
+    public async Task<ExpenseBatchSaveResult> CreateBatchAsync(ExpenseBatchSaveRequest request, string currentUserName, CancellationToken ct = default)
+    {
+        if (request.Entries.Count == 0)
         {
-            TranDate = entry.TranDate,
-            AccountDebit = entry.AccountDebit.Trim(),
-            AccountCredit = entry.AccountCredit.Trim(),
-            CoyID = defaults.Get("CoyID", "0001"),
-            Amount = entry.Amount,
-            Description = entry.Description.Trim(),
-            TranCat = JournalTranCat,
-            IsPost = false,
-            Remarks = ExpensesRemarks,
-            UserName = currentUserName
-        };
-
-        await accountingDbContext.TranxactionJournalTemps.AddAsync(expense, ct);
-        await accountingDbContext.SaveChangesAsync(ct);
-
-        if (entry.PostDirectly)
-        {
-            await PostExpenseAsync(expense.SNo, currentUserName, defaults, ct);
+            throw new InvalidOperationException("At least one expense entry is required.");
         }
 
-        return (await GetByIdAsync(expense.SNo, ct))!;
+        foreach (var entry in request.Entries)
+        {
+            await ValidateAsync(entry, ct);
+        }
+
+        var defaults = await emrAppDefaultsService.GetAsync(ct);
+        EnsureAccountingPostingEnabled(defaults);
+
+        var tranId = string.IsNullOrWhiteSpace(request.TranId)
+            ? await GenerateTranNoAsync()
+            : request.TranId.Trim();
+
+        if (string.IsNullOrWhiteSpace(tranId))
+        {
+            throw new InvalidOperationException("Unable to generate transaction id.");
+        }
+
+        var coyId = defaults.Get("CoyID", "0001");
+        var costCenter = defaults.Get("AcctCostCenter", "0001");
+        var periods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in request.Entries)
+        {
+            var tranDate = entry.TranDate;
+            var period = await ResolvePeriodAsync(tranDate, ct);
+            periods.Add(period);
+            var description = string.IsNullOrWhiteSpace(entry.Description) ? "Expense" : entry.Description.Trim();
+
+            await CallInsertTranxactionAsync(
+                tranId,
+                entry.AccountDebit.Trim(),
+                entry.Amount,
+                description,
+                tranDate,
+                costCenter,
+                period,
+                coyId,
+                currentUserName,
+                ct);
+
+            await CallInsertTranxactionAsync(
+                tranId,
+                entry.AccountCredit.Trim(),
+                -entry.Amount,
+                description,
+                tranDate,
+                costCenter,
+                period,
+                coyId,
+                currentUserName,
+                ct);
+        }
+
+        await EnsureBalancedAsync(periods, coyId, tranId, currentUserName);
+        await MarkTransactionAsExpenseAsync(tranId);
+
+        var createdEntries = await GetByTranIdAsync(tranId, ct);
+        if (createdEntries.Count == 0)
+        {
+            throw new InvalidOperationException("Expense entry was created but could not be reloaded.");
+        }
+
+        return new ExpenseBatchSaveResult { Entries = createdEntries };
     }
 
     public async Task<ExpenseEntry> UpdateAsync(ExpenseEntry entry, string currentUserName, CancellationToken ct = default)
@@ -187,49 +365,119 @@ ORDER BY AccountName;";
             throw new InvalidOperationException("Expense entry id is required.");
         }
 
-        await ValidateAsync(entry, ct);
-        await EnsureEditableAsync(entry.SNo.Value, allowUnpostedOnly: true, ct);
-
-        var existing = await accountingDbContext.TranxactionJournalTemps.FirstOrDefaultAsync(x => x.SNo == entry.SNo.Value, ct);
+        var existing = await GetByIdAsync(entry.SNo.Value, ct);
         if (existing is null)
         {
             throw new InvalidOperationException("Expense entry was not found.");
         }
 
-        existing.TranDate = entry.TranDate;
-        existing.AccountDebit = entry.AccountDebit.Trim();
-        existing.AccountCredit = entry.AccountCredit.Trim();
-        existing.Amount = entry.Amount;
-        existing.Description = entry.Description.Trim();
-        existing.Remarks = ExpensesRemarks;
-        existing.TranCat = JournalTranCat;
-        existing.UserName = currentUserName;
-        existing.IsPost = false;
-        existing.TranID = null;
-
-        await accountingDbContext.SaveChangesAsync(ct);
-
-        if (entry.PostDirectly)
+        var tranId = existing.TranId?.Trim();
+        if (string.IsNullOrWhiteSpace(tranId))
         {
-            var defaults = await emrAppDefaultsService.GetAsync(ct);
-            await PostExpenseAsync(existing.SNo, currentUserName, defaults, ct);
+            throw new InvalidOperationException("Expense entry transaction id was not found.");
         }
 
-        return (await GetByIdAsync(existing.SNo, ct))!;
+        var result = await UpdateByTranIdAsync(tranId, new ExpenseBatchSaveRequest
+        {
+            TranId = tranId,
+            Entries = [entry]
+        }, currentUserName, ct);
+
+        return result.Entries.First();
+    }
+
+    public async Task<ExpenseBatchSaveResult> UpdateByTranIdAsync(string tranId, ExpenseBatchSaveRequest request, string currentUserName, CancellationToken ct = default)
+    {
+        var normalizedTranId = tranId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedTranId))
+        {
+            throw new InvalidOperationException("Transaction id is required.");
+        }
+
+        if (request.Entries.Count == 0)
+        {
+            throw new InvalidOperationException("At least one expense entry is required.");
+        }
+
+        var existingEntries = await GetByTranIdAsync(normalizedTranId, ct);
+        if (existingEntries.Count == 0)
+        {
+            throw new InvalidOperationException("Expense transaction was not found.");
+        }
+
+        await EnsureEditableAsync(existingEntries.First().SNo ?? 0, ct);
+        await DeleteByTranIdAsync(normalizedTranId, currentUserName, ct);
+
+        return await CreateBatchAsync(new ExpenseBatchSaveRequest
+        {
+            TranId = normalizedTranId,
+            Entries = request.Entries
+        }, currentUserName, ct);
     }
 
     public async Task DeleteAsync(long sNo, CancellationToken ct = default)
     {
-        await EnsureEditableAsync(sNo, allowUnpostedOnly: true, ct);
-
-        var existing = await accountingDbContext.TranxactionJournalTemps.FirstOrDefaultAsync(x => x.SNo == sNo, ct);
+        var existing = await GetByIdAsync(sNo, ct);
         if (existing is null)
         {
             throw new InvalidOperationException("Expense entry was not found.");
         }
 
-        accountingDbContext.TranxactionJournalTemps.Remove(existing);
-        await accountingDbContext.SaveChangesAsync(ct);
+        var tranId = existing.TranId?.Trim();
+        if (string.IsNullOrWhiteSpace(tranId))
+        {
+            throw new InvalidOperationException("Expense entry transaction id was not found.");
+        }
+
+        await DeleteByTranIdAsync(tranId, existing.UserName ?? string.Empty, ct);
+    }
+
+    public async Task DeleteByTranIdAsync(string tranId, string currentUserName, CancellationToken ct = default)
+    {
+        var normalizedTranId = tranId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedTranId))
+        {
+            throw new InvalidOperationException("Transaction id is required.");
+        }
+
+        var existingEntries = await GetByTranIdAsync(normalizedTranId, ct);
+        if (existingEntries.Count == 0)
+        {
+            throw new InvalidOperationException("Expense transaction was not found.");
+        }
+
+        await EnsureEditableAsync(existingEntries.First().SNo ?? 0, ct);
+
+        await db.SaveData("Deletetranxaction", new
+        {
+            TranID = normalizedTranId,
+            TranNo = normalizedTranId,
+            userName = currentUserName
+        }, AcctConn);
+
+        var remaining = (await db.LoadDataText<int, dynamic>(@"
+SELECT COUNT(1)
+FROM vwTranx
+WHERE TranNo = @TranNo
+  AND ISNULL(Remarks, '') = @Remarks;",
+            new { TranNo = normalizedTranId, Remarks = ExpensesRemarks },
+            AcctConn)).FirstOrDefault();
+
+        if (remaining > 0)
+        {
+            throw new InvalidOperationException("Expense entry delete did not complete.");
+        }
+    }
+
+    private static void EnsureAccountingPostingEnabled(EmrAppDefaults defaults)
+    {
+        var acctPostOn = string.Equals(defaults.Get("AcctPostOn", "NO"), "YES", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(defaults.Get("AcctPostOn", "false"), "true", StringComparison.OrdinalIgnoreCase);
+
+        if (!acctPostOn)
+        {
+            throw new InvalidOperationException("Accounting posting is disabled.");
+        }
     }
 
     private async Task ValidateAsync(ExpenseEntry entry, CancellationToken ct)
@@ -259,18 +507,29 @@ ORDER BY AccountName;";
             throw new InvalidOperationException("Description is required.");
         }
 
-        var debitExists = await accountingDbContext.vwAccountsInfos
-            .AsNoTracking()
-            .AnyAsync(x => x.AccountNo == entry.AccountDebit.Trim(), ct);
+        var debitAccountNo = entry.AccountDebit.Trim();
+        var creditAccountNo = entry.AccountCredit.Trim();
+
+        var debitExists = (await db.LoadDataText<int, dynamic>(@"
+SELECT COUNT(1)
+FROM vwAccountsInfoCombo
+WHERE LTRIM(RTRIM(AccountNo)) = @AccountNo
+  AND SUBSTRING(ISNULL(GroupID, ''), 1, 1) = '5';",
+            new { AccountNo = debitAccountNo },
+            AcctConn)).FirstOrDefault() > 0;
 
         if (!debitExists)
         {
             throw new InvalidOperationException("Selected expense account was not found.");
         }
 
-        var creditExists = await accountingDbContext.vwAccountsInfos
-            .AsNoTracking()
-            .AnyAsync(x => x.AccountNo == entry.AccountCredit.Trim(), ct);
+        var creditExists = (await db.LoadDataText<int, dynamic>(@"
+SELECT COUNT(1)
+FROM vwAccountsInfoCombo
+WHERE LTRIM(RTRIM(AccountNo)) = @AccountNo
+  AND LTRIM(RTRIM(ISNULL(Remarks, ''))) IN ('Cheque', 'Cash');",
+            new { AccountNo = creditAccountNo },
+            AcctConn)).FirstOrDefault() > 0;
 
         if (!creditExists)
         {
@@ -278,13 +537,21 @@ ORDER BY AccountName;";
         }
     }
 
-    private async Task EnsureEditableAsync(long sNo, bool allowUnpostedOnly, CancellationToken ct)
+    private async Task EnsureEditableAsync(long sNo, CancellationToken ct)
     {
-        var row = await accountingDbContext.vwTranxJournalTemps
-            .AsNoTracking()
-            .Where(x => x.SNo == sNo && (x.Remarks ?? string.Empty) == ExpensesRemarks)
-            .Select(x => new { x.IsPost, IsClose = x.isClose ?? false })
-            .FirstOrDefaultAsync(ct);
+        if (sNo <= 0)
+        {
+            throw new InvalidOperationException("Expense entry was not found.");
+        }
+
+        var row = (await db.LoadDataText<ExpenseEditStateRow, dynamic>(@"
+SELECT TOP 1
+    ISNULL(isClose, 0) AS IsClose
+FROM vwTranx
+WHERE SNo = @SNo
+  AND ISNULL(Remarks, '') = @Remarks;",
+            new { SNo = sNo, Remarks = ExpensesRemarks },
+            AcctConn)).FirstOrDefault();
 
         if (row is null)
         {
@@ -295,60 +562,35 @@ ORDER BY AccountName;";
         {
             throw new InvalidOperationException("This item cannot be changed because the accounting period is already closed.");
         }
+    }
 
-        if (allowUnpostedOnly && row.IsPost)
+    private async Task EnsureBalancedAsync(IEnumerable<string> periods, string coyId, string tranId, string currentUserName)
+    {
+        foreach (var period in periods.Where(static x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Posted expense entries cannot be changed from this screen.");
+            var balanceRows = await db.LoadDataText<decimal, dynamic>(
+                "SELECT dbo.TranBalance(@Period, @CoyID) AS Amount",
+                new { Period = period, CoyID = coyId },
+                AcctConn);
+
+            var balance = balanceRows.FirstOrDefault();
+            if (balance != 0m)
+            {
+                await db.SaveData("Deletetranxaction", new { TranID = tranId, TranNo = tranId, userName = currentUserName }, AcctConn);
+                throw new InvalidOperationException("Account posting failed because the transaction did not balance.");
+            }
         }
     }
 
-    private async Task PostExpenseAsync(long sNo, string currentUserName, EmrAppDefaults defaults, CancellationToken ct)
+    private async Task MarkTransactionAsExpenseAsync(string tranId)
     {
-        var expense = await accountingDbContext.TranxactionJournalTemps.FirstOrDefaultAsync(x => x.SNo == sNo, ct);
-        if (expense is null)
-        {
-            throw new InvalidOperationException("Expense entry was not found.");
-        }
-
-        if (expense.IsPost)
-        {
-            return;
-        }
-
-        var acctPostOn = string.Equals(defaults.Get("AcctPostOn", "NO"), "YES", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(defaults.Get("AcctPostOn", "false"), "true", StringComparison.OrdinalIgnoreCase);
-
-        if (!acctPostOn)
-        {
-            throw new InvalidOperationException("Accounting posting is disabled.");
-        }
-
-        var tranNo = await GenerateTranNoAsync();
-        if (string.IsNullOrWhiteSpace(tranNo))
-        {
-            throw new InvalidOperationException("Unable to generate transaction number for posting.");
-        }
-
-        var period = GetPeriodFromDate(expense.TranDate, defaults);
-        var coyId = string.IsNullOrWhiteSpace(expense.CoyID) ? defaults.Get("CoyID", "0001") : expense.CoyID;
-        var costCenter = defaults.Get("AcctCostCenter", "0001");
-        var description = string.IsNullOrWhiteSpace(expense.Description) ? "Expense" : expense.Description.Trim();
-
-        await CallInsertTranxactionAsync(tranNo, expense.AccountDebit, expense.Amount, description, expense.TranDate, costCenter, period, coyId, currentUserName, ct);
-        await CallInsertTranxactionAsync(tranNo, expense.AccountCredit, -expense.Amount, description, expense.TranDate, costCenter, period, coyId, currentUserName, ct);
-
-        var balanceRows = await db.LoadDataText<decimal, dynamic>("SELECT dbo.TranBalance(@Period, @CoyID) AS Amount", new { Period = period, CoyID = coyId }, AcctConn);
-        var balance = balanceRows.FirstOrDefault();
-        if (balance != 0m)
-        {
-            await db.SaveData("deleteTranxaction", new { Period = string.Empty, CoyID = coyId, TranNo = tranNo, userName = currentUserName }, AcctConn);
-            throw new InvalidOperationException("Account posting failed because the transaction did not balance.");
-        }
-
-        expense.IsPost = true;
-        expense.TranID = tranNo;
-        expense.UserName = currentUserName;
-        await accountingDbContext.SaveChangesAsync(ct);
+        await db.SaveDataText(@"
+UPDATE Tranxaction
+SET Remarks = @Remarks
+WHERE TranNo = @TranNo
+  AND ISNULL(Remarks, '') = '';",
+            new { TranNo = tranId, Remarks = ExpensesRemarks },
+            AcctConn);
     }
 
     private async Task CallInsertTranxactionAsync(
@@ -373,7 +615,7 @@ ORDER BY AccountName;";
             Amount = amount,
             Description = description,
             TranCat = JournalTranCat,
-            EntryDate = DateTime.Now,
+            EntryDate = tranDate,
             Period = period,
             CoyID2 = coyId,
             UserName = userName,
@@ -405,15 +647,34 @@ ORDER BY AccountName;";
         return result.FirstOrDefault().ToString();
     }
 
-    private static string GetPeriodFromDate(DateTime date, EmrAppDefaults defaults)
+    private async Task<string> ResolvePeriodAsync(DateTime tranDate, CancellationToken ct)
     {
-        var periodType = defaults.Get("AcctPeriodType", "MTHLY");
-        if (string.Equals(periodType, "YRLY", StringComparison.OrdinalIgnoreCase))
+        foreach (var parameters in GetPeriodParameterCandidates(tranDate))
         {
-            return date.Year.ToString();
+            try
+            {
+                var rows = await db.LoadData<GetPeriodRaw, dynamic>("getPeriod", parameters, AcctConn);
+                var value = rows.FirstOrDefault()?.Period;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+            catch
+            {
+                // Try next parameter signature; fall back below.
+            }
         }
 
-        return $"{date.Year}-{date.Month:D2}";
+        return $"{tranDate.Month:D2}/{tranDate.Year}";
+    }
+
+    private static IEnumerable<dynamic> GetPeriodParameterCandidates(DateTime tranDate)
+    {
+        yield return new { TranDate = tranDate };
+        yield return new { Date = tranDate };
+        yield return new { PayDate = tranDate };
+        yield return new { StartDate = tranDate };
     }
 
     private sealed class GetTranIdRaw
@@ -421,5 +682,29 @@ ORDER BY AccountName;";
         public string? TranID { get; set; }
         public string? TranNo { get; set; }
         public string? Id { get; set; }
+    }
+
+    private sealed class ExpenseEditStateRow
+    {
+        public bool IsClose { get; set; }
+    }
+
+    private sealed class TransactionLineRaw
+    {
+        public long SNo { get; set; }
+        public string? TranNo { get; set; }
+        public string? AccountNo { get; set; }
+        public string? AccountName { get; set; }
+        public decimal Amount { get; set; }
+        public string? Description { get; set; }
+        public DateTime TranDate { get; set; }
+    }
+
+    private sealed class GetPeriodRaw
+    {
+        public string? Period { get; set; }
+        public string? AcctPeriod { get; set; }
+
+        public string? Value => Period ?? AcctPeriod;
     }
 }

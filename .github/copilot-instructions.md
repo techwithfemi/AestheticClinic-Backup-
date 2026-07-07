@@ -428,6 +428,20 @@ When introducing new configuration keys, also update the base `appsettings.json`
 
 - User prefers not to show optimistic/fake records in grids before server-confirmed save/update; UI should only reflect records after authoritative reload.
 
+### Accounting Transactions
+
+For accounting transactions (Tranxaction, TranxactionJournalTemp, TranxactionJournal):
+- Update/delete operations must use `TranID` (same as `TranNo`).
+- Delete must call `Deletetranxaction` with `TranID`.
+- Updates should be implemented as delete-then-insert.
+- **Insert operations must use the `InsertTranxaction` stored procedure.**
+- **Insert operations for `TranxactionJournal` must use `InsertTranxactionJournal` to insert into `TranxactionJournal`.**
+- **`TranxactionJournalTemp` uses direct SQL insert (no stored procedure).**
+
+### Expense Posting Flow
+
+- Transaction dates must come from the UI payload (`TranDate`) and not from `DateTime.Now`.
+
 
 
 

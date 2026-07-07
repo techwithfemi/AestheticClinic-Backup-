@@ -34,11 +34,30 @@ public class ExpenseEntryVM
     public string Description { get; set; } = string.Empty;
 
     public bool IsPost { get; set; }
-    public bool PostDirectly { get; set; }
     public bool IsClose { get; set; }
     public string? UserName { get; set; }
     public string? TranId { get; set; }
     public string? Remarks { get; set; }
+}
+
+public class ExpenseBatchSaveVM
+{
+    [StringLength(50)]
+    public string? TranId { get; set; }
+
+    [Required]
+    [MinLength(1)]
+    public List<ExpenseEntryVM> Entries { get; set; } = new();
+}
+
+public class ExpenseBatchSaveResultVM
+{
+    public List<ExpenseEntryVM> Entries { get; set; } = new();
+}
+
+public class ExpenseTranIdResultVM
+{
+    public string TranId { get; set; } = string.Empty;
 }
 
 public class ExpenseListItemVM
@@ -65,9 +84,6 @@ public class ExpenseListQueryVM
 
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
-
-    [StringLength(20)]
-    public string ViewMode { get; set; } = "all";
 
     [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;

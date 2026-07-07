@@ -145,19 +145,25 @@ export class ChartOfAccountDialogComponent implements OnInit {
       return;
     }
 
+    // Prevent creation of Fixed Assets accounts via this form (only during new entry)
     if (this.model.groupID.startsWith('11') && !this.isEdit) {
       this.alertService.showMessage(
         'Not Allowed',
         'Cannot Create Fixed Assets here, Use the Fixed Assets Module',
         MessageSeverity.warn,
       );
+      // Reset the invalid selection
+      this.model.groupID = '';
+      this.model.accountNo = '';
       return;
     }
 
+    // Don't auto-generate if not enabled
     if (!this.isAutoAccountNo) {
       return;
     }
 
+    // Auto-generate account number for new entries or when group changes during edit
     const groupChangedOnEdit = this.isEdit && this.model.groupID !== this.originalGroupID;
     if (!this.isEdit || groupChangedOnEdit) {
       this.endpoint.getNextChartOfAccountNoEndpoint<{ accountNo: string }>(this.model.groupID)

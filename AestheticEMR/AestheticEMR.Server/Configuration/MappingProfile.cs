@@ -335,6 +335,9 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<ExpenseListQueryVM, ExpenseListQuery>().ReverseMap();
             CreateMap<ExpenseAccountLookup, ExpenseAccountLookupVM>().ReverseMap();
             CreateMap<ExpenseEntry, ExpenseEntryVM>().ReverseMap();
+            CreateMap<ExpenseBatchSaveRequest, ExpenseBatchSaveVM>().ReverseMap();
+            CreateMap<ExpenseBatchSaveResult, ExpenseBatchSaveResultVM>().ReverseMap();
+            CreateMap<ExpenseTranIdResult, ExpenseTranIdResultVM>().ReverseMap();
             CreateMap<ExpenseListItem, ExpenseListItemVM>().ReverseMap();
             CreateMap<PagedExpenseResult, PagedExpenseResultVM>().ReverseMap();
 

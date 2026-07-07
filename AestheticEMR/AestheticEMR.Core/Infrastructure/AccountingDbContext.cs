@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using AestheticEMR.Core.Models.Accounting;
 using Microsoft.EntityFrameworkCore;
@@ -1258,9 +1258,9 @@ public partial class AccountingDbContext : DbContext
 
         modelBuilder.Entity<ChartOfAccountMaster>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("ChartOfAccountMaster");
+            entity.HasKey(e => e.AccountID).HasName("PK_ChartOfAccountMaster_AccountID");
+
+            entity.ToTable("ChartOfAccountMaster");
 
             entity.Property(e => e.AccountAddress)
                 .HasMaxLength(250)
@@ -1370,7 +1370,7 @@ public partial class AccountingDbContext : DbContext
 
         modelBuilder.Entity<ChartOfAccountMaster_20260101_052234>(entity =>
         {
-            entity.HasKey(e => e.AccountID).HasName("PK_ChartOfAccountMaster");
+            entity.HasKey(e => e.AccountID).HasName("PK_ChartOfAccountMaster_AccountID");
 
             entity.ToTable("ChartOfAccountMaster_20260101_052234");
 
@@ -7095,3 +7095,8 @@ public partial class AccountingDbContext : DbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
+
+
+
+
+
