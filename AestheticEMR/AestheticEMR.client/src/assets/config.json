@@ -11,5 +11,6 @@
   "altClientLogo": "public/assets/img/clientlogo2.png",
   "clientLogo2": "public/assets/img/Mars.png",
   "altClientLogo2": "public/assets/img/clientlogo.png",
-  "enableAnalytics": true
+  "enableAnalytics": true,
+  "searchDebounceMs": 400
 }

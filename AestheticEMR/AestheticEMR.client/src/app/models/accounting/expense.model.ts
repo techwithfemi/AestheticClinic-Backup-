@@ -22,19 +22,24 @@ export interface ExpenseEntry {
 }
 
 export interface ExpenseListItem {
-  sNo: number;
+  sn: number;
   tranDate: string;
-  accountDebit: string;
-  accountCredit: string;
-  debitAccountName: string;
-  creditAccountName: string;
-  amount: number;
+  accountName: string;
+  accountNo: string;
+  debit: number;
+  credit: number;
   description?: string | null;
-  isPost: boolean;
-  isClose: boolean;
+  tranNo: string;
+  tranCat?: string | null;
+  billNo?: string | null;
+  costCenter?: string | null;
+  entryDate: string;
+  period: string;
   userName?: string | null;
-  tranId?: string | null;
+  sNo: number;
   remarks?: string | null;
+  coyID?: string | null;
+  isClose: boolean;
 }
 
 export interface ExpenseListQuery {

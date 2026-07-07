@@ -14,6 +14,7 @@ interface AppConfig {
   clientLogo: string;
   altClientLogo: string;
   enableAnalytics: boolean;
+  searchDebounceMs?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -26,6 +27,10 @@ export class AppConfigService {
   get screenDisplay(): string { return this.config?.screenDisplay ?? ''; }
   get clientLogo(): string { return this.normalizeAssetPath(this.config?.clientLogo ?? ''); }
   get altClientLogo(): string { return this.normalizeAssetPath(this.config?.altClientLogo ?? ''); }
+  get searchDebounceMs(): number {
+    const value = this.config?.searchDebounceMs;
+    return typeof value === 'number' && value > 0 ? value : 400;
+  }
 
   /** config.json stores paths as "public/assets/img/..." — strip the leading "public/" */
   private normalizeAssetPath(path: string): string {

@@ -22,88 +22,61 @@ public class ExpenseService(
         var page = query.Page <= 0 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 200);
         var search = query.Search?.Trim();
-        var fromDate = query.FromDate?.Date;
-        var toDateExclusive = query.ToDate?.Date.AddDays(1);
+        var startDate = query.FromDate?.Date ?? DateTime.Today;
+        var endDate = query.ToDate?.Date ?? startDate;
 
-        var where = @" WHERE ISNULL(Remarks, '') = @Remarks ";
+        var where = @"
+WHERE TranDate BETWEEN @StartDate AND @EndDate";
+
         var parameters = new DynamicParameters();
-        parameters.Add("Remarks", ExpensesRemarks);
+        parameters.Add("StartDate", startDate);
+        parameters.Add("EndDate", endDate);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             where += @"
- AND (
-      ISNULL(Description, '') LIKE @Search
-   OR ISNULL(AccountName, '') LIKE @Search
-   OR ISNULL(TranNo, '') LIKE @Search
-   OR ISNULL(UserName, '') LIKE @Search
- )";
+  AND (
+       Description LIKE @Search
+    OR AccountName LIKE @Search
+    OR AccountNo LIKE @Search
+    OR TranNo LIKE @Search
+    OR UserName LIKE @Search
+    OR Period LIKE @Search
+  )";
             parameters.Add("Search", $"%{search}%");
-        }
-
-        if (fromDate is not null)
-        {
-            where += " AND TranDate >= @FromDate";
-            parameters.Add("FromDate", fromDate.Value);
-        }
-
-        if (toDateExclusive is not null)
-        {
-            where += " AND TranDate < @ToDateExclusive";
-            parameters.Add("ToDateExclusive", toDateExclusive.Value);
         }
 
         parameters.Add("Skip", (page - 1) * pageSize);
         parameters.Add("Take", pageSize);
 
         var totalCount = (await db.LoadDataText<int, DynamicParameters>(
-            $"SELECT COUNT(DISTINCT TranNo) FROM vwTranx {where};",
+            $"SELECT COUNT(1) FROM vwTranx {where};",
             parameters,
             AcctConn)).FirstOrDefault();
 
         var items = (await db.LoadDataText<ExpenseListItem, DynamicParameters>($@"
-WITH ExpensesByTran AS (
-    SELECT
-        TranNo,
-        TranDate,
-        Amount,
-        AccountNo,
-        AccountName,
-        Description,
-        UserName,
-        TranID,
-        isClose,
-        ROW_NUMBER() OVER (PARTITION BY TranNo ORDER BY CASE WHEN Amount > 0 THEN 0 ELSE 1 END, SNo) AS LineNum
-    FROM vwTranx
-    {where}
-)
 SELECT
-    (SELECT MIN(SNo) FROM vwTranx WHERE TranNo = e.TranNo AND ISNULL(Remarks, '') = @Remarks) AS SNo,
-    e.TranDate,
-    (SELECT TOP 1 AccountNo FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount > 0 ORDER BY LineNum) AS AccountDebit,
-    (SELECT TOP 1 AccountNo FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount < 0 ORDER BY LineNum) AS AccountCredit,
-    (SELECT TOP 1 AccountName FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount > 0 ORDER BY LineNum) AS DebitAccountName,
-    (SELECT TOP 1 AccountName FROM ExpensesByTran WHERE TranNo = e.TranNo AND Amount < 0 ORDER BY LineNum) AS CreditAccountName,
-    ABS(e.Amount) AS Amount,
-    e.Description,
-    1 AS IsPost,
-    e.IsClose,
-    e.UserName,
-    e.TranID AS TranId,
-    @Remarks AS Remarks
-FROM (
-    SELECT DISTINCT
-        TranNo,
-        TranDate,
-        Amount,
-        Description,
-        IsClose,
-        UserName,
-        TranID
-    FROM ExpensesByTran
-    WHERE Amount > 0
-) e
-ORDER BY e.TranDate DESC, e.TranNo DESC
+    ROW_NUMBER() OVER (ORDER BY SNo) AS SN,
+    TranDate,
+    AccountName,
+    AccountNo,
+    'Debit' = CASE WHEN Amount > 0 THEN Amount ELSE 0 END,
+    'Credit' = CASE WHEN Amount < 0 THEN ABS(Amount) ELSE 0 END,
+    Description,
+    TranNo,
+    CatName2 AS TranCat,
+    BillNo,
+    CenterName AS CostCenter,
+    EntryDate,
+    Period,
+    UserName,
+    SNo,
+    Remarks,
+    CoyID,
+    isClose
+FROM vwTranx
+{where}
+ORDER BY SNo DESC
 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;",
             parameters,
             AcctConn)).ToList();

@@ -1,21 +1,14 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  DateAdapter,
-  MatNativeDateModule,
-  MAT_DATE_FORMATS,
-  MAT_DATE_LOCALE,
-  NativeDateAdapter,
-} from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
@@ -24,6 +17,7 @@ import { fadeInOut } from '../../../services/animations';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AccountService } from '../../../services/account.service';
 import { ExpenseEndpoint } from '../../../services/expense-endpoint.service';
+import { AppConfigService } from '../../../services/app-config.service';
 import { Permissions } from '../../../models/permission.model';
 import { ExpenseDialogComponent } from './expense-dialog.component';
 import {
@@ -34,42 +28,6 @@ import {
   PagedExpenseResult,
 } from '../../../models/accounting/expense.model';
 
-export const DD_MMM_YYYY_FORMATS = {
-  parse: { dateInput: 'dd-MMM-yyyy' },
-  display: {
-    dateInput: 'dd-MMM-yyyy',
-    monthYearLabel: 'MMM yyyy',
-    dateA11yLabel: 'dd-MMM-yyyy',
-    monthYearA11yLabel: 'MMMM yyyy'
-  }
-};
-
-class DdMmmYyyyDateAdapter extends NativeDateAdapter {
-  override parse(value: string): Date | null {
-    if (!value) return null;
-    const parts = value.split('-');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = new Date(`${parts[1]} 1 2000`).getMonth();
-      const year = parseInt(parts[2], 10);
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-    return super.parse(value);
-  }
-
-  override format(date: Date, displayFormat: string): string {
-    if (displayFormat === 'dd-MMM-yyyy') {
-      const d = date.getDate().toString().padStart(2, '0');
-      const m = date.toLocaleString('en', { month: 'short' });
-      const y = date.getFullYear();
-      return `${d}-${m}-${y}`;
-    }
-    return super.format(date, displayFormat);
-  }
-}
-
 @Component({
   selector: 'app-expenses',
   standalone: true,
@@ -78,20 +36,14 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     FormsModule,
     MatTableModule,
     MatPaginatorModule,
+    MatSortModule,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
     MatProgressSpinnerModule,
     MatDialogModule,
     TranslateModule,
-  ],
-  providers: [
-    { provide: MAT_DATE_LOCALE, useValue: 'en-GB' },
-    { provide: MAT_DATE_FORMATS, useValue: DD_MMM_YYYY_FORMATS },
-    { provide: DateAdapter, useClass: DdMmmYyyyDateAdapter }
   ],
   template: `
     <div class="page-shell" @fadeInOut>
@@ -115,31 +67,13 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
         <div class="filter-grid">
           <mat-form-field appearance="outline">
             <mat-label>{{ 'expenses.Search' | translate }}</mat-label>
-            <input matInput [(ngModel)]="searchText" (keyup.enter)="onApplyFilters()" />
+            <input matInput [ngModel]="searchText()" (ngModelChange)="onSearchTextChanged($event)" />
             <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'expenses.FromDate' | translate }}</mat-label>
-            <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" />
-            <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
-            <mat-datepicker #fromPicker></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'expenses.ToDate' | translate }}</mat-label>
-            <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" />
-            <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
-            <mat-datepicker #toPicker></mat-datepicker>
           </mat-form-field>
         </div>
 
         <div class="filter-actions">
-          <button mat-stroked-button color="primary" (click)="onApplyFilters()" [disabled]="loadingIndicator">
-            <mat-icon>filter_list</mat-icon>
-            {{ 'expenses.Apply' | translate }}
-          </button>
-          <button mat-button (click)="onClearFilters()" [disabled]="loadingIndicator">
+          <button mat-button (click)="onClearFilters()" [disabled]="loadingIndicator || !searchText().trim()">
             <mat-icon>clear</mat-icon>
             {{ 'expenses.Clear' | translate }}
           </button>
@@ -153,50 +87,55 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
           </div>
         }
 
-        <table mat-table [dataSource]="rows" [trackBy]="trackBySNo" class="expenses-table">
+        <table mat-table [dataSource]="rows" [trackBy]="trackBySNo" class="expenses-table" matSort matSortActive="sn" matSortDirection="asc" matSortDisableClear>
           <ng-container matColumnDef="sNo">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.SNo' | translate }}</th>
-            <td mat-cell *matCellDef="let row" class="mono">{{ row.sNo }}</td>
+            <th mat-header-cell *matHeaderCellDef class="hidden-col"></th>
+            <td mat-cell *matCellDef="let row" class="hidden-col">{{ row.sNo }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="tranId">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.TranId' | translate }}</th>
-            <td mat-cell *matCellDef="let row" class="mono">{{ row.tranId }}</td>
+          <ng-container matColumnDef="sn">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="sn">{{ 'expenses.SNo' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="mono">{{ row.sn }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="tranNo">
+            <th mat-header-cell *matHeaderCellDef class="hidden-col"></th>
+            <td mat-cell *matCellDef="let row" class="hidden-col">{{ row.tranNo }}</td>
           </ng-container>
 
           <ng-container matColumnDef="tranDate">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.TranDate' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="tranDate">{{ 'expenses.TranDate' | translate }}</th>
             <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'dd-MMM-yyyy' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="debitAccountName">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.ExpenseAccount' | translate }}</th>
+          <ng-container matColumnDef="account">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="accountName">{{ 'expenses.AccountName' | translate }}</th>
             <td mat-cell *matCellDef="let row">
               <div class="account-cell">
-                <span class="account-name">{{ row.debitAccountName }}</span>
-                <span class="account-no mono">{{ row.accountDebit }}</span>
+                <span class="account-name">{{ row.accountName }}</span>
+                <span class="account-no mono">{{ row.accountNo }}</span>
               </div>
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="creditAccountName">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.PayingAccount' | translate }}</th>
-            <td mat-cell *matCellDef="let row">
-              <div class="account-cell">
-                <span class="account-name">{{ row.creditAccountName }}</span>
-                <span class="account-no mono">{{ row.accountCredit }}</span>
-              </div>
-            </td>
+          <ng-container matColumnDef="debit">
+            <th mat-header-cell *matHeaderCellDef class="num" mat-sort-header="debit">{{ 'expenses.Debit' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="num">{{ row.debit | number:'1.2-2' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="amount">
-            <th mat-header-cell *matHeaderCellDef class="num">{{ 'expenses.Amount' | translate }}</th>
-            <td mat-cell *matCellDef="let row" class="num">{{ row.amount | number:'1.2-2' }}</td>
+          <ng-container matColumnDef="credit">
+            <th mat-header-cell *matHeaderCellDef class="num" mat-sort-header="credit">{{ 'expenses.Credit' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="num">{{ row.credit | number:'1.2-2' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>{{ 'expenses.Description' | translate }}</th>
-            <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.description || '—' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="description">{{ 'expenses.Description' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.description }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="period">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="period">{{ 'expenses.Period' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.period }}</td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
@@ -243,8 +182,8 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     .page-title { margin: 0; font-size: 1.5rem; font-weight: 600; }
     .page-subtitle { margin: 0; color: rgba(0,0,0,.6); font-size: .85rem; }
     .filter-card, .table-card { background: #fff; border-radius: 8px; border: 1px solid rgba(0,0,0,.06); padding: 16px; }
-    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+    .filter-grid { display: grid; grid-template-columns: minmax(240px, 420px); gap: 12px; }
+    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .table-card { position: relative; }
     .table-spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.6); z-index: 2; }
     .expenses-table { width: 100%; }
@@ -257,21 +196,25 @@ class DdMmmYyyyDateAdapter extends NativeDateAdapter {
     .account-no { color: rgba(0,0,0,.55); font-size: .75rem; }
     .ellipsis { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .action-col { width: 126px; text-align: right; }
+    .hidden-col { display: none; width: 0; padding: 0 !important; border: 0 !important; }
     .empty-cell { text-align: center; padding: 32px 16px; color: rgba(0,0,0,.5); }
     .empty-cell mat-icon { font-size: 36px; height: 36px; width: 36px; opacity: .6; }
     .empty-cell p { margin: 8px 0 0; }
-    @media (max-width: 992px) { .page-shell { padding: 16px; } .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 992px) { .page-shell { padding: 16px; } .filter-grid { grid-template-columns: minmax(200px, 1fr); } }
     @media (max-width: 575.98px) { .page-shell { padding: 12px; } .filter-grid { grid-template-columns: 1fr; } .page-title { font-size: 1.2rem; } .ellipsis { max-width: 140px; } }
   `],
   animations: [fadeInOut]
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent implements OnInit, AfterViewInit {
   private expenseEndpoint = inject(ExpenseEndpoint);
   private alertService = inject(AlertService);
   private dialog = inject(MatDialog);
   private accountService = inject(AccountService);
+  private appConfig = inject(AppConfigService);
 
-  readonly displayedColumns = ['sNo', 'tranId', 'tranDate', 'debitAccountName', 'creditAccountName', 'amount', 'description', 'actions'];
+  private skipNextSearchEffect = true;
+
+  readonly displayedColumns = ['sNo', 'sn', 'tranNo', 'tranDate', 'account', 'debit', 'credit', 'description', 'period', 'actions'];
   readonly pageSize = 10;
 
   rows = new MatTableDataSource<ExpenseListItem>([]);
@@ -281,9 +224,27 @@ export class ExpensesComponent implements OnInit {
   currentPage = 1;
   totalCount = 0;
 
-  searchText = '';
-  fromDate: Date = this.startOfDay(new Date());
-  toDate: Date = this.startOfDay(new Date());
+  searchText = signal('');
+
+  @ViewChild(MatSort) sort!: MatSort;
+
+  constructor() {
+    effect((onCleanup) => {
+      this.searchText();
+
+      if (this.skipNextSearchEffect) {
+        this.skipNextSearchEffect = false;
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        this.currentPage = 1;
+        this.loadData();
+      }, this.appConfig.searchDebounceMs);
+
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
 
   get canManageExpenses(): boolean {
     return this.accountService.userHasPermission(Permissions.manageAccounting);
@@ -293,15 +254,26 @@ export class ExpensesComponent implements OnInit {
     this.loadData();
   }
 
-  onApplyFilters(): void {
-    this.currentPage = 1;
-    this.loadData();
+  ngAfterViewInit(): void {
+    this.rows.sort = this.sort;
+    this.rows.sortingDataAccessor = (item, property) => {
+      switch (property) {
+        case 'tranDate': return new Date(item.tranDate).getTime();
+        case 'accountName': return item.accountName ?? '';
+        case 'description': return item.description ?? '';
+        case 'period': return item.period ?? '';
+        default: return (item as never as Record<string, unknown>)[property] as string | number;
+      }
+    };
+  }
+
+  onSearchTextChanged(value: string): void {
+    this.searchText.set(value ?? '');
   }
 
   onClearFilters(): void {
-    this.searchText = '';
-    this.fromDate = this.startOfDay(new Date());
-    this.toDate = this.startOfDay(new Date());
+    this.skipNextSearchEffect = true;
+    this.searchText.set('');
     this.currentPage = 1;
     this.loadData();
   }
@@ -333,7 +305,7 @@ export class ExpensesComponent implements OnInit {
   }
 
   openEditDialog(row: ExpenseListItem): void {
-    const tranId = row.tranId?.trim();
+    const tranId = row.tranNo?.trim();
     if (!tranId) {
       this.alertService.showMessage('Validation', 'Transaction id is required for editing.', MessageSeverity.warn);
       return;
@@ -361,7 +333,7 @@ export class ExpensesComponent implements OnInit {
   }
 
   deleteExpense(row: ExpenseListItem): void {
-    const tranId = row.tranId?.trim();
+    const tranId = row.tranNo?.trim();
     if (!tranId) {
       this.alertService.showMessage('Validation', 'Transaction id is required for delete.', MessageSeverity.warn);
       return;
@@ -416,10 +388,15 @@ export class ExpensesComponent implements OnInit {
     this.alertService.startLoadingMessage();
     this.loadingIndicator = true;
 
+    const normalizedSearch = this.searchText().trim();
+    const today = this.startOfDay(new Date());
+    const useCurrentDateDefault = !normalizedSearch;
+    const todayParam = this.toDateParam(today);
+
     this.expenseEndpoint.getExpensesEndpoint<PagedExpenseResult>({
-      search: this.searchText.trim() || undefined,
-      fromDate: this.fromDate?.toISOString(),
-      toDate: this.toDate?.toISOString(),
+      search: normalizedSearch || undefined,
+      fromDate: useCurrentDateDefault ? todayParam : undefined,
+      toDate: useCurrentDateDefault ? todayParam : undefined,
       page: this.currentPage,
       pageSize: this.pageSize,
     }).subscribe({
@@ -430,6 +407,9 @@ export class ExpensesComponent implements OnInit {
         this.totalCount = result?.totalCount ?? 0;
         this.rowsCache = [...items];
         this.rows.data = items;
+        if (this.sort) {
+          this.rows.sort = this.sort;
+        }
       },
       error: error => {
         this.alertService.stopLoadingMessage();
@@ -440,6 +420,13 @@ export class ExpensesComponent implements OnInit {
         this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error, error);
       }
     });
+  }
+
+  private toDateParam(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private getErrorMessage(error: unknown): string {

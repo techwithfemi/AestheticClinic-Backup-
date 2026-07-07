@@ -442,6 +442,14 @@ For accounting transactions (Tranxaction, TranxactionJournalTemp, TranxactionJou
 
 - Transaction dates must come from the UI payload (`TranDate`) and not from `DateTime.Now`.
 
+### Search Interactions
+
+- User prefers Angular Signals over RxJS in UI features; always use Signals where possible except when Signals cannot support the required feature.
+
+### SQL/View Definition Usage
+
+When the user provides an explicit SQL/view definition for a feature, use it exactly as-is with no fallback or inferred extra fields.
+
 
 
 

@@ -41,19 +41,24 @@ public class ExpenseTranIdResult
 
 public class ExpenseListItem
 {
-    public long SNo { get; set; }
+    public long SN { get; set; }
     public DateTime TranDate { get; set; }
-    public string AccountDebit { get; set; } = string.Empty;
-    public string AccountCredit { get; set; } = string.Empty;
-    public string DebitAccountName { get; set; } = string.Empty;
-    public string CreditAccountName { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public decimal Debit { get; set; }
+    public decimal Credit { get; set; }
     public string? Description { get; set; }
-    public bool IsPost { get; set; }
-    public bool IsClose { get; set; }
+    public string TranNo { get; set; } = string.Empty;
+    public string? TranCat { get; set; }
+    public string? BillNo { get; set; }
+    public string? CostCenter { get; set; }
+    public DateTime EntryDate { get; set; }
+    public string Period { get; set; } = string.Empty;
     public string? UserName { get; set; }
-    public string? TranId { get; set; }
+    public long SNo { get; set; }
     public string? Remarks { get; set; }
+    public string? CoyID { get; set; }
+    public bool IsClose { get; set; }
 }
 
 public class ExpenseListQuery
