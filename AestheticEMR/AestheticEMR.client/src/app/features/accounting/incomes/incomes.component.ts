@@ -1,20 +1,36 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
+/**
+ * Income wrapper component - uses TransactionListComponent with income-specific configuration.
+ * 
+ * Note: IncomeEndpoint needs to be created with methods:
+ * - getIncomeAccountsEndpoint()
+ * - getIncomeBankAccountsEndpoint()
+ * - getIncomeEndpoint(query)
+ * - getNextTranIdEndpoint()
+ * - getIncomeEntriesByTranIdEndpoint(tranId)
+ * - getNewIncomeBatchEndpoint(entries, tranId)
+ * - getUpdateIncomeByTranIdEndpoint(tranId, entries)
+ * - getDeleteIncomeByTranIdEndpoint(tranId, period, coyID)
+ * 
+ * For now, this component is a stub ready for IncomeEndpoint implementation.
+ */
 @Component({
   selector: 'app-incomes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="page-shell">
-      <h2>Incomes</h2>
-      <p>Accounting incomes page - Coming Soon</p>
+      <h2>Income Transactions - Coming Soon</h2>
+      <p>Waiting for IncomeEndpoint service implementation</p>
+      <p style="color: #666; font-size: 0.9rem;">
+        The reusable TransactionListComponent is ready. 
+        Create IncomeEndpoint with the required methods to enable this page.
+      </p>
     </div>
   `,
   styles: [`
     .page-shell { padding: 20px; }
-    @media (max-width: 992px) { .page-shell { padding: 16px; } }
-    @media (max-width: 575.98px) { .page-shell { padding: 12px; } }
   `]
 })
-export class IncomesComponent {}
+export class IncomesComponent {

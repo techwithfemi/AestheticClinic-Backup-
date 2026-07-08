@@ -1,0 +1,181 @@
+.page-shell {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-icon {
+  color: #3f51b5;
+  font-size: 32px;
+  height: 32px;
+  width: 32px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.85rem;
+}
+
+.filter-card,
+.table-card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 16px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 420px);
+  gap: 12px;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.table-card {
+  position: relative;
+}
+
+.table-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.6);
+  z-index: 2;
+}
+
+.transactions-table {
+  width: 100%;
+}
+
+.transactions-table th.mat-header-cell {
+  background: #f5f5f7;
+  color: rgba(0, 0, 0, 0.7);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.transactions-table td.mat-cell,
+.transactions-table th.mat-header-cell {
+  padding: 8px 12px;
+}
+
+.mono {
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 0.85rem;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.account-name {
+  font-weight: 500;
+}
+
+.account-no {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 0.75rem;
+}
+
+.ellipsis {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-col {
+  width: 126px;
+  text-align: right;
+}
+
+.hidden-col {
+  display: none;
+  width: 0;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 32px 16px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.empty-cell mat-icon {
+  font-size: 36px;
+  height: 36px;
+  width: 36px;
+  opacity: 0.6;
+}
+
+.empty-cell p {
+  margin: 8px 0 0;
+}
+
+@media (max-width: 992px) {
+  .page-shell {
+    padding: 16px;
+  }
+
+  .filter-grid {
+    grid-template-columns: minmax(200px, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-shell {
+    padding: 12px;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-title {
+    font-size: 1.2rem;
+  }
+
+  .ellipsis {
+    max-width: 140px;
+  }
+}

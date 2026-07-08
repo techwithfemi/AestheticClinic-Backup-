@@ -1,0 +1,127 @@
+<div class="page-shell" @fadeInOut>
+  <div class="page-header">
+    <div class="page-title-block">
+      <mat-icon class="page-icon">payments</mat-icon>
+      <div>
+        <h2 class="page-title">{{ config.pageTitle }}</h2>
+        <p class="page-subtitle">{{ (config.translateKeyPrefix + '.Subtitle') | translate }}</p>
+      </div>
+    </div>
+    <div class="page-actions">
+      <button mat-flat-button color="primary" (click)="openNewDialog()" [disabled]="loadingIndicator || !canManageTransactions">
+        <mat-icon>add</mat-icon>
+        {{ (config.translateKeyPrefix + '.AddTransaction') | translate }}
+      </button>
+    </div>
+  </div>
+
+  <section class="filter-card">
+    <div class="filter-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ (config.translateKeyPrefix + '.Search') | translate }}</mat-label>
+        <input matInput [ngModel]="searchText()" (ngModelChange)="onSearchTextChanged($event)" />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <div class="filter-actions">
+      <button mat-button (click)="onClearFilters()" [disabled]="loadingIndicator || !searchText().trim()">
+        <mat-icon>clear</mat-icon>
+        {{ (config.translateKeyPrefix + '.Clear') | translate }}
+      </button>
+    </div>
+  </section>
+
+  <section class="table-card">
+    @if (loadingIndicator) {
+      <div class="table-spinner">
+        <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
+      </div>
+    }
+
+    <table mat-table [dataSource]="rows" [trackBy]="trackBySNo" class="transactions-table" matSort matSortActive="sn" matSortDirection="asc" matSortDisableClear>
+      <ng-container matColumnDef="sNo">
+        <th mat-header-cell *matHeaderCellDef class="hidden-col"></th>
+        <td mat-cell *matCellDef="let row" class="hidden-col">{{ row.sNo }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="sn">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="sn">{{ (config.translateKeyPrefix + '.SNo') | translate }}</th>
+        <td mat-cell *matCellDef="let row" class="mono">{{ row.sn }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="tranNo">
+        <th mat-header-cell *matHeaderCellDef class="hidden-col"></th>
+        <td mat-cell *matCellDef="let row" class="hidden-col">{{ row.tranNo }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="tranDate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="tranDate">{{ (config.translateKeyPrefix + '.TranDate') | translate }}</th>
+        <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'dd-MMM-yyyy' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="account">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="accountName">{{ (config.translateKeyPrefix + '.AccountName') | translate }}</th>
+        <td mat-cell *matCellDef="let row">
+          <div class="account-cell">
+            <span class="account-name">{{ row.accountName }}</span>
+            <span class="account-no mono">{{ row.accountNo }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="debit">
+        <th mat-header-cell *matHeaderCellDef class="num" mat-sort-header="debit">{{ (config.translateKeyPrefix + '.Debit') | translate }}</th>
+        <td mat-cell *matCellDef="let row" class="num">{{ row.debit | number:'1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="credit">
+        <th mat-header-cell *matHeaderCellDef class="num" mat-sort-header="credit">{{ (config.translateKeyPrefix + '.Credit') | translate }}</th>
+        <td mat-cell *matCellDef="let row" class="num">{{ row.credit | number:'1.2-2' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="description">{{ (config.translateKeyPrefix + '.Description') | translate }}</th>
+        <td mat-cell *matCellDef="let row" class="ellipsis">{{ row.description }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="period">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="period">{{ (config.translateKeyPrefix + '.Period') | translate }}</th>
+        <td mat-cell *matCellDef="let row">{{ row.period }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef class="action-col">{{ (config.translateKeyPrefix + '.Actions') | translate }}</th>
+        <td mat-cell *matCellDef="let row" class="action-col">
+          <button mat-icon-button color="primary" (click)="openEditDialog(row)" aria-label="Edit transaction" [disabled]="loadingIndicator || !canManageTransactions">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteTransaction(row)" aria-label="Delete transaction" [disabled]="loadingIndicator || !canManageTransactions">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+      <tr class="mat-row no-data" *matNoDataRow>
+        <td class="mat-cell empty-cell" [attr.colspan]="displayedColumns.length">
+          @if (!loadingIndicator) {
+            <mat-icon>inbox</mat-icon>
+            <p>{{ (config.translateKeyPrefix + '.NoData') | translate }}</p>
+          }
+        </td>
+      </tr>
+    </table>
+
+    <mat-paginator
+      [length]="totalCount"
+      [pageSize]="pageSize"
+      [pageIndex]="currentPage - 1"
+      [pageSizeOptions]="[10, 25, 50, 100]"
+      (page)="onPageChange($event)"
+      [disabled]="loadingIndicator">
+    </mat-paginator>
+  </section>
+</div>

@@ -1,0 +1,215 @@
+.dialog-host {
+  display: flex;
+  flex-direction: column;
+  min-width: 900px;
+  max-width: 100vw;
+  max-height: 90vh;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.title-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-icon {
+  color: #3f51b5;
+}
+
+.title-block h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  margin: -8px;
+}
+
+.dialog-content {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.header-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.header-card__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.option-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.option-row small {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.grid-action-row {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.error-text {
+  color: #b00020;
+  font-size: 0.75rem;
+  margin-top: -2px;
+}
+
+.mono {
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 0.85rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.lines-section {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  background: #f9f9f9;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.lines-grid {
+  overflow-x: auto;
+}
+
+.lines-table {
+  width: 100%;
+}
+
+.lines-table th {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.lines-table td {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+.lines-table tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.account-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-cell small {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.action-col {
+  width: 108px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 20px 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-actions {
+  padding: 12px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 0;
+}
+
+:host ::ng-deep .ng-select {
+  width: 100%;
+}
+
+:host ::ng-deep .ng-select .ng-select-container {
+  min-height: 56px;
+}
+
+:host ::ng-deep .ng-dropdown-panel {
+  z-index: 3000 !important;
+}
+
+@media (max-width: 767.98px) {
+  .dialog-host {
+    min-width: 0;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+
+  .grid-action-row {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .grid-action-row button {
+    width: 100%;
+  }
+}

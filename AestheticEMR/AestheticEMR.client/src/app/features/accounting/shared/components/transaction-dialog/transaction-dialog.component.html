@@ -1,0 +1,208 @@
+<div class="dialog-host">
+  <div class="dialog-header" mat-dialog-title>
+    <div class="title-block">
+      <mat-icon class="title-icon">receipt</mat-icon>
+      <h2>{{ (isEdit ? (config.translateKeyPrefix + '.EditTransaction') : (config.translateKeyPrefix + '.NewTransaction')) | translate }}</h2>
+    </div>
+    <button mat-icon-button type="button" class="close-btn" (click)="cancel()" aria-label="Close dialog">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <section class="header-card">
+      <div class="header-card__title">{{ (config.translateKeyPrefix + '.EntryHeader') | translate }}</div>
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ (config.translateKeyPrefix + '.TranId') | translate }}</mat-label>
+          <input matInput [ngModel]="tranId" readonly />
+          @if (showFieldError('tranId')) {
+            <mat-error>{{ (config.translateKeyPrefix + '.Required') | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ (config.translateKeyPrefix + '.TranDate') | translate }}</mat-label>
+          <input
+            matInput
+            [matDatepicker]="tranDatePicker"
+            [(ngModel)]="model.tranDate"
+            [required]="true"
+            (ngModelChange)="onDraftChanged()"
+            (blur)="markTouched('tranDate')" />
+          <mat-datepicker-toggle matIconSuffix [for]="tranDatePicker"></mat-datepicker-toggle>
+          <mat-datepicker #tranDatePicker></mat-datepicker>
+          @if (showFieldError('tranDate')) {
+            <mat-error>{{ (config.translateKeyPrefix + '.Required') | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ (config.translateKeyPrefix + '.Amount') | translate }}</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="decimal"
+            [ngModel]="amountInput"
+            (ngModelChange)="onAmountInputChange($event)"
+            (focus)="onAmountInputFocus()"
+            (blur)="onAmountInputBlur()"
+            [required]="true" />
+          @if (showFieldError('amount')) {
+            <mat-error>{{ (config.translateKeyPrefix + '.Required') | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="field-block">
+          <div class="field-label">{{ config.debitAccountLabel }}</div>
+          <ng-select
+            [items]="debitAccounts"
+            bindLabel="accountName"
+            bindValue="accountNo"
+            [(ngModel)]="model.accountDebit"
+            (ngModelChange)="onDebitAccountChange()"
+            [searchable]="true"
+            [clearable]="false"
+            [loading]="loadingDebitAccounts"
+            [placeholder]="translationKey(config.translateKeyPrefix + '.SelectDebitAccount')"
+            appendTo=".dialog-host">
+            <ng-template ng-option-tmp let-item="item">
+              <span>{{ item.accountName }}</span>
+            </ng-template>
+          </ng-select>
+          @if (showFieldError('accountDebit')) {
+            <small class="error-text">{{ (config.translateKeyPrefix + '.Required') | translate }}</small>
+          }
+        </div>
+
+        <div class="field-block">
+          <div class="field-label">{{ config.creditAccountLabel }}</div>
+          <ng-select
+            [items]="creditAccounts"
+            bindLabel="accountName"
+            bindValue="accountNo"
+            [(ngModel)]="model.accountCredit"
+            (ngModelChange)="onCreditAccountChange()"
+            [searchable]="true"
+            [clearable]="false"
+            [loading]="loadingCreditAccounts"
+            [placeholder]="translationKey(config.translateKeyPrefix + '.SelectCreditAccount')"
+            appendTo=".dialog-host">
+            <ng-template ng-option-tmp let-item="item">
+              <span>{{ item.accountName }}</span>
+            </ng-template>
+          </ng-select>
+          @if (showFieldError('accountCredit')) {
+            <small class="error-text">{{ (config.translateKeyPrefix + '.Required') | translate }}</small>
+          }
+        </div>
+
+        <mat-form-field appearance="outline" class="span-2">
+          <mat-label>{{ (config.translateKeyPrefix + '.Description') | translate }}</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            [(ngModel)]="model.description"
+            [required]="true"
+            (ngModelChange)="onDraftChanged()"
+            (blur)="markTouched('description')"></textarea>
+          @if (showFieldError('description')) {
+            <mat-error>{{ (config.translateKeyPrefix + '.Required') | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="grid-action-row span-2">
+          <button mat-flat-button color="primary" type="button" (click)="addOrUpdateGrid()" [disabled]="saving || loadingDebitAccounts || loadingCreditAccounts">
+            <mat-icon>{{ editingRowId ? 'edit' : 'add' }}</mat-icon>
+            {{ (editingRowId ? (config.translateKeyPrefix + '.UpdateLine') : (config.translateKeyPrefix + '.AddToGrid')) | translate }}
+          </button>
+          <button mat-stroked-button type="button" (click)="resetDraftForm()" [disabled]="saving">
+            <mat-icon>refresh</mat-icon>
+            {{ (config.translateKeyPrefix + '.ClearLine') | translate }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="lines-section">
+      <div class="section-title">{{ (config.translateKeyPrefix + '.GridEntries') | translate }}</div>
+
+      <div class="lines-grid">
+        <table mat-table [dataSource]="gridEntries" class="lines-table">
+          <ng-container matColumnDef="tranId">
+            <th mat-header-cell *matHeaderCellDef>{{ (config.translateKeyPrefix + '.TranId') | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="mono">{{ row.tranId }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="tranDate">
+            <th mat-header-cell *matHeaderCellDef>{{ (config.translateKeyPrefix + '.TranDate') | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.tranDate | date:'dd-MMM-yyyy' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="debitAccountName">
+            <th mat-header-cell *matHeaderCellDef>{{ config.debitAccountLabel }}</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="account-cell">
+                <span>{{ row.debitAccountName }}</span>
+                <small>{{ row.accountDebit }}</small>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="creditAccountName">
+            <th mat-header-cell *matHeaderCellDef>{{ config.creditAccountLabel }}</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="account-cell">
+                <span>{{ row.creditAccountName }}</span>
+                <small>{{ row.accountCredit }}</small>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>{{ (config.translateKeyPrefix + '.Description') | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef class="num">{{ (config.translateKeyPrefix + '.Amount') | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="num">{{ row.amount | number:'1.2-2' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="action-col">{{ (config.translateKeyPrefix + '.Actions') | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="action-col">
+              <button mat-icon-button type="button" color="primary" (click)="editGridEntry(row)" [disabled]="saving" [attr.aria-label]="translationKey(config.translateKeyPrefix + '.EditLine')">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="deleteGridEntry(row)" [disabled]="saving" [attr.aria-label]="translationKey(config.translateKeyPrefix + '.Delete')">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedGridColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedGridColumns;"></tr>
+
+          <tr class="mat-row no-data-row" *matNoDataRow>
+            <td class="mat-cell empty-cell" [attr.colspan]="displayedGridColumns.length">
+              {{ (config.translateKeyPrefix + '.NoGridEntries') | translate }}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions" align="end">
+    <button mat-button type="button" (click)="cancel()" [disabled]="saving">{{ (config.translateKeyPrefix + '.Cancel') | translate }}</button>
+    <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="saving || loadingDebitAccounts || loadingCreditAccounts">
+      @if (!saving) {
+        <mat-icon>save</mat-icon>
+      } @else {
+        <mat-progress-spinner diameter="16" mode="indeterminate"></mat-progress-spinner>
+      }
+      {{ (saving ? (config.translateKeyPrefix + '.Saving') : (config.translateKeyPrefix + '.Save')) | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

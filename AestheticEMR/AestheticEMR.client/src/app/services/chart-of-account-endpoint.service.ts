@@ -56,6 +56,12 @@ export class ChartOfAccountEndpoint extends EndpointBase {
     );
   }
 
+  getAllAccountsComboEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.chartOfAccountsUrl}/all-combo`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAllAccountsComboEndpoint<T>()))
+    );
+  }
+
   getNextChartOfAccountNoEndpoint<T>(groupId: string): Observable<T> {
     const params = new HttpParams().set('groupId', groupId);
     return this.http.get<T>(`${this.chartOfAccountsUrl}/next-account-no`, { ...this.requestHeaders, params }).pipe(

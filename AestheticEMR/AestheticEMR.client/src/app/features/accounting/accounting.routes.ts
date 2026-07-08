@@ -3,13 +3,14 @@ import { Routes } from '@angular/router';
 export const accountingRoutes: Routes = [
   {
     path: '',
-    redirectTo: 'journal-entries-info',
+    redirectTo: 'journal',
     pathMatch: 'full'
   },
   {
-    path: 'journal-entries-info',
-    loadComponent: () => import('./journal-entries-info/journal-entries-info.component')
-      .then(m => m.JournalEntriesInfoComponent)
+    path: 'journal',
+    loadComponent: () => import('./journal/journal.component')
+      .then(m => m.JournalComponent),
+    title: 'Journal Entries'
   },
   {
     path: 'chart-of-accounts',
@@ -26,6 +27,7 @@ export const accountingRoutes: Routes = [
   {
     path: 'incomes',
     loadComponent: () => import('./incomes/incomes.component')
-      .then(m => m.IncomesComponent)
+      .then(m => m.IncomesComponent),
+    title: 'Income'
   }
 ];
