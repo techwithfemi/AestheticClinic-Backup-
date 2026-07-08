@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -26,7 +25,6 @@ import { Utilities } from '../../services/utilities';
     FormsModule,
     RouterLink,
     TranslateModule,
-    NgClass,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,

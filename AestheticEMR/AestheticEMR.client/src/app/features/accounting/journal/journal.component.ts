@@ -1,10 +1,21 @@
 import { Component, inject } from '@angular/core';
 import { TransactionListComponent } from '../shared/components/transaction-list/transaction-list.component';
-import { TransactionConfig } from '../shared/models/transaction-config.interface';
+import {
+  AccountLookup,
+  BatchSaveResult,
+  PagedTransactionResult,
+  TransactionConfig,
+  TransactionEntry,
+  TranIdResponse,
+} from '../shared/models/transaction-config.interface';
 import { JournalEndpoint } from '../../../services/journal-endpoint.service';
-import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { JournalEntry } from '../../../models/accounting/journal-entry.model';
+import {
+  JournalEntry,
+  JournalListLineQuery,
+  JournalNextTranNo,
+  PagedJournalLinesResult,
+} from '../../../models/accounting/journal-entry.model';
 
 @Component({
   selector: 'app-journal',
@@ -21,120 +32,86 @@ export class JournalComponent {
     debitAccountLabel: 'Debit Account',
     creditAccountLabel: 'Credit Account',
 
-    // Dropdown endpoints - Use journal accounts endpoint for both (journal is dual-use)
-    debitAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<unknown>(),
-    creditAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<unknown>(),
+    debitAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
 
-    // List endpoints - Map journal list structure to transaction list structure
-    listEndpoint: (query) => this.mapJournalListToTransaction(
-      this.journalEndpoint.getJournalEntriesEndpoint<unknown>(query)
-    ),
-    nextTranIdEndpoint: () => this.journalEndpoint.getNextJournalTranNoEndpoint<unknown>(),
-    entriesByTranIdEndpoint: (tranId) => this.mapJournalEntryToTransaction(
-      this.journalEndpoint.getJournalEntryEndpoint<unknown>(tranId)
-    ),
+    listEndpoint: (query) => {
+      const lineQuery: JournalListLineQuery = {
+        search: query.search,
+        tranDate: query.search?.trim() ? undefined : (query.fromDate ?? query.toDate ?? undefined),
+        page: query.page,
+        pageSize: query.pageSize,
+      };
 
-    // Save/Update/Delete endpoints
+      return this.journalEndpoint.getJournalEntryLinesEndpoint<PagedJournalLinesResult>(lineQuery)
+        .pipe(
+          map((result): PagedTransactionResult => ({
+            totalCount: result?.totalCount ?? 0,
+            page: result?.page ?? 1,
+            pageSize: result?.pageSize ?? 10,
+            items: (result?.items ?? []).map(item => ({
+              ...item,
+              period: item.period ?? '',
+            })),
+          }))
+        );
+    },
+    nextTranIdEndpoint: () => this.journalEndpoint.getNextJournalTranNoEndpoint<JournalNextTranNo>()
+      .pipe(map((r): TranIdResponse => ({ tranId: r?.tranNo ?? '' }))),
+    entriesByTranIdEndpoint: (tranId) => this.journalEndpoint.getJournalEntryEndpoint<JournalEntry>(tranId)
+      .pipe(map(entry => this.mapJournalEntryToTransaction(entry))),
     saveBatchEndpoint: (entries, tranId) => {
       const journalEntry = this.convertTransactionEntryToJournalEntry(entries[0], tranId);
-      return this.journalEndpoint.createJournalEntryEndpoint<unknown>(journalEntry);
+      return this.journalEndpoint.createJournalEntryEndpoint<JournalEntry>(journalEntry)
+        .pipe(map((): BatchSaveResult => ({ entries })));
     },
     updateByTranIdEndpoint: (tranId, entries) => {
       const journalEntry = this.convertTransactionEntryToJournalEntry(entries[0], tranId);
-      return this.journalEndpoint.updateJournalEntryEndpoint<unknown>(tranId, journalEntry);
+      return this.journalEndpoint.updateJournalEntryEndpoint<JournalEntry>(tranId, journalEntry)
+        .pipe(map((): BatchSaveResult => ({ entries })));
     },
-    deleteTranIdEndpoint: (tranId) => this.journalEndpoint.deleteJournalEntryEndpoint<unknown>(tranId),
+    deleteTranIdEndpoint: (tranId) => this.journalEndpoint.deleteJournalEntryEndpoint<void>(tranId),
   };
 
-  /**
-   * Map JournalListQuery to the transaction list format
-   */
-  private mapJournalListToTransaction(obs: Observable<unknown>) {
-    return obs.pipe(
-      map((result: unknown) => {
-        const typedResult = result as Record<string, unknown>;
-        return {
-          totalCount: (typedResult.totalCount as number) ?? 0,
-          page: (typedResult.page as number) ?? 1,
-          pageSize: (typedResult.pageSize as number) ?? 10,
-          items: ((typedResult.items as unknown[]) ?? []).map((item: unknown) => {
-            const typedItem = item as Record<string, unknown>;
-            return {
-              sn: (typedItem.sn as number) ?? 0,
-              tranDate: typedItem.tranDate as string,
-              accountName: (typedItem.costCenterName as string) ?? '',
-              accountNo: (typedItem.costCenterId as string) ?? '',
-              debit: (typedItem.totalDebit as number) ?? 0,
-              credit: (typedItem.totalCredit as number) ?? 0,
-              description: '',
-              tranNo: typedItem.tranNo as string,
-              tranCat: undefined,
-              billNo: undefined,
-              costCenter: typedItem.costCenterName as string | undefined,
-              entryDate: typedItem.tranDate as string,
-              period: '',
-              userName: undefined,
-              sNo: 0,
-              remarks: undefined,
-              coyID: undefined,
-              isClose: false,
-            };
-          })
-        };
-      })
-    );
+  private mapJournalEntryToTransaction(entry: JournalEntry | null | undefined): TransactionEntry[] {
+    if (!entry) {
+      return [];
+    }
+
+    return (entry.lines ?? []).map(line => ({
+      sNo: undefined,
+      tranDate: line.tranDate,
+      accountDebit: (line.debit ?? 0) > 0 ? (line.accountNo ?? '') : '',
+      accountCredit: (line.credit ?? 0) > 0 ? (line.accountNo ?? '') : '',
+      debitAccountName: (line.debit ?? 0) > 0 ? (line.accountName ?? '') : '',
+      creditAccountName: (line.credit ?? 0) > 0 ? (line.accountName ?? '') : '',
+      amount: (line.debit ?? 0) > 0 ? (line.debit ?? 0) : (line.credit ?? 0),
+      description: line.description ?? '',
+      isPost: false,
+      isClose: false,
+      userName: undefined,
+      tranId: entry.tranNo,
+      period: undefined,
+      coyID: undefined,
+      remarks: undefined,
+    }));
   }
 
-  /**
-   * Map JournalEntry to TransactionEntry array format
-   */
-  private mapJournalEntryToTransaction(obs: Observable<unknown>) {
-    return obs.pipe(
-      map((entry: unknown) => {
-        if (!entry) return [];
-        
-        // Journal entries come as single JournalEntry, convert lines to TransactionEntry array
-        const journalEntry = entry as JournalEntry;
-        return (journalEntry.lines ?? []).map(line => ({
-          sNo: undefined,
-          tranDate: line.tranDate,
-          accountDebit: line.accountNo ?? '',
-          accountCredit: line.accountNo ?? '',
-          debitAccountName: line.accountName ?? '',
-          creditAccountName: line.accountName ?? '',
-          amount: line.debit ?? line.credit ?? 0,
-          description: line.description ?? '',
-          isPost: false,
-          isClose: false,
-          userName: undefined,
-          tranId: journalEntry.tranNo,
-          period: undefined,
-          coyID: undefined,
-          remarks: undefined,
-        }));
-      })
-    );
-  }
-
-  /**
-   * Convert TransactionEntry back to JournalEntry format for save/update
-   */
-  private convertTransactionEntryToJournalEntry(entry: unknown, tranNo: string): JournalEntry {
-    const typedEntry = entry as Record<string, unknown>;
-    const tranDate = typedEntry.tranDate instanceof Date 
-      ? (typedEntry.tranDate as Date).toISOString().split('T')[0]
-      : (typeof typedEntry.tranDate === 'string' ? typedEntry.tranDate : new Date().toISOString().split('T')[0]);
+  private convertTransactionEntryToJournalEntry(entry: TransactionEntry, tranNo: string): JournalEntry {
+    const tranDate = entry.tranDate instanceof Date
+      ? entry.tranDate.toISOString().split('T')[0]
+      : (typeof entry.tranDate === 'string' ? entry.tranDate : new Date().toISOString().split('T')[0]);
 
     return {
       tranNo,
       tranDate,
       costCenterId: '',
       lines: [{
-        accountNo: (typedEntry.accountDebit as string) || (typedEntry.accountCredit as string) || '',
-        accountName: (typedEntry.debitAccountName as string) || (typedEntry.creditAccountName as string) || '',
-        debit: typedEntry.accountDebit ? (typedEntry.amount as number) : 0,
-        credit: typedEntry.accountCredit ? (typedEntry.amount as number) : 0,
-        description: (typedEntry.description as string) || undefined,
+        accountNo: entry.accountDebit || entry.accountCredit || '',
+        accountName: entry.debitAccountName || entry.creditAccountName || '',
+        debit: entry.accountDebit ? entry.amount : 0,
+        credit: entry.accountCredit ? entry.amount : 0,
+        description: entry.description || undefined,
         tranDate
       }]
     };

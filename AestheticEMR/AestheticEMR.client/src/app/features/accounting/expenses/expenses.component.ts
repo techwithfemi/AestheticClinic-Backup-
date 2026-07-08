@@ -1,6 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { TransactionListComponent } from '../shared/components/transaction-list/transaction-list.component';
-import { TransactionConfig } from '../shared/models/transaction-config.interface';
+import {
+  BatchSaveResult,
+  TransactionConfig,
+  AccountLookup,
+  PagedTransactionResult,
+  TranIdResponse,
+  TransactionEntry
+} from '../shared/models/transaction-config.interface';
 import { ExpenseEndpoint } from '../../../services/expense-endpoint.service';
 import { ExpenseListQuery } from '../../../models/accounting/expense.model';
 
@@ -20,8 +27,8 @@ export class ExpensesComponent {
     creditAccountLabel: 'Paying Account',
 
     // Dropdown endpoints
-    debitAccountsEndpoint: () => this.expenseEndpoint.getExpenseAccountsEndpoint<unknown>(),
-    creditAccountsEndpoint: () => this.expenseEndpoint.getPayingAccountsEndpoint<unknown>(),
+    debitAccountsEndpoint: () => this.expenseEndpoint.getExpenseAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.expenseEndpoint.getPayingAccountsEndpoint<AccountLookup[]>(),
 
     // List endpoints
     listEndpoint: (query) => {
@@ -33,14 +40,15 @@ export class ExpensesComponent {
         page: query.page,
         pageSize: query.pageSize
       };
-      return this.expenseEndpoint.getExpensesEndpoint<unknown>(expenseQuery);
+
+      return this.expenseEndpoint.getExpensesEndpoint<PagedTransactionResult>(expenseQuery);
     },
-    nextTranIdEndpoint: () => this.expenseEndpoint.getNextTranIdEndpoint<unknown>(),
-    entriesByTranIdEndpoint: (tranId) => this.expenseEndpoint.getExpenseEntriesByTranIdEndpoint<unknown>(tranId),
+    nextTranIdEndpoint: () => this.expenseEndpoint.getNextTranIdEndpoint<TranIdResponse>(),
+    entriesByTranIdEndpoint: (tranId) => this.expenseEndpoint.getExpenseEntriesByTranIdEndpoint<TransactionEntry[]>(tranId),
 
     // Save/Update/Delete endpoints
-    saveBatchEndpoint: (entries, tranId) => this.expenseEndpoint.getNewExpensesBatchEndpoint<unknown>(entries, tranId),
-    updateByTranIdEndpoint: (tranId, entries) => this.expenseEndpoint.getUpdateExpenseByTranIdEndpoint<unknown>(tranId, entries),
-    deleteTranIdEndpoint: (tranId, period, coyID) => this.expenseEndpoint.getDeleteExpenseByTranIdEndpoint<unknown>(tranId, period, coyID),
+    saveBatchEndpoint: (entries, tranId) => this.expenseEndpoint.getNewExpensesBatchEndpoint<BatchSaveResult>(entries, tranId),
+    updateByTranIdEndpoint: (tranId, entries) => this.expenseEndpoint.getUpdateExpenseByTranIdEndpoint<BatchSaveResult>(tranId, entries),
+    deleteTranIdEndpoint: (tranId, period, coyID) => this.expenseEndpoint.getDeleteExpenseByTranIdEndpoint<void>(tranId, period, coyID),
   };
 }
