@@ -13,6 +13,24 @@ export const accountingRoutes: Routes = [
     title: 'Journal Entries'
   },
   {
+    path: 'debtors',
+    loadComponent: () => import('./debtors/debtors.component')
+      .then(m => m.DebtorsComponent),
+    title: 'Debtors (Customers)'
+  },
+  {
+    path: 'creditors',
+    loadComponent: () => import('./creditors/creditors.component')
+      .then(m => m.CreditorsComponent),
+    title: 'Creditors (Suppliers)'
+  },
+  {
+    path: 'purchases',
+    loadComponent: () => import('./purchases/purchases.component')
+      .then(m => m.PurchasesComponent),
+    title: 'Purchases'
+  },
+  {
     path: 'chart-of-accounts',
     loadComponent: () => import('./chart-of-accounts/chart-of-accounts.component')
       .then(m => m.ChartOfAccountsComponent),

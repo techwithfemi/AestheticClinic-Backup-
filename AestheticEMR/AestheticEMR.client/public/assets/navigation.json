@@ -74,6 +74,9 @@
       "icon": "account_balance",
       "subItems": [
         { "label": "Journal Entries", "path": "journal", "icon": "menu_book" },
+        { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups" },
+        { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront" },
+        { "label": "Purchases", "path": "purchases", "icon": "shopping_cart" },
         { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
         { "label": "Expenses", "path": "expenses", "icon": "paid" },
         { "label": "Incomes", "path": "incomes", "icon": "attach_money" }

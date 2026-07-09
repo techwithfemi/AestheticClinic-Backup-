@@ -451,6 +451,19 @@ For accounting transactions (Tranxaction, TranxactionJournalTemp, TranxactionJou
 
 When the user provides an explicit SQL/view definition for a feature, use it exactly as-is with no fallback or inferred extra fields.
 
+### Accounting GroupID Prefix Mapping
+
+- Use the following mapping when implementing accounting account filters:
+  - '1' Assets
+  - '2' Liabilities
+  - '3' Equity
+  - '4' Sales/Revenue/Income
+  - '5' Expenses
+
+### Accounting Wrapper Pages
+
+For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), use the same underlying table/grid data source pattern across all pages.
+
 
 
 

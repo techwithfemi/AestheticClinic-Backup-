@@ -23,11 +23,11 @@ export class IncomesComponent {
   config: TransactionConfig = {
     pageTitle: 'Incomes',
     translateKeyPrefix: 'incomes',
-    debitAccountLabel: 'Income Account',
-    creditAccountLabel: 'Receiving Account',
+    debitAccountLabel: 'Receiving Account',
+    creditAccountLabel: 'Income Account',
 
-    debitAccountsEndpoint: () => this.incomeEndpoint.getIncomeAccountsEndpoint<AccountLookup[]>(),
-    creditAccountsEndpoint: () => this.incomeEndpoint.getReceivingAccountsEndpoint<AccountLookup[]>(),
+    debitAccountsEndpoint: () => this.incomeEndpoint.getReceivingAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.incomeEndpoint.getIncomeAccountsEndpoint<AccountLookup[]>(),
 
     listEndpoint: (query) => {
       const incomeQuery: IncomeListQuery = {
