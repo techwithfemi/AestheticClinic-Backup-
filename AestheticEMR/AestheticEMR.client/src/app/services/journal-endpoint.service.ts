@@ -6,14 +6,9 @@ import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 import {
-  JournalAccountLookup,
-  JournalCostCenterLookup,
   JournalEntry,
   JournalListLineQuery,
   JournalListQuery,
-  JournalNextTranNo,
-  PagedJournalLinesResult,
-  PagedJournalResult,
 } from '../models/accounting/journal-entry.model';
 
 @Injectable({ providedIn: 'root' })
@@ -61,6 +56,12 @@ export class JournalEndpoint extends EndpointBase {
     }
     if (query.tranDate) {
       params = params.set('TranDate', query.tranDate);
+    }
+    if (query.fromDate) {
+      params = params.set('FromDate', query.fromDate);
+    }
+    if (query.toDate) {
+      params = params.set('ToDate', query.toDate);
     }
 
     return this.http.get<T>(`${this.journalUrl}/lines`, { ...this.requestHeaders, params }).pipe(

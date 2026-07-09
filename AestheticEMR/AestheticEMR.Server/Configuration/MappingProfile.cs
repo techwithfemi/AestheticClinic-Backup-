@@ -341,13 +341,15 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<ExpenseListItem, ExpenseListItemVM>().ReverseMap();
             CreateMap<PagedExpenseResult, PagedExpenseResultVM>().ReverseMap();
 
-            // Chart of Accounts (Accounting module)
-            CreateMap<ChartOfAccountListQueryVM, ChartOfAccountListQuery>().ReverseMap();
-            CreateMap<ChartOfAccountListItem, ChartOfAccountListItemVM>().ReverseMap();
-            CreateMap<ChartOfAccountEntry, ChartOfAccountEntryVM>().ReverseMap();
-            CreateMap<ChartOfAccountGroupLookup, ChartOfAccountGroupLookupVM>().ReverseMap();
-            CreateMap<ChartOfAccountDefaults, ChartOfAccountDefaultsVM>().ReverseMap();
-            CreateMap<PagedChartOfAccountResult, PagedChartOfAccountResultVM>().ReverseMap();
+            // Incomes (Accounting module)
+            CreateMap<IncomeListQueryVM, IncomeListQuery>().ReverseMap();
+            CreateMap<IncomeAccountLookup, IncomeAccountLookupVM>().ReverseMap();
+            CreateMap<IncomeEntry, IncomeEntryVM>().ReverseMap();
+            CreateMap<IncomeBatchSaveRequest, IncomeBatchSaveVM>().ReverseMap();
+            CreateMap<IncomeBatchSaveResult, IncomeBatchSaveResultVM>().ReverseMap();
+            CreateMap<IncomeTranIdResult, IncomeTranIdResultVM>().ReverseMap();
+            CreateMap<IncomeListItem, IncomeListItemVM>().ReverseMap();
+            CreateMap<PagedIncomeResult, PagedIncomeResultVM>().ReverseMap();
         }
 
         private static string StripBase64Prefix(string base64)

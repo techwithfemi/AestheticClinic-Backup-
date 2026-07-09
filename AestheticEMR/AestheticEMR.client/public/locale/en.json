@@ -588,7 +588,7 @@
                     "Saving":  "Saving...",
                     "Cancel":  "Cancel"
                 },
-    "income":  {
+    "incomes":  {
                    "PageTitle":  "Income",
                    "Subtitle":  "Record and manage income transactions.",
                    "AddTransaction":  "New Income Entry",

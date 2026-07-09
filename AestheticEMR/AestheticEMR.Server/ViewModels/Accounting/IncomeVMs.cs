@@ -1,0 +1,134 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace AestheticEMR.Server.ViewModels.Accounting;
+
+public class IncomeAccountLookupVM
+{
+    public string AccountNo { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+}
+
+public class IncomeEntryVM
+{
+    public long? SNo { get; set; }
+
+    [Required(ErrorMessage = "Tran Date is required")]
+    public DateTime TranDate { get; set; }
+
+    [Required(ErrorMessage = "Income account is required")]
+    [StringLength(50)]
+    public string AccountDebit { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Receiving account is required")]
+    [StringLength(50)]
+    public string AccountCredit { get; set; } = string.Empty;
+
+    public string? DebitAccountName { get; set; }
+    public string? CreditAccountName { get; set; }
+
+    [Range(typeof(decimal), "0.01", "9999999999999999")]
+    public decimal Amount { get; set; }
+
+    [Required(ErrorMessage = "Description is required")]
+    [StringLength(250)]
+    public string Description { get; set; } = string.Empty;
+
+    public bool IsPost { get; set; }
+    public bool IsClose { get; set; }
+    public string? UserName { get; set; }
+    public string? TranId { get; set; }
+
+    [StringLength(50)]
+    public string? Period { get; set; }
+
+    [StringLength(50)]
+    public string? CoyID { get; set; }
+
+    public string? Remarks { get; set; }
+}
+
+public class IncomeBatchSaveVM : IValidatableObject
+{
+    [StringLength(50)]
+    public string? TranId { get; set; }
+
+    [Required]
+    [MinLength(1)]
+    public List<IncomeEntryVM> Entries { get; set; } = new();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(TranId))
+        {
+            yield break;
+        }
+
+        for (var i = 0; i < Entries.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(Entries[i].Period))
+            {
+                yield return new ValidationResult("Period is required for update entries.", [$"Entries[{i}].Period"]);
+            }
+
+            if (string.IsNullOrWhiteSpace(Entries[i].CoyID))
+            {
+                yield return new ValidationResult("CoyID is required for update entries.", [$"Entries[{i}].CoyID"]);
+            }
+        }
+    }
+}
+
+public class IncomeBatchSaveResultVM
+{
+    public List<IncomeEntryVM> Entries { get; set; } = new();
+}
+
+public class IncomeTranIdResultVM
+{
+    public string TranId { get; set; } = string.Empty;
+}
+
+public class IncomeListItemVM
+{
+    public long SN { get; set; }
+    public DateTime TranDate { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public decimal Debit { get; set; }
+    public decimal Credit { get; set; }
+    public string? Description { get; set; }
+    public string TranNo { get; set; } = string.Empty;
+    public string? TranCat { get; set; }
+    public string? BillNo { get; set; }
+    public string? CostCenter { get; set; }
+    public DateTime EntryDate { get; set; }
+    public string Period { get; set; } = string.Empty;
+    public string? UserName { get; set; }
+    public long SNo { get; set; }
+    public string? Remarks { get; set; }
+    public string? CoyID { get; set; }
+    public bool IsClose { get; set; }
+}
+
+public class IncomeListQueryVM
+{
+    [StringLength(100)]
+    public string? Search { get; set; }
+
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+
+    [Range(1, 200)]
+    public int PageSize { get; set; } = 10;
+}
+
+public class PagedIncomeResultVM
+{
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public List<IncomeListItemVM> Items { get; set; } = new();
+}

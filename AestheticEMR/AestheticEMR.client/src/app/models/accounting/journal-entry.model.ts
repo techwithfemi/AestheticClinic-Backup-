@@ -86,6 +86,10 @@ export interface JournalListLineQuery {
   search?: string | null;
   /** ISO date string; when search is empty, restricts to this date. */
   tranDate?: string | null;
+  /** ISO date string; used for date-range filtering. */
+  fromDate?: string | null;
+  /** ISO date string; used for date-range filtering. */
+  toDate?: string | null;
   page?: number;
   pageSize?: number;
 }

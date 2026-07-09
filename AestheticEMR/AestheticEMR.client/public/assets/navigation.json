@@ -73,7 +73,7 @@
       "route": "accounting",
       "icon": "account_balance",
       "subItems": [
-        { "label": "Journal Entries Info", "path": "journal-entries-info", "icon": "receipt_long" },
+        { "label": "Journal Entries", "path": "journal", "icon": "menu_book" },
         { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
         { "label": "Expenses", "path": "expenses", "icon": "paid" },
         { "label": "Incomes", "path": "incomes", "icon": "attach_money" }

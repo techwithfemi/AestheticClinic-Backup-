@@ -1,37 +1,49 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { TransactionListComponent } from '../shared/components/transaction-list/transaction-list.component';
+import {
+  BatchSaveResult,
+  TransactionConfig,
+  AccountLookup,
+  PagedTransactionResult,
+  TranIdResponse,
+  TransactionEntry
+} from '../shared/models/transaction-config.interface';
+import { IncomeEndpoint } from '../../../services/income-endpoint.service';
+import { IncomeListQuery } from '../../../models/accounting/income.model';
 
-/**
- * Income wrapper component - uses TransactionListComponent with income-specific configuration.
- * 
- * Note: IncomeEndpoint needs to be created with methods:
- * - getIncomeAccountsEndpoint()
- * - getIncomeBankAccountsEndpoint()
- * - getIncomeEndpoint(query)
- * - getNextTranIdEndpoint()
- * - getIncomeEntriesByTranIdEndpoint(tranId)
- * - getNewIncomeBatchEndpoint(entries, tranId)
- * - getUpdateIncomeByTranIdEndpoint(tranId, entries)
- * - getDeleteIncomeByTranIdEndpoint(tranId, period, coyID)
- * 
- * For now, this component is a stub ready for IncomeEndpoint implementation.
- */
 @Component({
   selector: 'app-incomes',
   standalone: true,
-  imports: [],
-  template: `
-    <div class="page-shell">
-      <h2>Income Transactions - Coming Soon</h2>
-      <p>Waiting for IncomeEndpoint service implementation</p>
-      <p style="color: #666; font-size: 0.9rem;">
-        The reusable TransactionListComponent is ready. 
-        Create IncomeEndpoint with the required methods to enable this page.
-      </p>
-    </div>
-  `,
-  styles: [`
-    .page-shell { padding: 20px; }
-  `]
+  imports: [TransactionListComponent],
+  template: `<app-transaction-list [config]="config"></app-transaction-list>`
 })
 export class IncomesComponent {
+  private incomeEndpoint = inject(IncomeEndpoint);
+
+  config: TransactionConfig = {
+    pageTitle: 'Incomes',
+    translateKeyPrefix: 'incomes',
+    debitAccountLabel: 'Income Account',
+    creditAccountLabel: 'Receiving Account',
+
+    debitAccountsEndpoint: () => this.incomeEndpoint.getIncomeAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.incomeEndpoint.getReceivingAccountsEndpoint<AccountLookup[]>(),
+
+    listEndpoint: (query) => {
+      const incomeQuery: IncomeListQuery = {
+        search: query.search,
+        fromDate: query.fromDate,
+        toDate: query.toDate,
+        page: query.page,
+        pageSize: query.pageSize
+      };
+      return this.incomeEndpoint.getIncomesEndpoint<PagedTransactionResult>(incomeQuery);
+    },
+    nextTranIdEndpoint: () => this.incomeEndpoint.getNextTranIdEndpoint<TranIdResponse>(),
+    entriesByTranIdEndpoint: (tranId) => this.incomeEndpoint.getIncomeEntriesByTranIdEndpoint<TransactionEntry[]>(tranId),
+
+    saveBatchEndpoint: (entries, tranId) => this.incomeEndpoint.getNewIncomesBatchEndpoint<BatchSaveResult>(entries, tranId),
+    updateByTranIdEndpoint: (tranId, entries) => this.incomeEndpoint.getUpdateIncomeByTranIdEndpoint<BatchSaveResult>(tranId, entries),
+    deleteTranIdEndpoint: (tranId, period, coyID) => this.incomeEndpoint.getDeleteIncomeByTranIdEndpoint<void>(tranId, period, coyID),
+  };
 }

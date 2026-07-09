@@ -88,41 +88,48 @@ OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
         var page = query.Page <= 0 ? 1 : query.Page;
         var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 200);
 
-        // Default: when no search is supplied, restrict to the supplied TranDate
-        // (the front-end sends today by default). When the user types a search,
-        // ignore the date filter so they can find any TranNo across all dates.
         var filters = new List<string> { "1=1" };
         if (!string.IsNullOrWhiteSpace(search))
         {
             filters.Add("(TranNo LIKE @Search OR AccountName LIKE @Search OR Description LIKE @Search)");
         }
+        else if (query.FromDate is not null || query.ToDate is not null)
+        {
+            // Date-range filter from the shared list query
+            if (query.FromDate is not null && query.ToDate is not null)
+            {
+                filters.Add("TranDate BETWEEN @FromDate AND @ToDate");
+            }
+            else if (query.FromDate is not null)
+            {
+                filters.Add("TranDate >= @FromDate");
+            }
+            else
+            {
+                filters.Add("TranDate <= @ToDate");
+            }
+        }
         else if (query.TranDate is not null)
         {
+            // Legacy single-date filter (journal-entries-info page)
             filters.Add("TranDate >= @TranDateFrom AND TranDate < @TranDateTo");
         }
 
         var whereClause = string.Join(" AND ", filters);
 
-        // Mirrors the user's preferred projection:
-        //   select ROW_NUMBER() OVER (ORDER BY SNo) AS SN, TranDate, AccountName, AccountNo,
-        //          'Debit'  = case when Amount > 0 then Amount else 0 end,
-        //          'Credit' = case when Amount < 0 then abs(Amount) else 0 end,
-        //          Description, TranNo, CatName2 as TranCat, BillNo, CenterName as CostCenter,
-        //          EntryDate, Period, UserName, SNo, Remarks, CoyID, isClose
-        //   from vwTranx
         var countSql = $"SELECT COUNT(*) FROM vwTranx WHERE {whereClause};";
         var pageSql = $@"
 SELECT  ROW_NUMBER() OVER (ORDER BY v.SNo) AS SN,
         v.TranDate,
         v.AccountName,
         v.AccountNo,
-        CASE WHEN v.Amount > 0 THEN v.Amount ELSE 0 END                              AS Debit,
-        CASE WHEN v.Amount < 0 THEN ABS(v.Amount) ELSE 0 END                          AS Credit,
+        CASE WHEN v.Amount > 0 THEN v.Amount ELSE 0 END     AS Debit,
+        CASE WHEN v.Amount < 0 THEN ABS(v.Amount) ELSE 0 END AS Credit,
         v.Description,
         v.TranNo,
-        v.CatName2                                                                   AS TranCat,
+        v.CatName2    AS TranCat,
         v.BillNo,
-        v.CenterName                                                                 AS CostCenter,
+        v.CenterName  AS CostCenter,
         v.EntryDate,
         v.Period,
         v.UserName,
@@ -138,6 +145,8 @@ OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
         var parameters = new
         {
             Search = $"%{search}%",
+            FromDate = query.FromDate?.Date,
+            ToDate = query.ToDate?.Date,
             TranDateFrom = query.TranDate?.Date,
             TranDateTo = query.TranDate?.Date.AddDays(1),
             Offset = (page - 1) * pageSize,
@@ -552,7 +561,7 @@ ORDER BY SNo DESC;",
             Debit = dr,
             Credit = cr,
             Description = r.Description,
-            TranDate = r.TranDate
+            TranDate = r.TranDate,
         };
     }
 

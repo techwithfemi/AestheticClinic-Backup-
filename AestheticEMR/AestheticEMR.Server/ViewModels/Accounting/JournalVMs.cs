@@ -141,6 +141,8 @@ public class JournalListLineQueryVM
     public string? Search { get; set; }
 
     public DateTime? TranDate { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
 
     [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;

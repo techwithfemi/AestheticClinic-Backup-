@@ -129,6 +129,7 @@ builder.Services.AddScoped(typeof(IServicesData<>), typeof(ServicesData<>));
 // Accounting module - journal entries (AccountingConnection via Dapper)
 builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IIncomeService, IncomeService>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
@@ -551,6 +552,28 @@ catch (Exception ex)
 /************* RUN APP *************/
 
 app.Run();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
