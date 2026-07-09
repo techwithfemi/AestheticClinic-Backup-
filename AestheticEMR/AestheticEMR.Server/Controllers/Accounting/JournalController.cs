@@ -86,6 +86,60 @@ public class JournalController(
         return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
     }
 
+    [HttpGet("accounts/debtors/debit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetDebtorDebitAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetDebtorDebitAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
+    [HttpGet("accounts/debtors/credit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetDebtorCreditAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetDebtorCreditAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
+    [HttpGet("accounts/creditors/debit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetCreditorDebitAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetCreditorDebitAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
+    [HttpGet("accounts/creditors/credit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetCreditorCreditAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetCreditorCreditAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
+    [HttpGet("accounts/purchases/debit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetPurchasesDebitAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetPurchasesDebitAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
+    [HttpGet("accounts/purchases/credit")]
+    [ProducesResponseType(typeof(IEnumerable<JournalAccountLookupVM>), 200)]
+    [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]
+    public async Task<IActionResult> GetPurchasesCreditAccounts(CancellationToken ct)
+    {
+        var accounts = await journalEntryService.GetPurchasesCreditAccountsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<JournalAccountLookupVM>>(accounts));
+    }
+
     [HttpGet("cost-centers")]
     [ProducesResponseType(typeof(IEnumerable<JournalCostCenterLookupVM>), 200)]
     [Authorize(Policy = AuthPolicies.ViewAccountingPolicy)]

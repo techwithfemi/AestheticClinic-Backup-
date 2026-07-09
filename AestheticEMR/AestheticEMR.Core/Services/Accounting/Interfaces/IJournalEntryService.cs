@@ -17,6 +17,12 @@ public interface IJournalEntryService
     Task<string> GenerateNextTranNoAsync(CancellationToken ct = default);
 
     Task<List<JournalAccountLookup>> GetAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetDebtorDebitAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetDebtorCreditAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetCreditorDebitAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetCreditorCreditAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetPurchasesDebitAccountsAsync(CancellationToken ct = default);
+    Task<List<JournalAccountLookup>> GetPurchasesCreditAccountsAsync(CancellationToken ct = default);
 
     Task<List<JournalCostCenterLookup>> GetCostCentersAsync(CancellationToken ct = default);
 

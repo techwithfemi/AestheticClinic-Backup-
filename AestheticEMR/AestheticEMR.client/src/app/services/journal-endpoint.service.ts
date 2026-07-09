@@ -87,6 +87,42 @@ export class JournalEndpoint extends EndpointBase {
     );
   }
 
+  getDebtorDebitAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/debtors/debit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getDebtorDebitAccountsEndpoint<T>()))
+    );
+  }
+
+  getDebtorCreditAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/debtors/credit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getDebtorCreditAccountsEndpoint<T>()))
+    );
+  }
+
+  getCreditorDebitAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/creditors/debit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getCreditorDebitAccountsEndpoint<T>()))
+    );
+  }
+
+  getCreditorCreditAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/creditors/credit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getCreditorCreditAccountsEndpoint<T>()))
+    );
+  }
+
+  getPurchasesDebitAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/purchases/debit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getPurchasesDebitAccountsEndpoint<T>()))
+    );
+  }
+
+  getPurchasesCreditAccountsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(`${this.journalUrl}/accounts/purchases/credit`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getPurchasesCreditAccountsEndpoint<T>()))
+    );
+  }
+
   getJournalCostCentersEndpoint<T>(): Observable<T> {
     return this.http.get<T>(`${this.journalUrl}/cost-centers`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getJournalCostCentersEndpoint<T>()))

@@ -35,8 +35,8 @@ export class DebtorsComponent {
     debitAccountLabel: 'Debit Account',
     creditAccountLabel: 'Credit Account',
 
-    debitAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
-    creditAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
+    debitAccountsEndpoint: () => this.journalEndpoint.getDebtorDebitAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.journalEndpoint.getDebtorCreditAccountsEndpoint<AccountLookup[]>(),
 
     listEndpoint: (query) => {
       const lineQuery: JournalListLineQuery = {

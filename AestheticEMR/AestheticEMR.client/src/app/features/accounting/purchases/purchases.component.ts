@@ -35,8 +35,8 @@ export class PurchasesComponent {
     debitAccountLabel: 'Debit Account',
     creditAccountLabel: 'Credit Account',
 
-    debitAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
-    creditAccountsEndpoint: () => this.journalEndpoint.getJournalAccountsEndpoint<AccountLookup[]>(),
+    debitAccountsEndpoint: () => this.journalEndpoint.getPurchasesDebitAccountsEndpoint<AccountLookup[]>(),
+    creditAccountsEndpoint: () => this.journalEndpoint.getPurchasesCreditAccountsEndpoint<AccountLookup[]>(),
 
     listEndpoint: (query) => {
       const lineQuery: JournalListLineQuery = {

@@ -464,6 +464,10 @@ When the user provides an explicit SQL/view definition for a feature, use it exa
 
 For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), use the same underlying table/grid data source pattern across all pages.
 
+### Debtors Wrapper Debit Dropdown
+
+- Debtors wrapper debit dropdown must filter accounts by `SUBSTRING(GroupID, 1, 3) = '123'`.
+
 
 
 

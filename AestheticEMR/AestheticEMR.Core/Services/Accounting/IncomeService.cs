@@ -195,13 +195,12 @@ ORDER BY d.SNo;",
 
     public async Task<List<IncomeAccountLookup>> GetIncomeAccountsAsync(CancellationToken ct = default)
     {
-        // Income accounts: GroupID starts with '4' (revenue/income accounts)
         const string sql = @"
 SELECT DISTINCT
        LTRIM(RTRIM(AccountName)) AS AccountName,
        LTRIM(RTRIM(AccountNo))   AS AccountNo
 FROM   vwAccountsInfoCombo
-WHERE  SUBSTRING(GroupID, 1, 1) = '4'
+WHERE  (SUBSTRING(GroupID, 1, 1) = '4' OR SUBSTRING(GroupID, 1, 3) = '126')
 ORDER BY AccountName;";
 
         var accounts = (await db.LoadDataText<IncomeAccountLookup, dynamic>(sql, new { }, AcctConn)).ToList();

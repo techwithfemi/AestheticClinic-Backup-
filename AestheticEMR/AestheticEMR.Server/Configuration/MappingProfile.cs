@@ -350,6 +350,14 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<IncomeTranIdResult, IncomeTranIdResultVM>().ReverseMap();
             CreateMap<IncomeListItem, IncomeListItemVM>().ReverseMap();
             CreateMap<PagedIncomeResult, PagedIncomeResultVM>().ReverseMap();
+
+            // Chart of accounts
+            CreateMap<ChartOfAccountListQueryVM, ChartOfAccountListQuery>().ReverseMap();
+            CreateMap<ChartOfAccountListItem, ChartOfAccountListItemVM>().ReverseMap();
+            CreateMap<ChartOfAccountEntry, ChartOfAccountEntryVM>().ReverseMap();
+            CreateMap<ChartOfAccountGroupLookup, ChartOfAccountGroupLookupVM>().ReverseMap();
+            CreateMap<ChartOfAccountDefaults, ChartOfAccountDefaultsVM>().ReverseMap();
+            CreateMap<PagedChartOfAccountResult, PagedChartOfAccountResultVM>().ReverseMap();
         }
 
         private static string StripBase64Prefix(string base64)

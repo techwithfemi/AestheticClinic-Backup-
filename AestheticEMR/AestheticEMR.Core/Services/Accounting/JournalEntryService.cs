@@ -243,7 +243,7 @@ ORDER BY TranNo, TranDate;";
 
     public async Task<List<JournalAccountLookup>> GetAccountsAsync(CancellationToken ct = default)
     {
-        var sql = @"
+        const string sql = @"
 SELECT DISTINCT
         LTRIM(RTRIM(AccountNo))   AS AccountNo,
         LTRIM(RTRIM(AccountName)) AS AccountName
@@ -251,6 +251,102 @@ FROM    dbo.ChartOfAccountMaster
 WHERE   ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
   AND   ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
 ORDER BY AccountName;";
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetDebtorDebitAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  SUBSTRING(GroupID, 1, 3) = '123'
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetDebtorCreditAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  (SUBSTRING(GroupID, 1, 1) = '4' OR SUBSTRING(GroupID, 1, 3) = '126')
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetCreditorDebitAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  SUBSTRING(GroupID, 1, 3) = '126'
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetCreditorCreditAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  SUBSTRING(GroupID, 1, 3) = '221'
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetPurchasesDebitAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  SUBSTRING(GroupID, 1, 3) = '126'
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
+        var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
+        return rows.ToList();
+    }
+
+    public async Task<List<JournalAccountLookup>> GetPurchasesCreditAccountsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+SELECT DISTINCT
+       LTRIM(RTRIM(AccountNo))   AS AccountNo,
+       LTRIM(RTRIM(AccountName)) AS AccountName
+FROM   vwAccountsInfoCombo
+WHERE  LTRIM(RTRIM(ISNULL(Remarks, ''))) IN ('Cheque','Cash')
+  AND  ISNULL(LTRIM(RTRIM(AccountNo)), '') <> ''
+  AND  ISNULL(LTRIM(RTRIM(AccountName)), '') <> ''
+ORDER BY AccountName;";
+
         var rows = await db.LoadDataText<JournalAccountLookup, dynamic>(sql, new { }, AcctConn);
         return rows.ToList();
     }
