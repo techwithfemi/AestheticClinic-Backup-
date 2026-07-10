@@ -79,7 +79,8 @@
         { "label": "Purchases", "path": "purchases", "icon": "shopping_cart" },
         { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
         { "label": "Expenses", "path": "expenses", "icon": "paid" },
-        { "label": "Incomes", "path": "incomes", "icon": "attach_money" }
+        { "label": "Incomes", "path": "incomes", "icon": "attach_money" },
+        { "label": "Accounting Reports", "path": "reports", "icon": "analytics" }
       ]
     },
     "Employees": {
@@ -134,6 +135,7 @@
         { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long" },
         { "label": "Accounting Expenses Report", "path": "accounting-expenses-report", "icon": "paid" },
         { "label": "Accounting Incomes Report", "path": "accounting-incomes-report", "icon": "attach_money" },
+        { "label": "Accounting Reports", "path": "accounting-reports", "icon": "analytics" },
         { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge" },
         { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups" },
         { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },

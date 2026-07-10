@@ -10,6 +10,18 @@ import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 
+export interface ProfitAndLossHeader {
+  itemName?: string | null;
+  groupID: string;
+}
+
+export interface BalanceSheetHeader {
+  itemName?: string | null;
+  rptType?: string | null;
+  period: string;
+  coyID: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -19,11 +31,86 @@ export class AestheticEndpoint extends EndpointBase {
 
   private get baseUrl() { return `${this.configurations.baseUrl}/api/aesthetic`; }
   private get auditUrl() { return `${this.configurations.baseUrl}/api/audit`; }
+  private get accountingReportsUrl() { return `${this.configurations.baseUrl}/api/accounting/reports`; }
 
   private get patientsUrl() { return `${this.baseUrl}/patients`; }
   private get consultationsUrl() { return `${this.baseUrl}/consultations`; }
   private get photosUrl() { return `${this.baseUrl}/photos`; }
   private get botoxConsultationsUrl() { return `${this.consultationsUrl}/botox`; }
+
+  getAccountingGeneralLedgerReportEndpoint(params: { coyID: string; period: string; ledgerCode: string; accountNo: string }): Observable<Blob> {
+    const query = new URLSearchParams({
+      coyID: params.coyID,
+      period: params.period,
+      ledgerCode: params.ledgerCode,
+      accountNo: params.accountNo
+    });
+
+    return this.http.get(`${this.accountingReportsUrl}/general-ledger?${query.toString()}`, {
+      ...this.requestHeaders,
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingGeneralLedgerReportEndpoint(params)))) as Observable<Blob>;
+  }
+
+  getAccountingProfitAndLossReportEndpoint(params: { coyID: string; period: string; year: string; rptBy: string; isClose: boolean }): Observable<Blob> {
+    const query = new URLSearchParams({
+      coyID: params.coyID,
+      period: params.period,
+      year: params.year,
+      rptBy: params.rptBy,
+      isClose: String(params.isClose)
+    });
+
+    return this.http.get(`${this.accountingReportsUrl}/profit-and-loss?${query.toString()}`, {
+      ...this.requestHeaders,
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingProfitAndLossReportEndpoint(params)))) as Observable<Blob>;
+  }
+
+  getAccountingProfitAndLossHeadersEndpoint(): Observable<ProfitAndLossHeader[]> {
+    return this.http.get<ProfitAndLossHeader[]>(`${this.accountingReportsUrl}/profit-and-loss/headers`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingProfitAndLossHeadersEndpoint())));
+  }
+
+  getAccountingBalanceSheetHeadersEndpoint(): Observable<BalanceSheetHeader[]> {
+    return this.http.get<BalanceSheetHeader[]>(`${this.accountingReportsUrl}/balance-sheet/headers`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingBalanceSheetHeadersEndpoint())));
+  }
+
+  getAccountingProfitAndLossDetailsReportEndpoint(params: { coyID: string; period: string; year: string; rptBy: string; groupID: string; isClose: boolean }): Observable<Blob> {
+    const query = new URLSearchParams({
+      coyID: params.coyID,
+      period: params.period,
+      year: params.year,
+      rptBy: params.rptBy,
+      groupID: params.groupID,
+      isClose: String(params.isClose)
+    });
+
+    return this.http.get(`${this.accountingReportsUrl}/profit-and-loss/details?${query.toString()}`, {
+      ...this.requestHeaders,
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingProfitAndLossDetailsReportEndpoint(params)))) as Observable<Blob>;
+  }
+
+  getAccountingBalanceSheetReportEndpoint(params: { coyID: string; period: string; year: string; rptBy: string; isClose: boolean }): Observable<Blob> {
+    const query = new URLSearchParams({
+      coyID: params.coyID,
+      period: params.period,
+      year: params.year,
+      rptBy: params.rptBy,
+      isClose: String(params.isClose)
+    });
+
+    return this.http.get(`${this.accountingReportsUrl}/balance-sheet?${query.toString()}`, {
+      ...this.requestHeaders,
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingBalanceSheetReportEndpoint(params)))) as Observable<Blob>;
+  }
 
   getPatientsEndpoint<T>(): Observable<T> {
     return this.http.get<T>(this.patientsUrl, this.requestHeaders).pipe(

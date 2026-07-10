@@ -5,6 +5,7 @@
 // ---------------------------------------
 
 using AestheticEMR.Core.Models.Account;
+using AestheticEMR.Core.Models.Accounting;
 using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Dental;
 using AestheticEMR.Core.Models.Employees;
@@ -358,6 +359,9 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<ChartOfAccountGroupLookup, ChartOfAccountGroupLookupVM>().ReverseMap();
             CreateMap<ChartOfAccountDefaults, ChartOfAccountDefaultsVM>().ReverseMap();
             CreateMap<PagedChartOfAccountResult, PagedChartOfAccountResultVM>().ReverseMap();
+
+            CreateMap<vwProfitAndLossHeadersList, ProfitAndLossHeaderVM>();
+            CreateMap<vwBalanceSheetHeader, BalanceSheetHeaderVM>();
         }
 
         private static string StripBase64Prefix(string base64)

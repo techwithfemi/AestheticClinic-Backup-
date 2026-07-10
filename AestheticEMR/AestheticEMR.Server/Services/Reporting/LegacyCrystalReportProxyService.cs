@@ -9,19 +9,79 @@ public class LegacyCrystalReportProxyService(
     IOptions<AppSettings> appSettings,
     ILogger<LegacyCrystalReportProxyService> logger) : ILegacyCrystalReportProxyService
 {
+    public async Task<LegacyCrystalReportPayload> GetGeneralLedgerReportAsync(string coyID, string period, string ledgerCode, string accountNo, CancellationToken cancellationToken)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["coyID"] = coyID,
+            ["period"] = period,
+            ["ledgerCode"] = ledgerCode,
+            ["accountNo"] = accountNo
+        };
+
+        var response = await SendGetAsync("Accounting/GeneralLedger", query, cancellationToken);
+        return await BuildPayloadAsync(response, $"general-ledger-{period}.pdf", cancellationToken);
+    }
+
+    public async Task<LegacyCrystalReportPayload> GetBalanceSheetReportAsync(string coyID, string period, string year, string rptBy, bool isClose, CancellationToken cancellationToken)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["coyID"] = coyID,
+            ["period"] = period,
+            ["year"] = year,
+            ["rptBy"] = rptBy,
+            ["isClose"] = isClose.ToString().ToLowerInvariant()
+        };
+
+        var response = await SendGetAsync("Accounting/BalanceSheet", query, cancellationToken);
+        return await BuildPayloadAsync(response, $"balance-sheet-{period}.pdf", cancellationToken);
+    }
+
+    public async Task<LegacyCrystalReportPayload> GetProfitAndLossReportAsync(string coyID, string period, string year, string rptBy, bool isClose, CancellationToken cancellationToken)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["coyID"] = coyID,
+            ["period"] = period,
+            ["year"] = year,
+            ["rptBy"] = rptBy,
+            ["isClose"] = isClose.ToString().ToLowerInvariant()
+        };
+
+        var response = await SendGetAsync("Accounting/ProfitAndLoss", query, cancellationToken);
+        return await BuildPayloadAsync(response, $"profit-and-loss-{period}.pdf", cancellationToken);
+    }
+
+    public async Task<LegacyCrystalReportPayload> GetProfitAndLossDetailsReportAsync(string coyID, string period, string year, string rptBy, string groupID, bool isClose, CancellationToken cancellationToken)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["coyID"] = coyID,
+            ["period"] = period,
+            ["year"] = year,
+            ["rptBy"] = rptBy,
+            ["groupID"] = groupID,
+            ["isClose"] = isClose.ToString().ToLowerInvariant()
+        };
+
+        var response = await SendGetAsync("Accounting/ProfitAndLossDetails", query, cancellationToken);
+        return await BuildPayloadAsync(response, $"profit-and-loss-details-{period}.pdf", cancellationToken);
+    }
+
     public async Task<LegacyCrystalReportPayload> GetFinancialVarianceAnalysisReportAsync(CancellationToken cancellationToken)
     {
-        var response = await SendGetAsync("Financial/VarianceAnalysisReport", cancellationToken);
+        var response = await SendGetAsync("Financial/VarianceAnalysisReport", null, cancellationToken);
         return await BuildPayloadAsync(response, "variance-analysis-report.pdf", cancellationToken);
     }
 
     public async Task<LegacyCrystalReportPayload> GetComparativeIncomeStatementReportAsync(CancellationToken cancellationToken)
     {
-        var response = await SendGetAsync("Demonstration/ComparativeIncomeStatement", cancellationToken);
+        var response = await SendGetAsync("Demonstration/ComparativeIncomeStatement", null, cancellationToken);
         return await BuildPayloadAsync(response, "comparative-income-statement.pdf", cancellationToken);
     }
 
-    private async Task<HttpResponseMessage> SendGetAsync(string reportPath, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendGetAsync(string reportPath, IDictionary<string, string?>? query, CancellationToken cancellationToken)
     {
         var cfg = appSettings.Value.LegacyReportService;
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.BaseUrl))
@@ -31,7 +91,7 @@ public class LegacyCrystalReportProxyService(
 
         var baseUrl = cfg.BaseUrl.TrimEnd('/');
         var routePrefix = string.IsNullOrWhiteSpace(cfg.AccountingRoutePrefix) ? "api/Reports" : cfg.AccountingRoutePrefix.Trim('/');
-        var requestUrl = $"{baseUrl}/{routePrefix}/{reportPath}";
+        var requestUrl = BuildUrl(baseUrl, routePrefix, reportPath, query);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
 
@@ -52,6 +112,21 @@ public class LegacyCrystalReportProxyService(
         }
 
         return response;
+    }
+
+    private static string BuildUrl(string baseUrl, string routePrefix, string reportPath, IDictionary<string, string?>? query)
+    {
+        var url = $"{baseUrl}/{routePrefix}/{reportPath}";
+        if (query is null || query.Count == 0)
+        {
+            return url;
+        }
+
+        var queryString = string.Join("&", query
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value))
+            .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value!)}"));
+
+        return string.IsNullOrWhiteSpace(queryString) ? url : $"{url}?{queryString}";
     }
 
     private static async Task<LegacyCrystalReportPayload> BuildPayloadAsync(HttpResponseMessage response, string fallbackFileName, CancellationToken cancellationToken)

@@ -1,27 +1,203 @@
 ﻿using CrystalReportWebAPI.Utilities;
+using Dapper;
 using System;
 using System.Data;
-using System.Data.SqlClient;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-//using SmartPay.NAPS.SQLSeverDAL;
 
 namespace CrystalReportWebAPI.Controllers
 {
     [RoutePrefix("api/Reports")]
     public class ReportsController : ApiController
     {
+        [AllowAnonymous]
+        [Route("Accounting/BalanceSheet")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> BalanceSheet(string coyID, string period, string year, string rptBy, bool isClose = false)
+        {
+            if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
+            if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
+            if (string.IsNullOrWhiteSpace(year)) throw new ArgumentNullException(nameof(year));
+            if (string.IsNullOrWhiteSpace(rptBy)) throw new ArgumentNullException(nameof(rptBy));
 
+            const string reportPath = "~/Reports/Accounting";
+            const string reportFileName = "rptBalSheet.rpt";
+            var exportFilename = $"rptBalSheet-{period}.pdf";
+
+            try
+            {
+                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+
+                if (!isClose)
+                {
+                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
+                    {
+                        Period = period.Trim(),
+                        coyID = coyID.Trim(),
+                        UserName = string.Empty,
+                        isClose = 0,
+                        isBS = 1
+                    }, 600);
+                }
+
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getBalanceSheetHeaders", new
+                {
+                    CoyID = coyID.Trim(),
+                    period = period.Trim(),
+                    Year = year.Trim(),
+                    PrdType = rptBy.Trim()
+                }, 600);
+
+                var header = $"As at {period.Trim()}";
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        [AllowAnonymous]
+        [Route("Accounting/GeneralLedger")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> GeneralLedger(string coyID, string period, string ledgerCode, string accountNo)
+        {
+            if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
+            if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
+            if (string.IsNullOrWhiteSpace(ledgerCode)) throw new ArgumentNullException(nameof(ledgerCode));
+            if (string.IsNullOrWhiteSpace(accountNo)) throw new ArgumentNullException(nameof(accountNo));
+
+            string reportPath = "~/Reports/Accounting";
+            string reportFileName = "rptGL.rpt";
+            string exportFilename = $"rptGL-{period}.pdf";
+
+            try
+            {
+                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL", new
+                {
+                    CoyID = coyID.Trim(),
+                    Period = period.Trim(),
+                    LedgerCode = ledgerCode.Trim(),
+                    AccountNo = accountNo.Trim()
+                }, 240);
+
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        [AllowAnonymous]
+        [Route("Accounting/ProfitAndLoss")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> ProfitAndLoss(string coyID, string period, string year, string rptBy, bool isClose = false)
+        {
+            if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
+            if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
+            if (string.IsNullOrWhiteSpace(year)) throw new ArgumentNullException(nameof(year));
+            if (string.IsNullOrWhiteSpace(rptBy)) throw new ArgumentNullException(nameof(rptBy));
+
+            const string reportPath = "~/Reports/Accounting";
+            const string reportFileName = "rptProfitAndLoss.rpt";
+            const string exportFilename = "rptProfitAndLoss.pdf";
+
+            try
+            {
+                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+
+                if (!isClose)
+                {
+                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
+                    {
+                        Period = period.Trim(),
+                        coyID = coyID.Trim(),
+                        UserName = string.Empty,
+                        isClose = 0,
+                        isBS = 0
+                    }, 600);
+                }
+
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getProfitAndLossHeaders", new
+                {
+                    CoyID = coyID.Trim(),
+                    period = period.Trim(),
+                    Year = year.Trim(),
+                    PrdType = rptBy.Trim()
+                }, 600);
+
+                var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, string.Empty, string.Empty, isClose, DateTime.Today);
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
+        [AllowAnonymous]
+        [Route("Accounting/ProfitAndLossDetails")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> ProfitAndLossDetails(string coyID, string period, string year, string rptBy, string groupID, bool isClose = false)
+        {
+            if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
+            if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
+            if (string.IsNullOrWhiteSpace(year)) throw new ArgumentNullException(nameof(year));
+            if (string.IsNullOrWhiteSpace(rptBy)) throw new ArgumentNullException(nameof(rptBy));
+            if (string.IsNullOrWhiteSpace(groupID)) throw new ArgumentNullException(nameof(groupID));
+
+            const string reportPath = "~/Reports/Accounting";
+            const string reportFileName = "rptGL.rpt";
+            const string exportFilename = "rptProfitAndLossDetails.pdf";
+
+            try
+            {
+                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+
+                if (!isClose)
+                {
+                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
+                    {
+                        Period = period.Trim(),
+                        coyID = coyID.Trim(),
+                        UserName = string.Empty,
+                        isClose = 0,
+                        isBS = 0
+                    }, 600);
+                }
+
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL_for_PL_Details", new
+                {
+                    CoyID = coyID.Trim(),
+                    period = period.Trim(),
+                    Year = year.Trim(),
+                    PrdType = rptBy.Trim(),
+                    GroupID = groupID.Trim()
+                }, 600);
+
+                var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, string.Empty, string.Empty, isClose, DateTime.Today);
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
 
         [AllowAnonymous]
         [Route("ClosedJob")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
-        public async Task<HttpResponseMessage> ClosedJobAnalysis(string coyID,DateTime startDate, DateTime endDate,bool isLessDetls=false  )
-        //public async Task<ActionResult<Billing_Extension>> PostBilling(Billing_Extension billing)
+        public async Task<HttpResponseMessage> ClosedJobAnalysis(string coyID, DateTime startDate, DateTime endDate, bool isLessDetls = false)
         {
-            if (coyID  is null)
+            if (coyID is null)
             {
                 throw new ArgumentNullException(nameof(coyID));
             }
@@ -46,69 +222,24 @@ namespace CrystalReportWebAPI.Controllers
                 exportFilename = "rptClosedJobAnalysis2.pdf";
             }
 
-            DataSet ds = new DataSet();
-            SqlDataAdapter da = new SqlDataAdapter();
-            SqlTransaction sqlTran = null;
             try
             {
-                //Dim strConn As String = System.Configuration.ConfigurationManager.ConnectionStrings("ConStr").ToString()
                 string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
-
-                using (SqlConnection conn = new SqlConnection(conStr))
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "MonthlyClosedJobByCoy", new
                 {
-                    await conn.OpenAsync();
-                    using (SqlCommand cmd = new SqlCommand(conStr))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        sqlTran = conn.BeginTransaction();
-                        cmd.Connection = conn;
-                        cmd.Transaction = sqlTran;
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.CommandText = "MonthlyClosedJobByCoy";
-                        SqlParameter[] parameters = new SqlParameter[]
-                        {
-                            new SqlParameter("@CoyID",coyID .Trim()),
-                            new SqlParameter("@StartDate",startDate ),
-                            new SqlParameter("@EndDate",endDate )
-                        };
-                        cmd.Parameters.AddRange(parameters);
+                    CoyID = coyID.Trim(),
+                    StartDate = startDate,
+                    EndDate = endDate
+                }, 240);
 
-                        da.SelectCommand = cmd;
-                        da.SelectCommand.CommandTimeout = 240;
-                        //da.Fill(ds);
-                        await Task.Run(() => da.Fill(ds));
-                        cmd.Parameters.Clear();
-
-                        sqlTran.Commit();
-                        conn.Close();
-                    }
-
-                }
-
-                var cnt = ds.Tables[0].Rows.Count;
-                var strHeader= "Closed Job Analysis between " + startDate.ToShortDateString()  + " and " + endDate.ToShortDateString();
-                HttpResponseMessage result = CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, strHeader);
-                return result;
-
+                var strHeader = "Closed Job Analysis between " + startDate.ToShortDateString() + " and " + endDate.ToShortDateString();
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, strHeader);
             }
-
             catch (Exception ex)
             {
-                // Handle the exception if the transaction fails to commit.
-                if (sqlTran != null)
-                {
-                    //WatchLogger.Log(ex.Message);
-                    throw new Exception(ex.Message);
-                    sqlTran.Rollback();
-                }
-
-                throw new Exception(ex.Message);
-
+                throw new Exception(ex.Message, ex);
             }
-
-
         }
-
 
         [AllowAnonymous]
         [Route("Invoice")]
@@ -126,65 +257,22 @@ namespace CrystalReportWebAPI.Controllers
             string reportFileName = "rptBillsNormal2.rpt";
             string exportFilename = "rptBillsNormal2.pdf";
 
-            DataSet ds=new DataSet();
-            SqlDataAdapter da=new SqlDataAdapter();
-            SqlTransaction sqlTran = null;
             try
             {
-                //Dim strConn As String = System.Configuration.ConfigurationManager.ConnectionStrings("ConStr").ToString()
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString() ;
-
-                using (SqlConnection conn = new SqlConnection(conStr))
+                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "GetInvoiceByBillNo", new
                 {
-                    await conn.OpenAsync();
-                    using (SqlCommand cmd = new SqlCommand(conStr))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        sqlTran = conn.BeginTransaction();
-                        cmd.Connection = conn;
-                        cmd.Transaction = sqlTran;
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.CommandText = "GetInvoiceByBillNo";
-                        SqlParameter[] parameters = new SqlParameter[]
-                        {
-                            new SqlParameter("@BillNo",invNo.Trim())
-                        };
-                        cmd.Parameters.AddRange(parameters);
-                        
-                        da.SelectCommand = cmd;
-                        da.SelectCommand.CommandTimeout = 240;
-                        //da.Fill(ds);
-                        await Task.Run(() => da.Fill(ds));
-                        cmd.Parameters.Clear();
+                    BillNo = invNo.Trim()
+                }, 240);
 
-                        sqlTran.Commit();
-                        conn.Close();
-                    }
-
-                }
-                var cnt = ds.Tables[0].Rows.Count;
-                HttpResponseMessage result = CrystalReport.RenderReport(reportPath, reportFileName, exportFilename,ds);
-                return result;
-
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds);
             }
-
             catch (Exception ex)
             {
-                // Handle the exception if the transaction fails to commit.
-                if (sqlTran != null)
-                {
-                    //WatchLogger.Log(ex.Message);
-                    throw new Exception(ex.Message);
-                    sqlTran.Rollback();
-                }
-
-                throw new Exception(ex.Message);
-
+                throw new Exception(ex.Message, ex);
             }
-
-
         }
-        
+
         [AllowAnonymous]
         [Route("Financial/VarianceAnalysisReport")]
         [HttpGet]

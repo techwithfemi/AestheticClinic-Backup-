@@ -122,6 +122,11 @@ export const reportsRoutes: Routes = [
       .then(m => m.AccountingIncomesReportComponent)
   },
   {
+    path: 'accounting-reports',
+    loadComponent: () => import('./accounting/accounting-reports.component')
+      .then(m => m.AccountingReportsComponent)
+  },
+  {
     path: 'employees-info-report',
     loadComponent: () => import('./employees/employees-info-report.component')
       .then(m => m.EmployeesInfoReportComponent)

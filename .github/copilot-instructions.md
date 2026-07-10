@@ -468,6 +468,10 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - Debtors wrapper debit dropdown must filter accounts by `SUBSTRING(GroupID, 1, 3) = '123'`.
 
+### Legacy Crystal Reports Service
+
+- Use Dapper for the legacy Crystal Reports service and its stored procedure calls, including the General Ledger report endpoint.
+
 
 
 
