@@ -16,7 +16,16 @@ namespace AestheticEMR.Server.Configuration
         public AppointmentNotificationConfig? AppointmentNotificationConfig { get; set; }
         public AttendanceNotificationConfig? AttendanceNotificationConfig { get; set; }
         public LogRetentionConfig? LogRetentionConfig { get; set; }
+        public LegacyReportServiceConfig? LegacyReportService { get; set; }
         public string? ClientBaseUrl { get; set; }
+    }
+
+    public class LegacyReportServiceConfig
+    {
+        public string? BaseUrl { get; set; }
+        public string AccountingRoutePrefix { get; set; } = "api/Reports";
+        public int TimeoutSeconds { get; set; } = 120;
+        public string? ApiKey { get; set; }
     }
 
     public class SmtpConfig

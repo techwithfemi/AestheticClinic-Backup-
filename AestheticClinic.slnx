@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="../../CrystalReportWebAPI/CrystalReportWebAPI/CrystalReportWebAPI.csproj" Id="f5d614a7-c23d-4b38-8012-c55ae2cb1d86" />
   <Project Path="AestheticEMR/AestheticEMR.client/AestheticEMR.client.esproj">
     <Build />
     <Deploy />
@@ -6,3 +7,5 @@
   <Project Path="AestheticEMR/AestheticEMR.Core/AestheticEMR.Core.csproj" />
   <Project Path="AestheticEMR/AestheticEMR.Server/AestheticEMR.Server.csproj" />
 </Solution>
+
+

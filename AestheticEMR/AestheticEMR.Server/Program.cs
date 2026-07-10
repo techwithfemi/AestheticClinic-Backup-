@@ -50,6 +50,7 @@ using Serilog.Sinks.MSSqlServer;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Security.Claims;
+using AestheticEMR.Server.Services.Reporting;
 
 var builder = WebApplication.CreateBuilder(args);
 var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
@@ -131,6 +132,13 @@ builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IIncomeService, IncomeService>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
+builder.Services.AddHttpClient(nameof(LegacyCrystalReportProxyService), (sp, client) =>
+{
+    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppSettings>>().Value;
+    var timeoutSeconds = settings.LegacyReportService?.TimeoutSeconds ?? 120;
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds <= 0 ? 120 : timeoutSeconds);
+});
+builder.Services.AddScoped<ILegacyCrystalReportProxyService, LegacyCrystalReportProxyService>();
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -496,6 +504,7 @@ app.MapFallbackToFile("/index.html");
 
 var strategyProvider = app.Services.GetRequiredService<IBillingCrossDatabaseSyncStrategyProvider>();
 await strategyProvider.InitializeAsync();
+
 
 // Switch sync service implementation based on startup-resolved topology
 var effectiveMode = strategyProvider.CurrentStatus.EffectiveMode;
