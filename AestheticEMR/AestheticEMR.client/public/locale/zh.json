@@ -620,5 +620,11 @@
                    "Save":  "Save",
                    "Saving":  "Saving...",
                    "Cancel":  "Cancel"
-               }
+               },
+    "staffRoster":  {
+                         "createRoster":  "Create Roster",
+                         "staffGroup":  "Staff Group",
+                         "shifts":  "Shifts",
+                         "placeholder":  "This section is under construction."
+                     }
 }

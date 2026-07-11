@@ -84,6 +84,11 @@ export const routes: Routes = [
           .then(m => m.employeesRoutes)
       },
       {
+        path: 'staff-roster',
+        loadChildren: () => import('./features/staff-roster/staff-roster.routes')
+          .then(m => m.staffRosterRoutes)
+      },
+      {
         path: 'aesthetics',
         loadChildren: () => import('./features/aesthetics/aesthetics.routes')
           .then(m => m.aestheticsRoutes)

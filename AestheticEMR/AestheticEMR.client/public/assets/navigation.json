@@ -92,6 +92,15 @@
         { "label": "Designation", "path": "designation", "icon": "workspace_premium" }
       ]
     },
+    "StaffRoster": {
+      "route": "staff-roster",
+      "icon": "event_available",
+      "subItems": [
+        { "label": "Create Roster", "path": "create-roster", "icon": "event_note" },
+        { "label": "Staff Group", "path": "staff-group", "icon": "groups" },
+        { "label": "Shifts", "path": "shifts", "icon": "schedule" }
+      ]
+    },
     "Management": {
       "route": "management",
       "icon": "manage_accounts",
