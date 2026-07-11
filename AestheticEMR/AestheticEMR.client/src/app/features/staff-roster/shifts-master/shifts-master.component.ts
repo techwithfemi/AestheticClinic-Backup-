@@ -13,11 +13,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
-import { ShiftDetail, ShiftDetailsEndpoint, ShiftLookup } from '../../../services/shift-details-endpoint.service';
-import { ShiftEntryDialogComponent } from './shift-entry-dialog.component';
+import {
+  DepartmentLookup,
+  ShiftMasterDetail,
+  ShiftMasterEndpoint,
+  ShiftMasterItem
+} from '../../../services/shift-master-endpoint.service';
+import { ShiftMasterEntryDialogComponent } from './shift-master-entry-dialog.component';
 
 @Component({
-  selector: 'app-shifts',
+  selector: 'app-shifts-master',
   standalone: true,
   imports: [
     CommonModule,
@@ -33,29 +38,29 @@ import { ShiftEntryDialogComponent } from './shift-entry-dialog.component';
     MatTooltipModule,
     MatProgressBarModule
   ],
-  templateUrl: './shifts.component.html',
-  styleUrls: ['./shifts.component.scss'],
+  templateUrl: './shifts-master.component.html',
+  styleUrls: ['./shifts-master.component.scss'],
   animations: [fadeInOut]
 })
-export class ShiftsComponent implements OnInit, AfterViewInit {
+export class ShiftsMasterComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator?: MatPaginator;
 
   private readonly alertService = inject(AlertService);
-  private readonly endpoint = inject(ShiftDetailsEndpoint);
+  private readonly endpoint = inject(ShiftMasterEndpoint);
   private readonly dialog = inject(MatDialog);
 
   readonly loading = signal(false);
   readonly deletingId = signal<number | null>(null);
-  readonly lookups = signal<ShiftLookup[]>([]);
-  readonly rows = signal<ShiftDetail[]>([]);
+  readonly departments = signal<DepartmentLookup[]>([]);
+  readonly rows = signal<ShiftMasterItem[]>([]);
   readonly searchText = signal('');
 
-  readonly dataSource = new MatTableDataSource<ShiftDetail>([]);
-  readonly displayedColumns = ['shiftJob', 'periodOfDay', 'resumptionTime', 'closingTime', 'evalTo', 'actions'];
+  readonly dataSource = new MatTableDataSource<ShiftMasterItem>([]);
+  readonly displayedColumns = ['shiftName', 'departmentCount', 'actions'];
   readonly filteredCount = computed(() => this.dataSource.filteredData.length);
 
   ngOnInit(): void {
-    this.loadLookups();
+    this.loadDepartments();
     this.loadRows();
   }
 
@@ -63,23 +68,20 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator ?? null;
   }
 
-  loadLookups(): void {
-    this.endpoint.getLookupsEndpoint<ShiftLookup[]>().subscribe({
-      next: items => this.lookups.set(items),
+  loadDepartments(): void {
+    this.endpoint.getDepartmentsEndpoint<DepartmentLookup[]>().subscribe({
+      next: items => this.departments.set(items),
       error: error => this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error)
     });
   }
 
   loadRows(): void {
     this.loading.set(true);
-    this.endpoint.getAllEndpoint<ShiftDetail[]>().subscribe({
+    this.endpoint.getAllEndpoint<ShiftMasterItem[]>().subscribe({
       next: items => {
         this.rows.set(items);
         this.dataSource.data = items;
-        this.dataSource.filterPredicate = (row, filter) => {
-          const text = `${row.shiftJob} ${row.periodOfDay} ${row.evalTo ?? ''} ${row.resumptionTime} ${row.closingTime}`.toLowerCase();
-          return text.includes(filter);
-        };
+        this.dataSource.filterPredicate = (row, filter) => row.shiftName.toLowerCase().includes(filter);
         this.applyFilter(this.searchText());
         this.loading.set(false);
       },
@@ -96,41 +98,44 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
   }
 
   openCreateDialog(): void {
-    this.dialog.open(ShiftEntryDialogComponent, {
-      width: '900px',
+    this.dialog.open(ShiftMasterEntryDialogComponent, {
+      width: '820px',
       maxWidth: '95vw',
       disableClose: true,
       data: {
-        lookups: this.lookups(),
+        departments: this.departments(),
         shift: null
       }
     }).afterClosed().subscribe(saved => {
       if (saved === true) {
         this.loadRows();
-        this.loadLookups();
       }
     });
   }
 
-  openEditDialog(row: ShiftDetail): void {
-    this.dialog.open(ShiftEntryDialogComponent, {
-      width: '900px',
-      maxWidth: '95vw',
-      disableClose: true,
-      data: {
-        lookups: this.lookups(),
-        shift: row
-      }
-    }).afterClosed().subscribe(saved => {
-      if (saved === true) {
-        this.loadRows();
-        this.loadLookups();
-      }
+  openEditDialog(row: ShiftMasterItem): void {
+    this.endpoint.getByIdEndpoint<ShiftMasterDetail>(row.shiftId).subscribe({
+      next: detail => {
+        this.dialog.open(ShiftMasterEntryDialogComponent, {
+          width: '820px',
+          maxWidth: '95vw',
+          disableClose: true,
+          data: {
+            departments: this.departments(),
+            shift: detail
+          }
+        }).afterClosed().subscribe(saved => {
+          if (saved === true) {
+            this.loadRows();
+          }
+        });
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error)
     });
   }
 
-  deleteRow(row: ShiftDetail): void {
-    if (!window.confirm(`Delete shift detail ${row.shiftId}?`)) {
+  deleteRow(row: ShiftMasterItem): void {
+    if (!window.confirm(`Delete shift master ${row.shiftName}?`)) {
       return;
     }
 
@@ -138,7 +143,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
     this.endpoint.deleteEndpoint<void>(row.shiftId).subscribe({
       next: () => {
         this.deletingId.set(null);
-        this.alertService.showMessage('Deleted', 'Shift details deleted.', MessageSeverity.success);
+        this.alertService.showMessage('Deleted', 'Shift master deleted.', MessageSeverity.success);
         this.loadRows();
       },
       error: error => {
@@ -149,7 +154,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
   }
 
   refresh(): void {
-    this.loadLookups();
+    this.loadDepartments();
     this.loadRows();
   }
 

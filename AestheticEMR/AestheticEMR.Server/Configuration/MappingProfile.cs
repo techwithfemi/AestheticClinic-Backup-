@@ -13,6 +13,7 @@ using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Accounting.Models;
+using AestheticEMR.Core.Services.Legacy.Models;
 using AestheticEMR.Server.ViewModels.Account;
 using AestheticEMR.Server.ViewModels.Accounting;
 using AestheticEMR.Server.ViewModels.Aesthetic;
@@ -67,30 +68,30 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<IdentityRoleClaim<string>, PermissionVM>()
                 .ConvertUsing(s => ((PermissionVM)ApplicationPermissions.GetPermissionByValue(s.ClaimValue))!);
 
-            CreateMap<Customer, CustomerVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.Customer, CustomerVM>()
                 .ReverseMap();
 
-            CreateMap<Product, ProductVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.Product, ProductVM>()
                 .ForMember(d => d.ProductCategoryName, map => map.MapFrom(s => s.ProductCategory != null ? s.ProductCategory.Name : null));
 
-            CreateMap<ProductStockReport, ProductStockReportVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.ProductStockReport, ProductStockReportVM>()
                 .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null));
 
-            CreateMap<ProductBatch, ProductBatchVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.ProductBatch, ProductBatchVM>()
                 .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null));
-            CreateMap<ProductBatchEditVM, ProductBatch>()
+            CreateMap<ProductBatchEditVM, AestheticEMR.Core.Models.Shop.ProductBatch>()
                 .ForMember(d => d.Product, map => map.Ignore())
                 .ForMember(d => d.ProcedureUsages, map => map.Ignore());
 
-            CreateMap<ProcedureProductUsage, ProcedureProductUsageVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.ProcedureProductUsage, ProcedureProductUsageVM>()
                 .ForMember(d => d.ProductName, map => map.MapFrom(s => s.Product != null ? s.Product.Name : null))
                 .ForMember(d => d.BatchNumber, map => map.MapFrom(s => s.ProductBatch != null ? s.ProductBatch.BatchNumber : null));
-            CreateMap<ProcedureProductUsageEditVM, ProcedureProductUsage>()
+            CreateMap<ProcedureProductUsageEditVM, AestheticEMR.Core.Models.Shop.ProcedureProductUsage>()
                 .ForMember(d => d.Product, map => map.Ignore())
                 .ForMember(d => d.ProductBatch, map => map.Ignore())
                 .ForMember(d => d.Consultation, map => map.Ignore());
 
-            CreateMap<ProductEditVM, Product>()
+            CreateMap<ProductEditVM, AestheticEMR.Core.Models.Shop.Product>()
                 .ForMember(d => d.ProductCategory, map => map.Ignore())
                 .ForMember(d => d.Parent, map => map.Ignore())
                 .ForMember(d => d.Children, map => map.Ignore())
@@ -98,10 +99,10 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.Batches, map => map.Ignore())
                 .ForMember(d => d.ProcedureUsages, map => map.Ignore());
 
-            CreateMap<ProductCategory, ProductCategoryVM>();
-            CreateMap<ProductCategoryEditVM, ProductCategory>();
+            CreateMap<AestheticEMR.Core.Models.Shop.ProductCategory, ProductCategoryVM>();
+            CreateMap<ProductCategoryEditVM, AestheticEMR.Core.Models.Shop.ProductCategory>();
 
-            CreateMap<Order, OrderVM>()
+            CreateMap<AestheticEMR.Core.Models.Shop.Order, OrderVM>()
                 .ReverseMap();
 
             CreateMap<AestheticPatient, AestheticPatientVM>()
@@ -316,6 +317,30 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.InUseCount, map => map.Ignore());
             CreateMap<DepartmentVM, EmpDepartments>()
                 .ForMember(d => d.DeptId, map => map.MapFrom(s => s.DeptId));
+
+            CreateMap<RosterLookups, RosterLookupsVM>();
+            CreateMap<RosterGroupLookup, RosterGroupLookupVM>().ReverseMap();
+            CreateMap<RosterStaffLookup, RosterStaffLookupVM>().ReverseMap();
+            CreateMap<RosterShiftLookup, RosterShiftLookupVM>().ReverseMap();
+            CreateMap<RosterGridQueryVM, RosterGridQuery>().ReverseMap();
+            CreateMap<RosterEditorQueryVM, RosterEditorQuery>().ReverseMap();
+            CreateMap<RosterDaySelectionVM, RosterDaySelection>().ReverseMap();
+            CreateMap<RosterSaveVM, RosterSaveRequest>().ReverseMap();
+            CreateMap<RosterDeleteVM, RosterDeleteRequest>().ReverseMap();
+            CreateMap<RosterGridItem, RosterGridItemVM>().ReverseMap();
+            CreateMap<RosterSaveResult, RosterSaveResultVM>().ReverseMap();
+
+            CreateMap<ShiftMasterItem, ShiftMasterItemVM>().ReverseMap();
+            CreateMap<DepartmentLookupItem, DepartmentLookupVM>().ReverseMap();
+            CreateMap<ShiftMasterDetail, ShiftMasterDetailVM>().ReverseMap();
+            CreateMap<ShiftMasterSaveRequest, ShiftMasterDetailVM>().ReverseMap();
+
+            CreateMap<ShiftLookupItem, ShiftLookupVM>().ReverseMap();
+            CreateMap<ShiftDetailItem, ShiftDetailVM>().ReverseMap();
+
+            CreateMap<RosterGroupItem, RosterGroupItemVM>().ReverseMap();
+            CreateMap<RosterGroupAvailableStaffItem, RosterGroupAvailableStaffItemVM>().ReverseMap();
+            CreateMap<RosterGroupSaveRequest, RosterGroupSaveVM>().ReverseMap();
 
             // Journal Entries (Accounting module)
             CreateMap<JournalListQueryVM, JournalListQuery>();

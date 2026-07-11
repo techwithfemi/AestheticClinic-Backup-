@@ -17,8 +17,18 @@ export const staffRosterRoutes: Routes = [
       .then(m => m.StaffGroupComponent)
   },
   {
-    path: 'shifts',
+    path: 'shifts-master',
+    loadComponent: () => import('./shifts-master/shifts-master.component')
+      .then(m => m.ShiftsMasterComponent)
+  },
+  {
+    path: 'shift-details',
     loadComponent: () => import('./shifts/shifts.component')
       .then(m => m.ShiftsComponent)
+  },
+  {
+    path: 'shifts',
+    redirectTo: 'shift-details',
+    pathMatch: 'full'
   }
 ];

@@ -98,7 +98,8 @@
       "subItems": [
         { "label": "Create Roster", "path": "create-roster", "icon": "event_note" },
         { "label": "Staff Group", "path": "staff-group", "icon": "groups" },
-        { "label": "Shifts", "path": "shifts", "icon": "schedule" }
+        { "label": "Shifts Master", "path": "shifts-master", "icon": "schedule" },
+        { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send" }
       ]
     },
     "Management": {
