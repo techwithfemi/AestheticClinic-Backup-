@@ -16,16 +16,16 @@ public class ShiftDetailService(ISqlDataAccess db, ILogger<ShiftDetailService> l
 SELECT
     CAST(ShiftID AS bigint) AS ShiftId,
     LTRIM(RTRIM(ISNULL([Shift/Job], ''))) AS ShiftJob,
-    LTRIM(RTRIM(ISNULL(EvalTo, ''))) AS PeriodOfDay,
-    CONVERT(varchar(5), resumTime, 108) AS ResumptionTime,
-    CONVERT(varchar(5), closeTime, 108) AS ClosingTime,
-    LTRIM(RTRIM(ISNULL(resumremearly, ''))) AS PunctualityRemarks,
-    LTRIM(RTRIM(ISNULL(resumremLate, ''))) AS LateRemarks,
-    LTRIM(RTRIM(ISNULL(closeRemNorm, ''))) AS NormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(closeRemAbNorm, ''))) AS AbnormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(EvalTo, ''))) AS EvalTo
+    LTRIM(RTRIM(ISNULL(ShiftName, ''))) AS PeriodOfDay,
+    LTRIM(RTRIM(ISNULL([ResumptionTime], ''))) AS ResumptionTime,
+    LTRIM(RTRIM(ISNULL([ClosingTime], ''))) AS ClosingTime,
+    LTRIM(RTRIM(ISNULL([EarlyResumptionRemarks], ''))) AS PunctualityRemarks,
+    LTRIM(RTRIM(ISNULL([LateResumptionRemarks], ''))) AS LateRemarks,
+    LTRIM(RTRIM(ISNULL([NormalClosingRemarks], ''))) AS NormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([AbnormalClosingRemarks], ''))) AS AbnormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL(evalTo, ''))) AS EvalTo
 FROM qryEmpAttendanceParam
-ORDER BY [Shift/Job];";
+ORDER BY ShiftName;";
 
         return await db.LoadDataText<ShiftDetailItem, dynamic>(sql, new { }, ConnectionId);
     }
@@ -36,15 +36,15 @@ ORDER BY [Shift/Job];";
 SELECT TOP 1
     CAST(ShiftID AS bigint) AS ShiftId,
     LTRIM(RTRIM(ISNULL([Shift/Job], ''))) AS ShiftJob,
-    LTRIM(RTRIM(ISNULL(EvalTo, ''))) AS PeriodOfDay,
-    CONVERT(varchar(5), resumTime, 108) AS ResumptionTime,
-    CONVERT(varchar(5), closeTime, 108) AS ClosingTime,
-    LTRIM(RTRIM(ISNULL(resumremearly, ''))) AS PunctualityRemarks,
-    LTRIM(RTRIM(ISNULL(resumremLate, ''))) AS LateRemarks,
-    LTRIM(RTRIM(ISNULL(closeRemNorm, ''))) AS NormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(closeRemAbNorm, ''))) AS AbnormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(EvalTo, ''))) AS EvalTo
-FROM empAttendanceParam
+    LTRIM(RTRIM(ISNULL(ShiftName, ''))) AS PeriodOfDay,
+    LTRIM(RTRIM(ISNULL([ResumptionTime], ''))) AS ResumptionTime,
+    LTRIM(RTRIM(ISNULL([ClosingTime], ''))) AS ClosingTime,
+    LTRIM(RTRIM(ISNULL([EarlyResumptionRemarks], ''))) AS PunctualityRemarks,
+    LTRIM(RTRIM(ISNULL([LateResumptionRemarks], ''))) AS LateRemarks,
+    LTRIM(RTRIM(ISNULL([NormalClosingRemarks], ''))) AS NormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([AbnormalClosingRemarks], ''))) AS AbnormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL(evalTo, ''))) AS EvalTo
+FROM qryEmpAttendanceParam
 WHERE ShiftID = @ShiftId;";
 
         return (await db.LoadDataText<ShiftDetailItem, dynamic>(sql, new { ShiftId = shiftId }, ConnectionId)).FirstOrDefault();
@@ -53,10 +53,11 @@ WHERE ShiftID = @ShiftId;";
     public async Task<IEnumerable<ShiftLookupItem>> GetShiftLookupsAsync(CancellationToken cancellationToken = default)
     {
         const string sql = @"
-SELECT DISTINCT
-    CAST(SNo AS bigint) AS ShiftId,
-    LTRIM(RTRIM(ShiftName)) AS ShiftJob
-FROM EmpAttendanceShift
+SELECT
+    CAST(ShiftID AS bigint) AS ShiftId,
+    LTRIM(RTRIM(ShiftName)) AS ShiftName
+FROM qryEmpAttendanceParam
+GROUP BY ShiftID, ShiftName
 ORDER BY ShiftName;";
 
         return await db.LoadDataText<ShiftLookupItem, dynamic>(sql, new { }, ConnectionId);
@@ -68,13 +69,12 @@ ORDER BY ShiftName;";
 
         const string sql = @"
 INSERT INTO empAttendanceParam
-(ShiftID, [Shift/Job], resumTime, closeTime, resumremearly, resumremLate, closeRemNorm, closeRemAbNorm, EvalTo)
+([Shift/Job], [ResumptionTime], [ClosingTime], [EarlyResumptionRemarks], [LateResumptionRemarks], [NormalClosingRemarks], [AbnormalClosingRemarks], evalTo)
 VALUES
-(@ShiftId, @ShiftJob, @ResumptionTime, @ClosingTime, @PunctualityRemarks, @LateRemarks, @NormalClosingRemarks, @AbnormalClosingRemarks, @EvalTo);";
+(@ShiftJob, @ResumptionTime, @ClosingTime, @PunctualityRemarks, @LateRemarks, @NormalClosingRemarks, @AbnormalClosingRemarks, @EvalTo);";
 
         await db.SaveDataText(sql, new
         {
-            ShiftId = item.ShiftId,
             ShiftJob = item.ShiftJob.Trim(),
             ResumptionTime = item.ResumptionTime,
             ClosingTime = item.ClosingTime,
@@ -85,9 +85,9 @@ VALUES
             EvalTo = item.EvalTo?.Trim()
         }, ConnectionId);
 
-        logger.LogInformation("Created shift detail {ShiftId} by {User}", item.ShiftId, currentUserName);
-        var created = await GetByIdAsync(item.ShiftId, cancellationToken);
-        return created ?? item;
+        logger.LogInformation("Created shift detail {ShiftJob} by {User}", item.ShiftJob, currentUserName);
+        var created = await GetAllAsync(cancellationToken);
+        return created.FirstOrDefault() ?? item;
     }
 
     public async Task<ShiftDetailItem> UpdateAsync(ShiftDetailItem item, string currentUserName, CancellationToken cancellationToken = default)
@@ -97,13 +97,13 @@ VALUES
         const string sql = @"
 UPDATE empAttendanceParam
 SET [Shift/Job] = @ShiftJob,
-    resumTime = @ResumptionTime,
-    closeTime = @ClosingTime,
-    resumremearly = @PunctualityRemarks,
-    resumremLate = @LateRemarks,
-    closeRemNorm = @NormalClosingRemarks,
-    closeRemAbNorm = @AbnormalClosingRemarks,
-    EvalTo = @EvalTo
+    [ResumptionTime] = @ResumptionTime,
+    [ClosingTime] = @ClosingTime,
+    [EarlyResumptionRemarks] = @PunctualityRemarks,
+    [LateResumptionRemarks] = @LateRemarks,
+    [NormalClosingRemarks] = @NormalClosingRemarks,
+    [AbnormalClosingRemarks] = @AbnormalClosingRemarks,
+    evalTo = @EvalTo
 WHERE ShiftID = @ShiftId;";
 
         await db.SaveDataText(sql, new

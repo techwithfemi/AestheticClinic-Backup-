@@ -7,9 +7,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { ShiftDetail, ShiftDetailsEndpoint, ShiftLookup } from '../../../services/shift-details-endpoint.service';
+
+const PERIOD_OF_DAY_OPTIONS = ['MORNING', 'AFTERNOON', 'NIGHT', 'OFF-DUTY', 'LEAVE'];
 
 interface ShiftEntryDialogData {
   lookups: ShiftLookup[];
@@ -41,6 +44,7 @@ interface ShiftDialogModel {
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     NgSelectModule
   ],
   template: `
@@ -68,45 +72,54 @@ interface ShiftDialogModel {
                 (ngModelChange)="onShiftChanged($event)"
                 [placeholder]="'Select shift'"
                 appendTo=".dialog-host">
+                <ng-template ng-option-tmp let-item="item">
+                  <div class="option-row">
+                    <span>{{ item.shiftJob }}</span>
+                  </div>
+                </ng-template>
               </ng-select>
             </div>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Period of Day</mat-label>
-              <input matInput [(ngModel)]="model.periodOfDay" />
+              <mat-select [(ngModel)]="model.periodOfDay">
+                @for (option of periodOfDayOptions; track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Period/Abbreviation</mat-label>
               <input matInput [(ngModel)]="model.evalTo" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Resumption Time</mat-label>
               <input matInput type="time" [(ngModel)]="model.resumptionTime" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Closing Time</mat-label>
               <input matInput type="time" [(ngModel)]="model.closingTime" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Punctuality Remarks</mat-label>
               <input matInput [(ngModel)]="model.punctualityRemarks" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Late Remarks</mat-label>
               <input matInput [(ngModel)]="model.lateRemarks" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Normal Closing Remarks</mat-label>
               <input matInput [(ngModel)]="model.normalClosingRemarks" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="form-field">
               <mat-label>Abnormal Closing Remarks</mat-label>
               <input matInput [(ngModel)]="model.abnormalClosingRemarks" />
             </mat-form-field>
@@ -132,6 +145,9 @@ interface ShiftDialogModel {
       width: min(920px, 95vw);
       max-width: 100%;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
     }
 
     .dialog-header {
@@ -139,29 +155,36 @@ interface ShiftDialogModel {
       justify-content: space-between;
       align-items: center;
       padding-right: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .dialog-header h2 {
+      margin: 0;
     }
 
     .dialog-content {
       display: block;
-      overflow: visible;
-      padding-top: 0.5rem;
+      overflow-y: auto;
+      padding: 12px 24px;
+      flex: 1;
+      min-height: 0;
     }
 
     .header-card {
       border: 1px solid rgba(0, 0, 0, 0.12);
       border-radius: 10px;
-      padding: 12px;
+      padding: 16px;
     }
 
     .header-card__title {
       font-weight: 600;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
 
     .form-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 16px;
     }
 
     .field-block {
@@ -173,19 +196,54 @@ interface ShiftDialogModel {
     .field-label {
       font-size: 12px;
       color: rgba(0, 0, 0, 0.65);
+      font-weight: 500;
     }
 
     .span-2 {
       grid-column: 1 / -1;
     }
 
+    .ng-select-container {
+      z-index: 1000;
+    }
+
+    .option-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .option-row span {
+      flex: 1;
+    }
+
+    .option-row small {
+      color: rgba(0, 0, 0, 0.45);
+      font-size: 11px;
+    }
+
+    .form-field {
+      width: 100%;
+    }
+
     .dialog-actions {
-      padding: 8px 24px 16px;
+      padding: 16px 24px;
+      flex-shrink: 0;
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+      background-color: rgba(0, 0, 0, 0.02);
+      gap: 8px;
+      display: flex;
+      justify-content: flex-end;
     }
 
     @media (max-width: 767.98px) {
       .form-grid {
         grid-template-columns: 1fr;
+      }
+
+      .dialog-host {
+        width: 95vw;
       }
     }
   `]
@@ -196,6 +254,7 @@ export class ShiftEntryDialogComponent {
   readonly dialogRef = inject(MatDialogRef<ShiftEntryDialogComponent, boolean>);
   readonly data = inject<ShiftEntryDialogData>(MAT_DIALOG_DATA);
 
+  readonly periodOfDayOptions = PERIOD_OF_DAY_OPTIONS;
   saving = false;
   readonly isEdit = !!this.data.shift;
 
