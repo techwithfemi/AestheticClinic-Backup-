@@ -153,6 +153,10 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
     this.loadRows();
   }
 
+  formatShiftTime(value?: string | null): string {
+    return ShiftEntryDialogComponent.to12HourTime(value);
+  }
+
   private getErrorMessage(error: unknown): string {
     const e = error as { error?: unknown; message?: string; statusText?: string; status?: number };
     if (e?.error) {

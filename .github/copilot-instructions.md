@@ -472,6 +472,10 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - Use Dapper for the legacy Crystal Reports service and its stored procedure calls, including the General Ledger report endpoint.
 
+### Shift Time Format
+
+- Display shift times in 12-hour format like '8:30 AM / 8:30 PM' instead of 24-hour format.
+
 
 
 

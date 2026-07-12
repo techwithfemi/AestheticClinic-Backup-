@@ -53,12 +53,10 @@ WHERE ShiftID = @ShiftId;";
     public async Task<IEnumerable<ShiftLookupItem>> GetShiftLookupsAsync(CancellationToken cancellationToken = default)
     {
         const string sql = @"
-SELECT
-    CAST(ShiftID AS bigint) AS ShiftId,
-    LTRIM(RTRIM(ShiftName)) AS ShiftName
-FROM qryEmpAttendanceParam
-GROUP BY ShiftID, ShiftName
-ORDER BY ShiftName;";
+SELECT DISTINCT
+    CAST(SNo AS bigint) AS ShiftId,
+    ShiftName AS ShiftJob
+FROM EmpAttendanceShift;";
 
         return await db.LoadDataText<ShiftLookupItem, dynamic>(sql, new { }, ConnectionId);
     }
@@ -69,25 +67,26 @@ ORDER BY ShiftName;";
 
         const string sql = @"
 INSERT INTO empAttendanceParam
-([Shift/Job], [ResumptionTime], [ClosingTime], [EarlyResumptionRemarks], [LateResumptionRemarks], [NormalClosingRemarks], [AbnormalClosingRemarks], evalTo)
+(shifttype, resumTime, closeTime, resumremearly, resumremLate, closeRemNorm, closeRemAbNorm, EvalTo, ShiftID)
 VALUES
-(@ShiftJob, @ResumptionTime, @ClosingTime, @PunctualityRemarks, @LateRemarks, @NormalClosingRemarks, @AbnormalClosingRemarks, @EvalTo);";
+(@ShiftJob, @ResumptionTime, @ClosingTime, @PunctualityRemarks, @LateRemarks, @NormalClosingRemarks, @AbnormalClosingRemarks, @EvalTo, @ShiftId);";
 
         await db.SaveDataText(sql, new
         {
+            ShiftId = item.ShiftId,
             ShiftJob = item.ShiftJob.Trim(),
             ResumptionTime = item.ResumptionTime,
             ClosingTime = item.ClosingTime,
-            PunctualityRemarks = item.PunctualityRemarks?.Trim(),
-            LateRemarks = item.LateRemarks?.Trim(),
+            PunctualityRemarks = string.IsNullOrWhiteSpace(item.PunctualityRemarks) ? "OK" : item.PunctualityRemarks.Trim(),
+            LateRemarks = string.IsNullOrWhiteSpace(item.LateRemarks) ? "OK" : item.LateRemarks.Trim(),
             NormalClosingRemarks = item.NormalClosingRemarks?.Trim(),
-            AbnormalClosingRemarks = item.AbnormalClosingRemarks?.Trim(),
-            EvalTo = item.EvalTo?.Trim()
+            AbnormalClosingRemarks = string.IsNullOrWhiteSpace(item.AbnormalClosingRemarks) ? "OK" : item.AbnormalClosingRemarks.Trim(),
+            EvalTo = (item.EvalTo ?? item.PeriodOfDay)?.Trim()
         }, ConnectionId);
 
         logger.LogInformation("Created shift detail {ShiftJob} by {User}", item.ShiftJob, currentUserName);
-        var created = await GetAllAsync(cancellationToken);
-        return created.FirstOrDefault() ?? item;
+        var created = await GetByIdAsync(item.ShiftId, cancellationToken);
+        return created ?? item;
     }
 
     public async Task<ShiftDetailItem> UpdateAsync(ShiftDetailItem item, string currentUserName, CancellationToken cancellationToken = default)
@@ -96,14 +95,14 @@ VALUES
 
         const string sql = @"
 UPDATE empAttendanceParam
-SET [Shift/Job] = @ShiftJob,
-    [ResumptionTime] = @ResumptionTime,
-    [ClosingTime] = @ClosingTime,
-    [EarlyResumptionRemarks] = @PunctualityRemarks,
-    [LateResumptionRemarks] = @LateRemarks,
-    [NormalClosingRemarks] = @NormalClosingRemarks,
-    [AbnormalClosingRemarks] = @AbnormalClosingRemarks,
-    evalTo = @EvalTo
+SET shifttype = @ShiftJob,
+    resumTime = @ResumptionTime,
+    closeTime = @ClosingTime,
+    resumremearly = @PunctualityRemarks,
+    resumremLate = @LateRemarks,
+    closeRemNorm = @NormalClosingRemarks,
+    closeRemAbNorm = @AbnormalClosingRemarks,
+    EvalTo = @EvalTo
 WHERE ShiftID = @ShiftId;";
 
         await db.SaveDataText(sql, new
@@ -112,11 +111,11 @@ WHERE ShiftID = @ShiftId;";
             ShiftJob = item.ShiftJob.Trim(),
             ResumptionTime = item.ResumptionTime,
             ClosingTime = item.ClosingTime,
-            PunctualityRemarks = item.PunctualityRemarks?.Trim(),
-            LateRemarks = item.LateRemarks?.Trim(),
+            PunctualityRemarks = string.IsNullOrWhiteSpace(item.PunctualityRemarks) ? "OK" : item.PunctualityRemarks.Trim(),
+            LateRemarks = string.IsNullOrWhiteSpace(item.LateRemarks) ? "OK" : item.LateRemarks.Trim(),
             NormalClosingRemarks = item.NormalClosingRemarks?.Trim(),
-            AbnormalClosingRemarks = item.AbnormalClosingRemarks?.Trim(),
-            EvalTo = item.EvalTo?.Trim()
+            AbnormalClosingRemarks = string.IsNullOrWhiteSpace(item.AbnormalClosingRemarks) ? "OK" : item.AbnormalClosingRemarks.Trim(),
+            EvalTo = (item.EvalTo ?? item.PeriodOfDay)?.Trim()
         }, ConnectionId);
 
         logger.LogInformation("Updated shift detail {ShiftId} by {User}", item.ShiftId, currentUserName);

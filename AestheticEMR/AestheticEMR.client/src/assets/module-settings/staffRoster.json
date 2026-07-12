@@ -1,0 +1,9 @@
+{
+  "periodOfDayOptions": [
+    "MORNING",
+    "AFTERNOON",
+    "NIGHT",
+    "OFF-DUTY",
+    "LEAVE"
+  ]
+}
