@@ -35,12 +35,12 @@
       <div class="table-shell">
         <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 shift-table">
           <ng-container matColumnDef="shiftJob">
-            <th mat-header-cell *matHeaderCellDef>Shift/Job</th>
+            <th mat-header-cell *matHeaderCellDef>Shift/Duty</th>
             <td mat-cell *matCellDef="let row">{{ row.shiftJob }}</td>
           </ng-container>
 
           <ng-container matColumnDef="periodOfDay">
-            <th mat-header-cell *matHeaderCellDef>Period</th>
+            <th mat-header-cell *matHeaderCellDef>ShiftName</th>
             <td mat-cell *matCellDef="let row">{{ row.periodOfDay }}</td>
           </ng-container>
 

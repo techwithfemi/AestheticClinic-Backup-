@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -43,6 +43,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
   private readonly alertService = inject(AlertService);
   private readonly endpoint = inject(ShiftDetailsEndpoint);
   private readonly dialog = inject(MatDialog);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly loading = signal(false);
   readonly deletingId = signal<number | null>(null);
@@ -81,6 +82,15 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
           return text.includes(filter);
         };
         this.applyFilter(this.searchText());
+
+        // Reset paginator to first page to ensure updated data is visible
+        if (this.paginator) {
+          this.paginator.firstPage();
+        }
+
+        // Trigger change detection to ensure table renders updated data
+        this.cdr.markForCheck();
+
         this.loading.set(false);
       },
       error: error => {

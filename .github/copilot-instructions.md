@@ -416,7 +416,7 @@ When introducing new configuration keys, also update the base `appsettings.json`
 - If the add/edit dialog page has tabs, keep patient header/summary and tabbed form inside the dialog, not the main page.
 - Use Angular Material/material icons instead of Bootstrap.
 - Material table/grid should have page size = 10.
-- use @ng-select/ng-select as select dropdown with searchable 
+- use @ng-select/ng-select as select dropdown with searchable, ensuring simple, professional, transparent styling for dropdown controls in UI forms.
 - The dialog can only be explicitly closed using the close (X) icon or cancel button.
 - The entry form UI must be responsive (for mobile, tablet, and desktop devices).
 
