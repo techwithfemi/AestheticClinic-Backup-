@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { NgSelectModule } from '@ng-select/ng-select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import {
   DepartmentLookup,
@@ -32,7 +32,7 @@ interface ShiftMasterDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    NgSelectModule
+    MatCheckboxModule
   ],
   template: `
     <div class="dialog-host">
@@ -54,23 +54,25 @@ interface ShiftMasterDialogData {
 
             <div class="field-block span-2">
               <div class="field-label">Assigned Departments</div>
-              <ng-select
-                [items]="data.departments"
-                bindLabel="deptName"
-                bindValue="deptId"
-                [multiple]="true"
-                [searchable]="true"
-                [clearable]="false"
-                [(ngModel)]="deptIds"
-                [placeholder]="'Select departments'"
-                appendTo=".dialog-host">
-                <ng-template ng-option-tmp let-item="item">
-                  <div class="option-row">
-                    <span>{{ item.deptName }}</span>
-                    <small>{{ item.deptId }}</small>
-                  </div>
-                </ng-template>
-              </ng-select>
+              <div class="listbox-actions">
+                <button mat-button type="button" (click)="selectAllDepartments()" [disabled]="data.departments.length === 0">
+                  Select All
+                </button>
+                <button mat-button type="button" (click)="clearAllDepartments()" [disabled]="deptIds.length === 0">
+                  Deselect All
+                </button>
+              </div>
+              <div class="checked-listbox" role="group" aria-label="Assigned Departments">
+                @for (department of data.departments; track department.deptId) {
+                  <mat-checkbox
+                    class="department-checkbox"
+                    [ngModel]="isDepartmentSelected(department.deptId)"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="toggleDepartment(department.deptId, $event)">
+                    {{ department.deptName }}
+                  </mat-checkbox>
+                }
+              </div>
             </div>
           </div>
         </section>
@@ -141,14 +143,37 @@ interface ShiftMasterDialogData {
       grid-column: 1 / -1;
     }
 
-    .dialog-actions {
-      padding: 8px 24px 16px;
+    .checked-listbox {
+      border: 1px solid rgba(0, 0, 0, 0.24);
+      border-radius: 4px;
+      min-height: 140px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+      background-color: #fff;
     }
 
-    .option-row {
+    .listbox-actions {
       display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
       gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .listbox-actions button {
+      min-width: 0;
+      padding-inline: 8px;
+      line-height: 30px;
+    }
+
+    .department-checkbox {
+      width: 100%;
+    }
+
+    .dialog-actions {
+      padding: 8px 24px 16px;
     }
 
     @media (max-width: 767.98px) {
@@ -168,7 +193,33 @@ export class ShiftMasterEntryDialogComponent {
   readonly isEdit = !!this.data.shift;
 
   shiftName = this.data.shift?.shiftName ?? '';
-  deptIds = [...(this.data.shift?.deptIds ?? [])];
+  deptIds = [...(this.data.shift?.deptIds ?? [])].map(id => String(id));
+
+  isDepartmentSelected(deptId: string | number): boolean {
+    const normalizedDeptId = String(deptId);
+    return this.deptIds.includes(normalizedDeptId);
+  }
+
+  toggleDepartment(deptId: string | number, checked: boolean): void {
+    const normalizedDeptId = String(deptId);
+
+    if (checked) {
+      if (!this.deptIds.includes(normalizedDeptId)) {
+        this.deptIds = [...this.deptIds, normalizedDeptId];
+      }
+      return;
+    }
+
+    this.deptIds = this.deptIds.filter(id => id !== normalizedDeptId);
+  }
+
+  selectAllDepartments(): void {
+    this.deptIds = this.data.departments.map(department => String(department.deptId));
+  }
+
+  clearAllDepartments(): void {
+    this.deptIds = [];
+  }
 
   cancel(): void {
     if (this.saving) {

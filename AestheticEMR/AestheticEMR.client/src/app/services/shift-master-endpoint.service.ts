@@ -15,6 +15,7 @@ export interface ShiftMasterItem {
   shiftId: number;
   shiftName: string;
   departmentCount: number;
+  departments: string;
 }
 
 export interface ShiftMasterDetail {

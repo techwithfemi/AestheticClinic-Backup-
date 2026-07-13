@@ -17,18 +17,18 @@ public class ShiftMasterService(
     public async Task<IEnumerable<ShiftMasterItem>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
-        const string sql = @"
-SELECT
-    CAST(s.SNo AS bigint) AS ShiftId,
-    LTRIM(RTRIM(s.ShiftName)) AS ShiftName,
-    COUNT(ds.DeptID) AS DepartmentCount
-FROM EmpAttendanceShift s
-LEFT JOIN EmpDeptShifts ds ON ds.ShiftID = s.SNo
-GROUP BY s.SNo, s.ShiftName
-ORDER BY s.ShiftName;";
+        const string sql = @"select SNo,ShiftName from EmpAttendanceShift order by ShiftName";
 
-        var rows = await connection.QueryAsync<ShiftMasterItem>(sql);
-        return rows.ToList();
+        var rows = await connection.QueryAsync<(long SNo, string? ShiftName)>(sql);
+        return rows
+            .Select(x => new ShiftMasterItem
+            {
+                ShiftId = x.SNo,
+                ShiftName = (x.ShiftName ?? string.Empty).Trim(),
+                DepartmentCount = 0,
+                Departments = string.Empty
+            })
+            .ToList();
     }
 
     public async Task<IEnumerable<DepartmentLookupItem>> GetDepartmentsAsync(CancellationToken cancellationToken = default)
@@ -91,6 +91,12 @@ ORDER BY DeptID;";
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
+            var duplicateExists = await ShiftNameExistsAsync(connection, transaction, shiftName);
+            if (duplicateExists)
+            {
+                throw new InvalidOperationException("Shift name already exists.");
+            }
+
             var shiftId = await connection.ExecuteScalarAsync<long>(@"
 INSERT INTO EmpAttendanceShift (ShiftName)
 OUTPUT INSERTED.SNo
@@ -127,16 +133,29 @@ VALUES (@ShiftName);",
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
-            var affected = await connection.ExecuteAsync(@"
+            var existing = await connection.QueryFirstOrDefaultAsync<ShiftMasterDetail>(@"SELECT TOP 1 CAST(SNo AS bigint) AS ShiftId, LTRIM(RTRIM(ShiftName)) AS ShiftName FROM EmpAttendanceShift WHERE SNo = @ShiftId;", new { ShiftId = shiftId }, transaction);
+            if (existing is null)
+            {
+                throw new KeyNotFoundException($"Shift {shiftId} not found.");
+            }
+
+            var protectedUpdateMessage = GetProtectedShiftUpdateMessage(existing.ShiftName);
+            if (protectedUpdateMessage is not null)
+            {
+                throw new InvalidOperationException(protectedUpdateMessage);
+            }
+
+            var duplicateExists = await ShiftNameExistsAsync(connection, transaction, shiftName, shiftId);
+            if (duplicateExists)
+            {
+                throw new InvalidOperationException("Shift name already exists.");
+            }
+
+            await connection.ExecuteAsync(@"
 UPDATE EmpAttendanceShift
 SET ShiftName = @ShiftName
 WHERE SNo = @ShiftId;",
                 new { ShiftId = shiftId, ShiftName = shiftName }, transaction);
-
-            if (affected == 0)
-            {
-                throw new KeyNotFoundException($"Shift {shiftId} not found.");
-            }
 
             await connection.ExecuteAsync(@"DELETE FROM EmpDeptShifts WHERE ShiftID = @ShiftId;", new { ShiftId = shiftId }, transaction);
             await InsertAssignmentsAsync(connection, transaction, shiftId, deptIds);
@@ -163,15 +182,17 @@ WHERE SNo = @ShiftId;",
                 return false;
             }
 
-            if (existing.ShiftName.Trim().Equals("(OFF_DUTY)", StringComparison.OrdinalIgnoreCase))
+            var protectedDeleteMessage = GetProtectedShiftDeleteMessage(existing.ShiftName);
+            if (protectedDeleteMessage is not null)
             {
-                throw new InvalidOperationException("(OFF_DUTY) Shift Cannot be Deleted.");
+                throw new InvalidOperationException(protectedDeleteMessage);
             }
 
+            var deletedShiftDetails = await connection.ExecuteAsync(@"DELETE FROM empAttendanceParam WHERE ShiftID = @ShiftId;", new { ShiftId = shiftId }, transaction);
             await connection.ExecuteAsync(@"DELETE FROM EmpDeptShifts WHERE ShiftID = @ShiftId;", new { ShiftId = shiftId }, transaction);
             var affected = await connection.ExecuteAsync(@"DELETE FROM EmpAttendanceShift WHERE SNo = @ShiftId;", new { ShiftId = shiftId }, transaction);
             await transaction.CommitAsync(cancellationToken);
-            logger.LogInformation("Deleted shift master {ShiftId} by {User}", shiftId, currentUserName);
+            logger.LogInformation("Deleted shift master {ShiftId} and {ShiftDetailsCount} shift detail rows by {User}", shiftId, deletedShiftDetails, currentUserName);
             return affected > 0;
         }
         catch
@@ -212,5 +233,49 @@ WHERE SNo = @ShiftId;",
             await connection.ExecuteAsync(@"INSERT INTO EmpDeptShifts (ShiftID, DeptID) VALUES (@ShiftId, @DeptId);",
                 new { ShiftId = shiftId, DeptId = deptId }, transaction);
         }
+    }
+
+    private static async Task<bool> ShiftNameExistsAsync(SqlConnection connection, IDbTransaction transaction, string shiftName, long? excludeShiftId = null)
+    {
+        const string sql = @"
+SELECT COUNT(1)
+FROM EmpAttendanceShift
+WHERE UPPER(LTRIM(RTRIM(ISNULL(ShiftName, '')))) = UPPER(@ShiftName)
+  AND (@ExcludeShiftId IS NULL OR SNo <> @ExcludeShiftId);";
+
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { ShiftName = shiftName.Trim(), ExcludeShiftId = excludeShiftId }, transaction);
+        return count > 0;
+    }
+
+    private static string? GetProtectedShiftUpdateMessage(string? shiftName)
+    {
+        var normalized = shiftName?.Trim();
+        if (string.Equals(normalized, "(OFF_DUTY)", StringComparison.OrdinalIgnoreCase))
+        {
+            return "(OFF_DUTY) Shift Cannot be updated";
+        }
+
+        if (string.Equals(normalized, "(Leave)", StringComparison.OrdinalIgnoreCase))
+        {
+            return "(Leave) Shift Cannot be updated";
+        }
+
+        return null;
+    }
+
+    private static string? GetProtectedShiftDeleteMessage(string? shiftName)
+    {
+        var normalized = shiftName?.Trim();
+        if (string.Equals(normalized, "(OFF_DUTY)", StringComparison.OrdinalIgnoreCase))
+        {
+            return "(OFF_DUTY) Shift Cannot be Deleted";
+        }
+
+        if (string.Equals(normalized, "(Leave)", StringComparison.OrdinalIgnoreCase))
+        {
+            return "(Leave) Shift Cannot be Deleted";
+        }
+
+        return null;
     }
 }

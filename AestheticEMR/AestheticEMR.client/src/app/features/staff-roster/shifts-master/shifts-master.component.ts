@@ -56,7 +56,7 @@ export class ShiftsMasterComponent implements OnInit, AfterViewInit {
   readonly searchText = signal('');
 
   readonly dataSource = new MatTableDataSource<ShiftMasterItem>([]);
-  readonly displayedColumns = ['shiftName', 'departmentCount', 'actions'];
+  readonly displayedColumns = ['shiftName', 'actions'];
   readonly filteredCount = computed(() => this.dataSource.filteredData.length);
 
   ngOnInit(): void {

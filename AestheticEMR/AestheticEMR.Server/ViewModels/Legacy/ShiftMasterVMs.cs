@@ -14,6 +14,7 @@ public sealed class ShiftMasterItemVM
     public long ShiftId { get; set; }
     public string ShiftName { get; set; } = string.Empty;
     public int DepartmentCount { get; set; }
+    public string Departments { get; set; } = string.Empty;
 }
 
 public sealed class ShiftMasterDetailVM

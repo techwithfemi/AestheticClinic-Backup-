@@ -98,8 +98,17 @@ public class ShiftMasterController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(long shiftId, CancellationToken ct)
     {
-        var removed = await shiftMasterService.DeleteAsync(shiftId, GetCurrentUserName(), ct);
-        return removed ? NoContent() : NotFound(new { shiftId });
+        try
+        {
+            var removed = await shiftMasterService.DeleteAsync(shiftId, GetCurrentUserName(), ct);
+            return removed ? NoContent() : NotFound(new { shiftId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Validation error deleting shift master {ShiftId}", shiftId);
+            AddModelError(ex.Message);
+            return BadRequest(new ValidationProblemDetails(ModelState));
+        }
     }
 
     private string GetCurrentUserName()
