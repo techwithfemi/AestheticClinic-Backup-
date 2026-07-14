@@ -13,48 +13,41 @@ public class RosterService(
     IUserIdAccessor userIdAccessor,
     ILogger<RosterService> logger) : IRosterService
 {
-    private const string HospitalConnection = "smartHRConnection";
+    private const string SmartHRConnection = "smartHRConnection";
     private const string RosterView = "vwRosterForGridLatest";
 
-    public async Task<RosterLookups> GetLookupsAsync(string deptId, CancellationToken cancellationToken = default)
+    public async Task<RosterLookups> GetLookupsAsync(CancellationToken cancellationToken = default)
     {
-        var normalizedDept = await ResolveDeptIdAsync(deptId, cancellationToken);
-        var parameters = new { DeptId = normalizedDept };
-
         var groups = await db.LoadDataText<RosterGroupLookup, dynamic>(@"
-SELECT DISTINCT CAST(GroupID AS bigint) AS GroupId,
+SELECT DISTINCT CAST(SNo AS bigint) AS GroupId,
        LTRIM(RTRIM(GroupName)) AS GroupName,
-       LTRIM(RTRIM(DeptID)) AS DeptId
+       LTRIM(RTRIM(DeptID)) AS DeptId,
+       LTRIM(RTRIM(DeptName)) AS DeptName
 FROM vwRosterGroupAssignedToStaff
-WHERE DeptID = @DeptId
-ORDER BY GroupName;", parameters, HospitalConnection);
+ORDER BY GroupName;", new { }, SmartHRConnection);
 
         var sourceStaff = await db.LoadDataText<RosterStaffLookup, dynamic>(@"
 SELECT DISTINCT LTRIM(RTRIM(EmpID)) AS EmpId,
        LTRIM(RTRIM(empFullname)) AS EmpName
 FROM vwRosterEmployees
-WHERE DeptID = @DeptId
-ORDER BY empFullname;", parameters, HospitalConnection);
+ORDER BY EmpName;", new { }, SmartHRConnection);
 
         var targetStaff = await db.LoadDataText<RosterStaffLookup, dynamic>(@"
 SELECT DISTINCT LTRIM(RTRIM(EmpID)) AS EmpId,
        LTRIM(RTRIM(empFullname)) AS EmpName
 FROM qryEmp
-WHERE DeptID = @DeptId
-  AND empID NOT IN (
-      SELECT DISTINCT EmpID
-      FROM vwRosterEmployees
-      WHERE DeptID = @DeptId
-  )
-ORDER BY empFullname;", parameters, HospitalConnection);
+WHERE empID NOT IN (
+    SELECT DISTINCT EmpID FROM vwRosterEmployees
+)
+ORDER BY EmpName;", new { }, SmartHRConnection);
 
         var shifts = await db.LoadDataText<RosterShiftLookup, dynamic>(@"
 SELECT DISTINCT CAST(ShiftID AS bigint) AS SNo,
        LTRIM(RTRIM(ShiftName)) AS ShiftName,
-       LTRIM(RTRIM(EvalTo)) AS EvalTo
+       LTRIM(RTRIM(EvalTo)) AS EvalTo,
+       LTRIM(RTRIM(DeptID)) AS DeptId
 FROM vwEmpDeptShifts
-WHERE DeptID = @DeptId
-ORDER BY ShiftName;", parameters, HospitalConnection);
+ORDER BY ShiftName;", new { }, SmartHRConnection);
 
         return new RosterLookups
         {
@@ -67,12 +60,8 @@ ORDER BY ShiftName;", parameters, HospitalConnection);
 
     public async Task<IEnumerable<RosterGridItem>> GetGridAsync(RosterGridQuery query, CancellationToken cancellationToken = default)
     {
-        var deptId = await ResolveDeptIdAsync(query.DeptId, cancellationToken);
         var whereParts = new List<string>();
         var param = new DynamicParameters();
-
-        whereParts.Add("DeptID = @DeptId");
-        param.Add("DeptId", deptId);
 
         if (query.GroupId.HasValue)
         {
@@ -92,18 +81,13 @@ ORDER BY ShiftName;", parameters, HospitalConnection);
             param.Add("ToDate", query.ToDate.Value.ToDateTime(TimeOnly.MaxValue));
         }
 
-        if (query.LatestOnly)
-        {
-            whereParts.Add("Latest = 1");
-        }
-
         var where = whereParts.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", whereParts);
         var rows = await db.LoadDataText<RosterGridItem, DynamicParameters>($@"
 SELECT SNo, [Date], StaffName, ClockIn, ClockOut, Status, Fine, ShiftName, GroupName, StartDate, EndDate,
        DeptName, Exempted, GroupID, RosterGrpShiftID, EmpID, ShiftAbbrv
 FROM {RosterView}
 {where}
-ORDER BY [Date], StaffName;", param, HospitalConnection);
+ORDER BY [Date], StaffName;", param, SmartHRConnection);
 
         return rows;
     }
@@ -155,7 +139,7 @@ SELECT CAST(SNo AS bigint) AS SNo,
 FROM Roster
 WHERE EmpID = @EmpId
   AND DeptID = @DeptId {whereDate}
-ORDER BY RosterDate;", param, HospitalConnection);
+ORDER BY RosterDate;", param, SmartHRConnection);
 
         return rows;
     }
@@ -192,7 +176,7 @@ WHERE EmpID = @EmpId
                 DeptId = deptId,
                 StartDate = request.SelectedDays.Min(x => x.Date).ToDateTime(TimeOnly.MinValue),
                 EndDate = request.SelectedDays.Max(x => x.Date).ToDateTime(TimeOnly.MaxValue)
-            }, HospitalConnection);
+            }, SmartHRConnection);
 
         foreach (var day in request.SelectedDays.OrderBy(x => x.Date))
         {
@@ -216,7 +200,7 @@ VALUES
                     GroupName = groupName,
                     DeptID = deptId,
                     RosterDate = day.Date.ToDateTime(TimeOnly.MinValue)
-                }, HospitalConnection);
+                }, SmartHRConnection);
         }
 
         var items = (await GetExistingAsync(new RosterEditorQuery
@@ -237,7 +221,7 @@ VALUES
 
     public async Task<bool> DeleteAsync(RosterDeleteRequest request, string currentUserName, CancellationToken cancellationToken = default)
     {
-        await db.SaveDataText("DELETE FROM Roster WHERE SNo = @SNo;", new { request.SNo }, HospitalConnection);
+        await db.SaveDataText("DELETE FROM Roster WHERE SNo = @SNo;", new { request.SNo }, SmartHRConnection);
         logger.LogInformation("Deleted roster row {SNo} by {User}", request.SNo, currentUserName);
         return true;
     }
@@ -258,7 +242,7 @@ VALUES
         var rows = await db.LoadDataText<DeptResolverRow, dynamic>(@"
 SELECT TOP 1 LTRIM(RTRIM(DeptID)) AS DeptId
 FROM qryEmp
-WHERE EmpID = @EmpId;", new { EmpId = empId.Trim() }, HospitalConnection);
+WHERE EmpID = @EmpId;", new { EmpId = empId.Trim() }, SmartHRConnection);
 
         var resolved = rows.FirstOrDefault()?.DeptId?.Trim();
         if (string.IsNullOrWhiteSpace(resolved))

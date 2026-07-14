@@ -1,15 +1,31 @@
 <div @fadeInOut class="page-container">
-  <mat-card class="roster-card">
-    <mat-card-header>
-      <mat-card-title>{{ 'staffRoster.createRoster' | translate }}</mat-card-title>
-      <mat-card-subtitle>VB6 parity: add, edit, delete, select all, deselect all, and print-ready grid.</mat-card-subtitle>
-    </mat-card-header>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header__title">
+      <mat-icon class="page-header__icon">calendar_month</mat-icon>
+      <div>
+        <h3>{{ 'staffRoster.createRoster' | translate }}</h3>
+        <p class="page-header__subtitle">Manage staff roster assignments by month and group</p>
+      </div>
+    </div>
+    <div class="page-header__actions">
+      <button mat-icon-button matTooltip="Refresh" (click)="refresh()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+      <button mat-raised-button color="primary" (click)="openNewDialog()">
+        <mat-icon>add</mat-icon>
+        New Roster Entry
+      </button>
+    </div>
+  </div>
 
+  <mat-card class="roster-card">
     <mat-card-content>
       @if (loading()) {
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
+      <!-- Filters toolbar -->
       <div class="toolbar-grid">
         <mat-form-field appearance="outline">
           <mat-label>Month</mat-label>
@@ -28,104 +44,9 @@
             }
           </mat-select>
         </mat-form-field>
-
-        <div class="ng-select-wrapper">
-          <span class="ng-select-label">Roster Group</span>
-          <ng-select
-            [items]="groups"
-            bindLabel="groupName"
-            bindValue="groupId"
-            [clearable]="false"
-            [searchable]="true"
-            [placeholder]="'Select group'"
-            [ngModel]="form().groupId"
-            (ngModelChange)="onGroupChanged($event)">
-          </ng-select>
-        </div>
-
-        <div class="ng-select-wrapper">
-          <span class="ng-select-label">Staff on Roster as at Today</span>
-          <ng-select
-            [items]="sourceStaff"
-            bindLabel="empName"
-            bindValue="empId"
-            [searchable]="true"
-            [clearable]="true"
-            [ngModel]="form().sourceEmpId"
-            (ngModelChange)="onSourceChanged($event)">
-          </ng-select>
-        </div>
-
-        <div class="ng-select-wrapper">
-          <span class="ng-select-label">Staff NOT on Roster</span>
-          <ng-select
-            [items]="targetStaff"
-            bindLabel="empName"
-            bindValue="empId"
-            [searchable]="true"
-            [clearable]="true"
-            [ngModel]="form().targetEmpId"
-            (ngModelChange)="onTargetChanged($event)">
-          </ng-select>
-        </div>
       </div>
 
-      <div class="action-bar">
-        <button mat-stroked-button color="primary" (click)="selectAllDays()">
-          <mat-icon>done_all</mat-icon>
-          Select All
-        </button>
-        <button mat-stroked-button color="primary" (click)="deselectAllDays()">
-          <mat-icon>remove_done</mat-icon>
-          DeSelect All
-        </button>
-        <button mat-raised-button color="primary" (click)="loadSourceRoster()">
-          <mat-icon>content_copy</mat-icon>
-          Create from Existing
-        </button>
-        <button mat-raised-button color="accent" (click)="saveRoster()" [disabled]="saving()">
-          <mat-icon>save</mat-icon>
-          {{ saving() ? 'Saving...' : 'Save' }}
-        </button>
-        <button mat-stroked-button (click)="resetForm()">
-          <mat-icon>cancel</mat-icon>
-          Cancel
-        </button>
-        <button mat-stroked-button (click)="refresh()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
-      </div>
-
-      <div class="legend-row">
-        <span>Selected days: {{ selectedDaysCount() }}</span>
-        <span>Days with shift: {{ selectedShiftCount() }}</span>
-      </div>
-
-      <div class="days-grid">
-        @for (day of days(); track day.date; let i = $index) {
-          <mat-card class="day-card" [class.selected]="day.selected">
-            <mat-checkbox [checked]="day.selected" (change)="toggleDay(i, $event.checked)">
-              {{ day.label }}
-            </mat-checkbox>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Shift</mat-label>
-              <mat-select [value]="day.shiftId" (selectionChange)="applyShiftToDay(i, $event.value)">
-                @for (shift of shifts; track shift.sno) {
-                  <mat-option [value]="shift.sno">{{ shift.shiftName }} [{{ shift.evalTo }}]</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <div class="day-footer">
-              <span>{{ day.dayName }}</span>
-              <span>{{ day.shiftName || '—' }}</span>
-            </div>
-          </mat-card>
-        }
-      </div>
-
+      <!-- Roster grid -->
       <div class="table-shell">
         <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 roster-table">
           <ng-container matColumnDef="date">
@@ -156,17 +77,31 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let row">
-              <button mat-icon-button color="primary" matTooltip="Edit" (click)="editRow(row)">
+              <button mat-icon-button color="primary" matTooltip="Edit" (click)="openEditDialog(row)">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" matTooltip="Delete" (click)="deleteRow(row)">
-                <mat-icon>delete</mat-icon>
+              <button mat-icon-button color="warn" matTooltip="Delete"
+                (click)="deleteRow(row)"
+                [disabled]="deletingSno() === row.sno">
+                @if (deletingSno() === row.sno) {
+                  <mat-icon class="spin">autorenew</mat-icon>
+                } @else {
+                  <mat-icon>delete</mat-icon>
+                }
               </button>
             </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+          @if (dataSource.data.length === 0 && !loading()) {
+            <tr class="mat-row no-data-row">
+              <td [colSpan]="displayedColumns.length" class="no-data-cell">
+                No roster entries found for the selected period.
+              </td>
+            </tr>
+          }
         </table>
 
         <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 25, 50]" showFirstLastButtons></mat-paginator>

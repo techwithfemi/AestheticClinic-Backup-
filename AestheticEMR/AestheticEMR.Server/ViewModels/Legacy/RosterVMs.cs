@@ -15,6 +15,7 @@ public sealed class RosterGroupLookupVM
     public long GroupId { get; set; }
     public string GroupName { get; set; } = string.Empty;
     public string? DeptId { get; set; }
+    public string? DeptName { get; set; }
 }
 
 public sealed class RosterStaffLookupVM
@@ -28,6 +29,7 @@ public sealed class RosterShiftLookupVM
     public long SNo { get; set; }
     public string ShiftName { get; set; } = string.Empty;
     public string EvalTo { get; set; } = string.Empty;
+    public string? DeptId { get; set; }
 }
 
 public sealed class RosterGridQueryVM
@@ -57,8 +59,7 @@ public sealed class RosterDaySelectionVM
 
 public sealed class RosterSaveVM
 {
-    [Required, StringLength(50)]
-    public string DeptId { get; set; } = string.Empty;
+    public string? DeptId { get; set; }
 
     public long? GroupId { get; set; }
 

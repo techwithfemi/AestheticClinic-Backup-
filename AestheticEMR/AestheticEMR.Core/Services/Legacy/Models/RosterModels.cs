@@ -13,6 +13,7 @@ public sealed class RosterGroupLookup
     public long GroupId { get; set; }
     public string GroupName { get; set; } = string.Empty;
     public string? DeptId { get; set; }
+    public string? DeptName { get; set; }
 }
 
 public sealed class RosterStaffLookup
@@ -26,6 +27,7 @@ public sealed class RosterShiftLookup
     public long SNo { get; set; }
     public string ShiftName { get; set; } = string.Empty;
     public string EvalTo { get; set; } = string.Empty;
+    public string? DeptId { get; set; }
 }
 
 public sealed class RosterGridQuery
@@ -55,7 +57,7 @@ public sealed class RosterDaySelection
 
 public sealed class RosterSaveRequest
 {
-    public string DeptId { get; set; } = string.Empty;
+    public string? DeptId { get; set; } = string.Empty;
     public long? GroupId { get; set; }
     public string? SourceEmpId { get; set; }
     public string? TargetEmpId { get; set; }

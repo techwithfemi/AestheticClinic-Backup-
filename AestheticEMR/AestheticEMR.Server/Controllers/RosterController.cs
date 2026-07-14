@@ -19,9 +19,9 @@ public class RosterController(
 {
     [HttpGet("lookups")]
     [ProducesResponseType(typeof(RosterLookupsVM), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetLookups([FromQuery] string deptId, CancellationToken ct)
+    public async Task<IActionResult> GetLookups(CancellationToken ct)
     {
-        var lookups = await rosterService.GetLookupsAsync(deptId, ct);
+        var lookups = await rosterService.GetLookupsAsync(ct);
         return Ok(_mapper.Map<RosterLookupsVM>(lookups));
     }
 

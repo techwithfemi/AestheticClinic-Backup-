@@ -9,6 +9,7 @@ export interface RosterGroupLookup {
   groupId: number;
   groupName: string;
   deptId?: string;
+  deptName?: string;
 }
 
 export interface RosterStaffLookup {
@@ -20,6 +21,7 @@ export interface RosterShiftLookup {
   sno: number;
   shiftName: string;
   evalTo: string;
+  deptId?: string;
 }
 
 export interface RosterDaySelection {
@@ -57,7 +59,7 @@ export interface RosterLookups {
 }
 
 export interface RosterSaveRequest {
-  deptId: string;
+  deptId?: string;
   groupId?: number | null;
   sourceEmpId?: string | null;
   targetEmpId: string;
@@ -73,14 +75,13 @@ export class RosterEndpoint extends EndpointBase {
   private get baseUrl() { return `${this.configurations.baseUrl}/api/roster`; }
 
   getLookupsEndpoint<T = RosterLookups>(deptId: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}/lookups?deptId=${encodeURIComponent(deptId)}`, this.requestHeaders).pipe(
+    return this.http.get<T>(`${this.baseUrl}/lookups`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getLookupsEndpoint<T>(deptId)))
     );
   }
 
   getGridEndpoint<T = RosterGridItem[]>(query: { deptId: string; groupId?: number | null; fromDate?: string; toDate?: string; latestOnly?: boolean; }): Observable<T> {
     const params = new URLSearchParams();
-    params.set('deptId', query.deptId);
     if (query.groupId != null) params.set('groupId', String(query.groupId));
     if (query.fromDate) params.set('fromDate', query.fromDate);
     if (query.toDate) params.set('toDate', query.toDate);

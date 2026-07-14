@@ -4,7 +4,7 @@ namespace AestheticEMR.Core.Services.Legacy.Interfaces;
 
 public interface IRosterService
 {
-    Task<RosterLookups> GetLookupsAsync(string deptId, CancellationToken cancellationToken = default);
+    Task<RosterLookups> GetLookupsAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<RosterGridItem>> GetGridAsync(RosterGridQuery query, CancellationToken cancellationToken = default);
     Task<IEnumerable<RosterGridItem>> GetExistingAsync(RosterEditorQuery query, CancellationToken cancellationToken = default);
     Task<RosterSaveResult> SaveAsync(RosterSaveRequest request, string currentUserName, CancellationToken cancellationToken = default);
