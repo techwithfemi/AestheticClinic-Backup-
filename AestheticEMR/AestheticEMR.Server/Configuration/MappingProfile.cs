@@ -338,7 +338,9 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<ShiftLookupItem, ShiftLookupVM>().ReverseMap();
             CreateMap<ShiftDetailItem, ShiftDetailVM>().ReverseMap();
 
+            CreateMap<RosterGroupGridItem, RosterGroupGridItemVM>().ReverseMap();
             CreateMap<RosterGroupItem, RosterGroupItemVM>().ReverseMap();
+            CreateMap<RosterGroupDepartmentItem, RosterGroupDepartmentItemVM>().ReverseMap();
             CreateMap<RosterGroupAvailableStaffItem, RosterGroupAvailableStaffItemVM>().ReverseMap();
             CreateMap<RosterGroupSaveRequest, RosterGroupSaveVM>().ReverseMap();
 

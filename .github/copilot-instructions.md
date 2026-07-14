@@ -476,6 +476,10 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - Display shift times in 12-hour format like '8:30 AM / 8:30 PM' instead of 24-hour format.
 
+### Staff Group Data Source
+
+- Use the explicit SQL source: `qryEmployeesAssignedToRosterGroupAll` filtered by `DeptID` and ordered by `StaffName` for the staff-group table/grid data source.
+
 
 
 

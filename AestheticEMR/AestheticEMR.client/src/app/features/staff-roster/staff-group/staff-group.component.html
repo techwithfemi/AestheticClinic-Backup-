@@ -2,7 +2,7 @@
   <mat-card class="group-card">
     <mat-card-header>
       <mat-card-title>Staff Group</mat-card-title>
-      <mat-card-subtitle>One group per employee flow from the VB6 roster form.</mat-card-subtitle>
+      <mat-card-subtitle>Maintain staff groups.</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
@@ -16,72 +16,32 @@
           <input matInput [ngModel]="searchText()" (ngModelChange)="applyFilter($event)" placeholder="Search group" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Department</mat-label>
-          <input matInput [value]="currentDepartment()" readonly />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Roster Group Name</mat-label>
-          <input matInput [ngModel]="form().rosterGrpName" (ngModelChange)="onRosterGroupNameChanged($event)" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Exempted</mat-label>
-          <mat-select [ngModel]="form().exempted" (ngModelChange)="onExemptedChanged($event)">
-            <mat-option value="NO">NO</mat-option>
-            <mat-option value="YES">YES</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <div class="action-bar">
-        <button mat-raised-button color="primary" (click)="startNew()">
-          <mat-icon>add</mat-icon>
-          Add
-        </button>
-        <button mat-raised-button color="accent" (click)="save()" [disabled]="saving()">
-          <mat-icon>save</mat-icon>
-          {{ saving() ? 'Saving...' : (form().rosterGrpId ? 'Update' : 'Save') }}
-        </button>
-        <button mat-stroked-button (click)="refresh()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
+        <div class="toolbar-actions">
+          <button mat-raised-button color="primary" (click)="openCreateDialog()">
+            <mat-icon>add</mat-icon>
+            New Staff Group
+          </button>
+          <button mat-stroked-button (click)="refresh()">
+            <mat-icon>refresh</mat-icon>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div class="legend-row">
-        <span>Groups: {{ filteredCount() }}</span>
-        <span>Selected staff: {{ form().selectedEmpIds.length }}</span>
-      </div>
-
-      <div class="assign-grid">
-        <mat-card class="assign-card">
-          <mat-card-title>Employee Names</mat-card-title>
-          <div class="staff-list">
-            @for (item of availableStaff(); track item.empId) {
-              <mat-checkbox [checked]="isSelected(item.empId)" (change)="toggleEmployee(item.empId, $event.checked)">
-                {{ item.staffName }}
-              </mat-checkbox>
-            }
-          </div>
-        </mat-card>
-
-        <mat-card class="assign-card">
-          <mat-card-title>Group Preview</mat-card-title>
-          <div class="preview-list">
-            @for (item of form().selectedEmpIds; track item) {
-              <span class="pill">{{ item }}</span>
-            }
-          </div>
-        </mat-card>
+        <span>Records: {{ filteredCount() }}</span>
       </div>
 
       <div class="table-shell">
         <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 group-table">
-          <ng-container matColumnDef="rosterGrpName">
-            <th mat-header-cell *matHeaderCellDef>Group</th>
-            <td mat-cell *matCellDef="let row">{{ row.rosterGrpName }}</td>
+          <ng-container matColumnDef="groupName">
+            <th mat-header-cell *matHeaderCellDef>Group Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.groupName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="staffName">
+            <th mat-header-cell *matHeaderCellDef>Staff Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.staffName }}</td>
           </ng-container>
 
           <ng-container matColumnDef="deptName">
@@ -89,23 +49,18 @@
             <td mat-cell *matCellDef="let row">{{ row.deptName }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="exempted">
-            <th mat-header-cell *matHeaderCellDef>Exempted</th>
-            <td mat-cell *matCellDef="let row">{{ row.exempted }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="employeeCount">
-            <th mat-header-cell *matHeaderCellDef>Employees</th>
-            <td mat-cell *matCellDef="let row">{{ row.employeeCount }}</td>
+          <ng-container matColumnDef="assigned">
+            <th mat-header-cell *matHeaderCellDef>Assigned</th>
+            <td mat-cell *matCellDef="let row">{{ row.assigned }}</td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let row">
-              <button mat-icon-button color="primary" matTooltip="Edit" (click)="editRow(row)">
+              <button mat-icon-button color="primary" matTooltip="Edit not allowed" (click)="showEditDeleteNotAllowedMessage()">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" matTooltip="Delete" (click)="deleteRow(row)">
+              <button mat-icon-button color="warn" matTooltip="Delete not allowed" (click)="showEditDeleteNotAllowedMessage()">
                 <mat-icon>delete</mat-icon>
               </button>
             </td>

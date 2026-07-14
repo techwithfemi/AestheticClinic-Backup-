@@ -5,6 +5,15 @@ import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
 
+export interface RosterGroupGridItem {
+  groupName: string;
+  staffName: string;
+  deptName: string;
+  assigned: string;
+  groupID: number;
+  empID: string;
+}
+
 export interface RosterGroupItem {
   rosterGrpId: number;
   rosterGrpName: string;
@@ -14,9 +23,14 @@ export interface RosterGroupItem {
   employeeCount?: number;
 }
 
+export interface RosterGroupDepartmentItem {
+  deptId: string;
+  deptName: string;
+}
+
 export interface RosterGroupAvailableStaffItem {
   empId: string;
-  staffName: string;
+  fullName: string;
   deptId?: string;
   rosterGrpId?: number | null;
   rosterGrpName?: string | null;
@@ -36,15 +50,22 @@ export class RosterGroupEndpoint extends EndpointBase {
 
   private get baseUrl() { return `${this.configurations.baseUrl}/api/roster/groups`; }
 
-  getAllEndpoint<T = RosterGroupItem[]>(): Observable<T> {
+  getAllEndpoint<T = RosterGroupGridItem[]>(): Observable<T> {
     return this.http.get<T>(this.baseUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getAllEndpoint<T>()))
     );
   }
 
-  getAvailableStaffEndpoint<T = RosterGroupAvailableStaffItem[]>(): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}/staff`, this.requestHeaders).pipe(
-      catchError(error => this.handleError(error, () => this.getAvailableStaffEndpoint<T>()))
+  getDepartmentsEndpoint<T = RosterGroupDepartmentItem[]>(): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/departments`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getDepartmentsEndpoint<T>()))
+    );
+  }
+
+  getAvailableStaffEndpoint<T = RosterGroupAvailableStaffItem[]>(deptId?: string): Observable<T> {
+    const query = deptId ? `?deptId=${encodeURIComponent(deptId)}` : '';
+    return this.http.get<T>(`${this.baseUrl}/staff${query}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAvailableStaffEndpoint<T>(deptId)))
     );
   }
 

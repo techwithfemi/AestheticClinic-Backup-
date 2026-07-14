@@ -18,18 +18,26 @@ public class RosterGroupController(
     IRosterGroupService rosterGroupService) : BaseApiController(logger, mapper)
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<RosterGroupItemVM>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<RosterGroupGridItemVM>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var rows = await rosterGroupService.GetAllAsync(ct);
-        return Ok(_mapper.Map<IEnumerable<RosterGroupItemVM>>(rows));
+        return Ok(_mapper.Map<IEnumerable<RosterGroupGridItemVM>>(rows));
+    }
+
+    [HttpGet("departments")]
+    [ProducesResponseType(typeof(IEnumerable<RosterGroupDepartmentItemVM>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDepartments(CancellationToken ct)
+    {
+        var rows = await rosterGroupService.GetDepartmentsAsync(ct);
+        return Ok(_mapper.Map<IEnumerable<RosterGroupDepartmentItemVM>>(rows));
     }
 
     [HttpGet("staff")]
     [ProducesResponseType(typeof(IEnumerable<RosterGroupAvailableStaffItemVM>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAvailableStaff(CancellationToken ct)
+    public async Task<IActionResult> GetAvailableStaff([FromQuery] string? deptId, CancellationToken ct)
     {
-        var rows = await rosterGroupService.GetAvailableStaffAsync(ct);
+        var rows = await rosterGroupService.GetAvailableStaffAsync(deptId, ct);
         return Ok(_mapper.Map<IEnumerable<RosterGroupAvailableStaffItemVM>>(rows));
     }
 

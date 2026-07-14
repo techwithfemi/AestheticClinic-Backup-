@@ -3,32 +3,24 @@ import { AfterViewInit, Component, OnInit, ViewChild, computed, inject, signal }
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
-import { NgSelectModule } from '@ng-select/ng-select';
 import { fadeInOut } from '../../../services/animations';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import {
   RosterGroupAvailableStaffItem,
+  RosterGroupDepartmentItem,
   RosterGroupEndpoint,
-  RosterGroupItem,
-  RosterGroupSaveRequest
+  RosterGroupGridItem,
+  RosterGroupItem
 } from '../../../services/roster-group-endpoint.service';
-
-interface StaffGroupFormState {
-  rosterGrpId: number | null;
-  rosterGrpName: string;
-  exempted: string;
-  selectedEmpIds: string[];
-}
+import { StaffGroupEntryDialogComponent } from './staff-group-entry-dialog.component';
 
 @Component({
   selector: 'app-staff-group',
@@ -39,16 +31,13 @@ interface StaffGroupFormState {
     TranslateModule,
     MatCardModule,
     MatButtonModule,
-    MatCheckboxModule,
-    MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatSelectModule,
+    MatDialogModule,
     MatTableModule,
     MatPaginatorModule,
     MatTooltipModule,
-    MatProgressBarModule,
-    NgSelectModule
+    MatProgressBarModule
   ],
   templateUrl: './staff-group.component.html',
   styleUrls: ['./staff-group.component.scss'],
@@ -59,27 +48,23 @@ export class StaffGroupComponent implements OnInit, AfterViewInit {
 
   private readonly alertService = inject(AlertService);
   private readonly endpoint = inject(RosterGroupEndpoint);
+  private readonly dialog = inject(MatDialog);
 
   readonly loading = signal(false);
-  readonly saving = signal(false);
   readonly deletingId = signal<number | null>(null);
-  readonly currentDepartment = signal('');
-  readonly rows = signal<RosterGroupItem[]>([]);
+  readonly rows = signal<RosterGroupGridItem[]>([]);
+  readonly departments = signal<RosterGroupDepartmentItem[]>([]);
   readonly availableStaff = signal<RosterGroupAvailableStaffItem[]>([]);
   readonly searchText = signal('');
-  readonly form = signal<StaffGroupFormState>({
-    rosterGrpId: null,
-    rosterGrpName: '',
-    exempted: 'NO',
-    selectedEmpIds: []
-  });
 
-  readonly dataSource = new MatTableDataSource<RosterGroupItem>([]);
-  readonly displayedColumns = ['rosterGrpName', 'deptName', 'exempted', 'employeeCount', 'actions'];
+  readonly dataSource = new MatTableDataSource<RosterGroupGridItem>([]);
+  readonly displayedColumns = ['groupName', 'staffName', 'deptName', 'assigned', 'actions'];
   readonly filteredCount = computed(() => this.dataSource.filteredData.length);
 
+  readonly editDeleteBlockedMessage = 'Edit / Delete Not Necessary! Group Auto Generated';
+
   ngOnInit(): void {
-    this.loadDepartment();
+    this.loadDepartments();
     this.loadAvailableStaff();
     this.loadRows();
   }
@@ -88,9 +73,9 @@ export class StaffGroupComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator ?? null;
   }
 
-  loadDepartment(): void {
-    this.endpoint.getCurrentDepartmentNameEndpoint<string>().subscribe({
-      next: dept => this.currentDepartment.set(dept ?? ''),
+  loadDepartments(): void {
+    this.endpoint.getDepartmentsEndpoint<RosterGroupDepartmentItem[]>().subscribe({
+      next: items => this.departments.set(items),
       error: error => this.alertService.showStickyMessage('Load Error', this.getErrorMessage(error), MessageSeverity.error)
     });
   }
@@ -104,12 +89,12 @@ export class StaffGroupComponent implements OnInit, AfterViewInit {
 
   loadRows(): void {
     this.loading.set(true);
-    this.endpoint.getAllEndpoint<RosterGroupItem[]>().subscribe({
+    this.endpoint.getAllEndpoint<RosterGroupGridItem[]>().subscribe({
       next: items => {
         this.rows.set(items);
         this.dataSource.data = items;
         this.dataSource.filterPredicate = (row, filter) => {
-          const text = `${row.rosterGrpName} ${row.deptName ?? ''} ${row.exempted ?? ''}`.toLowerCase();
+          const text = `${row.groupName} ${row.staffName} ${row.deptName} ${row.assigned}`.toLowerCase();
           return text.includes(filter);
         };
         this.applyFilter(this.searchText());
@@ -127,92 +112,57 @@ export class StaffGroupComponent implements OnInit, AfterViewInit {
     this.dataSource.filter = value.trim().toLowerCase();
   }
 
-  startNew(): void {
-    this.form.set({ rosterGrpId: null, rosterGrpName: '', exempted: 'NO', selectedEmpIds: [] });
-  }
-
-  editRow(row: RosterGroupItem): void {
-    this.form.set({
-      rosterGrpId: row.rosterGrpId,
-      rosterGrpName: row.rosterGrpName,
-      exempted: row.exempted ?? 'NO',
-      selectedEmpIds: this.availableStaff()
-        .filter(item => item.rosterGrpId === row.rosterGrpId)
-        .map(item => item.empId)
-    });
-  }
-
-  toggleEmployee(empId: string, checked: boolean): void {
-    this.form.update(state => {
-      const selected = new Set(state.selectedEmpIds);
-      if (checked) {
-        selected.add(empId);
-      } else {
-        selected.delete(empId);
+  openCreateDialog(): void {
+    this.dialog.open(StaffGroupEntryDialogComponent, {
+      width: '920px',
+      maxWidth: '95vw',
+      disableClose: true,
+      data: {
+        rosterGroup: null,
+        departments: this.departments(),
+        availableStaff: this.availableStaff()
       }
-      return { ...state, selectedEmpIds: [...selected] };
+    }).afterClosed().subscribe(saved => {
+      if (saved === true) {
+        this.refresh();
+      }
     });
   }
 
-  onRosterGroupNameChanged(value: string): void {
-    this.form.update(state => ({ ...state, rosterGrpName: value }));
-  }
-
-  onExemptedChanged(value: string): void {
-    this.form.update(state => ({ ...state, exempted: value }));
-  }
-
-  save(): void {
-    const form = this.form();
-    if (!form.rosterGrpName.trim()) {
-      this.alertService.showMessage('Validation', 'Roster group name is required.', MessageSeverity.warn);
-      return;
-    }
-
-    if (form.selectedEmpIds.length === 0) {
-      this.alertService.showMessage('Validation', 'Select at least one employee.', MessageSeverity.warn);
-      return;
-    }
-
-    const payload: RosterGroupSaveRequest = {
-      deptId: '',
-      rosterGrpName: form.rosterGrpName.trim(),
-      exempted: form.exempted,
-      empIds: form.selectedEmpIds
+  openEditDialog(row: RosterGroupGridItem): void {
+    const rosterGroup: RosterGroupItem = {
+      rosterGrpId: row.groupID,
+      rosterGrpName: row.groupName,
+      deptName: row.deptName
     };
 
-    this.saving.set(true);
-    const request = form.rosterGrpId
-      ? this.endpoint.updateEndpoint<RosterGroupItem>(form.rosterGrpId, payload)
-      : this.endpoint.createEndpoint<RosterGroupItem>(payload);
-
-    request.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.alertService.showMessage('Saved', 'Roster group saved successfully.', MessageSeverity.success);
-        this.startNew();
-        this.loadRows();
-        this.loadAvailableStaff();
-      },
-      error: error => {
-        this.saving.set(false);
-        this.alertService.showStickyMessage('Save Error', this.getErrorMessage(error), MessageSeverity.error);
+    this.dialog.open(StaffGroupEntryDialogComponent, {
+      width: '920px',
+      maxWidth: '95vw',
+      disableClose: true,
+      data: {
+        rosterGroup,
+        departments: this.departments(),
+        availableStaff: this.availableStaff()
+      }
+    }).afterClosed().subscribe(saved => {
+      if (saved === true) {
+        this.refresh();
       }
     });
   }
 
-  deleteRow(row: RosterGroupItem): void {
-    if (!window.confirm(`Delete roster group ${row.rosterGrpName}?`)) {
+  deleteRow(row: RosterGroupGridItem): void {
+    if (!window.confirm(`Delete roster group ${row.groupName}?`)) {
       return;
     }
 
-    this.deletingId.set(row.rosterGrpId);
-    this.endpoint.deleteEndpoint<void>(row.rosterGrpId).subscribe({
+    this.deletingId.set(row.groupID);
+    this.endpoint.deleteEndpoint<void>(row.groupID).subscribe({
       next: () => {
         this.deletingId.set(null);
         this.alertService.showMessage('Deleted', 'Roster group deleted.', MessageSeverity.success);
-        this.loadRows();
-        this.loadAvailableStaff();
+        this.refresh();
       },
       error: error => {
         this.deletingId.set(null);
@@ -221,14 +171,14 @@ export class StaffGroupComponent implements OnInit, AfterViewInit {
     });
   }
 
-  refresh(): void {
-    this.loadDepartment();
-    this.loadAvailableStaff();
-    this.loadRows();
+  showEditDeleteNotAllowedMessage(): void {
+    this.alertService.showMessage('Notice', this.editDeleteBlockedMessage, MessageSeverity.warn);
   }
 
-  isSelected(empId: string): boolean {
-    return this.form().selectedEmpIds.includes(empId);
+  refresh(): void {
+    this.loadDepartments();
+    this.loadAvailableStaff();
+    this.loadRows();
   }
 
   private getErrorMessage(error: unknown): string {
