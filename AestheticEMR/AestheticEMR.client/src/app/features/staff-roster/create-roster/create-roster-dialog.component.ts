@@ -12,7 +12,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { AlertService, MessageSeverity } from '../../../services/alert.service';
+import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import {
   RosterEndpoint,
   RosterGridItem,
@@ -554,7 +554,17 @@ export class CreateRosterDialogComponent {
   }
 
   selectAllDays(): void {
-    this.listItems.update(items => items.map(i => ({ ...i, selected: true })));
+    this.listItems.update(items => {
+      const selectedDates = new Set<string>();
+      return items.map(i => {
+        if (selectedDates.has(i.date)) {
+          return { ...i, selected: false };
+        }
+
+        selectedDates.add(i.date);
+        return { ...i, selected: true };
+      });
+    });
   }
 
   deselectAllDays(): void {
@@ -562,7 +572,24 @@ export class CreateRosterDialogComponent {
   }
 
   toggleItem(index: number, selected: boolean): void {
-    this.listItems.update(items => items.map((i, idx) => idx === index ? { ...i, selected } : i));
+    this.listItems.update(items => {
+      const target = items[index];
+      if (!target) {
+        return items;
+      }
+
+      return items.map((i, idx) => {
+        if (idx === index) {
+          return { ...i, selected };
+        }
+
+        if (selected && i.date === target.date) {
+          return { ...i, selected: false };
+        }
+
+        return i;
+      });
+    });
   }
 
   save(): void {
@@ -571,15 +598,35 @@ export class CreateRosterDialogComponent {
       return;
     }
 
-    const selectedDays = this.listItems()
-      .filter(i => i.selected)
-      .map(i => ({ date: i.date, shiftId: i.shiftId, shiftAbbrv: i.shiftAbbrv, shiftName: i.shiftName }));
+    const selectedItems = this.listItems().filter(i => i.selected);
 
-    if (selectedDays.length === 0) {
-      this.alertService.showMessage('Validation', 'Select at least one day with a shift.', MessageSeverity.warn);
+    const selectedByDate = new Map<string, number>();
+    for (const item of selectedItems) {
+      selectedByDate.set(item.date, (selectedByDate.get(item.date) ?? 0) + 1);
+    }
+
+    const hasMultipleForSameDay = Array.from(selectedByDate.values()).some(v => v > 1);
+    if (hasMultipleForSameDay) {
+      this.alertService.showMessage('Validation', 'Tick only one box per day.', MessageSeverity.warn);
       return;
     }
 
+    const selectedDays = selectedItems
+      .map(i => ({ date: i.date, shiftId: i.shiftId, shiftAbbrv: i.shiftAbbrv, shiftName: i.shiftName }));
+
+    if (selectedDays.length === 0) {
+      this.alertService.showMessage('Validation', 'No Roster List is Selected', MessageSeverity.warn);
+      return;
+    }
+
+    this.alertService.showDialog(
+      'Are you sure to save Record',
+      DialogType.confirm,
+      () => this.commitSave(selectedDays)
+    );
+  }
+
+  private commitSave(selectedDays: { date: string; shiftId: number; shiftAbbrv: string; shiftName: string; }[]): void {
     const group = this.data.lookups.groups.find(g => g.groupId === this.selectedGroupId);
     const payload: RosterSaveRequest = {
       groupId: this.selectedGroupId,

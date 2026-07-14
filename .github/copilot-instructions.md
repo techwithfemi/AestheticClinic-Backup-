@@ -375,6 +375,10 @@ quickapp.client/src/app/
 - ✅ **Reference**: Filter HConsulting queries using clinic context from `GetCurrentUserId()` or clinic claim in JWT token
 - ❌ **DO NOT allow generic HConsulting access** without clinic validation
 
+### Roster Logic
+
+- In roster logic for this codebase, there is only one employee per GroupID.
+
 ### Billing Consultation UI
 
 For billing consultation sub-header UI, when multiple `VwhConsultingDetailsForBillingAlt` records exist per `consultId/billNo`, the component should iterate all records while using minimal screen space (compact layout).
@@ -467,18 +471,6 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 ### Debtors Wrapper Debit Dropdown
 
 - Debtors wrapper debit dropdown must filter accounts by `SUBSTRING(GroupID, 1, 3) = '123'`.
-
-### Legacy Crystal Reports Service
-
-- Use Dapper for the legacy Crystal Reports service and its stored procedure calls, including the General Ledger report endpoint.
-
-### Shift Time Format
-
-- Display shift times in 12-hour format like '8:30 AM / 8:30 PM' instead of 24-hour format.
-
-### Staff Group Data Source
-
-- Use the explicit SQL source: `qryEmployeesAssignedToRosterGroupAll` filtered by `DeptID` and ordered by `StaffName` for the staff-group table/grid data source.
 
 
 

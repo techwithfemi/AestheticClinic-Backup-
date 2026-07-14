@@ -3,7 +3,10 @@ using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Core.Services.Legacy.Models;
 using Dapper;
 using DataAccess.DbAccess;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Data;
+using System.Data.SqlClient;
 
 namespace AestheticEMR.Core.Services.Legacy;
 
@@ -11,6 +14,7 @@ public class RosterService(
     ISqlDataAccess db,
     IEmrAppDefaultsService defaultsService,
     IUserIdAccessor userIdAccessor,
+    IConfiguration configuration,
     ILogger<RosterService> logger) : IRosterService
 {
     private const string SmartHRConnection = "smartHRConnection";
@@ -159,62 +163,151 @@ ORDER BY RosterDate;", param, SmartHRConnection);
         }
 
         var deptId = await ResolveDeptIdAsync(request.DeptId, cancellationToken);
-        var targetEmpId = request.TargetEmpId.Trim();
         var rosterGroupId = request.GroupId ?? 0;
+        if (rosterGroupId <= 0)
+        {
+            throw new InvalidOperationException("Group is required.");
+        }
+
         var groupName = request.GroupName.Trim();
         var offDutyShiftId = defaults.Get("Roster_OFF_DUTY_ShiftID", string.Empty);
         var leaveShiftId = defaults.Get("Roster_LEAVE_ShiftID", string.Empty);
 
-        await db.SaveDataText(@"
-DELETE FROM Roster
-WHERE EmpID = @EmpId
-  AND DeptID = @DeptId
-  AND RosterDate BETWEEN @StartDate AND @EndDate;",
-            new
-            {
-                EmpId = targetEmpId,
-                DeptId = deptId,
-                StartDate = request.SelectedDays.Min(x => x.Date).ToDateTime(TimeOnly.MinValue),
-                EndDate = request.SelectedDays.Max(x => x.Date).ToDateTime(TimeOnly.MaxValue)
-            }, SmartHRConnection);
+        var minSelected = request.SelectedDays.Min(x => x.Date);
+        var monthStart = new DateOnly(minSelected.Year, minSelected.Month, 1);
+        var monthEnd = new DateOnly(minSelected.Year, minSelected.Month, DateTime.DaysInMonth(minSelected.Year, minSelected.Month));
 
-        foreach (var day in request.SelectedDays.OrderBy(x => x.Date))
+        var connectionString = configuration.GetConnectionString(SmartHRConnection)
+            ?? throw new InvalidOperationException($"Connection string '{SmartHRConnection}' was not found.");
+
+        string? targetEmpId;
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
         {
-            var isOffDuty = day.ShiftId.ToString().Equals(offDutyShiftId, StringComparison.OrdinalIgnoreCase)
-                || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase);
+            targetEmpId = await connection.QueryFirstOrDefaultAsync<string>(@"
+SELECT TOP 1 LTRIM(RTRIM(EmpID))
+FROM Employees
+WHERE LTRIM(RTRIM(CAST(RosterGrpID AS nvarchar(50)))) = @GroupId
+ORDER BY EmpID;",
+                new { GroupId = rosterGroupId.ToString() }, transaction);
 
-            await db.SaveDataText(@"
+            if (string.IsNullOrWhiteSpace(targetEmpId))
+            {
+                throw new InvalidOperationException("No Employees in this group to save.");
+            }
+
+            targetEmpId = targetEmpId.Trim();
+
+            await connection.ExecuteAsync(@"
+DELETE FROM Roster
+WHERE RosterDate BETWEEN @StartDate AND @EndDate
+  AND GroupID = @GroupID;",
+                new
+                {
+                    StartDate = monthStart.ToDateTime(TimeOnly.MinValue),
+                    EndDate = monthEnd.ToDateTime(TimeOnly.MaxValue),
+                    GroupID = rosterGroupId
+                }, transaction);
+
+            foreach (var day in request.SelectedDays.OrderBy(x => x.Date))
+            {
+                var isOffDuty = day.ShiftId.ToString().Equals(offDutyShiftId, StringComparison.OrdinalIgnoreCase)
+                    || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase);
+
+                await connection.ExecuteAsync(@"
+DELETE FROM Roster
+WHERE RosterDate = @RosterDate
+  AND EmpID = @EmpID;",
+                    new
+                    {
+                        RosterDate = day.Date.ToDateTime(TimeOnly.MinValue),
+                        EmpID = targetEmpId
+                    }, transaction);
+
+                await connection.ExecuteAsync(@"
 INSERT INTO Roster
 (RosterGrpShiftID, EmpID, ShiftID, GroupID, isOffDuty, ShiftAbbrv, ShiftName, GroupName, DeptID, RosterDate)
 VALUES
 (@RosterGrpShiftID, @EmpID, @ShiftID, @GroupID, @IsOffDuty, @ShiftAbbrv, @ShiftName, @GroupName, @DeptID, @RosterDate);",
-                new
+                    new
+                    {
+                        RosterGrpShiftID = 0,
+                        EmpID = targetEmpId,
+                        ShiftID = day.ShiftId,
+                        GroupID = rosterGroupId,
+                        IsOffDuty = isOffDuty ? 1 : 0,
+                        ShiftAbbrv = day.ShiftAbbrv,
+                        ShiftName = day.ShiftName,
+                        GroupName = groupName,
+                        DeptID = deptId,
+                        RosterDate = day.Date.ToDateTime(TimeOnly.MinValue)
+                    }, transaction);
+            }
+
+            var selectedDateSet = request.SelectedDays.Select(x => x.Date).ToHashSet();
+            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
+            {
+                if (selectedDateSet.Contains(date))
                 {
-                    RosterGrpShiftID = 0,
-                    EmpID = targetEmpId,
-                    ShiftID = day.ShiftId,
-                    GroupID = rosterGroupId,
-                    IsOffDuty = isOffDuty ? 1 : 0,
-                    ShiftAbbrv = day.ShiftAbbrv,
-                    ShiftName = day.ShiftName,
-                    GroupName = groupName,
-                    DeptID = deptId,
-                    RosterDate = day.Date.ToDateTime(TimeOnly.MinValue)
-                }, SmartHRConnection);
+                    continue;
+                }
+
+                await connection.ExecuteAsync(@"
+DELETE FROM Roster
+WHERE RosterDate = @RosterDate
+  AND EmpID = @EmpID;",
+                    new
+                    {
+                        RosterDate = date.ToDateTime(TimeOnly.MinValue),
+                        EmpID = targetEmpId
+                    }, transaction);
+
+                await connection.ExecuteAsync(@"
+INSERT INTO Roster
+(RosterGrpShiftID, EmpID, ShiftID, GroupID, isOffDuty, ShiftAbbrv, ShiftName, GroupName, DeptID, RosterDate)
+VALUES
+(@RosterGrpShiftID, @EmpID, @ShiftID, @GroupID, @IsOffDuty, @ShiftAbbrv, @ShiftName, @GroupName, @DeptID, @RosterDate);",
+                    new
+                    {
+                        RosterGrpShiftID = 0,
+                        EmpID = targetEmpId,
+                        ShiftID = 0,
+                        GroupID = rosterGroupId,
+                        IsOffDuty = 1,
+                        ShiftAbbrv = (string?)null,
+                        ShiftName = "PLS_ENTER_SHIFT",
+                        GroupName = groupName,
+                        DeptID = deptId,
+                        RosterDate = date.ToDateTime(TimeOnly.MinValue)
+                    }, transaction);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Error saving roster for group {GroupId}", rosterGroupId);
+            throw;
         }
 
+        // Query the saved data AFTER the transaction is closed
         var items = (await GetExistingAsync(new RosterEditorQuery
         {
             EmpId = targetEmpId,
             DeptId = deptId,
-            FromDate = request.SelectedDays.Min(x => x.Date),
-            ToDate = request.SelectedDays.Max(x => x.Date)
+            FromDate = monthStart,
+            ToDate = monthEnd
         }, cancellationToken)).ToList();
 
-        logger.LogInformation("Saved roster for {TargetEmpId} by {User}", targetEmpId, currentUserName);
+        logger.LogInformation("Saved roster for {TargetEmpId} in group {GroupId} by {User}", targetEmpId, rosterGroupId, currentUserName);
         return new RosterSaveResult
         {
-            CreatedCount = request.SelectedDays.Count,
+            CreatedCount = items.Count,
             Items = items
         };
     }

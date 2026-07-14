@@ -66,8 +66,8 @@ public sealed class RosterSaveVM
     [StringLength(50)]
     public string? SourceEmpId { get; set; }
 
-    [Required, StringLength(50)]
-    public string TargetEmpId { get; set; } = string.Empty;
+    [StringLength(50)]
+    public string? TargetEmpId { get; set; }
 
     [Required, StringLength(200)]
     public string GroupName { get; set; } = string.Empty;
