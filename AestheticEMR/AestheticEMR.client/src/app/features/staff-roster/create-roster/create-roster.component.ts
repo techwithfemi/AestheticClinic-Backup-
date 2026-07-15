@@ -3,13 +3,16 @@ import { AfterViewInit, Component, OnInit, ViewChild, inject, signal } from '@an
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, MatNativeDateModule, NativeDateAdapter } from '@angular/material/core';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
@@ -21,6 +24,42 @@ import {
   RosterLookups,
 } from '../../../services/roster-endpoint.service';
 import { CreateRosterDialogComponent, CreateRosterDialogData } from './create-roster-dialog.component';
+
+export const DD_MMM_YYYY_FORMATS = {
+  parse:   { dateInput: 'dd-MMM-yyyy' },
+  display: {
+    dateInput:          'dd-MMM-yyyy',
+    monthYearLabel:     'MMM yyyy',
+    dateA11yLabel:      'dd-MMM-yyyy',
+    monthYearA11yLabel: 'MMMM yyyy'
+  }
+};
+
+class DdMmmYyyyDateAdapter extends NativeDateAdapter {
+  override parse(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      const day   = parseInt(parts[0], 10);
+      const month = new Date(`${parts[1]} 1 2000`).getMonth();
+      const year  = parseInt(parts[2], 10);
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    return super.parse(value);
+  }
+
+  override format(date: Date, displayFormat: string): string {
+    if (displayFormat === 'dd-MMM-yyyy') {
+      const d = date.getDate().toString().padStart(2, '0');
+      const m = date.toLocaleString('en', { month: 'short' });
+      const y = date.getFullYear();
+      return `${d}-${m}-${y}`;
+    }
+    return super.format(date, displayFormat);
+  }
+}
 
 @Component({
   selector: 'app-create-roster',
@@ -37,16 +76,25 @@ import { CreateRosterDialogComponent, CreateRosterDialogData } from './create-ro
     MatIconModule,
     MatSelectModule,
     MatTableModule,
+    MatSortModule,
     MatPaginatorModule,
     MatTooltipModule,
     MatProgressBarModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
   templateUrl: './create-roster.component.html',
   styleUrls: ['./create-roster.component.scss'],
-  animations: [fadeInOut]
+  animations: [fadeInOut],
+  providers: [
+    { provide: MAT_DATE_LOCALE, useValue: 'en-GB' },
+    { provide: DateAdapter, useClass: DdMmmYyyyDateAdapter, deps: [MAT_DATE_LOCALE] },
+    { provide: MAT_DATE_FORMATS, useValue: DD_MMM_YYYY_FORMATS },
+  ]
 })
 export class CreateRosterComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator?: MatPaginator;
+  @ViewChild(MatSort) sort?: MatSort;
 
   private readonly alertService = inject(AlertService);
   private readonly rosterEndpoint = inject(RosterEndpoint);
@@ -58,28 +106,83 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
   readonly rows = signal<RosterGridItem[]>([]);
 
   readonly dataSource = new MatTableDataSource<RosterGridItem>([]);
-  readonly displayedColumns = ['date', 'staffName', 'groupName', 'shiftName', 'status', 'actions'];
+  readonly displayedColumns = ['date', 'staffName', 'clockIn', 'clockOut', 'status', 'fine', 'shiftName', 'deptName', 'exempted', 'actions'];
+  readonly hiddenColumns = ['sno', 'groupName', 'startDate', 'endDate', 'groupID', 'rosterGrpShiftID'];
 
-  readonly currentMonth = signal(new Date().getMonth() + 1);
-  readonly currentYear = signal(new Date().getFullYear());
-
-  readonly monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: i + 1,
-    label: new Date(2000, i, 1).toLocaleString('en', { month: 'long' })
-  }));
-  readonly yearOptions = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() + i - 1);
+  readonly selectedDate = signal<Date>(new Date());
+  selectedDateModel: Date = new Date();
+  searchText = '';
 
   ngOnInit(): void {
+    this.dataSource.filterPredicate = (row: RosterGridItem, filter: string) => {
+      const term = filter.trim().toLowerCase();
+      return (
+        (row.date ?? '').toLowerCase().includes(term) ||
+        (row.staffName ?? '').toLowerCase().includes(term) ||
+        (row.clockIn ?? '').toLowerCase().includes(term) ||
+        (row.clockOut ?? '').toLowerCase().includes(term) ||
+        (row.status ?? '').toLowerCase().includes(term) ||
+        `${row.fine ?? ''}`.toLowerCase().includes(term) ||
+        (row.shiftName ?? '').toLowerCase().includes(term) ||
+        (row.deptName ?? '').toLowerCase().includes(term) ||
+        (row.exempted ?? '').toLowerCase().includes(term)
+      );
+    };
+
+    this.dataSource.sortingDataAccessor = (row: RosterGridItem, col: string) => {
+      switch (col) {
+        case 'date':
+          return row.date ?? '';
+        case 'staffName':
+          return (row.staffName ?? '').toLowerCase();
+        case 'clockIn':
+          return row.clockIn ?? '';
+        case 'clockOut':
+          return row.clockOut ?? '';
+        case 'status':
+          return (row.status ?? '').toLowerCase();
+        case 'fine':
+          return row.fine ?? 0;
+        case 'shiftName':
+          return (row.shiftName ?? '').toLowerCase();
+        case 'deptName':
+          return (row.deptName ?? '').toLowerCase();
+        case 'exempted':
+          return (row.exempted ?? '').toLowerCase();
+        default:
+          return '';
+      }
+    };
+
     this.loadLookups();
     this.loadGrid();
   }
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator ?? null;
+    this.dataSource.sort      = this.sort ?? null;
   }
 
-  onMonthOrYearChanged(): void {
-    this.loadGrid();
+  onDateChanged(date: Date | null): void {
+    if (date) {
+      this.selectedDateModel = date;
+      this.selectedDate.set(date);
+      this.searchText = '';
+      this.dataSource.filter = '';
+      this.loadGrid();
+    }
+  }
+
+  applySearch(value: string): void {
+    this.searchText = value;
+    this.dataSource.filter = value.trim().toLowerCase();
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
+  }
+
+  clearSearch(): void {
+    this.applySearch('');
   }
 
   loadLookups(): void {
@@ -97,15 +200,12 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
   }
 
   loadGrid(): void {
-    const month = this.currentMonth();
-    const year = this.currentYear();
-    const fromDate = this.formatDate(new Date(year, month - 1, 1));
-    const toDate = this.formatDate(new Date(year, month, 0));
+    const date = this.formatDate(this.selectedDate());
 
     this.rosterEndpoint.getGridEndpoint<RosterGridItem[]>({
       deptId: '',
-      fromDate,
-      toDate,
+      fromDate: date,
+      toDate: date,
       latestOnly: true
     }).subscribe({
       next: rows => {
@@ -123,13 +223,11 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
       lookups: this.lookups(),
       existingRow: null
     };
-
     const ref = this.dialog.open(CreateRosterDialogComponent, {
       data: dialogData,
       disableClose: true,
       maxWidth: '95vw'
     });
-
     ref.afterClosed().subscribe(saved => {
       if (saved) { this.loadGrid(); }
     });
@@ -140,13 +238,11 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
       lookups: this.lookups(),
       existingRow: row
     };
-
     const ref = this.dialog.open(CreateRosterDialogComponent, {
       data: dialogData,
       disableClose: true,
       maxWidth: '95vw'
     });
-
     ref.afterClosed().subscribe(saved => {
       if (saved) { this.loadGrid(); }
     });
@@ -156,7 +252,6 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
     if (!window.confirm(`Delete roster row ${row.sno}?`)) {
       return;
     }
-
     this.deletingSno.set(row.sno);
     this.rosterEndpoint.deleteRosterEntryEndpoint<void>(row.sno).subscribe({
       next: () => {
@@ -180,6 +275,13 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
     const m = `${date.getMonth() + 1}`.padStart(2, '0');
     const d = `${date.getDate()}`.padStart(2, '0');
     return `${y}-${m}-${d}`;
+  }
+
+  private formatDateLabel(date: Date): string {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = date.toLocaleString('en', { month: 'short' });
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
   }
 
   private getErrorMessage(error: unknown): string {

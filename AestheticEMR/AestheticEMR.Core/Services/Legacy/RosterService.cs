@@ -75,14 +75,14 @@ ORDER BY ShiftName;", new { }, SmartHRConnection);
 
         if (query.FromDate.HasValue)
         {
-            whereParts.Add("[Date] >= @FromDate");
+            whereParts.Add("CAST([Date] AS DATE) >= CAST(@FromDate AS DATE)");
             param.Add("FromDate", query.FromDate.Value.ToDateTime(TimeOnly.MinValue));
         }
 
         if (query.ToDate.HasValue)
         {
-            whereParts.Add("[Date] <= @ToDate");
-            param.Add("ToDate", query.ToDate.Value.ToDateTime(TimeOnly.MaxValue));
+            whereParts.Add("CAST([Date] AS DATE) <= CAST(@ToDate AS DATE)");
+            param.Add("ToDate", query.ToDate.Value.ToDateTime(TimeOnly.MinValue));
         }
 
         var where = whereParts.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", whereParts);
@@ -117,14 +117,14 @@ ORDER BY [Date], StaffName;", param, SmartHRConnection);
         }
 
         var whereDate = query.FromDate.HasValue && query.ToDate.HasValue
-            ? "AND RosterDate BETWEEN @FromDate AND @ToDate"
+            ? "AND Date BETWEEN @FromDate AND @ToDate"
             : query.FromDate.HasValue
-                ? "AND RosterDate >= @FromDate"
-                : query.ToDate.HasValue ? "AND RosterDate <= @ToDate" : string.Empty;
+                ? "AND Date >= @FromDate"
+                : query.ToDate.HasValue ? "AND Date <= @ToDate" : string.Empty;
 
         var rows = await db.LoadDataText<RosterGridItem, DynamicParameters>($@"
 SELECT CAST(SNo AS bigint) AS SNo,
-       RosterDate AS [Date],
+       [Date],
        StaffName,
        NULL AS ClockIn,
        NULL AS ClockOut,
@@ -140,10 +140,10 @@ SELECT CAST(SNo AS bigint) AS SNo,
        CAST(RosterGrpShiftID AS bigint) AS RosterGrpShiftID,
        EmpID,
        ShiftAbbrv
-FROM Roster
+FROM vwRosterForGridLatest
 WHERE EmpID = @EmpId
   AND DeptID = @DeptId {whereDate}
-ORDER BY RosterDate;", param, SmartHRConnection);
+ORDER BY Date;", param, SmartHRConnection);
 
         return rows;
     }

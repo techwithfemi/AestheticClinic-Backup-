@@ -427,6 +427,8 @@ When introducing new configuration keys, also update the base `appsettings.json`
 ### Date Format for Expenses
 
 - Use 'dd-MMM-yyyy' date format for the expenses page and expenses dialog date inputs/displays.
+- **DatePicker format must always be dd-MMM-yyyy across all components in the AestheticClinic workspace.**
+- During save/POST/PUT operations, date values sent to the backend must be formatted as yyyy-mm-dd (e.g. 2026-07-15).
 
 ### Optimistic UI Updates
 

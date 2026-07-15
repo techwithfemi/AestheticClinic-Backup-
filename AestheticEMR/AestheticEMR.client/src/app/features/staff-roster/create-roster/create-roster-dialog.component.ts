@@ -8,8 +8,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
@@ -51,8 +49,6 @@ export interface CreateRosterDialogData {
     MatIconModule,
     MatProgressSpinnerModule,
     MatSelectModule,
-    MatTableModule,
-    MatTooltipModule,
     NgSelectModule
   ],
   template: `
@@ -97,7 +93,7 @@ export interface CreateRosterDialogData {
 
             <!-- Roster Group (VB6 cboGroup) -->
             <div class="ctrl-block ctrl-block--group">
-              <div class="ctrl-label">Roster Group — Select group to display its Roster</div>
+              <div class="ctrl-label">Roster Group</div>
               <ng-select
                 class="dialog-ng-select"
                 [items]="groups()"
@@ -164,63 +160,6 @@ export interface CreateRosterDialogData {
             }
           </section>
 
-          <!-- RIGHT: grdData grid (VB6 fillGridByGroupAndDateRange) -->
-          <section class="panel panel--right">
-            <div class="panel__header">
-              <span class="panel__title">Roster Grid</span>
-              <button mat-icon-button matTooltip="Refresh grid" type="button"
-                (click)="loadGrid()" [disabled]="loading() || !selectedGroupId">
-                <mat-icon>refresh</mat-icon>
-              </button>
-            </div>
-
-            <div class="grid-shell">
-              <table mat-table [dataSource]="gridRows()" class="roster-grid-table mat-elevation-z1">
-
-                <ng-container matColumnDef="date">
-                  <th mat-header-cell *matHeaderCellDef>Date</th>
-                  <td mat-cell *matCellDef="let row">{{ row.date | date:'dd-MMM-yyyy' }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="staffName">
-                  <th mat-header-cell *matHeaderCellDef>Staff</th>
-                  <td mat-cell *matCellDef="let row">{{ row.staffName }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="shiftName">
-                  <th mat-header-cell *matHeaderCellDef>Shift</th>
-                  <td mat-cell *matCellDef="let row">{{ row.shiftName }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="clockIn">
-                  <th mat-header-cell *matHeaderCellDef>Clock In</th>
-                  <td mat-cell *matCellDef="let row">{{ row.clockIn || '—' }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="clockOut">
-                  <th mat-header-cell *matHeaderCellDef>Clock Out</th>
-                  <td mat-cell *matCellDef="let row">{{ row.clockOut || '—' }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>Status</th>
-                  <td mat-cell *matCellDef="let row">{{ row.status || '—' }}</td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="gridColumns; sticky: true"></tr>
-                <tr mat-row *matRowDef="let row; columns: gridColumns;"></tr>
-
-                @if (gridRows().length === 0 && !loading()) {
-                  <tr class="mat-row">
-                    <td [colSpan]="gridColumns.length" class="no-data-cell">
-                      {{ selectedGroupId ? 'No roster records for this period.' : 'Select a group to load the grid.' }}
-                    </td>
-                  </tr>
-                }
-              </table>
-            </div>
-          </section>
-
         </div>
       </mat-dialog-content>
 
@@ -242,7 +181,7 @@ export interface CreateRosterDialogData {
   `,
   styles: [`
     .dialog-host {
-      width: min(1100px, 96vw);
+      width: min(760px, 96vw);
       max-width: 100%;
       box-sizing: border-box;
     }
@@ -276,21 +215,23 @@ export interface CreateRosterDialogData {
 
     .controls-row {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 12px;
-      align-items: flex-end;
+      align-items: flex-start;
     }
 
     .ctrl-block {
       display: flex;
       flex-direction: column;
       gap: 3px;
-      min-width: 120px;
+      min-width: 110px;
+      flex-shrink: 0;
     }
 
     .ctrl-block--group {
       flex: 1;
-      min-width: 220px;
+      min-width: 180px;
+      flex-shrink: 1;
     }
 
     .ctrl-block--staff {
@@ -317,13 +258,12 @@ export interface CreateRosterDialogData {
 
     /* ── Two-panel layout ────────── */
     .panels {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      gap: 14px;
-      align-items: start;
+      display: block;
     }
 
     .panel {
+      width: 95%;
+      margin: 0 auto;
       border: 1px solid rgba(0,0,0,0.1);
       border-radius: 6px;
       overflow: hidden;
@@ -386,36 +326,6 @@ export interface CreateRosterDialogData {
       mat-checkbox { font-size: 0.81rem; }
     }
 
-    /* ── Right panel grid ────────── */
-    .panel--right .panel__header { justify-content: space-between; }
-
-    .grid-shell {
-      max-height: 460px;
-      overflow: auto;
-    }
-
-    .roster-grid-table {
-      width: 100%;
-      min-width: 480px;
-      font-size: 0.82rem;
-
-      th.mat-header-cell {
-        font-size: 0.74rem;
-        font-weight: 600;
-        white-space: nowrap;
-        padding: 6px 8px;
-      }
-
-      td.mat-cell { padding: 4px 8px; }
-    }
-
-    .no-data-cell {
-      text-align: center;
-      padding: 24px;
-      color: rgba(0,0,0,0.4);
-      font-style: italic;
-    }
-
     /* ── Actions ─────────────────── */
     .dialog-actions {
       padding: 8px 16px;
@@ -436,9 +346,9 @@ export interface CreateRosterDialogData {
     }
 
     /* ── Responsive ──────────────── */
-    @media (max-width: 799px) {
-      .panels { grid-template-columns: 1fr; }
-      .controls-row { flex-direction: column; }
+    @media (max-width: 599px) {
+      .controls-row { flex-wrap: wrap; }
+      .ctrl-block { min-width: 100px; }
     }
   `]
 })
@@ -451,7 +361,6 @@ export class CreateRosterDialogComponent {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly listItems = signal<DayShiftItem[]>([]);
-  readonly gridRows = signal<RosterGridItem[]>([]);
   readonly selectedGroupLabel = signal<string | null>(null);
 
   // Month / Year / Group — default to today
@@ -461,7 +370,6 @@ export class CreateRosterDialogComponent {
   private selectedGroupDeptId: string | null = null;
 
   readonly isEdit = !!this.data.existingRow;
-  readonly gridColumns = ['date', 'staffName', 'shiftName', 'clockIn', 'clockOut', 'status'];
 
   readonly monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
@@ -479,7 +387,6 @@ export class CreateRosterDialogComponent {
       this.selectedGroupDeptId = null;
       this.selectedGroupLabel.set(null);
       this.listItems.set([]);
-      this.gridRows.set([]);
       return;
     }
     const group = this.data.lookups.groups.find(g => g.groupId === groupId) ?? null;
@@ -488,14 +395,12 @@ export class CreateRosterDialogComponent {
       group?.deptId ? `${group.deptName ?? ''} [${group.deptId}]` : null
     );
     this.buildListItems();
-    this.loadGrid();
   }
 
   // Month/Year change — refresh if a group is already selected
   onPeriodChanged(): void {
     if (this.selectedGroupId) {
       this.buildListItems();
-      this.loadGrid();
     }
   }
 
@@ -533,24 +438,6 @@ export class CreateRosterDialogComponent {
     }
 
     this.listItems.set(items);
-  }
-
-  // VB6: fillGridByGroupAndDateRange
-  loadGrid(): void {
-    if (!this.selectedGroupId) return;
-    const fromDate = this.formatDate(new Date(this.selectedYear, this.selectedMonth - 1, 1));
-    const toDate = this.formatDate(new Date(this.selectedYear, this.selectedMonth, 0));
-
-    this.rosterEndpoint.getGridEndpoint<RosterGridItem[]>({
-      deptId: '',
-      groupId: this.selectedGroupId,
-      fromDate,
-      toDate,
-      latestOnly: true
-    }).subscribe({
-      next: rows => this.gridRows.set(rows),
-      error: error => this.alertService.showStickyMessage('Grid Error', this.getErrorMessage(error), MessageSeverity.error)
-    });
   }
 
   selectAllDays(): void {
@@ -598,6 +485,24 @@ export class CreateRosterDialogComponent {
       return;
     }
 
+    const group = this.data.lookups.groups.find(g => g.groupId === this.selectedGroupId);
+    if (!group) {
+      this.alertService.showMessage('Validation', 'Selected roster group was not found.', MessageSeverity.warn);
+      return;
+    }
+
+    const deptId = group.deptId?.trim();
+    if (!deptId) {
+      this.alertService.showMessage('Validation', 'Selected roster group must have a Department.', MessageSeverity.warn);
+      return;
+    }
+
+    const groupName = group.groupName?.trim();
+    if (!groupName) {
+      this.alertService.showMessage('Validation', 'Selected roster group must have a Group Name.', MessageSeverity.warn);
+      return;
+    }
+
     const selectedItems = this.listItems().filter(i => i.selected);
 
     const selectedByDate = new Map<string, number>();
@@ -611,8 +516,19 @@ export class CreateRosterDialogComponent {
       return;
     }
 
+    const invalidSelection = selectedItems.find(i => !i.date || i.shiftId <= 0 || !i.shiftAbbrv?.trim() || !i.shiftName?.trim());
+    if (invalidSelection) {
+      this.alertService.showMessage('Validation', 'Each selected day must have explicit date and shift values.', MessageSeverity.warn);
+      return;
+    }
+
     const selectedDays = selectedItems
-      .map(i => ({ date: i.date, shiftId: i.shiftId, shiftAbbrv: i.shiftAbbrv, shiftName: i.shiftName }));
+      .map(i => ({
+        date: i.date,
+        shiftId: i.shiftId,
+        shiftAbbrv: i.shiftAbbrv.trim(),
+        shiftName: i.shiftName.trim()
+      }));
 
     if (selectedDays.length === 0) {
       this.alertService.showMessage('Validation', 'No Roster List is Selected', MessageSeverity.warn);
@@ -620,22 +536,18 @@ export class CreateRosterDialogComponent {
     }
 
     this.alertService.showDialog(
-      'Are you sure to save Record',
+      `Are you sure to save Record for ${groupName}?`,
       DialogType.confirm,
-      () => this.commitSave(selectedDays)
+      () => this.commitSave({
+        deptId,
+        groupId: group.groupId,
+        groupName,
+        selectedDays
+      })
     );
   }
 
-  private commitSave(selectedDays: { date: string; shiftId: number; shiftAbbrv: string; shiftName: string; }[]): void {
-    const group = this.data.lookups.groups.find(g => g.groupId === this.selectedGroupId);
-    const payload: RosterSaveRequest = {
-      groupId: this.selectedGroupId,
-      sourceEmpId: null,
-      targetEmpId: '',
-      groupName: group?.groupName ?? '',
-      selectedDays
-    };
-
+  private commitSave(payload: RosterSaveRequest): void {
     this.saving.set(true);
     this.rosterEndpoint.saveRosterEndpoint(payload).subscribe({
       next: () => {

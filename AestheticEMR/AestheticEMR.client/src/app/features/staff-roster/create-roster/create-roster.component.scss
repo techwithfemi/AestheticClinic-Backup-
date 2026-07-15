@@ -52,21 +52,28 @@
 /* ── Toolbar / filter grid ───────────────── */
 .toolbar-grid {
   display: grid;
-  grid-template-columns: 180px 120px;
+  grid-template-columns: 180px 1fr;
   gap: 12px;
   align-items: end;
   margin-bottom: 16px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Table ───────────────────────────────── */
 
 .table-shell {
-  overflow: auto;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .roster-table {
   width: 100%;
-  min-width: 640px;
+  min-width: 1280px;
 }
 
 .no-data-row {

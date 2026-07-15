@@ -62,7 +62,7 @@ export interface RosterSaveRequest {
   deptId?: string;
   groupId?: number | null;
   sourceEmpId?: string | null;
-  targetEmpId: string;
+  targetEmpId?: string | null;
   groupName: string;
   selectedDays: RosterDaySelection[];
 }
