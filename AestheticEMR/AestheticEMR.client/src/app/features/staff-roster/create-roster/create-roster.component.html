@@ -101,15 +101,6 @@
               <button mat-icon-button color="primary" matTooltip="Edit" (click)="openEditDialog(row)">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" matTooltip="Delete"
-                (click)="deleteRow(row)"
-                [disabled]="deletingSno() === row.sno">
-                @if (deletingSno() === row.sno) {
-                  <mat-icon class="spin">autorenew</mat-icon>
-                } @else {
-                  <mat-icon>delete</mat-icon>
-                }
-              </button>
             </td>
           </ng-container>
 

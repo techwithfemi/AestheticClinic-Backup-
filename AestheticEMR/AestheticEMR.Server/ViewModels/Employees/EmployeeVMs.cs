@@ -38,18 +38,19 @@ public class DesignationVM
     /// create and ignores any client value, so it is optional in POST payloads.
     /// Required on PUT because the id is the route segment and PK.
     /// </summary>
-    [StringLength(50)]
-    public string? DesignationId { get; set; }
+    [Required]
+    [StringLength(2, MinimumLength = 2, ErrorMessage = "Designation ID must be exactly 2 characters")]
+    public string DesignationId { get; set; } = string.Empty;
 
-    [Required(AllowEmptyStrings = false), StringLength(150)]
-    public string? DesignationName { get; set; }
+    [Required]
+    [StringLength(150, ErrorMessage = "Designation name cannot exceed 150 characters")]
+    public string DesignationName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Populated by the list endpoint. The number of employees currently
-    /// using this designation. Lets the UI warn before delete and disable it
-    /// when &gt; 0. Not part of any create/update payload.
+    /// Number of employees currently assigned to this designation.
+    /// Populated by the controller for display purposes.
     /// </summary>
-    public int? InUseCount { get; set; }
+    public int InUseCount { get; set; }
 }
 
 public class DepartmentVM

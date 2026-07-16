@@ -51,6 +51,7 @@ public sealed class RosterDaySelection
 {
     public DateOnly Date { get; set; }
     public long ShiftId { get; set; }
+    public long RosterGrpShiftID { get; set; }
     public string ShiftAbbrv { get; set; } = string.Empty;
     public string ShiftName { get; set; } = string.Empty;
 }
@@ -97,4 +98,5 @@ public sealed class RosterGridItem
     public long? RosterGrpShiftID { get; set; }
     public string? EmpID { get; set; }
     public string? ShiftAbbrv { get; set; }
+    public long? ShiftID { get; set; }
 }

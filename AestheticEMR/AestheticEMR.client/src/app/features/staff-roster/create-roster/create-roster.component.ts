@@ -101,7 +101,6 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
   private readonly dialog = inject(MatDialog);
 
   readonly loading = signal(false);
-  readonly deletingSno = signal<number | null>(null);
   readonly lookups = signal<RosterLookups>({ groups: [], sourceStaff: [], targetStaff: [], shifts: [] });
   readonly rows = signal<RosterGridItem[]>([]);
 
@@ -245,24 +244,6 @@ export class CreateRosterComponent implements OnInit, AfterViewInit {
     });
     ref.afterClosed().subscribe(saved => {
       if (saved) { this.loadGrid(); }
-    });
-  }
-
-  deleteRow(row: RosterGridItem): void {
-    if (!window.confirm(`Delete roster row ${row.sno}?`)) {
-      return;
-    }
-    this.deletingSno.set(row.sno);
-    this.rosterEndpoint.deleteRosterEntryEndpoint<void>(row.sno).subscribe({
-      next: () => {
-        this.deletingSno.set(null);
-        this.alertService.showMessage('Deleted', 'Roster row deleted.', MessageSeverity.success);
-        this.loadGrid();
-      },
-      error: error => {
-        this.deletingSno.set(null);
-        this.alertService.showStickyMessage('Delete Error', this.getErrorMessage(error), MessageSeverity.error);
-      }
     });
   }
 

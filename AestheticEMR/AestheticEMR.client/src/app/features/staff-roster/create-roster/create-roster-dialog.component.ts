@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -352,7 +352,7 @@ export interface CreateRosterDialogData {
     }
   `]
 })
-export class CreateRosterDialogComponent {
+export class CreateRosterDialogComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<CreateRosterDialogComponent>);
   readonly data = inject<CreateRosterDialogData>(MAT_DIALOG_DATA);
   private readonly alertService = inject(AlertService);
@@ -379,6 +379,13 @@ export class CreateRosterDialogComponent {
 
   readonly selectedCount = computed(() => this.listItems().filter(i => i.selected).length);
   readonly groups = computed(() => this.data.lookups.groups);
+
+  ngOnInit(): void {
+    // In edit mode, prefill the dialog with existing data
+    if (this.isEdit && this.data.existingRow) {
+      this.initializeEditMode();
+    }
+  }
 
   // VB6: cboGroup_Click — group selection triggers list + grid refresh
   onGroupChanged(groupId: number | null): void {
@@ -424,7 +431,7 @@ export class CreateRosterDialogComponent {
       const dateLabel = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
       for (const shift of shifts) {
-        items.push({
+        const item = {
           key: `${dateStr}|${shift.sno}`,
           date: dateStr,
           label: `${dateLabel}  ${shift.shiftName} [${shift.evalTo}]  ${dayName}`,
@@ -433,7 +440,9 @@ export class CreateRosterDialogComponent {
           shiftAbbrv: shift.evalTo,
           dayName,
           selected: false
-        });
+        };
+        items.push(item);
+        console.debug(`[prefill] Built list item: date=${dateStr}, shiftAbbrv=${shift.evalTo}, key=${item.key}`);
       }
     }
 
@@ -477,6 +486,117 @@ export class CreateRosterDialogComponent {
         return i;
       });
     });
+  }
+
+  private initializeEditMode(): void {
+    const row = this.data.existingRow;
+    if (!row) return;
+
+    // Extract date from the grid row and parse month/year
+    if (row.date) {
+      try {
+        const dateObj = this.parseDate(row.date);
+        this.selectedMonth = dateObj.getMonth() + 1;
+        this.selectedYear = dateObj.getFullYear();
+      } catch {
+        console.warn('Could not parse date from existing row:', row.date);
+      }
+    }
+
+    // Find and select the group
+    const groupId = row.groupID ? parseInt(row.groupID.toString(), 10) : null;
+    if (groupId) {
+      const group = this.data.lookups.groups.find(g => g.groupId === groupId);
+      if (group) {
+        // Step 1: Set loading indicator BEFORE building list
+        this.loading.set(true);
+        
+        // Step 2: Trigger group selection which will build list items
+        this.onGroupChanged(groupId);
+
+        // Step 3: Load existing roster data to pre-select checkboxes
+        // This will set loading back to false when complete
+        this.loadExistingRosterData(groupId);
+      }
+    }
+  }
+
+  private parseDate(dateStr: string): Date {
+    // Try multiple date formats
+    // Format 1: "2026-07-14" (yyyy-MM-dd)
+    const isoMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10));
+    }
+
+    // Format 2: "14-Jul-2026" (dd-MMM-yyyy)
+    const dmyMatch = dateStr.match(/(\d{2})-([A-Za-z]+)-(\d{4})/);
+    if (dmyMatch) {
+      const monthStr = dmyMatch[2];
+      const month = new Date(`${monthStr} 1 2000`).getMonth();
+      return new Date(parseInt(dmyMatch[3], 10), month, parseInt(dmyMatch[1], 10));
+    }
+
+    // Fallback: try native Date parsing
+    return new Date(dateStr);
+  }
+
+  private loadExistingRosterData(groupId: number): void {
+    this.loading.set(true);
+    const empId = this.data.existingRow?.empID ?? '';
+    const fromDate = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-01`;
+    const toDate = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-${new Date(this.selectedYear, this.selectedMonth, 0).getDate()}`;
+
+    console.debug(`[prefill] Loading existing roster: empId=${empId}, fromDate=${fromDate}, toDate=${toDate}, groupId=${groupId}`);
+
+    this.rosterEndpoint.getExistingEndpoint<RosterGridItem[]>({
+      empId,
+      fromDate,
+      toDate
+    }).subscribe({
+      next: (existingRecords) => {
+        this.loading.set(false);
+        console.debug(`[prefill] Loaded ${existingRecords.length} existing records from backend:`, existingRecords);
+        this.markExistingItemsAsSelected(existingRecords);
+      },
+      error: (error) => {
+        this.loading.set(false);
+        console.warn('[prefill] Could not load existing roster data for prefill:', error);
+        // Continue anyway - user can select manually
+      }
+    });
+  }
+
+  private markExistingItemsAsSelected(existingRecords: RosterGridItem[]): void {
+    // Build a map of existing shifts: date + shiftId → true
+    // VB6 logic: If lstDays.ItemData(X) = SNoX And dtDate = RosterDate Then lstDays.Selected(X) = True
+    // ItemData(X) stores ShiftID, so we match by date + shiftId (numeric ID, not abbreviation)
+    const existingMap = new Set<string>();
+    for (const record of existingRecords) {
+      if (record.date && record.shiftId) {
+        const key = `${record.date}|${record.shiftId}`;
+        existingMap.add(key);
+        console.debug(`[prefill] DB record: date=${record.date}, shiftId=${record.shiftId}, key=${key}`);
+      }
+    }
+
+    console.debug(`[prefill] Total existing DB records to match: ${existingMap.size}`);
+
+    // Mark matching items as selected
+    let matchCount = 0;
+    this.listItems.update(items =>
+      items.map(item => {
+        const key = `${item.date}|${item.shiftId}`;
+        const isMatched = existingMap.has(key);
+        if (isMatched) {
+          matchCount++;
+          console.debug(`[prefill] MATCH: item date=${item.date}, shiftId=${item.shiftId}`);
+        }
+        return { ...item, selected: isMatched };
+      })
+    );
+    
+    console.debug(`[prefill] Matched ${matchCount} list items out of ${this.listItems().length}`);
   }
 
   save(): void {
@@ -529,6 +649,7 @@ export class CreateRosterDialogComponent {
       .map(i => ({
         date: i.date,
         shiftId: i.shiftId,
+        rosterGrpShiftID: 0,
         shiftAbbrv: i.shiftAbbrv.trim(),
         shiftName: i.shiftName.trim()
       }));
@@ -537,6 +658,7 @@ export class CreateRosterDialogComponent {
       .map(i => ({
         date: i.date,
         shiftId: i.shiftId,
+        rosterGrpShiftID: 0,
         shiftAbbrv: i.shiftAbbrv.trim(),
         shiftName: i.shiftName.trim()
       }));

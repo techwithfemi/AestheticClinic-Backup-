@@ -27,6 +27,7 @@ export interface RosterShiftLookup {
 export interface RosterDaySelection {
   date: string;
   shiftId: number;
+  rosterGrpShiftID: number;
   shiftAbbrv: string;
   shiftName: string;
 }
@@ -49,6 +50,7 @@ export interface RosterGridItem {
   rosterGrpShiftID?: number;
   empID?: string;
   shiftAbbrv?: string;
+  shiftId?: number;
 }
 
 export interface RosterLookups {

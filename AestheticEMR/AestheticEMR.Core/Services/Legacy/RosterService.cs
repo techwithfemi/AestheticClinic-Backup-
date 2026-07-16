@@ -117,33 +117,36 @@ ORDER BY [Date], StaffName;", param, SmartHRConnection);
         }
 
         var whereDate = query.FromDate.HasValue && query.ToDate.HasValue
-            ? "AND Date BETWEEN @FromDate AND @ToDate"
+            ? "AND RosterDate BETWEEN @FromDate AND @ToDate"
             : query.FromDate.HasValue
-                ? "AND Date >= @FromDate"
-                : query.ToDate.HasValue ? "AND Date <= @ToDate" : string.Empty;
+                ? "AND RosterDate >= @FromDate"
+                : query.ToDate.HasValue ? "AND RosterDate <= @ToDate" : string.Empty;
 
+        // Query the Roster table directly (like VB6 does) to get ShiftID
+        // VB6 code: select RosterDate,ShiftID from Roster where rosterDate between ... and empID = ...
         var rows = await db.LoadDataText<RosterGridItem, DynamicParameters>($@"
-SELECT CAST(SNo AS bigint) AS SNo,
-       [Date],
-       StaffName,
+SELECT 0 AS SNo,
+       RosterDate AS [Date],
+       NULL AS StaffName,
        NULL AS ClockIn,
        NULL AS ClockOut,
        NULL AS Status,
        CAST(0 AS decimal(18, 2)) AS Fine,
        ShiftName,
        GroupName,
-       StartDate,
-       EndDate,
-       DeptName,
-       Exempted,
+       NULL AS StartDate,
+       NULL AS EndDate,
+       NULL AS DeptName,
+       NULL AS Exempted,
        CAST(GroupID AS nvarchar(50)) AS GroupID,
-       CAST(RosterGrpShiftID AS bigint) AS RosterGrpShiftID,
+       0 AS RosterGrpShiftID,
        EmpID,
-       ShiftAbbrv
-FROM vwRosterForGridLatest
+       ShiftAbbrv,
+       ShiftID
+FROM Roster
 WHERE EmpID = @EmpId
   AND DeptID = @DeptId {whereDate}
-ORDER BY Date;", param, SmartHRConnection);
+ORDER BY RosterDate;", param, SmartHRConnection);
 
         return rows;
     }
@@ -215,6 +218,7 @@ WHERE RosterDate BETWEEN @StartDate AND @EndDate
 
             foreach (var day in request.SelectedDays.OrderBy(x => x.Date))
             {
+                logger.LogInformation("Roster save: date={Date}, shiftId={ShiftId}, shiftName={ShiftName}, shiftAbbrv={ShiftAbbrv}", day.Date, day.ShiftId, day.ShiftName, day.ShiftAbbrv);
                 var isOffDuty = day.ShiftId.ToString().Equals(offDutyShiftId, StringComparison.OrdinalIgnoreCase)
                     || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase);
 
@@ -235,7 +239,7 @@ VALUES
 (@RosterGrpShiftID, @EmpID, @ShiftID, @GroupID, @IsOffDuty, @ShiftAbbrv, @ShiftName, @GroupName, @DeptID, @RosterDate);",
                     new
                     {
-                        RosterGrpShiftID = 0,
+                        RosterGrpShiftID = day.RosterGrpShiftID,
                         EmpID = targetEmpId,
                         ShiftID = day.ShiftId,
                         GroupID = rosterGroupId,
@@ -254,8 +258,7 @@ VALUES
             foreach (var day in unselectedDays.OrderBy(x => x.Date))
             {
                 var isOffDuty = day.ShiftId.ToString().Equals(offDutyShiftId, StringComparison.OrdinalIgnoreCase)
-                    || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase)
-                    || day.ShiftId == 0;  // ShiftId 0 indicates blank/unselected day
+                    || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase);
 
                 await connection.ExecuteAsync(@"
 DELETE FROM Roster
@@ -274,7 +277,7 @@ VALUES
 (@RosterGrpShiftID, @EmpID, @ShiftID, @GroupID, @IsOffDuty, @ShiftAbbrv, @ShiftName, @GroupName, @DeptID, @RosterDate);",
                     new
                     {
-                        RosterGrpShiftID = 0,
+                        RosterGrpShiftID = day.RosterGrpShiftID,
                         EmpID = targetEmpId,
                         ShiftID = day.ShiftId,
                         GroupID = rosterGroupId,

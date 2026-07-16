@@ -2,15 +2,20 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Employees.Interfaces;
+using DataAccess.DbAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace AestheticEMR.Core.Services.Employees;
 
-public class DesignationService(ApplicationDbContext context, ILogger<DesignationService> logger) : IDesignationService
+public class DesignationService(
+    ApplicationDbContext context,
+    ISqlDataAccess db,
+    ILogger<DesignationService> logger) : IDesignationService
 {
     // Mirrors the legacy VB.NET genIDNo() — key in the shared IDgen table.
     private const string DesIdCode = "Designation";
+    private const string ConnectionId = "smartHRConnection";
 
     // Legacy format: zero-padded 2 chars (e.g. "01", "10", "99").
     // VB used Microsoft.VisualBasic.Right("00" & CStr(iDNo), 2), so anything beyond 99
@@ -21,6 +26,7 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
 
     public async Task<string> GenerateDesignationIdAsync()
     {
+        // Use EF for IDgen read since it's in the same database
         var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == DesIdCode);
         var nextId = (idgen?.Id ?? 0) + 1;
         if (nextId > MaxDesignationId)
@@ -31,18 +37,29 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
 
     public async Task<IEnumerable<Designation>> GetAllAsync()
     {
-        return await context.Designations
-            .AsNoTracking()
-            .OrderBy(d => d.desID)
-            .ToListAsync();
+        // Calls stored procedure: getDesig
+        // Legacy VB.NET: dr = SqlHelper.ExecuteDataset(conStr2, CommandType.StoredProcedure, "getDesig")
+        var designations = await db.LoadData<Designation, dynamic>(
+            "getDesig",
+            new { },
+            ConnectionId);
+
+        return designations.OrderBy(d => d.desID);
     }
 
     public async Task<Designation?> GetByIdAsync(string desId)
     {
         if (string.IsNullOrWhiteSpace(desId))
             return null;
-        return await context.Designations.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.desID == desId);
+
+        // Use raw SQL query to get by ID
+        var query = "SELECT desID, desName FROM Designation WHERE desID = @desID";
+        var results = await db.LoadDataText<Designation, dynamic>(
+            query,
+            new { desID = desId },
+            ConnectionId);
+
+        return results.FirstOrDefault();
     }
 
     public async Task<Designation> CreateAsync(Designation designation)
@@ -57,13 +74,11 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
             {
                 // First-ever designation: seed the counter from whatever the table already
                 // holds so we don't collide with legacy rows (or with the seed VB.NET data).
-                var existingIds = await context.Designations
-                    .Where(d => d.desID != null && d.desID != string.Empty)
-                    .Select(d => d.desID)
-                    .ToListAsync();
+                var query = "SELECT desID FROM Designation WHERE desID IS NOT NULL AND desID <> ''";
+                var existingIds = await db.LoadDataText<string, dynamic>(query, new { }, ConnectionId);
 
                 var maxExisting = existingIds
-                    .Select(s => { return int.TryParse(s, out var n) ? n : 0; })
+                    .Select(s => int.TryParse(s, out var n) ? n : 0)
                     .DefaultIfEmpty(0)
                     .Max();
 
@@ -92,14 +107,26 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
             designation.desID = nextId.ToString(IdFormat);
 
             // Guard against collisions when a row already exists for the next id
-            // (e.g. seed data inserted with manual ids that overlap with the counter).
-            var exists = await context.Designations.AnyAsync(d => d.desID == designation.desID);
+            var checkQuery = "SELECT COUNT(*) FROM Designation WHERE desID = @desID";
+            var existsResults = await db.LoadDataText<int, dynamic>(
+                checkQuery,
+                new { desID = designation.desID },
+                ConnectionId);
+            var exists = existsResults.FirstOrDefault() > 0;
+
             if (exists)
                 throw new InvalidOperationException(
                     $"Designation id '{designation.desID}' already exists. Resolve the conflict and retry.");
 
-            context.Designations.Add(designation);
-            await context.SaveChangesAsync();
+            // Calls stored procedure: InsertEmpDesig
+            // Legacy VB.NET: params = {New SqlParameter("@desID", desID), New SqlParameter("@desName", desName)}
+            // SqlHelper.ExecuteNonQuery(conStr2, CommandType.StoredProcedure, "InsertEmpDesig", params)
+            await db.SaveData(
+                "InsertEmpDesig",
+                new { desID = designation.desID, desName = designation.desName },
+                ConnectionId);
+
+            await context.SaveChangesAsync(); // Save IDgen changes
             await transaction.CommitAsync();
 
             logger.LogInformation("Created designation {DesId}", designation.desID);
@@ -114,25 +141,27 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
 
     public async Task<Designation> UpdateAsync(Designation designation)
     {
-        // Bulletproof update: only touch the column we own (desName), keep the PK intact.
-        var rows = await context.Designations
-            .Where(d => d.desID == designation.desID)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(d => d.desName, designation.desName));
-
-        if (rows == 0)
-            throw new KeyNotFoundException($"Designation {designation.desID} not found.");
-
-        var refreshed = await context.Designations.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.desID == designation.desID);
+        // Calls stored procedure: updateEmpDesig
+        // Legacy VB.NET: params = {New SqlParameter("@desOldID", str), 
+        //                          New SqlParameter("@desID", desID), 
+        //                          New SqlParameter("@desName", info)}
+        // SqlHelper.ExecuteNonQuery(conStr2, CommandType.StoredProcedure, "updateEmpDesig", params)
+        
+        // For update, we keep the same ID (desOldID = desID)
+        await db.SaveData(
+            "updateEmpDesig",
+            new { desOldID = designation.desID, desID = designation.desID, desName = designation.desName },
+            ConnectionId);
 
         logger.LogInformation("Updated designation {DesId}", designation.desID);
-        return refreshed ?? designation;
+        
+        // Return the updated designation
+        return designation;
     }
 
     public async Task<bool> DeleteAsync(string desId)
     {
-        var existing = await context.Designations.FirstOrDefaultAsync(d => d.desID == desId);
+        var existing = await GetByIdAsync(desId);
         if (existing == null)
             return false;
 
@@ -140,8 +169,14 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
             throw new InvalidOperationException(
                 $"Designation '{desId}' is currently assigned to one or more employees and cannot be deleted.");
 
-        context.Designations.Remove(existing);
-        await context.SaveChangesAsync();
+        // Calls stored procedure: deleteEmpDesig
+        // Legacy VB.NET: params = {New SqlParameter("@desID", info)}
+        // SqlHelper.ExecuteNonQuery(conStr2, CommandType.StoredProcedure, "deleteEmpDesig", params)
+        await db.SaveData(
+            "deleteEmpDesig",
+            new { desID = desId },
+            ConnectionId);
+
         logger.LogInformation("Deleted designation {DesId}", desId);
         return true;
     }
@@ -151,18 +186,36 @@ public class DesignationService(ApplicationDbContext context, ILogger<Designatio
         if (string.IsNullOrWhiteSpace(desId))
             return false;
 
-        return await context.HrEmployees
-            .AsNoTracking()
-            .AnyAsync(e => e.Designation == desId);
+        // Check if any employee references this designation
+        var query = "SELECT COUNT(*) FROM HREmployees WHERE Designation = @Designation";
+        var results = await db.LoadDataText<int, dynamic>(
+            query,
+            new { Designation = desId },
+            ConnectionId);
+
+        return results.FirstOrDefault() > 0;
     }
 
     public async Task<IReadOnlyDictionary<string, int>> GetInUseCountsAsync()
     {
-        return await context.HrEmployees
-            .AsNoTracking()
-            .Where(e => e.Designation != null && e.Designation != string.Empty)
-            .GroupBy(e => e.Designation)
-            .Select(g => new { DesId = g.Key!, Count = g.Count() })
-            .ToDictionaryAsync(x => x.DesId, x => x.Count);
+        // Get count of employees per designation
+        var query = @"
+            SELECT DesId as DesId, COUNT(*) as Count 
+            FROM Designation 
+            WHERE DesId IS NOT NULL AND DesId <> '' 
+            GROUP BY DesId";
+
+        var results = await db.LoadDataText<DesignationUsageCount, dynamic>(
+            query,
+            new { },
+            ConnectionId);
+
+        return results.ToDictionary(x => x.DesId, x => x.Count);
+    }
+
+    private class DesignationUsageCount
+    {
+        public string DesId { get; set; } = string.Empty;
+        public int Count { get; set; }
     }
 }

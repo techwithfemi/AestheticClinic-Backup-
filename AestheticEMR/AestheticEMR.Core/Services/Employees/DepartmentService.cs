@@ -1,107 +1,120 @@
-using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Employees;
-using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Employees.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Dapper;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Data;
 
 namespace AestheticEMR.Core.Services.Employees;
 
-public class DepartmentService(ApplicationDbContext context, ILogger<DepartmentService> logger) : IDepartmentService
+public class DepartmentService(
+    IConfiguration configuration,
+    ILogger<DepartmentService> logger) : IDepartmentService
 {
-    // Mirrors the legacy VB.NET genIDNo() — key in the shared IDgen table.
-    private const string DeptIdCode = "Department";
+    private const string ConnectionName = "smartHRConnection";
 
     // Legacy format: zero-padded 2 chars (e.g. "01", "10", "99").
-    // VB used Microsoft.VisualBasic.Right("00" & CStr(iDNo), 2), so anything beyond 99
-    // would have been silently truncated to the last 2 digits. We reject that instead —
-    // a clinic with >99 departments needs a schema change, not silent corruption.
     private const int MaxDepartmentId = 99;
     private const string IdFormat = "00";
 
     public async Task<string> GenerateDepartmentIdAsync()
     {
-        var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == DeptIdCode);
-        var nextId = (idgen?.Id ?? 0) + 1;
+        await using var connection = await OpenConnectionAsync();
+
+        var currentMax = await connection.ExecuteScalarAsync<int>(@"
+SELECT ISNULL(MAX(
+    CASE
+        WHEN LTRIM(RTRIM(ISNULL(DeptID, ''))) <> ''
+             AND LTRIM(RTRIM(DeptID)) NOT LIKE '%[^0-9]%'
+        THEN CAST(LTRIM(RTRIM(DeptID)) AS int)
+        ELSE 0
+    END), 0)
+FROM EmpDepartments;");
+
+        var nextId = currentMax + 1;
         if (nextId > MaxDepartmentId)
             throw new InvalidOperationException(
                 $"Department id limit reached ({MaxDepartmentId}). Cannot generate a new department.");
+
         return nextId.ToString(IdFormat);
     }
 
     public async Task<IEnumerable<EmpDepartments>> GetAllAsync()
     {
-        return await context.EmpDepartments
-            .AsNoTracking()
-            .OrderBy(d => d.DeptId)
-            .ToListAsync();
+        await using var connection = await OpenConnectionAsync();
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(DeptID)) AS DeptId,
+    LTRIM(RTRIM(ISNULL(DeptName, ''))) AS DeptName,
+    LTRIM(RTRIM(ISNULL(DeptAddress, ''))) AS DeptAddress,
+    LTRIM(RTRIM(ISNULL(Location, ''))) AS Location
+FROM EmpDepartments
+ORDER BY DeptID;";
+
+        var rows = await connection.QueryAsync<EmpDepartments>(sql);
+        return rows.ToList();
     }
 
     public async Task<EmpDepartments?> GetByIdAsync(string deptId)
     {
-        if (string.IsNullOrWhiteSpace(deptId))
+        var normalizedId = NormalizeText(deptId);
+        if (string.IsNullOrWhiteSpace(normalizedId))
             return null;
-        return await context.EmpDepartments.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.DeptId == deptId);
+
+        await using var connection = await OpenConnectionAsync();
+        const string sql = @"
+SELECT TOP 1
+    LTRIM(RTRIM(DeptID)) AS DeptId,
+    LTRIM(RTRIM(ISNULL(DeptName, ''))) AS DeptName,
+    LTRIM(RTRIM(ISNULL(DeptAddress, ''))) AS DeptAddress,
+    LTRIM(RTRIM(ISNULL(Location, ''))) AS Location
+FROM EmpDepartments
+WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
+
+        return await connection.QueryFirstOrDefaultAsync<EmpDepartments>(sql, new { DeptId = normalizedId });
     }
 
     public async Task<EmpDepartments> CreateAsync(EmpDepartments department)
     {
-        await using var transaction = await context.Database.BeginTransactionAsync();
+        await using var connection = await OpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+
         try
         {
-            var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == DeptIdCode);
+            var currentMax = await connection.ExecuteScalarAsync<int>(@"
+SELECT ISNULL(MAX(
+    CASE
+        WHEN LTRIM(RTRIM(ISNULL(DeptID, ''))) <> ''
+             AND LTRIM(RTRIM(DeptID)) NOT LIKE '%[^0-9]%'
+        THEN CAST(LTRIM(RTRIM(DeptID)) AS int)
+        ELSE 0
+    END), 0)
+FROM EmpDepartments WITH (UPDLOCK, HOLDLOCK);", transaction: transaction);
 
-            decimal nextId;
-            if (idgen == null)
-            {
-                // First-ever department: seed the counter from whatever the table already
-                // holds so we don't collide with legacy rows (or with the seed VB.NET data).
-                var existingIds = await context.EmpDepartments
-                    .Where(d => d.DeptId != null && d.DeptId != string.Empty)
-                    .Select(d => d.DeptId)
-                    .ToListAsync();
-
-                var maxExisting = existingIds
-                    .Select(s => { return int.TryParse(s, out var n) ? n : 0; })
-                    .DefaultIfEmpty(0)
-                    .Max();
-
-                nextId = maxExisting + 1;
-                if (nextId > MaxDepartmentId)
-                    throw new InvalidOperationException(
-                        $"Department id limit reached ({MaxDepartmentId}). Cannot generate a new department.");
-
-                idgen = new Idgen { DestName = DeptIdCode, Id = nextId };
-                context.HrIdgens.Add(idgen);
-                logger.LogInformation(
-                    "Seeded IDgen for {Code} at id={Id} (derived from existing rows)",
-                    DeptIdCode, nextId);
-            }
-            else
-            {
-                nextId = idgen.Id + 1;
-                if (nextId > MaxDepartmentId)
-                    throw new InvalidOperationException(
-                        $"Department id limit reached ({MaxDepartmentId}). Cannot generate a new department.");
-                idgen.Id = nextId;
-                // idgen is already tracked from the query above; no Update() needed.
-            }
-
-            // Always overwrite any client-supplied id — server is the source of truth.
-            department.DeptId = nextId.ToString(IdFormat);
-
-            // Guard against collisions when a row already exists for the next id
-            // (e.g. seed data inserted with manual ids that overlap with the counter).
-            var exists = await context.EmpDepartments.AnyAsync(d => d.DeptId == department.DeptId);
-            if (exists)
+            var nextId = currentMax + 1;
+            if (nextId > MaxDepartmentId)
                 throw new InvalidOperationException(
-                    $"Department id '{department.DeptId}' already exists. Resolve the conflict and retry.");
+                    $"Department id limit reached ({MaxDepartmentId}). Cannot generate a new department.");
 
-            context.EmpDepartments.Add(department);
-            await context.SaveChangesAsync();
+            department.DeptId = nextId.ToString(IdFormat);
+            department.DeptName = NormalizeText(department.DeptName) ?? string.Empty;
+            department.DeptAddress = NormalizeText(department.DeptAddress);
+            department.Location = NormalizeText(department.Location);
+
+            const string insertSql = @"
+INSERT INTO EmpDepartments (DeptID, DeptName, DeptAddress, Location)
+VALUES (@DeptId, @DeptName, @DeptAddress, @Location);";
+
+            await connection.ExecuteAsync(insertSql, new
+            {
+                DeptId = department.DeptId,
+                DeptName = department.DeptName,
+                DeptAddress = department.DeptAddress,
+                Location = department.Location
+            }, transaction);
+
             await transaction.CommitAsync();
-
             logger.LogInformation("Created department {DeptId}", department.DeptId);
             return department;
         }
@@ -114,58 +127,104 @@ public class DepartmentService(ApplicationDbContext context, ILogger<DepartmentS
 
     public async Task<EmpDepartments> UpdateAsync(EmpDepartments department)
     {
-        // Bulletproof update: only touch the columns we own (DeptName, DeptAddress, Location),
-        // keep the PK intact. Matches the DesignationService pattern.
-        var rows = await context.EmpDepartments
-            .Where(d => d.DeptId == department.DeptId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(d => d.DeptName, department.DeptName)
-                .SetProperty(d => d.DeptAddress, department.DeptAddress)
-                .SetProperty(d => d.Location, department.Location));
+        var normalizedId = NormalizeText(department.DeptId)
+            ?? throw new KeyNotFoundException("Department id is required.");
 
-        if (rows == 0)
-            throw new KeyNotFoundException($"Department {department.DeptId} not found.");
+        await using var connection = await OpenConnectionAsync();
+        const string updateSql = @"
+UPDATE EmpDepartments
+SET DeptName = @DeptName,
+    DeptAddress = @DeptAddress,
+    Location = @Location
+WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
 
-        var refreshed = await context.EmpDepartments.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.DeptId == department.DeptId);
+        var affected = await connection.ExecuteAsync(updateSql, new
+        {
+            DeptId = normalizedId,
+            DeptName = NormalizeText(department.DeptName) ?? string.Empty,
+            DeptAddress = NormalizeText(department.DeptAddress),
+            Location = NormalizeText(department.Location)
+        });
 
-        logger.LogInformation("Updated department {DeptId}", department.DeptId);
+        if (affected == 0)
+            throw new KeyNotFoundException($"Department {normalizedId} not found.");
+
+        var refreshed = await GetByIdAsync(normalizedId);
+        logger.LogInformation("Updated department {DeptId}", normalizedId);
         return refreshed ?? department;
     }
 
     public async Task<bool> DeleteAsync(string deptId)
     {
-        var existing = await context.EmpDepartments.FirstOrDefaultAsync(d => d.DeptId == deptId);
-        if (existing == null)
+        var normalizedId = NormalizeText(deptId);
+        if (string.IsNullOrWhiteSpace(normalizedId))
             return false;
 
-        if (await IsInUseAsync(deptId))
+        if (await IsInUseAsync(normalizedId))
             throw new InvalidOperationException(
-                $"Department '{deptId}' is currently assigned to one or more employees and cannot be deleted.");
+                $"Department '{normalizedId}' is currently assigned to one or more employees and cannot be deleted.");
 
-        context.EmpDepartments.Remove(existing);
-        await context.SaveChangesAsync();
-        logger.LogInformation("Deleted department {DeptId}", deptId);
-        return true;
+        await using var connection = await OpenConnectionAsync();
+        const string sql = @"DELETE FROM EmpDepartments WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
+
+        var affected = await connection.ExecuteAsync(sql, new { DeptId = normalizedId });
+        if (affected > 0)
+            logger.LogInformation("Deleted department {DeptId}", normalizedId);
+
+        return affected > 0;
     }
 
     public async Task<bool> IsInUseAsync(string deptId)
     {
-        if (string.IsNullOrWhiteSpace(deptId))
+        var normalizedId = NormalizeText(deptId);
+        if (string.IsNullOrWhiteSpace(normalizedId))
             return false;
 
-        return await context.HrEmployees
-            .AsNoTracking()
-            .AnyAsync(e => e.DeptId == deptId);
+        await using var connection = await OpenConnectionAsync();
+        const string sql = @"
+SELECT COUNT(1)
+FROM HrEmployees
+WHERE LTRIM(RTRIM(ISNULL(DeptID, ''))) = @DeptId;";
+
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { DeptId = normalizedId });
+        return count > 0;
     }
 
     public async Task<IReadOnlyDictionary<string, int>> GetInUseCountsAsync()
     {
-        return await context.HrEmployees
-            .AsNoTracking()
-            .Where(e => e.DeptId != null && e.DeptId != string.Empty)
-            .GroupBy(e => e.DeptId)
-            .Select(g => new { DeptId = g.Key!, Count = g.Count() })
-            .ToDictionaryAsync(x => x.DeptId, x => x.Count);
+        await using var connection = await OpenConnectionAsync();
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(DeptID)) AS DeptId,
+    COUNT(1) AS [Count]
+FROM HrEmployees
+WHERE LTRIM(RTRIM(ISNULL(DeptID, ''))) <> ''
+GROUP BY LTRIM(RTRIM(DeptID));";
+
+        var rows = await connection.QueryAsync<DepartmentUsageCount>(sql);
+        return rows
+            .Where(x => !string.IsNullOrWhiteSpace(x.DeptId))
+            .ToDictionary(x => x.DeptId, x => x.Count);
+    }
+
+    private async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        var connectionString = configuration.GetConnectionString(ConnectionName)
+            ?? throw new InvalidOperationException($"Connection string '{ConnectionName}' was not found.");
+
+        var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection;
+    }
+
+    private static string? NormalizeText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private class DepartmentUsageCount
+    {
+        public string DeptId { get; set; } = string.Empty;
+        public int Count { get; set; }
     }
 }
