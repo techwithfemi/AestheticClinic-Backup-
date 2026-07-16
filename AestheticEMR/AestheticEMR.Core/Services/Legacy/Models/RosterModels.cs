@@ -58,11 +58,13 @@ public sealed class RosterDaySelection
 public sealed class RosterSaveRequest
 {
     public string? DeptId { get; set; } = string.Empty;
+    public string? DeptName { get; set; }
     public long? GroupId { get; set; }
     public string? SourceEmpId { get; set; }
     public string? TargetEmpId { get; set; }
     public string GroupName { get; set; } = string.Empty;
     public List<RosterDaySelection> SelectedDays { get; set; } = [];
+    public List<RosterDaySelection> UnselectedDays { get; set; } = [];
 }
 
 public sealed class RosterDeleteRequest

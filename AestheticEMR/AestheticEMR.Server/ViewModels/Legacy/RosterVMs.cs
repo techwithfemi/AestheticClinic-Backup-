@@ -61,6 +61,9 @@ public sealed class RosterSaveVM
 {
     public string? DeptId { get; set; }
 
+    [StringLength(200)]
+    public string? DeptName { get; set; }
+
     public long? GroupId { get; set; }
 
     [StringLength(50)]
@@ -74,6 +77,8 @@ public sealed class RosterSaveVM
 
     [MinLength(1)]
     public List<RosterDaySelectionVM> SelectedDays { get; set; } = [];
+
+    public List<RosterDaySelectionVM> UnselectedDays { get; set; } = [];
 }
 
 public sealed class RosterDeleteVM

@@ -474,6 +474,10 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - Debtors wrapper debit dropdown must filter accounts by `SUBSTRING(GroupID, 1, 3) = '123'`.
 
+### Task Confirmation
+
+- Always confirm and report only tasks actually completed; do not assume tasks are done.
+
 
 
 

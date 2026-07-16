@@ -60,11 +60,13 @@ export interface RosterLookups {
 
 export interface RosterSaveRequest {
   deptId?: string;
+  deptName?: string;
   groupId?: number | null;
   sourceEmpId?: string | null;
   targetEmpId?: string | null;
   groupName: string;
   selectedDays: RosterDaySelection[];
+  unselectedDays?: RosterDaySelection[];
 }
 
 @Injectable({ providedIn: 'root' })

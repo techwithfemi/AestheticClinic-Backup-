@@ -503,7 +503,10 @@ export class CreateRosterDialogComponent {
       return;
     }
 
+    const deptName = group.deptName?.trim();
+
     const selectedItems = this.listItems().filter(i => i.selected);
+    const unselectedItems = this.listItems().filter(i => !i.selected);
 
     const selectedByDate = new Map<string, number>();
     for (const item of selectedItems) {
@@ -530,6 +533,14 @@ export class CreateRosterDialogComponent {
         shiftName: i.shiftName.trim()
       }));
 
+    const unselectedDays = unselectedItems
+      .map(i => ({
+        date: i.date,
+        shiftId: i.shiftId,
+        shiftAbbrv: i.shiftAbbrv.trim(),
+        shiftName: i.shiftName.trim()
+      }));
+
     if (selectedDays.length === 0) {
       this.alertService.showMessage('Validation', 'No Roster List is Selected', MessageSeverity.warn);
       return;
@@ -540,9 +551,11 @@ export class CreateRosterDialogComponent {
       DialogType.confirm,
       () => this.commitSave({
         deptId,
+        deptName,
         groupId: group.groupId,
         groupName,
-        selectedDays
+        selectedDays,
+        unselectedDays
       })
     );
   }
