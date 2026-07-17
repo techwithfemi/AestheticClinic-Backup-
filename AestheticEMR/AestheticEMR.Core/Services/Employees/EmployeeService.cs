@@ -2,16 +2,21 @@
 using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Employees.Interfaces;
+using DataAccess.DbAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using EmployeeEntity = AestheticEMR.Core.Models.Employees.Employees;
 
 namespace AestheticEMR.Core.Services.Employees;
 
-public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeService> logger) : IEmployeeService
+public class EmployeeService(
+    ApplicationDbContext context,
+    ISqlDataAccess db,
+    ILogger<EmployeeService> logger) : IEmployeeService
 {
     private const string EmpIdCode = "Employee";
     private const string EmpIdPrefix = "HR-";
+    private const string ConnectionId = "smartHRConnection";
 
     public async Task<string> GenerateEmpIdAsync()
     {
@@ -22,16 +27,44 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
 
     public async Task<IEnumerable<EmployeeEntity>> GetAllAsync()
     {
-        return await context.HrEmployees
-            .AsNoTracking()
-            .OrderBy(e => e.LastName)
-            .ThenBy(e => e.FirstName)
-            .ToListAsync();
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(EmpID)) AS EmpId,
+    LTRIM(RTRIM(ISNULL(FirstName, ''))) AS FirstName,
+    LTRIM(RTRIM(ISNULL(LastName, ''))) AS LastName,
+    NULLIF(LTRIM(RTRIM(ISNULL(DeptID, ''))), '') AS DeptId,
+    NULLIF(LTRIM(RTRIM(ISNULL(Designation, ''))), '') AS Designation,
+    NULLIF(LTRIM(RTRIM(ISNULL(EmpStatus, ''))), '') AS EmpStatus,
+    Dob,
+    NULLIF(LTRIM(RTRIM(ISNULL(Sex, ''))), '') AS Sex
+FROM Employees
+ORDER BY LastName, FirstName;";
+
+        var rows = await db.LoadDataText<EmployeeEntity, dynamic>(sql, new { }, ConnectionId);
+        return rows.ToList();
     }
 
     public async Task<EmployeeEntity?> GetByIdAsync(string empId)
     {
-        return await context.HrEmployees.FirstOrDefaultAsync(e => e.EmpId == empId);
+        var normalizedId = NormalizeText(empId);
+        if (string.IsNullOrWhiteSpace(normalizedId))
+            return null;
+
+        const string sql = @"
+SELECT TOP 1
+    LTRIM(RTRIM(EmpID)) AS EmpId,
+    LTRIM(RTRIM(ISNULL(FirstName, ''))) AS FirstName,
+    LTRIM(RTRIM(ISNULL(LastName, ''))) AS LastName,
+    NULLIF(LTRIM(RTRIM(ISNULL(DeptID, ''))), '') AS DeptId,
+    NULLIF(LTRIM(RTRIM(ISNULL(Designation, ''))), '') AS Designation,
+    NULLIF(LTRIM(RTRIM(ISNULL(EmpStatus, ''))), '') AS EmpStatus,
+    Dob,
+    NULLIF(LTRIM(RTRIM(ISNULL(Sex, ''))), '') AS Sex
+FROM Employees
+WHERE LTRIM(RTRIM(EmpID)) = @EmpId;";
+
+        var rows = await db.LoadDataText<EmployeeEntity, dynamic>(sql, new { EmpId = normalizedId }, ConnectionId);
+        return rows.FirstOrDefault();
     }
 
     public async Task<EmployeeEntity> CreateAsync(EmployeeEntity employee)
@@ -52,11 +85,26 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
             {
                 nextId = idgen.Id + 1;
                 idgen.Id = nextId;
-                context.HrIdgens.Update(idgen);
             }
 
             employee.EmpId = $"{EmpIdPrefix}{Convert.ToInt64(nextId):D7}";
-            context.HrEmployees.Add(employee);
+
+            const string insertSql = @"
+INSERT INTO Employees (EmpID, LastName, FirstName, Designation, DeptID, EmpStatus, Dob, Sex)
+VALUES (@EmpId, @LastName, @FirstName, @Designation, @DeptId, @EmpStatus, @Dob, @Sex);";
+
+            await db.SaveDataText(insertSql, new
+            {
+                EmpId = employee.EmpId,
+                LastName = NormalizeRequired(employee.LastName),
+                FirstName = NormalizeRequired(employee.FirstName),
+                Designation = NormalizeText(employee.Designation),
+                DeptId = NormalizeText(employee.DeptId),
+                EmpStatus = NormalizeText(employee.EmpStatus) ?? "ACTIVE",
+                employee.Dob,
+                Sex = NormalizeText(employee.Sex)
+            }, ConnectionId);
+
             await context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -72,62 +120,89 @@ public class EmployeeService(ApplicationDbContext context, ILogger<EmployeeServi
 
     public async Task<EmployeeEntity> UpdateAsync(EmployeeEntity employee)
     {
-        // Bulletproof update: only touch the columns we own, regardless of how
-        // the entity was constructed. Avoids EF tracking edge-cases on legacy rows
-        // (different ID formats, unrelated columns, etc.).
-        var rows = await context.HrEmployees
-            .Where(e => e.EmpId == employee.EmpId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(e => e.FirstName, employee.FirstName)
-                .SetProperty(e => e.LastName, employee.LastName)
-                .SetProperty(e => e.DeptId, employee.DeptId)
-                .SetProperty(e => e.Sex, employee.Sex)
-                .SetProperty(e => e.Dob, employee.Dob)
-                .SetProperty(e => e.EmpStatus, employee.EmpStatus));
+        var normalizedId = NormalizeText(employee.EmpId)
+            ?? throw new KeyNotFoundException("Employee id is required.");
 
-        if (rows == 0)
-            throw new KeyNotFoundException($"Employee {employee.EmpId} not found.");
+        const string updateSql = @"
+UPDATE Employees
+SET LastName = @LastName,
+    FirstName = @FirstName,
+    DeptID = @DeptId,
+    Designation = CASE WHEN @HasDesignation = 1 THEN @Designation ELSE Designation END,
+    EmpStatus = @EmpStatus,
+    Dob = @Dob,
+    Sex = @Sex
+WHERE LTRIM(RTRIM(EmpID)) = @EmpId;";
 
-        // Designation is mapped via the entity's "Designation" column; only overwrite
-        // when a non-empty value is supplied so we don't wipe legacy rows on partial VMs.
-        if (!string.IsNullOrWhiteSpace(employee.Designation))
+        await db.SaveDataText(updateSql, new
         {
-            await context.HrEmployees
-                .Where(e => e.EmpId == employee.EmpId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(e => e.Designation, employee.Designation));
-        }
+            EmpId = normalizedId,
+            LastName = NormalizeRequired(employee.LastName),
+            FirstName = NormalizeRequired(employee.FirstName),
+            DeptId = NormalizeText(employee.DeptId),
+            Designation = NormalizeText(employee.Designation),
+            HasDesignation = !string.IsNullOrWhiteSpace(employee.Designation),
+            EmpStatus = NormalizeText(employee.EmpStatus) ?? "INACTIVE",
+            employee.Dob,
+            Sex = NormalizeText(employee.Sex)
+        }, ConnectionId);
 
-        var refreshed = await context.HrEmployees.AsNoTracking()
-            .FirstOrDefaultAsync(e => e.EmpId == employee.EmpId);
+        var refreshed = await GetByIdAsync(normalizedId)
+            ?? throw new KeyNotFoundException($"Employee {normalizedId} not found.");
 
-        logger.LogInformation("Updated employee {EmpId}", employee.EmpId);
-        return refreshed ?? employee;
+        logger.LogInformation("Updated employee {EmpId}", normalizedId);
+        return refreshed;
     }
 
     public async Task DeleteAsync(string empId)
     {
-        var existing = await context.HrEmployees.FirstOrDefaultAsync(e => e.EmpId == empId)
-            ?? throw new KeyNotFoundException($"Employee {empId} not found.");
+        var normalizedId = NormalizeText(empId)
+            ?? throw new KeyNotFoundException("Employee id is required.");
 
-        context.HrEmployees.Remove(existing);
-        await context.SaveChangesAsync();
-        logger.LogInformation("Deleted employee {EmpId}", empId);
+        var existing = await GetByIdAsync(normalizedId)
+            ?? throw new KeyNotFoundException($"Employee {normalizedId} not found.");
+
+        const string sql = "DELETE FROM Employees WHERE LTRIM(RTRIM(EmpID)) = @EmpId;";
+        await db.SaveDataText(sql, new { EmpId = normalizedId }, ConnectionId);
+
+        logger.LogInformation("Deleted employee {EmpId}", existing.EmpId);
     }
 
     public async Task<IEnumerable<Designation>> GetDesignationsAsync()
     {
-        return await context.Designations
-            .AsNoTracking()
-            .OrderBy(d => d.desName)
-            .ToListAsync();
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(desID)) AS desID,
+    LTRIM(RTRIM(ISNULL(desName, ''))) AS desName
+FROM Designation
+ORDER BY desName;";
+
+        var rows = await db.LoadDataText<Designation, dynamic>(sql, new { }, ConnectionId);
+        return rows.ToList();
     }
 
     public async Task<IEnumerable<EmpDepartments>> GetDepartmentsAsync()
     {
-        return await context.EmpDepartments
-            .AsNoTracking()
-            .OrderBy(d => d.DeptName)
-            .ToListAsync();
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(DeptID)) AS DeptId,
+    LTRIM(RTRIM(ISNULL(DeptName, ''))) AS DeptName,
+    NULLIF(LTRIM(RTRIM(ISNULL(DeptAddress, ''))), '') AS DeptAddress,
+    NULLIF(LTRIM(RTRIM(ISNULL(Location, ''))), '') AS Location
+FROM EmpDepartments
+ORDER BY DeptName;";
+
+        var rows = await db.LoadDataText<EmpDepartments, dynamic>(sql, new { }, ConnectionId);
+        return rows.ToList();
+    }
+
+    private static string? NormalizeText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string NormalizeRequired(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 }

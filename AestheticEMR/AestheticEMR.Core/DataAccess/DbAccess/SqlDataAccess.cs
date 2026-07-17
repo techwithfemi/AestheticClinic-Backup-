@@ -19,7 +19,8 @@ public class SqlDataAccess(IConfiguration config) : ISqlDataAccess
         using IDbConnection connection = new SqlConnection(config.GetConnectionString(connectionId))
             ?? throw new InvalidOperationException($"Connection string '{connectionId}' was not found.");
 
-        return await connection.QueryAsync<T>(query, parameters, commandType: CommandType.Text);
+        var normalizedQuery = NormalizeQuery(query);
+        return await connection.QueryAsync<T>(normalizedQuery, parameters, commandType: CommandType.Text);
     }
 
     public async Task SaveData<T>(string storedProcedure, T parameters, string connectionId)
@@ -33,6 +34,12 @@ public class SqlDataAccess(IConfiguration config) : ISqlDataAccess
     {
         using IDbConnection connection = new SqlConnection(config.GetConnectionString(connectionId));
 
-        await connection.ExecuteAsync(query, parameters, commandType: CommandType.Text);
+        var normalizedQuery = NormalizeQuery(query);
+        await connection.ExecuteAsync(normalizedQuery, parameters, commandType: CommandType.Text);
+    }
+
+    private static string NormalizeQuery(string query)
+    {
+        return query.Replace(";_", ";", StringComparison.Ordinal);
     }
 }
