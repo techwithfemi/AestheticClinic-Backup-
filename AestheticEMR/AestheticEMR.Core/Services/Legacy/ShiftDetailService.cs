@@ -14,19 +14,18 @@ public class ShiftDetailService(ISqlDataAccess db, ILogger<ShiftDetailService> l
     {
         const string sql = @"
 SELECT
-    CAST(ShiftID AS bigint) AS ShiftId,
-    LTRIM(RTRIM(ISNULL([shifttype], ''))) AS ShiftJob,
-    LTRIM(RTRIM(ISNULL(ShiftName, ''))) AS PeriodOfDay,
-    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [resumTime], 120), ''))) AS ResumptionTime,
-    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [closeTime], 120), ''))) AS ClosingTime,
-    LTRIM(RTRIM(ISNULL([resumremearly], ''))) AS PunctualityRemarks,
-    LTRIM(RTRIM(ISNULL([resumremLate], ''))) AS LateRemarks,
-    LTRIM(RTRIM(ISNULL([closeRemNorm], ''))) AS NormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL([closeRemAbNorm], ''))) AS AbnormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(evalTo, ''))) AS EvalTo
-FROM empAttendanceParam p
-LEFT JOIN EmpAttendanceShift s ON p.ShiftID = s.SNo
-ORDER BY p.ShiftID;";
+    CAST([ShiftID] AS bigint) AS ShiftId,
+    LTRIM(RTRIM(ISNULL([Shift/Job], ''))) AS ShiftJob,
+    LTRIM(RTRIM(ISNULL([ShiftName], ''))) AS PeriodOfDay,
+    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [ResumptionTime], 120), ''))) AS ResumptionTime,
+    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [ClosingTime], 120), ''))) AS ClosingTime,
+    LTRIM(RTRIM(ISNULL([EarlyResumptionRemarks], ''))) AS PunctualityRemarks,
+    LTRIM(RTRIM(ISNULL([LateResumptionRemarks], ''))) AS LateRemarks,
+    LTRIM(RTRIM(ISNULL([NormalClosingRemarks], ''))) AS NormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([AbnormalClosingRemarks], ''))) AS AbnormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([evalTo], ''))) AS EvalTo
+FROM qryEmpAttendanceParam
+ORDER BY [ShiftID];";
 
         return await db.LoadDataText<ShiftDetailItem, dynamic>(sql, new { }, ConnectionId);
     }
@@ -35,19 +34,18 @@ ORDER BY p.ShiftID;";
     {
         const string sql = @"
 SELECT TOP 1
-    CAST(ShiftID AS bigint) AS ShiftId,
-    LTRIM(RTRIM(ISNULL([shifttype], ''))) AS ShiftJob,
-    LTRIM(RTRIM(ISNULL(ShiftName, ''))) AS PeriodOfDay,
-    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [resumTime], 120), ''))) AS ResumptionTime,
-    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [closeTime], 120), ''))) AS ClosingTime,
-    LTRIM(RTRIM(ISNULL([resumremearly], ''))) AS PunctualityRemarks,
-    LTRIM(RTRIM(ISNULL([resumremLate], ''))) AS LateRemarks,
-    LTRIM(RTRIM(ISNULL([closeRemNorm], ''))) AS NormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL([closeRemAbNorm], ''))) AS AbnormalClosingRemarks,
-    LTRIM(RTRIM(ISNULL(evalTo, ''))) AS EvalTo
-FROM empAttendanceParam p
-LEFT JOIN EmpAttendanceShift s ON p.ShiftID = s.SNo
-WHERE p.ShiftID = @ShiftId;";
+    CAST([ShiftID] AS bigint) AS ShiftId,
+    LTRIM(RTRIM(ISNULL([Shift/Job], ''))) AS ShiftJob,
+    LTRIM(RTRIM(ISNULL([ShiftName], ''))) AS PeriodOfDay,
+    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [ResumptionTime], 120), ''))) AS ResumptionTime,
+    LTRIM(RTRIM(ISNULL(CONVERT(varchar(20), [ClosingTime], 120), ''))) AS ClosingTime,
+    LTRIM(RTRIM(ISNULL([EarlyResumptionRemarks], ''))) AS PunctualityRemarks,
+    LTRIM(RTRIM(ISNULL([LateResumptionRemarks], ''))) AS LateRemarks,
+    LTRIM(RTRIM(ISNULL([NormalClosingRemarks], ''))) AS NormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([AbnormalClosingRemarks], ''))) AS AbnormalClosingRemarks,
+    LTRIM(RTRIM(ISNULL([evalTo], ''))) AS EvalTo
+FROM qryEmpAttendanceParam
+WHERE [ShiftID] = @ShiftId;";
 
         return (await db.LoadDataText<ShiftDetailItem, dynamic>(sql, new { ShiftId = shiftId }, ConnectionId)).FirstOrDefault();
     }

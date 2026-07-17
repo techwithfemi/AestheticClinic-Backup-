@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
@@ -29,6 +30,7 @@ import { ShiftEntryDialogComponent } from './shift-entry-dialog.component';
     MatIconModule,
     MatDialogModule,
     MatTableModule,
+    MatSortModule,
     MatPaginatorModule,
     MatTooltipModule,
     MatProgressBarModule
@@ -39,6 +41,7 @@ import { ShiftEntryDialogComponent } from './shift-entry-dialog.component';
 })
 export class ShiftsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator?: MatPaginator;
+  @ViewChild(MatSort) sort?: MatSort;
 
   private readonly alertService = inject(AlertService);
   private readonly endpoint = inject(ShiftDetailsEndpoint);
@@ -52,8 +55,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
   readonly searchText = signal('');
 
   readonly dataSource = new MatTableDataSource<ShiftDetail>([]);
-  readonly displayedColumns = ['shiftJob', 'periodOfDay', 'resumptionTime', 'closingTime', 'evalTo', 'actions'];
-  readonly filteredCount = computed(() => this.dataSource.filteredData.length);
+  readonly displayedColumns = ['periodOfDay', 'resumptionTime', 'closingTime', 'evalTo', 'actions'];
 
   ngOnInit(): void {
     this.loadLookups();
@@ -62,6 +64,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator ?? null;
+    this.dataSource.sort = this.sort ?? null;
   }
 
   loadLookups(): void {
@@ -77,6 +80,7 @@ export class ShiftsComponent implements OnInit, AfterViewInit {
       next: items => {
         this.rows.set(items);
         this.dataSource.data = items;
+        this.dataSource.sort = this.sort ?? null;
         this.dataSource.filterPredicate = (row, filter) => {
           const text = `${row.shiftJob} ${row.periodOfDay} ${row.evalTo ?? ''} ${row.resumptionTime} ${row.closingTime}`.toLowerCase();
           return text.includes(filter);
