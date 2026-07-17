@@ -77,13 +77,13 @@ public class AppointmentController(
         }
     }
     [HttpGet("employees")]
-    [ProducesResponseType(typeof(IEnumerable<object>), 200)]
+    [ProducesResponseType(typeof(IEnumerable<EmployeeLookupVM>), 200)]
     public async Task<IActionResult> GetEmployees()
     {
         try
         {
             var employees = await appointmentService.GetEmployeesAsync();
-            return Ok(employees.Select(e => new { e.empID, e.EmpName, e.Dept, e.Designation }));
+            return Ok(_mapper.Map<IEnumerable<EmployeeLookupVM>>(employees));
         }
         catch (Exception ex)
         {

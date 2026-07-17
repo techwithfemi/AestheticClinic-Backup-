@@ -82,7 +82,11 @@ export class UserInfoComponent implements OnInit {
   readonly roles = viewChild<NgModel>('roles');
 
   ngOnInit() {
-    this.loadEmployees();
+    // Only fetch the employee list when this dialog is used as a general
+    // (admin) editor. The "edit my own profile" path does not use the lookup.
+    if (this.isGeneralEditor) {
+      this.loadEmployees();
+    }
 
     if (!this.isGeneralEditor) {
       this.loadCurrentUserData();
@@ -132,41 +136,43 @@ export class UserInfoComponent implements OnInit {
     this.appointmentEndpoint.getAppointmentEmployeesEndpoint<VwEmpName[]>()
       .subscribe({
         next: employees => {
-          this.employees = employees;
+          this.employees = [...employees];
+          // Re-sync now that the list is in memory (handles the race where
+          // editUser() was called before this fetch resolved).
           this.syncSelectedEmployee();
         },
         error: () => {
           this.employees = [];
+          this.selectedEmpID = null;
+          this.userEdit.empID = '';
         }
       });
   }
 
-  onEmployeeSelected(emp: VwEmpName | string | null) {
-    if (!emp) {
+  onEmployeeSelected(emp: VwEmpName | null | undefined) {
+    // ng-select with bindValue="empID" emits the full item object (or null
+    // when cleared). Always trust the object — never fall back to a string
+    // lookup against a possibly-stale `employees` cache.
+    if (!emp || typeof emp !== 'object') {
       this.userEdit.fullName = '';
       this.userEdit.empID = '';
       this.selectedEmpID = null;
       return;
     }
 
-    const selected = typeof emp === 'string'
-      ? this.employees.find(e => e.empID === emp) ?? null
-      : emp;
-
-    this.userEdit.fullName = selected?.empName ?? '';
-    this.userEdit.empID = selected?.empID ?? '';
-    this.selectedEmpID = selected?.empID ?? null;
+    this.userEdit.fullName = emp.empName ?? '';
+    this.userEdit.empID = emp.empID ?? '';
+    this.selectedEmpID = emp.empID ?? null;
   }
 
   private syncSelectedEmployee() {
-    if (this.userEdit.fullName) {
-      const match = this.employees.find(e => e.empName === this.userEdit.fullName);
-      this.selectedEmpID = match?.empID ?? null;
-      this.userEdit.empID = match?.empID ?? this.userEdit.empID;
-    } else {
+    if (!this.userEdit.empID) {
       this.selectedEmpID = null;
-      this.userEdit.empID = '';
+      return;
     }
+
+    const match = this.employees.find(e => e.empID === this.userEdit.empID);
+    this.selectedEmpID = match?.empID ?? null;
   }
 
   get displayedUserPhoto(): string {
@@ -424,7 +430,6 @@ export class UserInfoComponent implements OnInit {
   resetForm(replace = false) {
     this.isChangePassword = false;
     this.selectedEmpID = null;
-    this.userEdit.empID = '';
 
     if (!replace) {
       this.form()?.reset();
@@ -446,6 +451,7 @@ export class UserInfoComponent implements OnInit {
     this.userEdit.isEnabled = true;
     this.userEdit.roles = [];
     this.userEdit.empID = '';
+    this.userEdit.fullName = '';
     this.userEdit.userPhotoBase64 = this.defaultUserPhoto;
     this.selectedEmpID = null;
     this.edit();
@@ -463,6 +469,9 @@ export class UserInfoComponent implements OnInit {
       this.userEdit = new UserEdit();
       Object.assign(this.user, user);
       Object.assign(this.userEdit, user);
+      // Try to sync against the already-loaded employee list. If the fetch
+      // hasn't completed yet, syncSelectedEmployee() will be re-run from
+      // the loadEmployees() callback once the data arrives.
       this.syncSelectedEmployee();
       this.edit();
 

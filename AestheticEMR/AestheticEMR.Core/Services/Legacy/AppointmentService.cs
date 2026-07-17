@@ -3,6 +3,7 @@ using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
+using DataAccess.DbAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,7 @@ public class AppointmentService(
     IUserIdAccessor userIdAccessor,
     ISmsSender smsSender,
     ISmsTemplateService smsTemplateService,
+    ISqlDataAccess sqlDataAccess,
     ILogger<AppointmentService> logger) : IAppointmentService
 {
     public async Task<IEnumerable<hAppointment>> GetAllAsync()
@@ -92,10 +94,24 @@ public class AppointmentService(
 
     public async Task<IEnumerable<vwEmpName>> GetEmployeesAsync()
     {
-        return await context.vwEmpNames
-            .AsNoTracking()
-            .OrderBy(x => x.EmpName)
-            .ToListAsync();
+        logger.LogInformation("Fetching employees from smartHRConnection using Dapper");
+        
+        const string query = @"
+            SELECT empID,
+                   Fullname AS EmpName,
+                   DeptName AS Dept,
+                   '' AS Designation
+            FROM vwEmpName
+            ORDER BY Fullname";
+
+        var employees = await sqlDataAccess.LoadDataText<vwEmpName, dynamic>(
+            query, 
+            new { }, 
+            "smartHRConnection");
+            
+        var employeeList = employees.ToList();
+        logger.LogInformation("Successfully fetched {Count} employees from vwEmpName", employeeList.Count);
+        return employeeList;
     }
 
     private async Task<HPatient> GetPatientAsync(string pno)

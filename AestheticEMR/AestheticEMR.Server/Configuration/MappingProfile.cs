@@ -169,6 +169,12 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<QryhvisitsForToday, QryhvisitsForTodayVM>();
 
+            CreateMap<vwEmpName, EmployeeLookupVM>()
+                .ForMember(d => d.empID, map => map.MapFrom(s => s.empID))
+                .ForMember(d => d.empName, map => map.MapFrom(s => s.EmpName))
+                .ForMember(d => d.dept, map => map.MapFrom(s => s.Dept))
+                .ForMember(d => d.designation, map => map.MapFrom(s => s.Designation));
+
             CreateMap<hAppointment, AppointmentVM>()
                 .ForMember(d => d.Id, map => map.MapFrom(s => s.ID))
                 .ForMember(d => d.Pno, map => map.MapFrom(s => s.pno))
