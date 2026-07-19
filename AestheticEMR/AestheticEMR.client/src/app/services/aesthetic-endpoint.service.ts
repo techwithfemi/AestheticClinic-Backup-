@@ -22,6 +22,31 @@ export interface BalanceSheetHeader {
   coyID: string;
 }
 
+export interface AccountingReportYear {
+  periodYr: string;
+}
+
+export interface AccountingReportPeriod {
+  period: string;
+  periodVal?: string | null;
+  isClose: boolean;
+  prdClose: string;
+}
+
+export interface AccountingLedgerLookup {
+  ledgerCode: string;
+  ledger: string;
+}
+
+export interface AccountingAccountLookup {
+  accountNo: string;
+  accountName: string;
+}
+
+export interface AccountingReportDefaults {
+  coyID: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -38,13 +63,50 @@ export class AestheticEndpoint extends EndpointBase {
   private get photosUrl() { return `${this.baseUrl}/photos`; }
   private get botoxConsultationsUrl() { return `${this.consultationsUrl}/botox`; }
 
-  getAccountingGeneralLedgerReportEndpoint(params: { coyID: string; period: string; ledgerCode: string; accountNo: string }): Observable<Blob> {
+  getAccountingReportDefaultsEndpoint(): Observable<AccountingReportDefaults> {
+    return this.http.get<AccountingReportDefaults>(`${this.accountingReportsUrl}/defaults`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingReportDefaultsEndpoint())));
+  }
+
+  getAccountingGeneralLedgerYearsEndpoint(): Observable<AccountingReportYear[]> {
+    return this.http.get<AccountingReportYear[]>(`${this.accountingReportsUrl}/general-ledger/years`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingGeneralLedgerYearsEndpoint())));
+  }
+
+  getAccountingGeneralLedgerPeriodsEndpoint(coyID: string, year: string): Observable<AccountingReportPeriod[]> {
+    const query = new URLSearchParams({ coyID, year });
+
+    return this.http.get<AccountingReportPeriod[]>(`${this.accountingReportsUrl}/general-ledger/periods?${query.toString()}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingGeneralLedgerPeriodsEndpoint(coyID, year))));
+  }
+
+  getAccountingGeneralLedgerLedgersEndpoint(): Observable<AccountingLedgerLookup[]> {
+    return this.http.get<AccountingLedgerLookup[]>(`${this.accountingReportsUrl}/general-ledger/ledgers`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingGeneralLedgerLedgersEndpoint())));
+  }
+
+  getAccountingGeneralLedgerAccountsEndpoint(coyID: string, period: string, ledgerCode: string): Observable<AccountingAccountLookup[]> {
+    const query = new URLSearchParams({ coyID, period, ledgerCode });
+
+    return this.http.get<AccountingAccountLookup[]>(`${this.accountingReportsUrl}/general-ledger/accounts?${query.toString()}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAccountingGeneralLedgerAccountsEndpoint(coyID, period, ledgerCode))));
+  }
+
+  getAccountingGeneralLedgerReportEndpoint(params: { coyID: string; period: string; ledgerCode: string; accountNo: string; ledgerDisplayText?: string; accountDisplayText?: string }): Observable<Blob> {
     const query = new URLSearchParams({
       coyID: params.coyID,
       period: params.period,
       ledgerCode: params.ledgerCode,
       accountNo: params.accountNo
     });
+
+    if (params.ledgerDisplayText) {
+      query.set('ledgerDisplayText', params.ledgerDisplayText);
+    }
+
+    if (params.accountDisplayText) {
+      query.set('accountDisplayText', params.accountDisplayText);
+    }
 
     return this.http.get(`${this.accountingReportsUrl}/general-ledger?${query.toString()}`, {
       ...this.requestHeaders,

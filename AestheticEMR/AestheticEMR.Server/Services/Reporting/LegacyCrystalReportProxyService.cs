@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using AestheticEMR.Server.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Services.Reporting;
@@ -7,16 +8,20 @@ namespace AestheticEMR.Server.Services.Reporting;
 public class LegacyCrystalReportProxyService(
     IHttpClientFactory httpClientFactory,
     IOptions<AppSettings> appSettings,
+    IConfiguration configuration,
     ILogger<LegacyCrystalReportProxyService> logger) : ILegacyCrystalReportProxyService
 {
-    public async Task<LegacyCrystalReportPayload> GetGeneralLedgerReportAsync(string coyID, string period, string ledgerCode, string accountNo, CancellationToken cancellationToken)
+    public async Task<LegacyCrystalReportPayload> GetGeneralLedgerReportAsync(string coyID, string period, string ledgerCode, string accountNo, string? ledgerDisplayText, string? accountDisplayText, string? companyName, CancellationToken cancellationToken)
     {
         var query = new Dictionary<string, string?>
         {
             ["coyID"] = coyID,
             ["period"] = period,
             ["ledgerCode"] = ledgerCode,
-            ["accountNo"] = accountNo
+            ["accountNo"] = accountNo,
+            ["ledgerDisplayText"] = ledgerDisplayText,
+            ["accountDisplayText"] = accountDisplayText,
+            ["companyName"] = companyName
         };
 
         var response = await SendGetAsync("Accounting/GeneralLedger", query, cancellationToken);
@@ -95,6 +100,14 @@ public class LegacyCrystalReportProxyService(
 
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
 
+        var accountingConnectionString = configuration.GetConnectionString("AccountingConnection");
+        if (string.IsNullOrWhiteSpace(accountingConnectionString))
+        {
+            throw new InvalidOperationException("Connection string 'AccountingConnection' is missing.");
+        }
+
+        request.Headers.Add("X-Db-Connection", accountingConnectionString);
+
         if (!string.IsNullOrWhiteSpace(cfg.ApiKey))
         {
             request.Headers.Add("X-Api-Key", cfg.ApiKey);
@@ -108,7 +121,12 @@ public class LegacyCrystalReportProxyService(
             var details = await response.Content.ReadAsStringAsync(cancellationToken);
             logger.LogWarning("Legacy report service call failed. Url: {Url}, Status: {StatusCode}, Details: {Details}", requestUrl, (int)response.StatusCode, details);
             response.Dispose();
-            throw new InvalidOperationException($"Legacy report service returned status {(int)response.StatusCode}.");
+
+            var shortDetails = string.IsNullOrWhiteSpace(details)
+                ? "No details returned."
+                : details.Length > 500 ? details.Substring(0, 500) : details;
+
+            throw new InvalidOperationException($"Legacy report service returned status {(int)response.StatusCode}. Details: {shortDetails}");
         }
 
         return response;

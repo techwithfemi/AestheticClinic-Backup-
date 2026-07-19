@@ -2,16 +2,20 @@
 using Dapper;
 using System;
 using System.Data;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using System.Web.Http.Controllers;
+using System.Web.Http.Filters;
 
 namespace CrystalReportWebAPI.Controllers
 {
     [RoutePrefix("api/Reports")]
+    [AllowAnonymous]
     public class ReportsController : ApiController
     {
-        [AllowAnonymous]
         [Route("Accounting/BalanceSheet")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
@@ -28,7 +32,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
 
                 if (!isClose)
                 {
@@ -59,11 +63,10 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("Accounting/GeneralLedger")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> GeneralLedger(string coyID, string period, string ledgerCode, string accountNo)
+        public async Task<HttpResponseMessage> GeneralLedger(string coyID, string period, string ledgerCode, string accountNo, string companyName = null, string ledgerDisplayText = null, string accountDisplayText = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
@@ -76,7 +79,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
                 var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL", new
                 {
                     CoyID = coyID.Trim(),
@@ -85,7 +88,36 @@ namespace CrystalReportWebAPI.Controllers
                     AccountNo = accountNo.Trim()
                 }, 240);
 
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds);
+                var meta = await DapperReportData.ExecuteDataSetAsync(conStr, @"
+select top 1
+    cast(PrdClose as datetime) as PrdClose,
+    cast(isClose as bit) as IsClose
+from vwClosedAndOpenPeriods
+where Period = @Period and CoyID = @CoyID", new
+                {
+                    Period = period.Trim(),
+                    CoyID = coyID.Trim()
+                }, 240);
+
+                var reportDate = DateTime.Today;
+                var isClose = false;
+                if (meta.Tables.Count > 0 && meta.Tables[0].Rows.Count > 0)
+                {
+                    var row = meta.Tables[0].Rows[0];
+                    if (row["PrdClose"] != DBNull.Value)
+                    {
+                        reportDate = Convert.ToDateTime(row["PrdClose"]);
+                    }
+
+                    if (row["IsClose"] != DBNull.Value)
+                    {
+                        isClose = Convert.ToBoolean(row["IsClose"]);
+                    }
+                }
+
+                var displayText = BuildGeneralLedgerDisplayText(ledgerCode, accountNo, ledgerDisplayText, accountDisplayText);
+                var header = BuildGeneralLedgerHeader(displayText, period, reportDate, isClose);
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
             }
             catch (Exception ex)
             {
@@ -93,7 +125,6 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("Accounting/ProfitAndLoss")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
@@ -110,7 +141,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
 
                 if (!isClose)
                 {
@@ -141,7 +172,6 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("Accounting/ProfitAndLossDetails")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
@@ -159,7 +189,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
 
                 if (!isClose)
                 {
@@ -191,7 +221,6 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("ClosedJob")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
@@ -224,7 +253,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
                 var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "MonthlyClosedJobByCoy", new
                 {
                     CoyID = coyID.Trim(),
@@ -241,12 +270,10 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("Invoice")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
         public async Task<HttpResponseMessage> InvoiceByBillNo(string invNo)
-        //public async Task<ActionResult<Billing_Extension>> PostBilling(Billing_Extension billing)
         {
             if (invNo is null)
             {
@@ -259,7 +286,7 @@ namespace CrystalReportWebAPI.Controllers
 
             try
             {
-                string conStr = System.Configuration.ConfigurationManager.ConnectionStrings["ConStr"].ToString();
+                var conStr = ResolveConnectionStringFromRequest(Request);
                 var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "GetInvoiceByBillNo", new
                 {
                     BillNo = invNo.Trim()
@@ -273,7 +300,6 @@ namespace CrystalReportWebAPI.Controllers
             }
         }
 
-        [AllowAnonymous]
         [Route("Financial/VarianceAnalysisReport")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
@@ -289,7 +315,6 @@ namespace CrystalReportWebAPI.Controllers
             return result;
         }
 
-        [AllowAnonymous]
         [Route("Demonstration/ComparativeIncomeStatement")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
@@ -304,7 +329,6 @@ namespace CrystalReportWebAPI.Controllers
             return result;
         }
 
-        [AllowAnonymous]
         [Route("VersatileandPrecise/Invoice")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
@@ -319,7 +343,6 @@ namespace CrystalReportWebAPI.Controllers
             return result;
         }
 
-        [AllowAnonymous]
         [Route("VersatileandPrecise/FortifyFinancialAllinOneRetirementSavings")]
         [HttpGet]
         [ClientCacheWithEtag(60)]  //1 min client side caching
@@ -333,6 +356,60 @@ namespace CrystalReportWebAPI.Controllers
             HttpResponseMessage result = CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds);
 
             return result;
+        }
+
+        private static string ResolveConnectionStringFromRequest(HttpRequestMessage request)
+        {
+            const string headerName = "X-Db-Connection";
+
+            if (!request.Headers.TryGetValues(headerName, out var values))
+            {
+                throw new InvalidOperationException($"Missing required header '{headerName}'.");
+            }
+
+            var connectionString = values.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException($"Header '{headerName}' is empty.");
+            }
+
+            return connectionString;
+        }
+
+        private static string BuildGeneralLedgerHeader(string displayName, string period, DateTime reportDate, bool isClose)
+        {
+            if (isClose)
+            {
+                return $"{displayName} As of  {reportDate.ToShortDateString()} For the Period ended ({period.Trim()})";
+            }
+
+            if (reportDate.Date >= DateTime.Today)
+            {
+                return $"{displayName}  As of  {DateTime.Today}";
+            }
+
+            return $"{displayName} As of  {reportDate.ToShortDateString()}";
+        }
+
+        private static string BuildGeneralLedgerDisplayText(string ledgerCode, string accountNo, string ledgerDisplayText, string accountDisplayText)
+        {
+            var acct = accountNo == null ? string.Empty : accountNo.Trim();
+            if (!string.IsNullOrWhiteSpace(acct) && !string.Equals(acct, "(ALL)", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(accountDisplayText))
+                {
+                    return accountDisplayText.Trim();
+                }
+
+                return acct;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ledgerDisplayText))
+            {
+                return ledgerDisplayText.Trim();
+            }
+
+            return ledgerCode == null ? string.Empty : ledgerCode.Trim();
         }
     }
 }

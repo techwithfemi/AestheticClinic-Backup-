@@ -136,6 +136,9 @@ builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IIncomeService, IncomeService>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
+builder.Services.AddScoped<IAccountingReportLookupService, AccountingReportLookupService>();
+builder.Services.AddScoped<IEmrAppDefaultsService, EmrAppDefaultsService>();
+builder.Services.AddHostedService<EmrAppDefaultsStartupService>();
 builder.Services.AddHttpClient(nameof(LegacyCrystalReportProxyService), (sp, client) =>
 {
     var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppSettings>>().Value;

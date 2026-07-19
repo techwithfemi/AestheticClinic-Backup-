@@ -395,6 +395,10 @@ namespace AestheticEMR.Server.Configuration
 
             CreateMap<vwProfitAndLossHeadersList, ProfitAndLossHeaderVM>();
             CreateMap<vwBalanceSheetHeader, BalanceSheetHeaderVM>();
+            CreateMap<AccountingReportYearLookup, AccountingReportYearVM>();
+            CreateMap<AccountingReportPeriodLookup, AccountingReportPeriodVM>();
+            CreateMap<AccountingLedgerLookup, AccountingLedgerLookupVM>();
+            CreateMap<AccountingAccountLookup, AccountingAccountLookupVM>();
         }
 
         private static string StripBase64Prefix(string base64)

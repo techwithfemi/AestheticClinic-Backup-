@@ -11,16 +11,11 @@ namespace CrystalReportWebAPI.Utilities
 {
     public static class CrystalReport
     {
-        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename,DataSet dsX, string header=null )
+        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename, DataSet dsX, string header = null, string companyName = null)
         {
-            //DataTable dt = new DataTable();
-            //dt = dsX.Tables[0];
-
             var rd = new ReportDocument();
             var fielName = Path.Combine(System.Web.Hosting.HostingEnvironment.MapPath(reportPath), reportFileName);
 
-
-            //Check file exists
             if (!System.IO.File.Exists(fielName))
                 throw (new Exception("Unable to locate report file:+\n" + fielName));
 
@@ -38,16 +33,13 @@ namespace CrystalReportWebAPI.Utilities
             rd.Database.Tables[0].ApplyLogOnInfo(logOnInfo);
             rd.SetDataSource(dsX.Tables[0]);
 
-            if (header!= null )
+            if (header != null)
             {
-                TextObject myTextObjectOnReport;
-                myTextObjectOnReport = (CrystalDecisions.CrystalReports.Engine.TextObject)rd.ReportDefinition.ReportObjects["txtHead"];
-                myTextObjectOnReport.Text = header ;
-
-                myTextObjectOnReport = (CrystalDecisions.CrystalReports.Engine.TextObject)rd.ReportDefinition.ReportObjects["txtCoy"];
-                myTextObjectOnReport.Text = "Sapid Agencies Ltd";
+                SetTextObject(rd, "txtHead", header);
+                SetTextObject(rd, "txtPrd", header);
             }
 
+            SetTextObject(rd, "txtCoy", string.IsNullOrWhiteSpace(companyName) ? "Sapid Agencies Ltd" : companyName.Trim());
 
             MemoryStream ms = new MemoryStream();
             using (var stream = rd.ExportToStream(ExportFormatType.PortableDocFormat))
@@ -67,6 +59,25 @@ namespace CrystalReportWebAPI.Utilities
             result.Content.Headers.ContentType =
                 new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
             return result;
+        }
+
+        private static void SetTextObject(ReportDocument rd, string objectName, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            try
+            {
+                if (rd.ReportDefinition.ReportObjects[objectName] is TextObject textObject)
+                {
+                    textObject.Text = value;
+                }
+            }
+            catch
+            {
+            }
         }
     }
 }

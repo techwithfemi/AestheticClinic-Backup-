@@ -2,7 +2,7 @@ namespace CrystalReportWebAPI.Utilities
 {
     public static class ReportHeaders
     {
-        public static string BuildProfitAndLossHeader(string rptBy, string year, string period, string? reportItemName, string? companyName, bool isClosed, System.DateTime periodCloseDate)
+        public static string BuildProfitAndLossHeader(string rptBy, string year, string period, string reportItemName, string companyName, bool isClosed, System.DateTime periodCloseDate)
         {
             var item = string.IsNullOrWhiteSpace(reportItemName) ? string.Empty : reportItemName.Trim();
             var by = string.IsNullOrWhiteSpace(rptBy) ? "Period" : rptBy.Trim();

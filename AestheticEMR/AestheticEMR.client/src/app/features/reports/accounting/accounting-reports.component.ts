@@ -10,7 +10,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
-import { AestheticEndpoint, BalanceSheetHeader } from '../../../services/aesthetic-endpoint.service';
+import {
+  AestheticEndpoint,
+  AccountingAccountLookup,
+  AccountingLedgerLookup,
+  AccountingReportPeriod,
+  AccountingReportYear,
+  BalanceSheetHeader
+} from '../../../services/aesthetic-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { ReportPdfDialogComponent } from '../shared/report-pdf-dialog.component';
 import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-header.model';
@@ -45,17 +52,53 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
         <mat-tab-group [selectedIndex]="activeReport() === 'pl' ? 1 : activeReport() === 'bs' ? 2 : 0" (selectedIndexChange)="activeReport.set($event === 1 ? 'pl' : $event === 2 ? 'bs' : 'gl')">
           <mat-tab label="General Ledger">
             <div class="form-grid">
-              <mat-form-field appearance="outline"><mat-label>Company ID</mat-label><input matInput [(ngModel)]="coyID"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Period</mat-label><input matInput [(ngModel)]="period"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Ledger Code</mat-label><input matInput [(ngModel)]="ledgerCode"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Account No</mat-label><input matInput [(ngModel)]="accountNo"></mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Year</mat-label>
+                <mat-select [(ngModel)]="selectedGlYear" (selectionChange)="onGlYearChanged()">
+                  @for (item of glYears(); track item.periodYr) {
+                    <mat-option [value]="item.periodYr">{{ item.periodYr }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Period</mat-label>
+                <mat-select [(ngModel)]="period" (selectionChange)="onGlPeriodChanged()">
+                  @for (item of glPeriods(); track item.period + '-' + (item.periodVal || '') + '-' + item.prdClose) {
+                    <mat-option [value]="item.period">{{ item.period || '-- Select Period --' }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Ledger Type</mat-label>
+                <mat-select [(ngModel)]="ledgerCode" (selectionChange)="onGlLedgerChanged()">
+                  @for (item of glLedgers(); track item.ledgerCode + '-' + item.ledger) {
+                    <mat-option [value]="item.ledgerCode">{{ item.ledger || '-- Select Ledger --' }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Account</mat-label>
+                <mat-select [(ngModel)]="accountNo" (selectionChange)="onGlAccountChanged()">
+                  @for (item of glAccounts(); track item.accountNo + '-' + item.accountName) {
+                    <mat-option [value]="item.accountNo">{{ item.accountName }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
             </div>
+            @if (selectedGlLedger(); as ledger) {
+              <div class="selected-hint">Ledger: {{ ledger.ledger }}</div>
+            }
+            @if (selectedGlAccount(); as account) {
+              <div class="selected-hint">Account: {{ account.accountName }}</div>
+            }
             <div class="button-row"><button mat-raised-button color="primary" (click)="openGeneralLedger()" [disabled]="loading()">Open PDF</button></div>
           </mat-tab>
 
           <mat-tab label="Profit & Loss">
             <div class="form-grid">
-              <mat-form-field appearance="outline"><mat-label>Company ID</mat-label><input matInput [(ngModel)]="plCoyID"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Period</mat-label><input matInput [(ngModel)]="plPeriod"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Year</mat-label><input matInput [(ngModel)]="plYear"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Report By</mat-label><input matInput [(ngModel)]="plRptBy"></mat-form-field>
@@ -69,7 +112,9 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
                 </mat-select>
               </mat-form-field>
             </div>
-            <div class="selected-hint" *ngIf="selectedPlHeader() as header">Selected: {{ header.itemName || header.groupID }}</div>
+            @if (selectedPlHeader(); as header) {
+              <div class="selected-hint">Selected: {{ header.itemName || header.groupID }}</div>
+            }
             <div class="button-row">
               <button mat-raised-button color="primary" (click)="openProfitAndLoss()" [disabled]="loading()">Open Summary PDF</button>
               <button mat-stroked-button color="primary" (click)="openProfitAndLossDetails()" [disabled]="loading()">Open Details PDF</button>
@@ -78,7 +123,6 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
 
           <mat-tab label="Balance Sheet">
             <div class="form-grid">
-              <mat-form-field appearance="outline"><mat-label>Company ID</mat-label><input matInput [(ngModel)]="bsCoyID"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Period</mat-label><input matInput [(ngModel)]="bsPeriod"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Year</mat-label><input matInput [(ngModel)]="bsYear"></mat-form-field>
               <mat-form-field appearance="outline">
@@ -86,13 +130,15 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
                 <mat-select [(ngModel)]="bsRptBy" (selectionChange)="onBalanceSheetHeaderSelected()">
                   <mat-option value="Period">Period</mat-option>
                   <mat-option value="Year">Year</mat-option>
-                  @for (item of bSHeaders(); track item.period + '-' + item.coyID + '-' + (item.rptType || '')) {
+                  @for (item of bSHeaders(); track item.period + '-' + item.coyID + '-' + (item.rptType || '') ) {
                     <mat-option [value]="item.rptType || 'Period'">{{ item.itemName || item.rptType || 'Period' }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
             </div>
-            <div class="selected-hint" *ngIf="selectedBsHeader() as header">Selected: {{ header.itemName || header.rptType || 'Period' }}</div>
+            @if (selectedBsHeader(); as header) {
+              <div class="selected-hint">Selected: {{ header.itemName || header.rptType || 'Period' }}</div>
+            }
             <div class="button-row">
               <button mat-raised-button color="primary" (click)="openBalanceSheet()" [disabled]="loading()">Open PDF</button>
             </div>
@@ -106,9 +152,10 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
     .report-picker { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .report-picker button.active { border-width: 2px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+    .span-2 { grid-column: span 2; }
     .button-row { display: flex; gap: 12px; flex-wrap: wrap; }
     .selected-hint { margin: -4px 0 12px; color: rgba(0, 0, 0, 0.66); font-size: 13px; }
-    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } .span-2 { grid-column: auto; } }
   `]
 })
 export class AccountingReportsComponent {
@@ -120,13 +167,20 @@ export class AccountingReportsComponent {
   activeReport = signal<'gl' | 'pl' | 'bs'>('gl');
   pAndLHeaders = signal<ProfitAndLossHeader[]>([]);
   bSHeaders = signal<BalanceSheetHeader[]>([]);
+  glYears = signal<AccountingReportYear[]>([]);
+  glPeriods = signal<AccountingReportPeriod[]>([]);
+  glLedgers = signal<AccountingLedgerLookup[]>([]);
+  glAccounts = signal<AccountingAccountLookup[]>([]);
   selectedPlHeader = signal<ProfitAndLossHeader | null>(null);
   selectedBsHeader = signal<BalanceSheetHeader | null>(null);
+  selectedGlLedger = signal<AccountingLedgerLookup | null>(null);
+  selectedGlAccount = signal<AccountingAccountLookup | null>(null);
 
   coyID = '';
+  selectedGlYear = '';
   period = '';
-  ledgerCode = 'GL';
-  accountNo = '(ALL)';
+  ledgerCode = '';
+  accountNo = '';
 
   plCoyID = '';
   plPeriod = '';
@@ -140,8 +194,147 @@ export class AccountingReportsComponent {
   bsRptBy = 'Period';
 
   constructor() {
+    this.loadAccountingDefaults();
+    this.loadGeneralLedgerYears();
+    this.loadGeneralLedgerLedgers();
     this.loadProfitAndLossHeaders();
     this.loadBalanceSheetHeaders();
+  }
+
+  loadAccountingDefaults(): void {
+    this.endpoint.getAccountingReportDefaultsEndpoint().subscribe({
+      next: defaults => {
+        const coyID = defaults?.coyID?.trim() ?? '';
+        this.coyID = coyID;
+        this.plCoyID = coyID;
+        this.bsCoyID = coyID;
+
+        if (this.coyID && this.selectedGlYear) {
+          this.loadGeneralLedgerPeriods();
+        }
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load Accounting defaults.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  loadGeneralLedgerYears(): void {
+    this.endpoint.getAccountingGeneralLedgerYearsEndpoint().subscribe({
+      next: years => {
+        this.glYears.set((years ?? []).filter(x => !!x.periodYr));
+        if (!this.selectedGlYear && this.glYears().length > 0) {
+          this.selectedGlYear = this.glYears()[0].periodYr;
+        }
+
+        if (this.coyID.trim() && this.selectedGlYear) {
+          this.loadGeneralLedgerPeriods();
+        }
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger years.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  loadGeneralLedgerLedgers(): void {
+    this.endpoint.getAccountingGeneralLedgerLedgersEndpoint().subscribe({
+      next: ledgers => {
+        this.glLedgers.set((ledgers ?? []).filter(x => !!x.ledgerCode && !!x.ledger));
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger ledgers.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  loadGeneralLedgerPeriods(): void {
+    this.endpoint.getAccountingGeneralLedgerPeriodsEndpoint(this.coyID.trim(), this.selectedGlYear).subscribe({
+      next: periods => {
+        const validPeriods = (periods ?? []).filter(x => !!x.period);
+        this.glPeriods.set(validPeriods);
+
+        if (validPeriods.length === 0) {
+          this.period = '';
+          this.glAccounts.set([]);
+          this.accountNo = '';
+          this.selectedGlAccount.set(null);
+          return;
+        }
+
+        this.period = validPeriods[0].period;
+        this.onGlPeriodChanged();
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger periods.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  onGlCompanyChanged(): void {
+    this.period = '';
+    this.glPeriods.set([]);
+    this.ledgerCode = '';
+    this.glAccounts.set([]);
+    this.accountNo = '';
+    this.selectedGlLedger.set(null);
+    this.selectedGlAccount.set(null);
+
+    if (this.coyID.trim() && this.selectedGlYear) {
+      this.loadGeneralLedgerPeriods();
+    }
+  }
+
+  onGlYearChanged(): void {
+    this.period = '';
+    this.glPeriods.set([]);
+    this.ledgerCode = '';
+    this.glAccounts.set([]);
+    this.accountNo = '';
+    this.selectedGlLedger.set(null);
+    this.selectedGlAccount.set(null);
+
+    if (this.coyID.trim() && this.selectedGlYear) {
+      this.loadGeneralLedgerPeriods();
+    }
+  }
+
+  onGlPeriodChanged(): void {
+    this.glAccounts.set([]);
+    this.accountNo = '';
+    this.selectedGlAccount.set(null);
+
+    if (!this.ledgerCode) {
+      const firstLedger = this.glLedgers()[0] ?? null;
+      if (firstLedger) {
+        this.ledgerCode = firstLedger.ledgerCode;
+        this.selectedGlLedger.set(firstLedger);
+      }
+    }
+
+    if (this.ledgerCode) {
+      this.onGlLedgerChanged();
+    }
+  }
+
+  onGlLedgerChanged(): void {
+    const ledger = this.glLedgers().find(x => x.ledgerCode === this.ledgerCode) ?? null;
+    this.selectedGlLedger.set(ledger);
+    this.glAccounts.set([]);
+    this.accountNo = '';
+    this.selectedGlAccount.set(null);
+
+    if (!this.coyID.trim() || !this.period || !this.ledgerCode) {
+      return;
+    }
+
+    this.endpoint.getAccountingGeneralLedgerAccountsEndpoint(this.coyID.trim(), this.period, this.ledgerCode).subscribe({
+      next: accounts => {
+        const validAccounts = (accounts ?? []).filter(x => !!x.accountNo && !!x.accountName);
+        this.glAccounts.set(validAccounts);
+        const first = validAccounts[0] ?? null;
+        this.accountNo = first?.accountNo ?? '';
+        this.selectedGlAccount.set(first);
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger accounts.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  onGlAccountChanged(): void {
+    const account = this.glAccounts().find(x => x.accountNo === this.accountNo) ?? null;
+    this.selectedGlAccount.set(account);
   }
 
   loadProfitAndLossHeaders(): void {
@@ -202,8 +395,43 @@ export class AccountingReportsComponent {
   }
 
   openGeneralLedger(): void {
+    if (!this.coyID.trim()) {
+      this.alertService.showMessage('Validation', 'Specify Company ID.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!this.selectedGlYear) {
+      this.alertService.showMessage('Validation', 'Specify Fin Year.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!this.period) {
+      this.alertService.showMessage('Validation', 'Specify Fin Period.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!this.ledgerCode) {
+      this.alertService.showMessage('Validation', 'Specify Ledger Type.', MessageSeverity.warn);
+      return;
+    }
+
+    if (!this.accountNo) {
+      this.alertService.showMessage('Validation', 'Specify Account Name or Choose (ALL) to Display all Accounts under this Ledger.', MessageSeverity.warn);
+      return;
+    }
+
+    const ledgerDisplayText = this.selectedGlLedger()?.ledger ?? '';
+    const accountDisplayText = this.selectedGlAccount()?.accountName ?? '';
+
     this.loading.set(true);
-    this.endpoint.getAccountingGeneralLedgerReportEndpoint({ coyID: this.coyID, period: this.period, ledgerCode: this.ledgerCode, accountNo: this.accountNo })
+    this.endpoint.getAccountingGeneralLedgerReportEndpoint({
+      coyID: this.coyID.trim(),
+      period: this.period,
+      ledgerCode: this.ledgerCode,
+      accountNo: this.accountNo,
+      ledgerDisplayText,
+      accountDisplayText
+    })
       .subscribe({
         next: blob => this.openReportDialog(blob, 'General Ledger'),
         error: error => this.showError('Unable to load general ledger report', error),
@@ -214,7 +442,7 @@ export class AccountingReportsComponent {
   openProfitAndLoss(): void {
     this.applyPlSelectionDefaults();
     this.loading.set(true);
-    this.endpoint.getAccountingProfitAndLossReportEndpoint({ coyID: this.plCoyID, period: this.plPeriod, year: this.plYear, rptBy: this.plRptBy, isClose: false })
+    this.endpoint.getAccountingProfitAndLossReportEndpoint({ coyID: this.plCoyID.trim(), period: this.plPeriod, year: this.plYear, rptBy: this.plRptBy, isClose: false })
       .subscribe({
         next: blob => this.openReportDialog(blob, 'Profit & Loss Summary'),
         error: error => this.showError('Unable to load profit and loss report', error),
@@ -230,7 +458,7 @@ export class AccountingReportsComponent {
     }
 
     this.loading.set(true);
-    this.endpoint.getAccountingProfitAndLossDetailsReportEndpoint({ coyID: this.plCoyID, period: this.plPeriod, year: this.plYear, rptBy: this.plRptBy, groupID: this.plGroupID, isClose: false })
+    this.endpoint.getAccountingProfitAndLossDetailsReportEndpoint({ coyID: this.plCoyID.trim(), period: this.plPeriod, year: this.plYear, rptBy: this.plRptBy, groupID: this.plGroupID, isClose: false })
       .subscribe({
         next: blob => this.openReportDialog(blob, 'Profit & Loss Details'),
         error: error => this.showError('Unable to load profit and loss details report', error),
@@ -241,7 +469,7 @@ export class AccountingReportsComponent {
   openBalanceSheet(): void {
     this.applyBalanceSheetDefaults();
     this.loading.set(true);
-    this.endpoint.getAccountingBalanceSheetReportEndpoint({ coyID: this.bsCoyID, period: this.bsPeriod, year: this.bsYear, rptBy: this.bsRptBy, isClose: false })
+    this.endpoint.getAccountingBalanceSheetReportEndpoint({ coyID: this.bsCoyID.trim(), period: this.bsPeriod, year: this.bsYear, rptBy: this.bsRptBy, isClose: false })
       .subscribe({
         next: blob => this.openReportDialog(blob, 'Balance Sheet'),
         error: error => this.showError('Unable to load balance sheet report', error),

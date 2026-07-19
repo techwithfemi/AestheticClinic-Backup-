@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,5 +40,9 @@ export interface ReportPdfDialogData {
 })
 export class ReportPdfDialogComponent {
   readonly data = inject<ReportPdfDialogData>(MAT_DIALOG_DATA);
-  get trustedUrl(): string { return this.data.blobUrl; }
+  private readonly sanitizer = inject(DomSanitizer);
+
+  get trustedUrl(): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.data.blobUrl);
+  }
 }

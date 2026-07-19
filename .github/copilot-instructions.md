@@ -478,6 +478,18 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - Always confirm and report only tasks actually completed; do not assume tasks are done.
 
+### Legacy Variables
+
+- Public variables from legacy projects/modules (for example accounting and staffRoster), including CoyID, should be sourced from `emrAppDefaults.json`.
+
+### SQL Functions
+
+- In this workspace, do not use SQL TRY_CONVERT(); use older supported built-in SQL functions instead.
+
+### Development Environment
+
+- User is using Microsoft SQL Server 2022 in this development environment.
+
 
 
 
