@@ -19,7 +19,7 @@ namespace CrystalReportWebAPI.Controllers
         [Route("Accounting/BalanceSheet")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> BalanceSheet(string coyID, string period, string year, string rptBy, bool isClose = false)
+        public async Task<HttpResponseMessage> BalanceSheet(string coyID, string period, string year, string rptBy, bool isClose = false, string companyName = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
@@ -30,37 +30,50 @@ namespace CrystalReportWebAPI.Controllers
             const string reportFileName = "rptBalSheet.rpt";
             var exportFilename = $"rptBalSheet-{period}.pdf";
 
-            try
+            var conStr = ResolveConnectionStringFromRequest(Request);
+
+            if (!isClose)
             {
-                var conStr = ResolveConnectionStringFromRequest(Request);
-
-                if (!isClose)
+                await DapperReportData.ExecuteNonQueryAsync(conStr, "CloseAccountingPeriod", new
                 {
-                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
-                    {
-                        Period = period.Trim(),
-                        coyID = coyID.Trim(),
-                        UserName = string.Empty,
-                        isClose = 0,
-                        isBS = 1
-                    }, 600);
-                }
-
-                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getBalanceSheetHeaders", new
-                {
-                    CoyID = coyID.Trim(),
-                    period = period.Trim(),
-                    Year = year.Trim(),
-                    PrdType = rptBy.Trim()
+                    Period = period.Trim(),
+                    coyID = coyID.Trim(),
+                    UserName = string.Empty,
+                    isClose = 0,
+                    isBS = 1
                 }, 600);
+            }
 
-                var header = $"As at {period.Trim()}";
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
-            }
-            catch (Exception ex)
+            var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getBalanceSheetHeaders", new
             {
-                throw new Exception(ex.Message, ex);
+                CoyID = coyID.Trim(),
+                period = period.Trim(),
+                Year = year.Trim(),
+                PrdType = rptBy.Trim()
+            }, 600);
+
+            var periodMeta = await DapperReportData.ExecuteDataSetAsync(conStr, @"
+select top 1
+    cast(PrdClose as datetime) as PrdClose
+from AccountMonthOpen
+where Period = @Period and CoyID = @CoyID", new
+            {
+                Period = period.Trim(),
+                CoyID = coyID.Trim()
+            }, 240);
+
+            if (periodMeta.Tables.Count == 0
+                || periodMeta.Tables[0].Rows.Count == 0
+                || !periodMeta.Tables[0].Columns.Contains("PrdClose")
+                || periodMeta.Tables[0].Rows[0]["PrdClose"] == DBNull.Value)
+            {
+                throw new Exception($"Period close date not found for Period '{period}' and CoyID '{coyID}'. Ensure the period exists in AccountMonthOpen.");
             }
+
+            var reportDate = Convert.ToDateTime(periodMeta.Tables[0].Rows[0]["PrdClose"]);
+
+            var header = $"As at {reportDate.ToShortDateString()}";
+            return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
         }
 
         [Route("Accounting/GeneralLedger")]
@@ -128,7 +141,7 @@ where Period = @Period and CoyID = @CoyID", new
         [Route("Accounting/ProfitAndLoss")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> ProfitAndLoss(string coyID, string period, string year, string rptBy, bool isClose = false)
+        public async Task<HttpResponseMessage> ProfitAndLoss(string coyID, string period, string year, string rptBy, bool isClose = false, string companyName = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
@@ -139,43 +152,58 @@ where Period = @Period and CoyID = @CoyID", new
             const string reportFileName = "rptProfitAndLoss.rpt";
             const string exportFilename = "rptProfitAndLoss.pdf";
 
-            try
+            var conStr = ResolveConnectionStringFromRequest(Request);
+
+            if (!isClose)
             {
-                var conStr = ResolveConnectionStringFromRequest(Request);
-
-                if (!isClose)
+                await DapperReportData.ExecuteNonQueryAsync(conStr, "CloseAccountingPeriod", new
                 {
-                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
-                    {
-                        Period = period.Trim(),
-                        coyID = coyID.Trim(),
-                        UserName = string.Empty,
-                        isClose = 0,
-                        isBS = 0
-                    }, 600);
-                }
-
-                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getProfitAndLossHeaders", new
-                {
-                    CoyID = coyID.Trim(),
-                    period = period.Trim(),
-                    Year = year.Trim(),
-                    PrdType = rptBy.Trim()
+                    Period = period.Trim(),
+                    coyID = coyID.Trim(),
+                    UserName = string.Empty,
+                    isClose = 0,
+                    isBS = 0
                 }, 600);
+            }
 
-                var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, string.Empty, string.Empty, isClose, DateTime.Today);
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
-            }
-            catch (Exception ex)
+            var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getProfitAndLossHeaders", new
             {
-                throw new Exception(ex.Message, ex);
+                CoyID = coyID.Trim(),
+                period = period.Trim(),
+                Year = year.Trim(),
+                PrdType = rptBy.Trim()
+            }, 600);
+
+            var periodCloseDate = DateTime.MinValue;
+            if (string.Equals(rptBy.Trim(), "Period", StringComparison.OrdinalIgnoreCase))
+            {
+                var periodMeta = await DapperReportData.ExecuteDataSetAsync(conStr, @"
+select top 1
+    cast(PrdClose as datetime) as PrdClose
+from AccountMonthOpen
+where Period = @Period and CoyID = @CoyID", new
+                {
+                    Period = period.Trim(),
+                    CoyID = coyID.Trim()
+                }, 240);
+
+                if (periodMeta.Tables.Count > 0
+                    && periodMeta.Tables[0].Rows.Count > 0
+                    && periodMeta.Tables[0].Columns.Contains("PrdClose")
+                    && periodMeta.Tables[0].Rows[0]["PrdClose"] != DBNull.Value)
+                {
+                    periodCloseDate = Convert.ToDateTime(periodMeta.Tables[0].Rows[0]["PrdClose"]);
+                }
             }
+
+            var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, string.Empty, string.Empty, isClose, periodCloseDate);
+            return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
         }
 
         [Route("Accounting/ProfitAndLossDetails")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> ProfitAndLossDetails(string coyID, string period, string year, string rptBy, string groupID, bool isClose = false)
+        public async Task<HttpResponseMessage> ProfitAndLossDetails(string coyID, string period, string year, string rptBy, string groupID, bool isClose = false, string companyName = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
@@ -187,38 +215,53 @@ where Period = @Period and CoyID = @CoyID", new
             const string reportFileName = "rptGL.rpt";
             const string exportFilename = "rptProfitAndLossDetails.pdf";
 
-            try
+            var conStr = ResolveConnectionStringFromRequest(Request);
+
+            if (!isClose)
             {
-                var conStr = ResolveConnectionStringFromRequest(Request);
-
-                if (!isClose)
+                await DapperReportData.ExecuteNonQueryAsync(conStr, "CloseAccountingPeriod", new
                 {
-                    await DapperReportData.ExecuteDataSetAsync(conStr, "CloseAccountingPeriod", new
-                    {
-                        Period = period.Trim(),
-                        coyID = coyID.Trim(),
-                        UserName = string.Empty,
-                        isClose = 0,
-                        isBS = 0
-                    }, 600);
-                }
-
-                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL_for_PL_Details", new
-                {
-                    CoyID = coyID.Trim(),
-                    period = period.Trim(),
-                    Year = year.Trim(),
-                    PrdType = rptBy.Trim(),
-                    GroupID = groupID.Trim()
+                    Period = period.Trim(),
+                    coyID = coyID.Trim(),
+                    UserName = string.Empty,
+                    isClose = 0,
+                    isBS = 0
                 }, 600);
+            }
 
-                var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, string.Empty, string.Empty, isClose, DateTime.Today);
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header);
-            }
-            catch (Exception ex)
+            var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL_for_PL_Details", new
             {
-                throw new Exception(ex.Message, ex);
+                CoyID = coyID.Trim(),
+                period = period.Trim(),
+                Year = year.Trim(),
+                PrdType = rptBy.Trim(),
+                GroupID = groupID.Trim()
+            }, 600);
+
+            var periodCloseDate = DateTime.MinValue;
+            if (string.Equals(rptBy.Trim(), "Period", StringComparison.OrdinalIgnoreCase))
+            {
+                var periodMeta = await DapperReportData.ExecuteDataSetAsync(conStr, @"
+select top 1
+    cast(PrdClose as datetime) as PrdClose
+from AccountMonthOpen
+where Period = @Period and CoyID = @CoyID", new
+                {
+                    Period = period.Trim(),
+                    CoyID = coyID.Trim()
+                }, 240);
+
+                if (periodMeta.Tables.Count > 0
+                    && periodMeta.Tables[0].Rows.Count > 0
+                    && periodMeta.Tables[0].Columns.Contains("PrdClose")
+                    && periodMeta.Tables[0].Rows[0]["PrdClose"] != DBNull.Value)
+                {
+                    periodCloseDate = Convert.ToDateTime(periodMeta.Tables[0].Rows[0]["PrdClose"]);
+                }
             }
+
+            var header = ReportHeaders.BuildProfitAndLossHeader(rptBy, year, period, groupID, string.Empty, isClose, periodCloseDate);
+            return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
         }
 
         [Route("ClosedJob")]

@@ -99,9 +99,33 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
 
           <mat-tab label="Profit & Loss">
             <div class="form-grid">
-              <mat-form-field appearance="outline"><mat-label>Period</mat-label><input matInput [(ngModel)]="plPeriod"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Year</mat-label><input matInput [(ngModel)]="plYear"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Report By</mat-label><input matInput [(ngModel)]="plRptBy"></mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Year</mat-label>
+                <mat-select [(ngModel)]="plYear" (selectionChange)="onPlYearChanged()">
+                  @for (item of glYears(); track item.periodYr) {
+                    <mat-option [value]="item.periodYr">{{ item.periodYr }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Period</mat-label>
+                <mat-select [(ngModel)]="plPeriod" (selectionChange)="onPlPeriodChanged()">
+                  @for (item of plPeriods(); track item.period) {
+                    <mat-option [value]="item.period">{{ item.period }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Report By</mat-label>
+                <mat-select [(ngModel)]="plRptBy">
+                  @for (opt of plRptByOptions(); track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
               <mat-form-field appearance="outline">
                 <mat-label>Detail Group</mat-label>
                 <mat-select [(ngModel)]="plGroupID" (selectionChange)="onProfitAndLossHeaderSelected()">
@@ -123,22 +147,32 @@ import { ProfitAndLossHeader } from '../../../models/accounting/profit-and-loss-
 
           <mat-tab label="Balance Sheet">
             <div class="form-grid">
-              <mat-form-field appearance="outline"><mat-label>Period</mat-label><input matInput [(ngModel)]="bsPeriod"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Year</mat-label><input matInput [(ngModel)]="bsYear"></mat-form-field>
               <mat-form-field appearance="outline">
-                <mat-label>Report By</mat-label>
-                <mat-select [(ngModel)]="bsRptBy" (selectionChange)="onBalanceSheetHeaderSelected()">
-                  <mat-option value="Period">Period</mat-option>
-                  <mat-option value="Year">Year</mat-option>
-                  @for (item of bSHeaders(); track item.period + '-' + item.coyID + '-' + (item.rptType || '') ) {
-                    <mat-option [value]="item.rptType || 'Period'">{{ item.itemName || item.rptType || 'Period' }}</mat-option>
+                <mat-label>Year</mat-label>
+                <mat-select [(ngModel)]="bsYear" (selectionChange)="onBsYearChanged()">
+                  @for (item of glYears(); track item.periodYr) {
+                    <mat-option [value]="item.periodYr">{{ item.periodYr }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Period</mat-label>
+                <mat-select [(ngModel)]="bsPeriod">
+                  @for (item of bsPeriods(); track item.period) {
+                    <mat-option [value]="item.period">{{ item.period }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Report By</mat-label>
+                <mat-select [(ngModel)]="bsRptBy">
+                  <mat-option value="Period">Period</mat-option>
+                  <mat-option value="Year">Year</mat-option>
+                </mat-select>
+              </mat-form-field>
             </div>
-            @if (selectedBsHeader(); as header) {
-              <div class="selected-hint">Selected: {{ header.itemName || header.rptType || 'Period' }}</div>
-            }
             <div class="button-row">
               <button mat-raised-button color="primary" (click)="openBalanceSheet()" [disabled]="loading()">Open PDF</button>
             </div>
@@ -169,6 +203,8 @@ export class AccountingReportsComponent {
   bSHeaders = signal<BalanceSheetHeader[]>([]);
   glYears = signal<AccountingReportYear[]>([]);
   glPeriods = signal<AccountingReportPeriod[]>([]);
+  plPeriods = signal<AccountingReportPeriod[]>([]);
+  bsPeriods = signal<AccountingReportPeriod[]>([]);
   glLedgers = signal<AccountingLedgerLookup[]>([]);
   glAccounts = signal<AccountingAccountLookup[]>([]);
   selectedPlHeader = signal<ProfitAndLossHeader | null>(null);
@@ -192,6 +228,8 @@ export class AccountingReportsComponent {
   bsPeriod = '';
   bsYear = '';
   bsRptBy = 'Period';
+
+  plRptByOptions = signal<string[]>(['Period', 'Year']);
 
   constructor() {
     this.loadAccountingDefaults();
@@ -225,8 +263,17 @@ export class AccountingReportsComponent {
           this.selectedGlYear = this.glYears()[0].periodYr;
         }
 
+        if (!this.plYear && this.selectedGlYear) {
+          this.plYear = this.selectedGlYear;
+        }
+        if (!this.bsYear && this.selectedGlYear) {
+          this.bsYear = this.selectedGlYear;
+        }
+
         if (this.coyID.trim() && this.selectedGlYear) {
           this.loadGeneralLedgerPeriods();
+          this.loadPlPeriods();
+          this.loadBsPeriods();
         }
       },
       error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger years.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
@@ -261,6 +308,51 @@ export class AccountingReportsComponent {
       },
       error: error => this.alertService.showStickyMessage('Load Error', `Unable to load General Ledger periods.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
     });
+  }
+
+  loadPlPeriods(): void {
+    if (!this.coyID.trim() || !this.plYear) return;
+    this.endpoint.getAccountingGeneralLedgerPeriodsEndpoint(this.coyID.trim(), this.plYear).subscribe({
+      next: periods => {
+        const valid = (periods ?? []).filter(x => !!x.period);
+        // VB: cboYr_SelectedIndexChanged adds blank + CONSOLIDATED + actual periods
+        const withConsolidated: AccountingReportPeriod[] = [
+          { period: 'CONSOLIDATED', periodVal: null, prdClose: '', isClose: false },
+          ...valid
+        ];
+        this.plPeriods.set(withConsolidated);
+        if (!this.plPeriod && valid.length > 0) {
+          this.plPeriod = valid[0].period;
+        }
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load P&L periods.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  loadBsPeriods(): void {
+    if (!this.coyID.trim() || !this.bsYear) return;
+    this.endpoint.getAccountingGeneralLedgerPeriodsEndpoint(this.coyID.trim(), this.bsYear).subscribe({
+      next: periods => {
+        const valid = (periods ?? []).filter(x => !!x.period);
+        this.bsPeriods.set(valid);
+        if (!this.bsPeriod && valid.length > 0) {
+          this.bsPeriod = valid[0].period;
+        }
+      },
+      error: error => this.alertService.showStickyMessage('Load Error', `Unable to load Balance Sheet periods.\r\nError: "${this.getErrorMessage(error)}"`, MessageSeverity.warn, error)
+    });
+  }
+
+  onPlYearChanged(): void {
+    this.plPeriod = '';
+    this.plPeriods.set([]);
+    this.loadPlPeriods();
+  }
+
+  onBsYearChanged(): void {
+    this.bsPeriod = '';
+    this.bsPeriods.set([]);
+    this.loadBsPeriods();
   }
 
   onGlCompanyChanged(): void {
@@ -362,14 +454,6 @@ export class AccountingReportsComponent {
     this.selectedPlHeader.set(header);
     if (header) {
       this.plGroupID = header.groupID;
-    }
-  }
-
-  onBalanceSheetHeaderSelected(): void {
-    const header = this.bSHeaders().find(x => (x.rptType || 'Period') === this.bsRptBy) ?? null;
-    this.selectedBsHeader.set(header);
-    if (header?.rptType) {
-      this.bsRptBy = header.rptType;
     }
   }
 
@@ -500,5 +584,15 @@ export class AccountingReportsComponent {
     if (typeof error === 'string') return error;
     if (error && typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message ?? error);
     return String(error);
+  }
+
+  onPlPeriodChanged(): void {
+    if (this.plPeriod === 'CONSOLIDATED') {
+      this.plRptByOptions.set(['QTR_1', 'QTR_2', 'QTR_3', 'QTR_4', 'HALF_YR_1', 'HALF_YR_2']);
+      this.plRptBy = 'QTR_1';
+    } else {
+      this.plRptByOptions.set(['Period', 'Year']);
+      this.plRptBy = 'Period';
+    }
   }
 }

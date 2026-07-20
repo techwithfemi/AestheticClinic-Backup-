@@ -116,6 +116,16 @@ namespace CrystalReportWebAPI.Utilities
     {
         private static readonly IServicesData<dynamic> ServiceData = new ServicesData<dynamic>(new SqlDataAccess());
 
+        public static async Task ExecuteNonQueryAsync(string connectionString, string command, object parameters, int commandTimeout = 240)
+        {
+            using (var connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                var commandType = IsSqlText(command) ? CommandType.Text : CommandType.StoredProcedure;
+                await connection.ExecuteAsync(command, parameters, commandType: commandType, commandTimeout: commandTimeout);
+            }
+        }
+
         public static async Task<DataSet> ExecuteDataSetAsync(string connectionString, string command, object parameters, int commandTimeout = 240)
         {
             var commandType = IsSqlText(command) ? "text" : "sproc";

@@ -4,7 +4,7 @@ namespace CrystalReportWebAPI.Utilities
     {
         public static string BuildProfitAndLossHeader(string rptBy, string year, string period, string reportItemName, string companyName, bool isClosed, System.DateTime periodCloseDate)
         {
-            var item = string.IsNullOrWhiteSpace(reportItemName) ? string.Empty : reportItemName.Trim();
+            var prefix = string.IsNullOrWhiteSpace(reportItemName) ? string.Empty : reportItemName.Trim() + " ";
             var by = string.IsNullOrWhiteSpace(rptBy) ? "Period" : rptBy.Trim();
             var yr = string.IsNullOrWhiteSpace(year) ? string.Empty : year.Trim();
             var prd = string.IsNullOrWhiteSpace(period) ? string.Empty : period.Trim();
@@ -12,23 +12,29 @@ namespace CrystalReportWebAPI.Utilities
             switch (by)
             {
                 case "Period":
-                    return isClosed ? $"{item} For Period ended {periodCloseDate.ToShortDateString()}" : $"{item} For Period ended {prd}";
+                    var dateStr = periodCloseDate != System.DateTime.MinValue
+                        ? periodCloseDate.ToShortDateString()
+                        : prd;
+                    return $"{prefix}For Period ended {dateStr}";
                 case "QTR_1":
-                    return $"{item} Consolidated 1st Qtr Report Details {yr}";
+                    return $"{prefix}Consolidated 1st Qtr Report {yr}";
                 case "QTR_2":
-                    return $"{item} Consolidated 2nd Qtr Report Details {yr}";
+                    return $"{prefix}Consolidated 2nd Qtr Report {yr}";
                 case "QTR_3":
-                    return $"{item} Consolidated 3rd Qtr Report Details {yr}";
+                    return $"{prefix}Consolidated 3rd Qtr Report {yr}";
                 case "QTR_4":
-                    return $"{item} Consolidated 4th Qtr Report Details {yr}";
+                    return $"{prefix}Consolidated 4th Qtr Report {yr}";
                 case "HALF_YR_1":
-                    return $"{item} Consolidated 1st Half Year Report Details {yr}";
+                    return $"{prefix}Consolidated 1st Half Year Report {yr}";
                 case "HALF_YR_2":
-                    return $"{item} Consolidated 2nd Half Year Report Details {yr}";
+                    return $"{prefix}Consolidated 2nd Half Year Report {yr}";
                 case "Year":
-                    return $"{item} For Year ended {yr}";
+                    return $"{prefix}For Year ended {yr}";
                 default:
-                    return $"{item} For Period ended {prd}";
+                    var fallbackDate = periodCloseDate != System.DateTime.MinValue
+                        ? periodCloseDate.ToShortDateString()
+                        : prd;
+                    return $"{prefix}For Period ended {fallbackDate}";
             }
         }
     }

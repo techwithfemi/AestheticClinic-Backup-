@@ -128,7 +128,8 @@ public class AccountingReportsController(
 
         try
         {
-            var report = await reportProxyService.GetProfitAndLossReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), isClose, ct);
+            var companyName = await accountingReportLookupService.GetCompanyNameAsync(coyID.Trim(), ct);
+            var report = await reportProxyService.GetProfitAndLossReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), isClose, companyName, ct);
             return File(report.Content, report.ContentType, report.FileName);
         }
         catch (InvalidOperationException ex)
@@ -152,7 +153,8 @@ public class AccountingReportsController(
 
         try
         {
-            var report = await reportProxyService.GetProfitAndLossDetailsReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), groupID.Trim(), isClose, ct);
+            var companyName = await accountingReportLookupService.GetCompanyNameAsync(coyID.Trim(), ct);
+            var report = await reportProxyService.GetProfitAndLossDetailsReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), groupID.Trim(), isClose, companyName, ct);
             return File(report.Content, report.ContentType, report.FileName);
         }
         catch (InvalidOperationException ex)
@@ -214,7 +216,8 @@ public class AccountingReportsController(
 
         try
         {
-            var report = await reportProxyService.GetBalanceSheetReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), isClose, ct);
+            var companyName = await accountingReportLookupService.GetCompanyNameAsync(coyID.Trim(), ct);
+            var report = await reportProxyService.GetBalanceSheetReportAsync(coyID.Trim(), period.Trim(), year.Trim(), rptBy.Trim(), isClose, companyName, ct);
             return File(report.Content, report.ContentType, report.FileName);
         }
         catch (InvalidOperationException ex)

@@ -28,7 +28,7 @@ public class LegacyCrystalReportProxyService(
         return await BuildPayloadAsync(response, $"general-ledger-{period}.pdf", cancellationToken);
     }
 
-    public async Task<LegacyCrystalReportPayload> GetBalanceSheetReportAsync(string coyID, string period, string year, string rptBy, bool isClose, CancellationToken cancellationToken)
+    public async Task<LegacyCrystalReportPayload> GetBalanceSheetReportAsync(string coyID, string period, string year, string rptBy, bool isClose, string? companyName, CancellationToken cancellationToken)
     {
         var query = new Dictionary<string, string?>
         {
@@ -36,14 +36,15 @@ public class LegacyCrystalReportProxyService(
             ["period"] = period,
             ["year"] = year,
             ["rptBy"] = rptBy,
-            ["isClose"] = isClose.ToString().ToLowerInvariant()
+            ["isClose"] = isClose.ToString().ToLowerInvariant(),
+            ["companyName"] = companyName
         };
 
         var response = await SendGetAsync("Accounting/BalanceSheet", query, cancellationToken);
         return await BuildPayloadAsync(response, $"balance-sheet-{period}.pdf", cancellationToken);
     }
 
-    public async Task<LegacyCrystalReportPayload> GetProfitAndLossReportAsync(string coyID, string period, string year, string rptBy, bool isClose, CancellationToken cancellationToken)
+    public async Task<LegacyCrystalReportPayload> GetProfitAndLossReportAsync(string coyID, string period, string year, string rptBy, bool isClose, string? companyName, CancellationToken cancellationToken)
     {
         var query = new Dictionary<string, string?>
         {
@@ -51,14 +52,15 @@ public class LegacyCrystalReportProxyService(
             ["period"] = period,
             ["year"] = year,
             ["rptBy"] = rptBy,
-            ["isClose"] = isClose.ToString().ToLowerInvariant()
+            ["isClose"] = isClose.ToString().ToLowerInvariant(),
+            ["companyName"] = companyName
         };
 
         var response = await SendGetAsync("Accounting/ProfitAndLoss", query, cancellationToken);
         return await BuildPayloadAsync(response, $"profit-and-loss-{period}.pdf", cancellationToken);
     }
 
-    public async Task<LegacyCrystalReportPayload> GetProfitAndLossDetailsReportAsync(string coyID, string period, string year, string rptBy, string groupID, bool isClose, CancellationToken cancellationToken)
+    public async Task<LegacyCrystalReportPayload> GetProfitAndLossDetailsReportAsync(string coyID, string period, string year, string rptBy, string groupID, bool isClose, string? companyName, CancellationToken cancellationToken)
     {
         var query = new Dictionary<string, string?>
         {
@@ -67,7 +69,8 @@ public class LegacyCrystalReportProxyService(
             ["year"] = year,
             ["rptBy"] = rptBy,
             ["groupID"] = groupID,
-            ["isClose"] = isClose.ToString().ToLowerInvariant()
+            ["isClose"] = isClose.ToString().ToLowerInvariant(),
+            ["companyName"] = companyName
         };
 
         var response = await SendGetAsync("Accounting/ProfitAndLossDetails", query, cancellationToken);

@@ -490,6 +490,24 @@ For accounting wrapper pages (expenses, incomes, journal, debtors, creditors), u
 
 - User is using Microsoft SQL Server 2022 in this development environment.
 
+---
+
+## Legacy Crystal Reports Rendering Rules
+
+When rendering legacy Crystal Reports from a VB.NET accounting app in a modern .NET web UI:
+
+1. ALWAYS pass selected DISPLAY TEXT (not just IDs) from Angular dropdown selections through the full call chain: component → endpoint service → controller → proxy service → legacy Crystal controller.
+2. Use the display text to build report headers (txtPrd, txtHead), not just codes/IDs. Follow VB logic: if account is not "(ALL)", use account display text; otherwise use ledger display text.
+3. When converting Dapper result rows to DataSet in the legacy Crystal service, ALWAYS preserve real CLR column types (detect with Nullable.GetUnderlyingType()). Do NOT force all columns to object type, as Crystal Reports is type-sensitive and will render placeholder values like "1" if types are wrong.
+4. Ensure the legacy stored procedures (getGL, etc.) return columns that match the Crystal report template field references exactly.
+5. Follow the three-layer architecture: Frontend captures + passes display text → Backend controller forwards it → Proxy service includes it in query → Legacy Crystal service uses it for headers and sets correct DataSet types.
+6. **Non-SELECT stored procedures (those called with `cmd.ExecuteNonQuery()` in the VB source) MUST use `DapperReportData.ExecuteNonQueryAsync()` in the Crystal Web API, NOT `ExecuteDataSetAsync()`. Calling a non-SELECT proc with `ExecuteDataSetAsync` will crash with `Column '' does not belong to table`. Check the VB form for `ExecuteNonQuery()` vs `da.Fill(ds)` to determine the correct call.**
+
+**Reference file**: LEGACY_CRYSTAL_REPORTS_RENDERING_RULES.md in solution root.
+
+
+
+
 
 
 
