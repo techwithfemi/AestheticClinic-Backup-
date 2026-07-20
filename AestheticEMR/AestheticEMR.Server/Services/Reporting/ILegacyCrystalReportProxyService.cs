@@ -8,6 +8,7 @@ public interface ILegacyCrystalReportProxyService
     Task<LegacyCrystalReportPayload> GetProfitAndLossDetailsReportAsync(string coyID, string period, string year, string rptBy, string groupID, bool isClose, string? companyName, CancellationToken cancellationToken);
     Task<LegacyCrystalReportPayload> GetFinancialVarianceAnalysisReportAsync(CancellationToken cancellationToken);
     Task<LegacyCrystalReportPayload> GetComparativeIncomeStatementReportAsync(CancellationToken cancellationToken);
+    Task<LegacyCrystalReportPayload> GetStaffRosterReportAsync(string coyID, string month, string year, string deptID, bool isClose, string? companyName, CancellationToken cancellationToken);
 }
 
 public sealed class LegacyCrystalReportPayload

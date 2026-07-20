@@ -150,7 +150,9 @@
         { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups" },
         { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
         { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule" },
-        { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user" }
+        { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user" },
+        { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available" },
+        { "label": "Clock-In Report", "path": "clockin-report", "icon": "schedule" }
       ]
     }
   },

@@ -401,6 +401,76 @@ where Period = @Period and CoyID = @CoyID", new
             return result;
         }
 
+        [Route("StaffRoster/Roster")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> Roster(string coyID, string month, string year, string deptID, bool isClose = false)
+        {
+            if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
+            if (string.IsNullOrWhiteSpace(month)) throw new ArgumentNullException(nameof(month));
+            if (string.IsNullOrWhiteSpace(year)) throw new ArgumentNullException(nameof(year));
+            if (string.IsNullOrWhiteSpace(deptID)) throw new ArgumentNullException(nameof(deptID));
+
+            const string reportPath = "~/Reports/StaffRoster";
+            const string reportFileName = "rptRosterForRptCrosstab.rpt";
+            const string exportFilename = "rptRoster.pdf";
+
+            try
+            {
+                var conStr = ResolveConnectionStringFromRequest(Request);
+
+                // No CloseAccountingPeriod here in VB6; keep for parity if needed
+                if (!isClose)
+                {
+                    await DapperReportData.ExecuteNonQueryAsync(conStr, "CloseAccountingPeriod", new
+                    {
+                        Period = month,
+                        coyID = coyID.Trim(),
+                        UserName = string.Empty,
+                        isClose = 0,
+                        isBS = 0
+                    }, 120);
+                }
+
+                // VB6 used: select distinct * from vwRosterForRptCrosstab2 where deptID=... and mth=... and Yr=... order by StaffName
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, @"
+select distinct * from vwRosterForRptCrosstab2 where deptID=@DeptID and mth=@Mth and Yr=@Yr order by StaffName", new
+                {
+                    DeptID = deptID.Trim(),
+                    Mth = month.Trim(),
+                    Yr = year.Trim()
+                }, 120);
+
+                // Build header text similar to VB: "Roster Details of {DeptName} Dept for {Month} {Year}"
+                var deptName = string.Empty;
+                var dm = await DapperReportData.ExecuteDataSetAsync(conStr, "select top 1 deptName from Departments where deptID=@DeptID", new { DeptID = deptID.Trim() }, 60);
+                if (dm.Tables.Count > 0 && dm.Tables[0].Rows.Count > 0 && dm.Tables[0].Columns.Contains("deptName") && dm.Tables[0].Rows[0]["deptName"] != DBNull.Value)
+                {
+                    deptName = dm.Tables[0].Rows[0]["deptName"].ToString();
+                }
+
+                var monthName = month; // assume full month name passed from client
+                var headerText = $"Roster Details of {deptName} Dept for {monthName} {year}";
+                var textObjects = new Dictionary<string, string>
+                {
+                    ["Text9"] = headerText
+                };
+
+                var companyName = string.Empty;
+                var coy = await DapperReportData.ExecuteDataSetAsync(conStr, "select top 1 CoyName from Company where CoyID=@CoyID", new { CoyID = coyID.Trim() }, 60);
+                if (coy.Tables.Count > 0 && coy.Tables[0].Rows.Count > 0 && coy.Tables[0].Columns.Contains("CoyName") && coy.Tables[0].Rows[0]["CoyName"] != DBNull.Value)
+                {
+                    companyName = coy.Tables[0].Rows[0]["CoyName"].ToString();
+                }
+
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, headerText, companyName, textObjects);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
         private static string ResolveConnectionStringFromRequest(HttpRequestMessage request)
         {
             const string headerName = "X-Db-Connection";

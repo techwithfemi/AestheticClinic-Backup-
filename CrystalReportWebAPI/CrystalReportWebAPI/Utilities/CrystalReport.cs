@@ -6,12 +6,13 @@ using System.Net.Http;
 using System.Data;
 using System.Data.SqlClient;
 using System;
+using System.Collections.Generic;
 
 namespace CrystalReportWebAPI.Utilities
 {
     public static class CrystalReport
     {
-        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename, DataSet dsX, string header = null, string companyName = null)
+        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename, DataSet dsX, string header = null, string companyName = null, IDictionary<string, string>? textObjects = null)
         {
             var rd = new ReportDocument();
             var fielName = Path.Combine(System.Web.Hosting.HostingEnvironment.MapPath(reportPath), reportFileName);
@@ -40,6 +41,14 @@ namespace CrystalReportWebAPI.Utilities
             }
 
             SetTextObject(rd, "txtCoy", string.IsNullOrWhiteSpace(companyName) ? "Sapid Agencies Ltd" : companyName.Trim());
+
+            if (textObjects != null)
+            {
+                foreach (var kvp in textObjects)
+                {
+                    SetTextObject(rd, kvp.Key, kvp.Value);
+                }
+            }
 
             MemoryStream ms = new MemoryStream();
             using (var stream = rd.ExportToStream(ExportFormatType.PortableDocFormat))

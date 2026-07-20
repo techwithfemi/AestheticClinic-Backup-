@@ -400,6 +400,23 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.reviewAuditIncidentEndpoint<T>(auditLogId, payload))));
   }
 
+  getStaffRosterReportEndpoint(params: { coyID: string; month: string; year: string; deptID: string; isClose: boolean }): Observable<Blob> {
+    const query = new URLSearchParams({
+      coyID: params.coyID,
+      month: params.month,
+      year: params.year,
+      deptID: params.deptID,
+      isClose: String(params.isClose)
+    });
+
+    return this.http.get(`${this.accountingReportsUrl}/staffroster/roster?${query.toString()}`, {
+      ...this.requestHeaders,
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => this.handleError(error, () => this.getStaffRosterReportEndpoint(params)))
+    ) as Observable<Blob>;
+  }
+
   private get jsonHeadersWithoutAuth(): { headers: HttpHeaders | Record<string, string | string[]> } {
     return {
       headers: {

@@ -1,0 +1,316 @@
+<div class="report-page">
+
+  <!-- ============================================================
+       PRINT-ONLY sidebar — shows role-scoped report links
+       ============================================================ -->
+  <div class="print-sidebar">
+    <div class="print-sidebar-title">
+      <span class="print-sidebar-icon">⏱️</span>
+      Reports
+    </div>
+    <ul class="print-sidebar-links">
+      @for (link of printSidebarLinks; track link.path) {
+        <li [class.active]="link.path === 'clockin-report'">{{ link.label }}</li>
+      }
+    </ul>
+  </div>
+
+  <!-- ============================================================
+       Main content (hidden during print via .print-main wrapper)
+       ============================================================ -->
+  <div class="print-main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div>
+          <h2 class="page-title">Clock-In Report</h2>
+          <p class="page-subtitle">Staff attendance, clock-in/out times &amp; late fines</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="export-links">
+          <span class="export-label">Export to</span>
+          <a href="#" (click)="exportExcel($event)">Excel</a>
+          <span>|</span>
+          <a href="#" (click)="exportCsv($event)">CSV</a>
+          <span>|</span>
+          <a href="#" (click)="exportPdf($event)">PDF</a>
+        </div>
+
+        <button mat-stroked-button color="primary" (click)="load()" [disabled]="loadingIndicator">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button color="accent" (click)="printReport()">
+          <mat-icon>print</mat-icon>
+          Print Report
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-row">
+      <mat-card class="kpi-card kpi-indigo">
+        <div class="kpi-icon"><mat-icon>fingerprint</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ totalClockIns() }}</div>
+          <div class="kpi-label">Clock-Ins</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-emerald">
+        <div class="kpi-icon"><mat-icon>check_circle</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ onTimeCount() }}</div>
+          <div class="kpi-label">On Time</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-amber">
+        <div class="kpi-icon"><mat-icon>access_time</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ lateCount() }}</div>
+          <div class="kpi-label">Late</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-rose">
+        <div class="kpi-icon"><mat-icon>cancel</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ absentCount() }}</div>
+          <div class="kpi-label">Absent</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-teal">
+        <div class="kpi-icon"><mat-icon>hourglass_bottom</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ totalHoursWorked() }}h</div>
+          <div class="kpi-label">Total Hours</div>
+        </div>
+      </mat-card>
+
+      <mat-card class="kpi-card kpi-red">
+        <div class="kpi-icon"><mat-icon>payments</mat-icon></div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ totalFines() }}</div>
+          <div class="kpi-label">Total Fines</div>
+        </div>
+      </mat-card>
+    </div>
+
+    <!-- Filters -->
+    <mat-card class="filters-card">
+      <div class="filters-row">
+
+        <!-- Search — live filter -->
+        <mat-form-field appearance="outline" class="filter-search">
+          <mat-label>Search staff / shift / status</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchText"
+            (ngModelChange)="appliedSearch.set($event)"
+            placeholder="Type to search..." />
+          @if (searchText) {
+            <button matSuffix mat-icon-button (click)="searchText = ''; appliedSearch.set('')" aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <!-- Department -->
+        <mat-form-field appearance="outline" class="filter-select">
+          <mat-label>Department</mat-label>
+          <mat-icon matPrefix>apartment</mat-icon>
+          <mat-select [(ngModel)]="selectedDept">
+            <mat-option value="">All Departments</mat-option>
+            @for (d of deptOptions(); track d) {
+              <mat-option [value]="d">{{ d }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- From Date — defaults to today, dd-MMM-yyyy -->
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>From Date</mat-label>
+          <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="dateFrom" />
+          <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+          <mat-datepicker #pickerFrom></mat-datepicker>
+        </mat-form-field>
+
+        <!-- To Date — defaults to today, dd-MMM-yyyy -->
+        <mat-form-field appearance="outline" class="filter-date">
+          <mat-label>To Date</mat-label>
+          <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo" />
+          <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+          <mat-datepicker #pickerTo></mat-datepicker>
+        </mat-form-field>
+
+        <!-- Run Report button -->
+        <button mat-raised-button color="primary" class="run-btn" (click)="runReport()"
+          matTooltip="Apply date range and department filter">
+          <mat-icon>play_arrow</mat-icon>
+          Run Report
+        </button>
+
+        <!-- Clear -->
+        <button mat-stroked-button class="clear-btn" (click)="clearFilters()"
+          matTooltip="Reset all filters to today">
+          <mat-icon>filter_alt_off</mat-icon>
+          Clear
+        </button>
+
+      </div>
+    </mat-card>
+
+    <!-- Data Table -->
+    <mat-card class="table-card">
+      @if (loadingIndicator) {
+        <div class="loading-state">
+          <mat-icon class="spin">autorenew</mat-icon>
+          <p>Loading clock-in data...</p>
+        </div>
+      } @else if (filtered().length === 0) {
+        <div class="empty-state">
+          <mat-icon>schedule</mat-icon>
+          <h3>No Records Found</h3>
+          <p>No clock-in records match the selected date range or filters.</p>
+          <button mat-stroked-button color="primary" (click)="clearFilters()">Reset Filters</button>
+        </div>
+      } @else {
+        <div class="table-header-bar">
+          <span class="record-count">
+            Showing <strong>{{ pagedRows().length }}</strong> of
+            <strong>{{ filtered().length }}</strong> records
+          </span>
+        </div>
+
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="pagedRows()" class="clockin-table">
+
+            <!-- Date -->
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="date-cell">
+                  <mat-icon class="cell-icon">calendar_today</mat-icon>
+                  {{ formatDate(row.date) }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Staff -->
+            <ng-container matColumnDef="staff">
+              <th mat-header-cell *matHeaderCellDef>Staff</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="staff-cell">
+                  <div class="staff-avatar">{{ staffInitials(row.staffName) }}</div>
+                  <div>
+                    <div class="staff-name">{{ row.staffName || '—' }}</div>
+                    <div class="staff-sub">{{ row.deptName || '' }}</div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Shift -->
+            <ng-container matColumnDef="shift">
+              <th mat-header-cell *matHeaderCellDef>Shift</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="shift-cell">
+                  <mat-icon class="cell-icon">schedule</mat-icon>
+                  {{ row.shiftName || row.shiftAbbrv || '—' }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Clock In -->
+            <ng-container matColumnDef="clockIn">
+              <th mat-header-cell *matHeaderCellDef>Clock In</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.clockIn) {
+                  <div class="time-cell time-in">
+                    <mat-icon class="cell-icon">login</mat-icon>
+                    <span class="time-value">{{ row.clockIn }}</span>
+                  </div>
+                } @else {
+                  <span class="no-data">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Clock Out -->
+            <ng-container matColumnDef="clockOut">
+              <th mat-header-cell *matHeaderCellDef>Clock Out</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.clockOut) {
+                  <div class="time-cell time-out">
+                    <mat-icon class="cell-icon">logout</mat-icon>
+                    <span class="time-value">{{ row.clockOut }}</span>
+                  </div>
+                } @else {
+                  <span class="no-data">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Hours Worked -->
+            <ng-container matColumnDef="hoursWorked">
+              <th mat-header-cell *matHeaderCellDef>Hours Worked</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="hours-value">{{ hoursWorkedFor(row) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Status -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.status) {
+                  <span class="status-chip" [class]="getStatusColor(row.status)">{{ row.status }}</span>
+                } @else {
+                  <span class="no-data">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Fine -->
+            <ng-container matColumnDef="fine">
+              <th mat-header-cell *matHeaderCellDef>Fine</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.fine) {
+                  @if (Number(row.fine) > 0) {
+                    <span class="fine-value">₦{{ row.fine }}</span>
+                  } @else {
+                    <span class="no-data">—</span>
+                  }
+                } @else {
+                  <span class="no-data">—</span>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
+          </table>
+        </div>
+
+        <!-- Paginator -->
+        <mat-paginator
+          [length]="filtered().length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageIndex]="currentPage()"
+          (page)="onPageChange($event)"
+          showFirstLastButtons
+          aria-label="Select page">
+        </mat-paginator>
+      }
+    </mat-card>
+
+  </div><!-- /.print-main -->
+</div>

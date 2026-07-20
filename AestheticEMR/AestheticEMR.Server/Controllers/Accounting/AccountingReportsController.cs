@@ -227,4 +227,29 @@ public class AccountingReportsController(
             return BadRequest(new ValidationProblemDetails(ModelState));
         }
     }
+
+    [HttpGet("staffroster/roster")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), 200)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> GetStaffRoster([FromQuery] string coyID, [FromQuery] string month, [FromQuery] string year, [FromQuery] string deptID, [FromQuery] bool isClose, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(coyID) || string.IsNullOrWhiteSpace(month) || string.IsNullOrWhiteSpace(year) || string.IsNullOrWhiteSpace(deptID))
+        {
+            return BadRequest(new { coyID, month, year, deptID, isClose });
+        }
+
+        try
+        {
+            var companyName = await accountingReportLookupService.GetCompanyNameAsync(coyID.Trim(), ct);
+            var report = await reportProxyService.GetStaffRosterReportAsync(coyID.Trim(), month.Trim(), year.Trim(), deptID.Trim(), isClose, companyName, ct);
+            return File(report.Content, report.ContentType, report.FileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Unable to load staff roster report from legacy Crystal report service");
+            AddModelError(ex.Message);
+            return BadRequest(new ValidationProblemDetails(ModelState));
+        }
+    }
 }

@@ -89,6 +89,22 @@ public class LegacyCrystalReportProxyService(
         return await BuildPayloadAsync(response, "comparative-income-statement.pdf", cancellationToken);
     }
 
+    public async Task<LegacyCrystalReportPayload> GetStaffRosterReportAsync(string coyID, string month, string year, string deptID, bool isClose, string? companyName, CancellationToken cancellationToken)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["coyID"] = coyID,
+            ["month"] = month,
+            ["year"] = year,
+            ["deptID"] = deptID,
+            ["isClose"] = isClose.ToString().ToLowerInvariant(),
+            ["companyName"] = companyName
+        };
+
+        var response = await SendGetAsync("StaffRoster/Roster", query, cancellationToken);
+        return await BuildPayloadAsync(response, $"staff-roster-{deptID}-{month}.pdf", cancellationToken);
+    }
+
     private async Task<HttpResponseMessage> SendGetAsync(string reportPath, IDictionary<string, string?>? query, CancellationToken cancellationToken)
     {
         var cfg = appSettings.Value.LegacyReportService;

@@ -150,5 +150,15 @@ export const reportsRoutes: Routes = [
     path: 'admin-compliance-report',
     loadComponent: () => import('./admin/admin-compliance-report.component')
       .then(m => m.AdminComplianceReportComponent)
+  },
+  {
+    path: 'staff-roster-report',
+    loadComponent: () => import('./staff-roster/staff-roster-report.component')
+      .then(m => m.StaffRosterReportComponent)
+  },
+  {
+    path: 'clockin-report',
+    loadComponent: () => import('./clockin/clockin-report.component')
+      .then(m => m.ClockinReportComponent)
   }
 ];
