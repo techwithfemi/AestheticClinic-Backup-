@@ -7,58 +7,37 @@
     }
   },
   "Dynamic_Roles": {
-    "Frontdesk": {
-      "route": "frontdesk",
-      "icon": "folder_shared",
+    "Accounting": {
+      "route": "accounting",
+      "icon": "account_balance",
       "subItems": [
-        { "label": "Patients Information", "path": "patients", "icon": "badge" },
-        { "label": "Attendance", "path": "attendance", "icon": "checklist" },
-        { "label": "Consent Form", "path": "consent-form", "icon": "fact_check" },
-        { "label": "Appointments", "path": "appointments", "icon": "event" },
-        { "label": "Patient Search", "path": "search", "icon": "search" },
-        { "label": "Recent Charts", "path": "recent", "icon": "history" },
-        { "label": "Company Information", "path": "companies", "icon": "business" }
+        { "label": "Accounting Reports", "path": "reports", "icon": "analytics" },
+        { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
+        { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront" },
+        { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups" },
+        { "label": "Expenses", "path": "expenses", "icon": "paid" },
+        { "label": "Incomes", "path": "incomes", "icon": "attach_money" },
+        { "label": "Journal Entries", "path": "journal", "icon": "menu_book" },
+        { "label": "Purchases", "path": "purchases", "icon": "shopping_cart" }
       ]
     },
-    "Spa": {
-      "route": "spa",
-      "icon": "spa",
+    "Admin": {
+      "route": "admin",
+      "icon": "admin_panel_settings",
       "subItems": [
-        { "label": "Spa session", "path": "services", "icon": "list_alt" }
-      ]
-    },
-    "Dental": {
-      "route": "dental",
-      "icon": "medical_services",
-      "subItems": [
-        { "label": "Clinical Session", "path": "clinical-session", "icon": "medical_information" }
-      ]
-    },
-    "Tariff": {
-      "route": "tariff",
-      "icon": "request_quote",
-      "subItems": [
-        { "label": "Product", "path": "products", "icon": "inventory_2" },
-        { "label": "Service", "path": "services", "icon": "medical_services" },
-        { "label": "Investigation", "path": "investigations", "icon": "science" },
-        { "label": "Drug", "path": "stock", "icon": "inventory_2" }
-      ]
-    },
-    "Inventory": {
-      "route": "inventory",
-      "icon": "inventory",
-      "subItems": [
-        { "label": "Products", "path": "products", "icon": "inventory" },
-        { "label": "Product Category", "path": "product-categories", "icon": "category" }
+        { "label": "Audit Logs", "path": "audit", "icon": "history_edu" },
+        { "label": "Consent Templates", "path": "consent-templates", "icon": "article" },
+        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings" },
+        { "label": "User Management", "path": "users", "icon": "group" }
       ]
     },
     "Aesthetics": {
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
+        { "label": "Audit Trail", "path": "audit-trail", "icon": "history" },
         { "label": "Procedures", "path": "procedures", "icon": "biotech" },
-        { "label": "View Consent", "path": "view-consent", "icon": "description" },
-        { "label": "Audit Trail", "path": "audit-trail", "icon": "history" }
+        { "label": "View Consent", "path": "view-consent", "icon": "description" }
       ]
     },
     "Billing": {
@@ -69,37 +48,41 @@
         { "label": "Receipts", "path": "receipts", "icon": "receipt" }
       ]
     },
-    "Accounting": {
-      "route": "accounting",
-      "icon": "account_balance",
+    "Dental": {
+      "route": "dental",
+      "icon": "medical_services",
       "subItems": [
-        { "label": "Journal Entries", "path": "journal", "icon": "menu_book" },
-        { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups" },
-        { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront" },
-        { "label": "Purchases", "path": "purchases", "icon": "shopping_cart" },
-        { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
-        { "label": "Expenses", "path": "expenses", "icon": "paid" },
-        { "label": "Incomes", "path": "incomes", "icon": "attach_money" },
-        { "label": "Accounting Reports", "path": "reports", "icon": "analytics" }
+        { "label": "Clinical Session", "path": "clinical-session", "icon": "medical_information" }
       ]
     },
     "Employees": {
       "route": "employees",
       "icon": "badge",
       "subItems": [
-        { "label": "Employee Info", "path": "employee-info", "icon": "badge" },
         { "label": "Department", "path": "department", "icon": "groups" },
-        { "label": "Designation", "path": "designation", "icon": "workspace_premium" }
+        { "label": "Designation", "path": "designation", "icon": "workspace_premium" },
+        { "label": "Employee Info", "path": "employee-info", "icon": "badge" }
       ]
     },
-    "StaffRoster": {
-      "route": "staff-roster",
-      "icon": "event_available",
+    "Frontdesk": {
+      "route": "frontdesk",
+      "icon": "folder_shared",
       "subItems": [
-        { "label": "Create Roster", "path": "create-roster", "icon": "event_note" },
-        { "label": "Staff Group", "path": "staff-group", "icon": "groups" },
-        { "label": "Shifts Master", "path": "shifts-master", "icon": "schedule" },
-        { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send" }
+        { "label": "Appointments", "path": "appointments", "icon": "event" },
+        { "label": "Attendance", "path": "attendance", "icon": "checklist" },
+        { "label": "Company Information", "path": "companies", "icon": "business" },
+        { "label": "Consent Form", "path": "consent-form", "icon": "fact_check" },
+        { "label": "Patients Information", "path": "patients", "icon": "badge" },
+        { "label": "Patient Search", "path": "search", "icon": "search" },
+        { "label": "Recent Charts", "path": "recent", "icon": "history" }
+      ]
+    },
+    "Inventory": {
+      "route": "inventory",
+      "icon": "inventory",
+      "subItems": [
+        { "label": "Product Category", "path": "product-categories", "icon": "category" },
+        { "label": "Products", "path": "products", "icon": "inventory" }
       ]
     },
     "Management": {
@@ -107,14 +90,31 @@
       "icon": "manage_accounts",
       "subItems": []
     },
-    "Admin": {
-      "route": "admin",
-      "icon": "admin_panel_settings",
+    "StaffRoster": {
+      "route": "staff-roster",
+      "icon": "event_available",
       "subItems": [
-        { "label": "User Management", "path": "users", "icon": "group" },
-        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings" },
-        { "label": "Consent Templates", "path": "consent-templates", "icon": "article" },
-        { "label": "Audit Logs", "path": "audit", "icon": "history_edu" }
+        { "label": "Create Roster", "path": "create-roster", "icon": "event_note" },
+        { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send" },
+        { "label": "Shifts Master", "path": "shifts-master", "icon": "schedule" },
+        { "label": "Staff Group", "path": "staff-group", "icon": "groups" }
+      ]
+    },
+    "Spa": {
+      "route": "spa",
+      "icon": "spa",
+      "subItems": [
+        { "label": "Spa session", "path": "services", "icon": "list_alt" }
+      ]
+    },
+    "Tariff": {
+      "route": "tariff",
+      "icon": "request_quote",
+      "subItems": [
+        { "label": "Drug", "path": "stock", "icon": "inventory_2" },
+        { "label": "Investigation", "path": "investigations", "icon": "science" },
+        { "label": "Product", "path": "products", "icon": "inventory_2" },
+        { "label": "Service", "path": "services", "icon": "medical_services" }
       ]
     }
   },
@@ -123,36 +123,36 @@
       "route": "reports",
       "icon": "analytics",
       "subItems": [
-        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today" },
-        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event" },
-        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report", "icon": "app_registration" },
-        { "label": "Laser Sessions Report", "path": "laser-sessions-report", "icon": "bolt" },
-        { "label": "Laser Safety Report", "path": "laser-safety-report", "icon": "health_and_safety" },
-        { "label": "Laser Utilization Report", "path": "laser-utilization-report", "icon": "insights" },
-        { "label": "Spa Services Report", "path": "spa-services-report", "icon": "spa" },
-        { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement" },
-        { "label": "Spa Packages Report", "path": "spa-packages-report", "icon": "inventory_2" },
-        { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services" },
-        { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image" },
-        { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open" },
         { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum" },
-        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech" },
-        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up" },
-        { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural" },
         { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description" },
-        { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
-        { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },
-        { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long" },
+        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up" },
+        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech" },
+        { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural" },
         { "label": "Accounting Expenses Report", "path": "accounting-expenses-report", "icon": "paid" },
         { "label": "Accounting Incomes Report", "path": "accounting-incomes-report", "icon": "attach_money" },
+        { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long" },
         { "label": "Accounting Reports", "path": "accounting-reports", "icon": "analytics" },
-        { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge" },
-        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups" },
-        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
         { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule" },
         { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user" },
-        { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available" },
-        { "label": "Clock-In Report", "path": "clockin-report", "icon": "schedule" }
+        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
+        { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
+        { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },
+        { "label": "Clock-In Report", "path": "clockin-report", "icon": "schedule" },
+        { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open" },
+        { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image" },
+        { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services" },
+        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups" },
+        { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge" },
+        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event" },
+        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today" },
+        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report", "icon": "app_registration" },
+        { "label": "Laser Safety Report", "path": "laser-safety-report", "icon": "health_and_safety" },
+        { "label": "Laser Sessions Report", "path": "laser-sessions-report", "icon": "bolt" },
+        { "label": "Laser Utilization Report", "path": "laser-utilization-report", "icon": "insights" },
+        { "label": "Spa Packages Report", "path": "spa-packages-report", "icon": "inventory_2" },
+        { "label": "Spa Services Report", "path": "spa-services-report", "icon": "spa" },
+        { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement" },
+        { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available" }
       ]
     }
   },

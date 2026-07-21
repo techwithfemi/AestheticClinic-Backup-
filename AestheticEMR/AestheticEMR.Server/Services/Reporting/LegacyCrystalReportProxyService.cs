@@ -5,6 +5,17 @@ using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Services.Reporting;
 
+/// <summary>
+/// Proxy service that forwards legacy Crystal report requests to CrystalReportWebAPI.
+/// 
+/// Database Connection Mapping:
+/// - Accounting Reports (GL, BalanceSheet, P&L, etc.) → use "AccountingConnection" (Accounting DB)
+/// - Staff Roster & Employee Reports → use "smartHRConnection" (SmartHR/Hospital DB)
+/// - EMR/Clinical Reports (Invoice, ClosedJob, etc.) → use "DefaultConnection" (Hospital/EMR DB)
+/// 
+/// All report methods MUST explicitly specify which database connection to use.
+/// No fallback or default values allowed - explicit connection selection only.
+/// </summary>
 public class LegacyCrystalReportProxyService(
     IHttpClientFactory httpClientFactory,
     IOptions<AppSettings> appSettings,
@@ -24,7 +35,7 @@ public class LegacyCrystalReportProxyService(
             ["companyName"] = companyName
         };
 
-        var response = await SendGetAsync("Accounting/GeneralLedger", query, cancellationToken);
+        var response = await SendGetAsync("Accounting/GeneralLedger", query, "AccountingConnection", cancellationToken);
         return await BuildPayloadAsync(response, $"general-ledger-{period}.pdf", cancellationToken);
     }
 
@@ -40,7 +51,7 @@ public class LegacyCrystalReportProxyService(
             ["companyName"] = companyName
         };
 
-        var response = await SendGetAsync("Accounting/BalanceSheet", query, cancellationToken);
+        var response = await SendGetAsync("Accounting/BalanceSheet", query, "AccountingConnection", cancellationToken);
         return await BuildPayloadAsync(response, $"balance-sheet-{period}.pdf", cancellationToken);
     }
 
@@ -56,7 +67,7 @@ public class LegacyCrystalReportProxyService(
             ["companyName"] = companyName
         };
 
-        var response = await SendGetAsync("Accounting/ProfitAndLoss", query, cancellationToken);
+        var response = await SendGetAsync("Accounting/ProfitAndLoss", query, "AccountingConnection", cancellationToken);
         return await BuildPayloadAsync(response, $"profit-and-loss-{period}.pdf", cancellationToken);
     }
 
@@ -73,19 +84,21 @@ public class LegacyCrystalReportProxyService(
             ["companyName"] = companyName
         };
 
-        var response = await SendGetAsync("Accounting/ProfitAndLossDetails", query, cancellationToken);
+        var response = await SendGetAsync("Accounting/ProfitAndLossDetails", query, "AccountingConnection", cancellationToken);
         return await BuildPayloadAsync(response, $"profit-and-loss-details-{period}.pdf", cancellationToken);
     }
 
     public async Task<LegacyCrystalReportPayload> GetFinancialVarianceAnalysisReportAsync(CancellationToken cancellationToken)
     {
-        var response = await SendGetAsync("Financial/VarianceAnalysisReport", null, cancellationToken);
+        // Financial/VarianceAnalysisReport uses EMR database (Hospital), not Accounting
+        var response = await SendGetAsync("Financial/VarianceAnalysisReport", null, "DefaultConnection", cancellationToken);
         return await BuildPayloadAsync(response, "variance-analysis-report.pdf", cancellationToken);
     }
 
     public async Task<LegacyCrystalReportPayload> GetComparativeIncomeStatementReportAsync(CancellationToken cancellationToken)
     {
-        var response = await SendGetAsync("Demonstration/ComparativeIncomeStatement", null, cancellationToken);
+        // Demonstration/ComparativeIncomeStatement uses EMR database (Hospital), not Accounting
+        var response = await SendGetAsync("Demonstration/ComparativeIncomeStatement", null, "DefaultConnection", cancellationToken);
         return await BuildPayloadAsync(response, "comparative-income-statement.pdf", cancellationToken);
     }
 
@@ -101,11 +114,12 @@ public class LegacyCrystalReportProxyService(
             ["companyName"] = companyName
         };
 
-        var response = await SendGetAsync("StaffRoster/Roster", query, cancellationToken);
+        // Staff Roster uses SmartHR database, not Accounting
+        var response = await SendGetAsync("StaffRoster/Roster", query, "smartHRConnection", cancellationToken);
         return await BuildPayloadAsync(response, $"staff-roster-{deptID}-{month}.pdf", cancellationToken);
     }
 
-    private async Task<HttpResponseMessage> SendGetAsync(string reportPath, IDictionary<string, string?>? query, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendGetAsync(string reportPath, IDictionary<string, string?>? query, string connectionStringKey, CancellationToken cancellationToken)
     {
         var cfg = appSettings.Value.LegacyReportService;
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.BaseUrl))
@@ -119,13 +133,18 @@ public class LegacyCrystalReportProxyService(
 
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
 
-        var accountingConnectionString = configuration.GetConnectionString("AccountingConnection");
-        if (string.IsNullOrWhiteSpace(accountingConnectionString))
+        if (string.IsNullOrWhiteSpace(connectionStringKey))
         {
-            throw new InvalidOperationException("Connection string 'AccountingConnection' is missing.");
+            throw new InvalidOperationException("Connection string key must be specified.");
         }
 
-        request.Headers.Add("X-Db-Connection", accountingConnectionString);
+        var connectionString = configuration.GetConnectionString(connectionStringKey);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException($"Connection string '{connectionStringKey}' is missing.");
+        }
+
+        request.Headers.Add("X-Db-Connection", connectionString);
 
         if (!string.IsNullOrWhiteSpace(cfg.ApiKey))
         {

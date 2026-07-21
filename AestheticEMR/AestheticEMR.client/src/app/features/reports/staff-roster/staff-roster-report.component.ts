@@ -22,6 +22,7 @@ import { RosterEndpoint, RosterGridItem } from '../../../services/roster-endpoin
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { DepartmentEndpoint } from '../../../services/department-endpoint.service';
 import { ReportPdfDialogComponent } from '../shared/report-pdf-dialog.component';
+import { AppConfigService } from '../../../services/app-config.service';
 
 export const DD_MMM_YYYY_FORMATS = {
   parse: { dateInput: 'dd-MMM-yyyy' },
@@ -93,6 +94,7 @@ export class StaffRosterReportComponent implements OnInit {
   private readonly authService  = inject(AuthService);
   private readonly deptEndpoint = inject(DepartmentEndpoint);
   private readonly dialog = inject(MatDialog);
+  private readonly appConfig = inject(AppConfigService);
 
   loadingIndicator = false;
   Number = Number;  // Expose Number function to template
@@ -312,7 +314,7 @@ export class StaffRosterReportComponent implements OnInit {
     }
 
     this.loadingIndicator = true;
-    this.aestheticEndpoint.getStaffRosterReportEndpoint({ coyID: this.coyID, month: this.selectedMonth, year: this.selectedYear, deptID: this.selectedDeptId, isClose: false })
+    this.aestheticEndpoint.getStaffRosterReportEndpoint({ coyID: this.coyID, month: this.selectedMonth, year: this.selectedYear, deptID: this.selectedDeptId, isClose: false, companyName: this.appConfig.clientName })
       .subscribe({
         next: blob => this.openReportDialog(blob, 'Staff Roster'),
         error: error => {

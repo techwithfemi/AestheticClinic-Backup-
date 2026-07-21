@@ -1,6 +1,7 @@
 ﻿using CrystalReportWebAPI.Utilities;
 using Dapper;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Net;
@@ -404,7 +405,7 @@ where Period = @Period and CoyID = @CoyID", new
         [Route("StaffRoster/Roster")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> Roster(string coyID, string month, string year, string deptID, bool isClose = false)
+        public async Task<HttpResponseMessage> Roster(string coyID, string month, string year, string deptID, bool isClose = false, string companyName = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(month)) throw new ArgumentNullException(nameof(month));
@@ -417,53 +418,42 @@ where Period = @Period and CoyID = @CoyID", new
 
             try
             {
+                // Staff Roster uses SmartHR database - connection passed via X-Db-Connection header
                 var conStr = ResolveConnectionStringFromRequest(Request);
 
-                // No CloseAccountingPeriod here in VB6; keep for parity if needed
-                if (!isClose)
+                // Convert month name to numeric (01-12) for vwRosterForRptCrosstab2 query
+                var monthNum = ConvertMonthNameToNumeric(month.Trim());
+                if (string.IsNullOrEmpty(monthNum))
                 {
-                    await DapperReportData.ExecuteNonQueryAsync(conStr, "CloseAccountingPeriod", new
-                    {
-                        Period = month,
-                        coyID = coyID.Trim(),
-                        UserName = string.Empty,
-                        isClose = 0,
-                        isBS = 0
-                    }, 120);
+                    throw new Exception($"Invalid month name: '{month}'. Expected month name (e.g., 'January', 'July').");
                 }
 
-                // VB6 used: select distinct * from vwRosterForRptCrosstab2 where deptID=... and mth=... and Yr=... order by StaffName
                 var ds = await DapperReportData.ExecuteDataSetAsync(conStr, @"
 select distinct * from vwRosterForRptCrosstab2 where deptID=@DeptID and mth=@Mth and Yr=@Yr order by StaffName", new
                 {
                     DeptID = deptID.Trim(),
-                    Mth = month.Trim(),
+                    Mth = monthNum,
                     Yr = year.Trim()
                 }, 120);
 
-                // Build header text similar to VB: "Roster Details of {DeptName} Dept for {Month} {Year}"
+                // Build header text: "Roster Details of {DeptName} Dept for {Month} {Year}"
                 var deptName = string.Empty;
-                var dm = await DapperReportData.ExecuteDataSetAsync(conStr, "select top 1 deptName from Departments where deptID=@DeptID", new { DeptID = deptID.Trim() }, 60);
+                var dm = await DapperReportData.ExecuteDataSetAsync(conStr, "select top 1 deptName from empDepartments where deptID=@DeptID", new { DeptID = deptID.Trim() }, 60);
                 if (dm.Tables.Count > 0 && dm.Tables[0].Rows.Count > 0 && dm.Tables[0].Columns.Contains("deptName") && dm.Tables[0].Rows[0]["deptName"] != DBNull.Value)
                 {
                     deptName = dm.Tables[0].Rows[0]["deptName"].ToString();
                 }
 
-                var monthName = month; // assume full month name passed from client
-                var headerText = $"Roster Details of {deptName} Dept for {monthName} {year}";
+                var headerText = $"Roster Details of {deptName} Dept for {month} {year}";
                 var textObjects = new Dictionary<string, string>
                 {
                     ["Text9"] = headerText
                 };
 
-                var companyName = string.Empty;
-                var coy = await DapperReportData.ExecuteDataSetAsync(conStr, "select top 1 CoyName from Company where CoyID=@CoyID", new { CoyID = coyID.Trim() }, 60);
-                if (coy.Tables.Count > 0 && coy.Tables[0].Rows.Count > 0 && coy.Tables[0].Columns.Contains("CoyName") && coy.Tables[0].Rows[0]["CoyName"] != DBNull.Value)
-                {
-                    companyName = coy.Tables[0].Rows[0]["CoyName"].ToString();
-                }
+                // Use companyName provided by caller; do not query local Company table (SmartHR DB doesn't contain it)
+                var companyNameToUse = string.IsNullOrWhiteSpace(companyName) ? string.Empty : companyName;
 
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, headerText, companyName, textObjects);
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, headerText, companyNameToUse, textObjects);
             }
             catch (Exception ex)
             {
@@ -523,6 +513,39 @@ select distinct * from vwRosterForRptCrosstab2 where deptID=@DeptID and mth=@Mth
             }
 
             return ledgerCode == null ? string.Empty : ledgerCode.Trim();
+        }
+
+        private static string ConvertMonthNameToNumeric(string monthName)
+        {
+            switch (monthName.ToLowerInvariant())
+            {
+                case "january":
+                    return "01";
+                case "february":
+                    return "02";
+                case "march":
+                    return "03";
+                case "april":
+                    return "04";
+                case "may":
+                    return "05";
+                case "june":
+                    return "06";
+                case "july":
+                    return "07";
+                case "august":
+                    return "08";
+                case "september":
+                    return "09";
+                case "october":
+                    return "10";
+                case "november":
+                    return "11";
+                case "december":
+                    return "12";
+                default:
+                    return null;
+            }
         }
     }
 }

@@ -12,7 +12,7 @@ namespace CrystalReportWebAPI.Utilities
 {
     public static class CrystalReport
     {
-        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename, DataSet dsX, string header = null, string companyName = null, IDictionary<string, string>? textObjects = null)
+        public static HttpResponseMessage RenderReport(string reportPath, string reportFileName, string exportFilename, DataSet dsX, string header = null, string companyName = null, IDictionary<string, string> textObjects = null)
         {
             var rd = new ReportDocument();
             var fielName = Path.Combine(System.Web.Hosting.HostingEnvironment.MapPath(reportPath), reportFileName);

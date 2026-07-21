@@ -197,7 +197,7 @@ WHERE LTRIM(RTRIM(ISNULL(DeptID, ''))) = @DeptId;";
 SELECT
     LTRIM(RTRIM(DeptID)) AS DeptId,
     COUNT(1) AS [Count]
-FROM HrEmployees
+FROM Employees
 WHERE LTRIM(RTRIM(ISNULL(DeptID, ''))) <> ''
 GROUP BY LTRIM(RTRIM(DeptID));";
 

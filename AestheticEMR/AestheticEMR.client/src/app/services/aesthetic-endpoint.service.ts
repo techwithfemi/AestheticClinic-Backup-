@@ -400,7 +400,7 @@ export class AestheticEndpoint extends EndpointBase {
       catchError(error => this.handleError(error, () => this.reviewAuditIncidentEndpoint<T>(auditLogId, payload))));
   }
 
-  getStaffRosterReportEndpoint(params: { coyID: string; month: string; year: string; deptID: string; isClose: boolean }): Observable<Blob> {
+  getStaffRosterReportEndpoint(params: { coyID: string; month: string; year: string; deptID: string; isClose: boolean; companyName?: string }): Observable<Blob> {
     const query = new URLSearchParams({
       coyID: params.coyID,
       month: params.month,
@@ -408,6 +408,10 @@ export class AestheticEndpoint extends EndpointBase {
       deptID: params.deptID,
       isClose: String(params.isClose)
     });
+
+    if (params.companyName) {
+      query.set('companyName', params.companyName);
+    }
 
     return this.http.get(`${this.accountingReportsUrl}/staffroster/roster?${query.toString()}`, {
       ...this.requestHeaders,
