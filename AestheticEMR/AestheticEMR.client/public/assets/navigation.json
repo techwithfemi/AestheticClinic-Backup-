@@ -11,78 +11,78 @@
       "route": "accounting",
       "icon": "account_balance",
       "subItems": [
-        { "label": "Accounting Reports", "path": "reports", "icon": "analytics" },
-        { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree" },
-        { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront" },
-        { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups" },
-        { "label": "Expenses", "path": "expenses", "icon": "paid" },
-        { "label": "Incomes", "path": "incomes", "icon": "attach_money" },
-        { "label": "Journal Entries", "path": "journal", "icon": "menu_book" },
-        { "label": "Purchases", "path": "purchases", "icon": "shopping_cart" }
+        { "label": "Accounting Reports", "path": "reports", "icon": "analytics", "serialNo": 0, "visible": true },
+        { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree", "serialNo": 0, "visible": true },
+        { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront", "serialNo": 0, "visible": true },
+        { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups", "serialNo": 0, "visible": true },
+        { "label": "Expenses", "path": "expenses", "icon": "paid", "serialNo": 0, "visible": true },
+        { "label": "Incomes", "path": "incomes", "icon": "attach_money", "serialNo": 0, "visible": true },
+        { "label": "Journal Entries", "path": "journal", "icon": "menu_book", "serialNo": 0, "visible": true },
+        { "label": "Purchases", "path": "purchases", "icon": "shopping_cart", "serialNo": 0, "visible": true }
       ]
     },
     "Admin": {
       "route": "admin",
       "icon": "admin_panel_settings",
       "subItems": [
-        { "label": "Audit Logs", "path": "audit", "icon": "history_edu" },
-        { "label": "Consent Templates", "path": "consent-templates", "icon": "article" },
-        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings" },
-        { "label": "User Management", "path": "users", "icon": "group" }
+        { "label": "Audit Logs", "path": "audit", "icon": "history_edu", "serialNo": 0, "visible": true },
+        { "label": "Consent Templates", "path": "consent-templates", "icon": "article", "serialNo": 0, "visible": true },
+        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings", "serialNo": 0, "visible": true },
+        { "label": "User Management", "path": "users", "icon": "group", "serialNo": 0, "visible": true }
       ]
     },
     "Aesthetics": {
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Audit Trail", "path": "audit-trail", "icon": "history" },
-        { "label": "Procedures", "path": "procedures", "icon": "biotech" },
-        { "label": "View Consent", "path": "view-consent", "icon": "description" }
+        { "label": "Audit Trail", "path": "audit-trail", "icon": "history", "serialNo": 0, "visible": true },
+        { "label": "Procedures", "path": "procedures", "icon": "biotech", "serialNo": 0, "visible": true },
+        { "label": "View Consent", "path": "view-consent", "icon": "description", "serialNo": 0, "visible": true }
       ]
     },
     "Billing": {
       "route": "billing",
       "icon": "payments",
       "subItems": [
-        { "label": "Invoices", "path": "invoices", "icon": "receipt_long" },
-        { "label": "Receipts", "path": "receipts", "icon": "receipt" }
+        { "label": "Invoices", "path": "invoices", "icon": "receipt_long", "serialNo": 0, "visible": true },
+        { "label": "Receipts", "path": "receipts", "icon": "receipt", "serialNo": 0, "visible": true }
       ]
     },
     "Dental": {
       "route": "dental",
       "icon": "medical_services",
       "subItems": [
-        { "label": "Clinical Session", "path": "clinical-session", "icon": "medical_information" }
+        { "label": "Clinical Session", "path": "clinical-session", "icon": "medical_information", "serialNo": 0, "visible": true }
       ]
     },
     "Employees": {
       "route": "employees",
       "icon": "badge",
       "subItems": [
-        { "label": "Department", "path": "department", "icon": "groups" },
-        { "label": "Designation", "path": "designation", "icon": "workspace_premium" },
-        { "label": "Employee Info", "path": "employee-info", "icon": "badge" }
+        { "label": "Department", "path": "department", "icon": "groups", "serialNo": 0, "visible": true },
+        { "label": "Designation", "path": "designation", "icon": "workspace_premium", "serialNo": 0, "visible": true },
+        { "label": "Employee Info", "path": "employee-info", "icon": "badge", "serialNo": 0, "visible": true }
       ]
     },
     "Frontdesk": {
       "route": "frontdesk",
       "icon": "folder_shared",
       "subItems": [
-        { "label": "Appointments", "path": "appointments", "icon": "event" },
-        { "label": "Attendance", "path": "attendance", "icon": "checklist" },
-        { "label": "Company Information", "path": "companies", "icon": "business" },
-        { "label": "Consent Form", "path": "consent-form", "icon": "fact_check" },
-        { "label": "Patients Information", "path": "patients", "icon": "badge" },
-        { "label": "Patient Search", "path": "search", "icon": "search" },
-        { "label": "Recent Charts", "path": "recent", "icon": "history" }
+        { "label": "Appointments", "path": "appointments", "icon": "event", "serialNo": 0, "visible": true },
+        { "label": "Attendance", "path": "attendance", "icon": "checklist", "serialNo": 0, "visible": true },
+        { "label": "Company Information", "path": "companies", "icon": "business", "serialNo": 0, "visible": true },
+        { "label": "Consent Form", "path": "consent-form", "icon": "fact_check", "serialNo": 0, "visible": true },
+        { "label": "Patients Information", "path": "patients", "icon": "badge", "serialNo": 0, "visible": true },
+        { "label": "Patient Search", "path": "search", "icon": "search", "serialNo": 0, "visible": true },
+        { "label": "Recent Charts", "path": "recent", "icon": "history", "serialNo": 0, "visible": true }
       ]
     },
     "Inventory": {
       "route": "inventory",
       "icon": "inventory",
       "subItems": [
-        { "label": "Product Category", "path": "product-categories", "icon": "category" },
-        { "label": "Products", "path": "products", "icon": "inventory" }
+        { "label": "Product Category", "path": "product-categories", "icon": "category", "serialNo": 0, "visible": true },
+        { "label": "Products", "path": "products", "icon": "inventory", "serialNo": 0, "visible": true }
       ]
     },
     "Management": {
@@ -94,27 +94,27 @@
       "route": "staff-roster",
       "icon": "event_available",
       "subItems": [
-        { "label": "Create Roster", "path": "create-roster", "icon": "event_note" },
-        { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send" },
-        { "label": "Shifts Master", "path": "shifts-master", "icon": "schedule" },
-        { "label": "Staff Group", "path": "staff-group", "icon": "groups" }
+        { "label": "Create Roster", "path": "create-roster", "icon": "event_note", "serialNo": 0, "visible": true },
+        { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send", "serialNo": 0, "visible": true },
+        { "label": "Shifts Master", "path": "shifts-master", "icon": "schedule", "serialNo": 0, "visible": true },
+        { "label": "Staff Group", "path": "staff-group", "icon": "groups", "serialNo": 0, "visible": true }
       ]
     },
     "Spa": {
       "route": "spa",
       "icon": "spa",
       "subItems": [
-        { "label": "Spa session", "path": "services", "icon": "list_alt" }
+        { "label": "Spa session", "path": "services", "icon": "list_alt", "serialNo": 0, "visible": true }
       ]
     },
     "Tariff": {
       "route": "tariff",
       "icon": "request_quote",
       "subItems": [
-        { "label": "Drug", "path": "stock", "icon": "inventory_2" },
-        { "label": "Investigation", "path": "investigations", "icon": "science" },
-        { "label": "Product", "path": "products", "icon": "inventory_2" },
-        { "label": "Service", "path": "services", "icon": "medical_services" }
+        { "label": "Drug", "path": "stock", "icon": "inventory_2", "serialNo": 0, "visible": true },
+        { "label": "Investigation", "path": "investigations", "icon": "science", "serialNo": 0, "visible": true },
+        { "label": "Product", "path": "products", "icon": "inventory_2", "serialNo": 0, "visible": true },
+        { "label": "Service", "path": "services", "icon": "medical_services", "serialNo": 0, "visible": true }
       ]
     }
   },
@@ -123,36 +123,36 @@
       "route": "reports",
       "icon": "analytics",
       "subItems": [
-        { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum" },
-        { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description" },
-        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up" },
-        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech" },
-        { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural" },
-        { "label": "Accounting Expenses Report", "path": "accounting-expenses-report", "icon": "paid" },
-        { "label": "Accounting Incomes Report", "path": "accounting-incomes-report", "icon": "attach_money" },
-        { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long" },
-        { "label": "Accounting Reports", "path": "accounting-reports", "icon": "analytics" },
-        { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule" },
-        { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user" },
-        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group" },
-        { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long" },
-        { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid" },
-        { "label": "Clock-In Report", "path": "clockin-report", "icon": "schedule" },
-        { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open" },
-        { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image" },
-        { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services" },
-        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups" },
-        { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge" },
-        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event" },
-        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today" },
-        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report", "icon": "app_registration" },
-        { "label": "Laser Safety Report", "path": "laser-safety-report", "icon": "health_and_safety" },
-        { "label": "Laser Sessions Report", "path": "laser-sessions-report", "icon": "bolt" },
-        { "label": "Laser Utilization Report", "path": "laser-utilization-report", "icon": "insights" },
-        { "label": "Spa Packages Report", "path": "spa-packages-report", "icon": "inventory_2" },
-        { "label": "Spa Services Report", "path": "spa-services-report", "icon": "spa" },
-        { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement" },
-        { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available" }
+        { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum", "serialNo": 0, "visible": true },
+        { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description", "serialNo": 0, "visible": true },
+        { "label": "Aesthetics Outcomes Report", "path": "aesthetics-outcomes-report", "icon": "trending_up", "serialNo": 0, "visible": true },
+        { "label": "Aesthetics Procedures Report", "path": "aesthetics-procedures-report", "icon": "biotech", "serialNo": 0, "visible": true },
+        { "label": "Aesthetics Skin Assessment Report", "path": "aesthetics-skin-assessment-report", "icon": "face_retouching_natural", "serialNo": 0, "visible": true },
+        { "label": "Accounting Expenses Report", "path": "accounting-expenses-report", "icon": "paid", "serialNo": 0, "visible": true },
+        { "label": "Accounting Incomes Report", "path": "accounting-incomes-report", "icon": "attach_money", "serialNo": 0, "visible": true },
+        { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long", "serialNo": 0, "visible": true },
+        { "label": "Accounting Reports", "path": "accounting-reports", "icon": "analytics", "serialNo": 0, "visible": true },
+        { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule", "serialNo": 0, "visible": true },
+        { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user", "serialNo": 0, "visible": true },
+        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group", "serialNo": 0, "visible": true },
+        { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long", "serialNo": 0, "visible": true },
+        { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid", "serialNo": 0, "visible": true },
+        { "label": "Clock-In Report", "path": "clockin-report", "icon": "schedule", "serialNo": 0, "visible": true },
+        { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open", "serialNo": 0, "visible": true },
+        { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image", "serialNo": 0, "visible": true },
+        { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services", "serialNo": 0, "visible": true },
+        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups", "serialNo": 0, "visible": true },
+        { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge", "serialNo": 0, "visible": true },
+        { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event", "serialNo": 0, "visible": true },
+        { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today", "serialNo": 0, "visible": true },
+        { "label": "Frontdesk Registration Report", "path": "frontdesk-registration-report", "icon": "app_registration", "serialNo": 0, "visible": true },
+        { "label": "Laser Safety Report", "path": "laser-safety-report", "icon": "health_and_safety", "serialNo": 0, "visible": true },
+        { "label": "Laser Sessions Report", "path": "laser-sessions-report", "icon": "bolt", "serialNo": 0, "visible": true },
+        { "label": "Laser Utilization Report", "path": "laser-utilization-report", "icon": "insights", "serialNo": 0, "visible": true },
+        { "label": "Spa Packages Report", "path": "spa-packages-report", "icon": "inventory_2", "serialNo": 0, "visible": true },
+        { "label": "Spa Services Report", "path": "spa-services-report", "icon": "spa", "serialNo": 0, "visible": true },
+        { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement", "serialNo": 0, "visible": true },
+        { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available", "serialNo": 0, "visible": true }
       ]
     }
   },
@@ -161,8 +161,8 @@
       "route": "settings",
       "icon": "settings",
       "subItems": [
-        { "label": "My Profile", "fragment": "profile", "icon": "person" },
-        { "label": "Preferences", "fragment": "preferences", "icon": "tune" }
+        { "label": "My Profile", "fragment": "profile", "icon": "person", "serialNo": 0, "visible": true },
+        { "label": "Preferences", "fragment": "preferences", "icon": "tune", "serialNo": 0, "visible": true }
       ]
     }
   }

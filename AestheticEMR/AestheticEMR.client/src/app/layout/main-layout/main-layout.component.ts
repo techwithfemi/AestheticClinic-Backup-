@@ -15,10 +15,19 @@ import { MatMenuModule } from '@angular/material/menu';
 import { CommonModule } from '@angular/common';
 import { User } from '../../models/user.model';
 
+interface SubNavItem {
+  path?: string;
+  fragment?: string;
+  label: string;
+  icon?: string;
+  serialNo?: number; // numeric order; 0 or undefined means not used
+  visible?: boolean;  // visibility flag for sidebar
+}
+
 interface NavigationItem {
   route?: string;
   icon?: string;
-  subItems?: { path?: string; fragment?: string; label: string; icon?: string }[];
+  subItems?: SubNavItem[];
 }
 
 @Component({
@@ -116,14 +125,34 @@ export class MainLayoutComponent implements OnInit {
     return this.hasRoleAccess(sectionName);
   }
 
-  private filterReportSubItems(subItems: { path?: string; fragment?: string; label: string; icon?: string }[]): { path?: string; fragment?: string; label: string; icon?: string }[] {
+  /**
+   * Process subItems: remove those with visible===false, and determine ordering.
+   * Sort by numeric serialNo (default 0) ascending, then by label for ties.
+   */
+  private processSubItems(subItems: SubNavItem[] = []): SubNavItem[] {
+    const visibleItems = (subItems || []).filter(s => s.visible !== false);
+    if (!visibleItems || visibleItems.length === 0) {
+      return [];
+    }
+
+    return visibleItems.slice().sort((a, b) => {
+      const sa = typeof a.serialNo === 'number' ? a.serialNo : 0;
+      const sb = typeof b.serialNo === 'number' ? b.serialNo : 0;
+      if (sa !== sb) return sa - sb;
+      return (a.label || '').localeCompare(b.label || '');
+    });
+  }
+
+  private filterReportSubItems(subItems: SubNavItem[]): SubNavItem[] {
+    // First, apply visibility filtering and role-based filtering
     if (this.isManagementUser) {
-      return subItems;
+      return this.processSubItems(subItems);
     }
 
     const allowedRoles = new Set(this.normalizedRoles);
 
-    return subItems.filter(sub => {
+    const roleFiltered = (subItems || []).filter(sub => {
+      if (sub.visible === false) return false;
       const reportPrefix = (sub.path || '').split('-')[0].toLowerCase();
       if (!reportPrefix) {
         return false;
@@ -135,6 +164,8 @@ export class MainLayoutComponent implements OnInit {
 
       return allowedRoles.has(reportPrefix) || allowedRoles.has(reportPrefix.endsWith('s') ? reportPrefix.slice(0, -1) : `${reportPrefix}s`);
     });
+
+    return this.processSubItems(roleFiltered);
   }
 
   @HostListener('window:resize')
@@ -163,13 +194,13 @@ export class MainLayoutComponent implements OnInit {
     this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
         // Canonical navigation lives at public/assets/navigation.json (served at /assets/navigation.json).
-        // Legacy mirrors like src/assets/navigation222.json are slated for removal.
         const top = Object.entries(json.Static_Top || {})
-          .map(([title, item]) => ({ title, item }));
+          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }));
+
         const dynamic = Object.entries(json.Dynamic_Roles || {})
-          .filter(([roleName]) => this.canAccessDynamicSection(roleName))
-          .filter(([, item]) => (item.subItems?.length || 0) > 0)
-          .map(([title, item]) => ({ title, item }));
+          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
+          .filter(entry => this.canAccessDynamicSection(entry.title) && (entry.item.subItems?.length || 0) > 0);
+
         const reports = Object.entries(json.Reports || {})
           .map(([title, item]) => ({
             title,
@@ -179,9 +210,10 @@ export class MainLayoutComponent implements OnInit {
             }
           }))
           .filter(entry => (entry.item.subItems?.length || 0) > 0);
+
         const bottom = Object.entries(json.Settings || {})
-          .filter(([, item]) => (item.subItems?.length || 0) > 0)
-          .map(([title, item]) => ({ title, item }));
+          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
+          .filter(entry => (entry.item.subItems?.length || 0) > 0);
 
         this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];
       });
