@@ -368,3 +368,4 @@ secrets.json
 
 # Filled-in web.config contains real passwords — never commit it
 web.config
+/AestheticEMR/AestheticEMR.Server/error trying to run iis website.txt
