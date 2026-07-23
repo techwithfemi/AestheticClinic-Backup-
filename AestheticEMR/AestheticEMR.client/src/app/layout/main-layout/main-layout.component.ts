@@ -22,12 +22,19 @@ interface SubNavItem {
   icon?: string;
   serialNo?: number; // numeric order; 0 or undefined means not used
   visible?: boolean;  // visibility flag for sidebar
+  group?: string;     // optional group label (used by Reports sidebar to cluster by module/role)
 }
 
 interface NavigationItem {
   route?: string;
   icon?: string;
   subItems?: SubNavItem[];
+}
+
+interface SubNavGroup {
+  name: string;
+  icon: string;
+  items: SubNavItem[];
 }
 
 @Component({
@@ -48,7 +55,7 @@ export class MainLayoutComponent implements OnInit {
   appConfig = inject(AppConfigService);
   private readonly mobileBreakpoint = 992;
 
-  menuEntries: { title: string; item: NavigationItem }[] = [];
+  menuEntries: { title: string; item: NavigationItem; subGroups?: SubNavGroup[] }[] = [];
 
   get userRoles(): string[] {
     return this.authService.currentUser?.roles || [];
@@ -168,6 +175,95 @@ export class MainLayoutComponent implements OnInit {
     return this.processSubItems(roleFiltered);
   }
 
+  // Display order and metadata for the report sidebar groups.
+  // The key is matched against the lowercased first segment of each subItem.path
+  // (e.g. "aesthetics-consultations-report" → "aesthetics").
+  private static readonly reportGroupMeta: Record<string, { name: string; icon: string; order: number }> = {
+    aesthetics: { name: 'Aesthetics', icon: 'face', order: 10 },
+    accounting: { name: 'Accounting', icon: 'account_balance', order: 20 },
+    admin: { name: 'Admin', icon: 'admin_panel_settings', order: 30 },
+    billing: { name: 'Billing', icon: 'payments', order: 40 },
+    dental: { name: 'Dental', icon: 'medical_services', order: 50 },
+    employees: { name: 'Employees', icon: 'badge', order: 60 },
+    frontdesk: { name: 'Frontdesk', icon: 'folder_shared', order: 70 },
+    laser: { name: 'Laser', icon: 'bolt', order: 80 },
+    spa: { name: 'Spa', icon: 'spa', order: 90 },
+    'staff-roster': { name: 'Staff Roster', icon: 'event_available', order: 100 },
+    clockin: { name: 'Clock-In', icon: 'schedule', order: 110 }
+  };
+
+  // Bucket the report subItems into per-module/role groups, using the explicit
+  // `group` field if provided, otherwise deriving the key from the first segment
+  // of the path. Unmatched items are placed in an "Other" bucket at the end.
+  // Items inside each group are sorted ascending (alphabetically by label).
+  private groupReportSubItems(subItems: SubNavItem[]): SubNavGroup[] {
+    const buckets = new Map<string, SubNavItem[]>();
+
+    for (const sub of subItems || []) {
+      const rawKey = (sub.group || (sub.path || '').split('-')[0] || '').toLowerCase();
+      const key = rawKey || 'other';
+      if (!buckets.has(key)) {
+        buckets.set(key, []);
+      }
+      buckets.get(key)!.push(sub);
+    }
+
+    const groups: SubNavGroup[] = [];
+    for (const [key, items] of buckets.entries()) {
+      const meta = MainLayoutComponent.reportGroupMeta[key] || {
+        name: this.toTitleCase(key),
+        icon: 'description',
+        order: 999
+      };
+      const sortedItems = items
+        .slice()
+        .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+      groups.push({ name: meta.name, icon: meta.icon, items: sortedItems });
+    }
+
+    groups.sort((a, b) => {
+      const orderA = MainLayoutComponent.reportGroupMeta[this.findKeyForName(a.name)]?.order ?? 999;
+      const orderB = MainLayoutComponent.reportGroupMeta[this.findKeyForName(b.name)]?.order ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+
+    return groups;
+  }
+
+  private findKeyForName(name: string): string {
+    const entry = Object.entries(MainLayoutComponent.reportGroupMeta)
+      .find(([, meta]) => meta.name === name);
+    return entry ? entry[0] : '';
+  }
+
+  private toTitleCase(value: string): string {
+    if (!value) return 'Other';
+    return value
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  // Normalize a sub-item label to Title Case (Pascal Case per word).
+  // Keeps existing acronyms (e.g. "PDF", "URL") when fully uppercase, and
+  // lowercases the rest of each word before re-capitalizing the first letter.
+  toTitleCaseLabel(label: string): string {
+    if (!label) return '';
+    return label
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(word => {
+        if (word === word.toUpperCase() && word.length > 1) {
+          return word; // keep acronyms as-is
+        }
+        const cleaned = word.toLowerCase();
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      })
+      .join(' ');
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     this.updateViewportState();
@@ -202,13 +298,21 @@ export class MainLayoutComponent implements OnInit {
           .filter(entry => this.canAccessDynamicSection(entry.title) && (entry.item.subItems?.length || 0) > 0);
 
         const reports = Object.entries(json.Reports || {})
-          .map(([title, item]) => ({
-            title,
-            item: {
-              ...item,
-              subItems: this.filterReportSubItems(item.subItems || [])
-            }
-          }))
+          .map(([title, item]) => {
+            // Normalize labels to Title (Pascal) Case so the sidebar always renders consistently.
+            const normalized: SubNavItem[] = (item.subItems || []).map(s => ({
+              ...s,
+              label: this.toTitleCaseLabel(s.label || '')
+            }));
+            const filtered = this.filterReportSubItems(normalized);
+            const subGroups = this.groupReportSubItems(filtered);
+            // Flat subItems is kept for active-route matching on link activation.
+            return {
+              title,
+              item: { ...item, subItems: filtered },
+              subGroups: subGroups.length > 1 ? subGroups : undefined
+            };
+          })
           .filter(entry => (entry.item.subItems?.length || 0) > 0);
 
         const bottom = Object.entries(json.Settings || {})

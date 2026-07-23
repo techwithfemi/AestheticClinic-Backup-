@@ -20,17 +20,40 @@
             </mat-panel-title>
           </mat-expansion-panel-header>
 
-          <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
-            <a mat-list-item *ngFor="let sub of item.item.subItems"
-               [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
-               [fragment]="sub.fragment || undefined"
-               routerLinkActive="active-sub-item"
-               (click)="closeSidenavOnMobile()"
-               title="{{ sub.label }}">
-              <mat-icon class="subitem-icon">{{ sub.icon || 'chevron_right' }}</mat-icon>
-              <span class="subitem-label">{{ sub.label }}</span>
-            </a>
-          </mat-nav-list>
+          <ng-container *ngIf="item.subGroups && item.subGroups.length > 0; else flatSubList">
+            <div class="sub-nav-groups" *ngIf="!isSidebarCollapsed">
+              <div class="sub-nav-group" *ngFor="let group of item.subGroups">
+                <div class="sub-nav-group-header">
+                  <mat-icon class="sub-nav-group-icon">{{ group.icon }}</mat-icon>
+                  <span class="sub-nav-group-label">{{ group.name }}</span>
+                </div>
+                <mat-nav-list class="sub-nav-list sub-nav-list-grouped">
+                  <a mat-list-item *ngFor="let sub of group.items"
+                     [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
+                     [fragment]="sub.fragment || undefined"
+                     routerLinkActive="active-sub-item"
+                     (click)="closeSidenavOnMobile()"
+                     title="{{ sub.label }}">
+                    <mat-icon class="subitem-icon">{{ sub.icon || 'chevron_right' }}</mat-icon>
+                    <span class="subitem-label">{{ sub.label }}</span>
+                  </a>
+                </mat-nav-list>
+              </div>
+            </div>
+          </ng-container>
+          <ng-template #flatSubList>
+            <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
+              <a mat-list-item *ngFor="let sub of item.item.subItems"
+                 [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
+                 [fragment]="sub.fragment || undefined"
+                 routerLinkActive="active-sub-item"
+                 (click)="closeSidenavOnMobile()"
+                 title="{{ sub.label }}">
+                <mat-icon class="subitem-icon">{{ sub.icon || 'chevron_right' }}</mat-icon>
+                <span class="subitem-label">{{ sub.label }}</span>
+              </a>
+            </mat-nav-list>
+          </ng-template>
         </mat-expansion-panel>
 
         <ng-container *ngIf="!item.item.subItems || item.item.subItems.length === 0">

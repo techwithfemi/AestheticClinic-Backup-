@@ -253,6 +253,59 @@ mat-panel-title.menu-title {
   vertical-align: middle;
 }
 
+/* ── Grouped sub-nav (Reports menu) ── */
+.sub-nav-groups {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 6px 0;
+}
+
+.sub-nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-nav-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px 44px;
+  margin-top: 4px;
+  border-top: 1px solid #eef1f4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &:first-child {
+    border-top: none;
+    margin-top: 0;
+  }
+}
+
+.sub-nav-group-icon {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  color: #1a73e8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sub-nav-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a73e8;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sub-nav-list-grouped {
+  padding: 0 0 2px 0 !important;
+}
+
 /* ── Toolbar ── */
 .main-toolbar {
   background: white;
