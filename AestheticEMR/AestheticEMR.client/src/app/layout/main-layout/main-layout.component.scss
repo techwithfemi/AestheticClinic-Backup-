@@ -16,7 +16,11 @@
   position: relative;
 
   .logo {
-    height: 40px;
+    width: 40%;      /* Fill 40% of the sidebar width */
+    min-width: 40%;  /* Guarantee 40% width even for narrow source images */
+    max-width: 100%; /* Prevent overflow beyond sidebar padding */
+    height: auto;    /* Maintain aspect ratio */
+    object-fit: contain;
     margin-bottom: 8px;
   }
 
