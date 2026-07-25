@@ -15,7 +15,7 @@ public partial class HDentalTreat
 
     public DateTime TDate { get; set; }
 
-    public DateTime? TTime { get; set; } // Updated to nullable DateTime to store only time component
+    public DateTime TTime { get; set; }
 
     public string? TeethStatusJson { get; set; }
     public string? OrthodonticsJson { get; set; }

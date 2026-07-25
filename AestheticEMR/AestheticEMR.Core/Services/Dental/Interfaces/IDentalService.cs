@@ -26,7 +26,8 @@ public interface IDentalService
         HDentalTreat chart,
         DentalImaging imaging,
         HConsulting consulting,
-        string currentUserId);
+        string currentUserId,
+        string timeZoneId);
 
     (HDentalTreat Chart, DentalImaging Imaging, HConsulting Consulting)? GetEncounter(string consultId, string pno);
 }

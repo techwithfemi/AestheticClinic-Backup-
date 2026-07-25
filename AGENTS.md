@@ -401,6 +401,19 @@ When adding Google login or any external authentication buttons to login/auth ca
 
 When introducing new configuration keys, also update the base `appsettings.json` alongside environment-specific files.
 
+### Date, Time, and User Time-Zone Safety
+
+Accurate dates and times are safety-critical. Every UI and backend workflow MUST preserve and present the correct value in the user's local time zone.
+
+1. ✅ **Use the user's explicit IANA time-zone identifier** (for example, `Africa/Lagos`) from the authenticated user/profile or request context; do not infer correctness solely from the server's or browser's current zone.
+2. ✅ **Represent instants with an offset/UTC** (`DateTimeOffset` preferred in .NET), transport them as ISO 8601 values containing `Z` or an explicit offset, and persist instants in UTC unless an established database contract explicitly requires otherwise.
+3. ✅ **Convert UTC instants to the user's local time zone for UI display and local business rules**, including “today”, date ranges, attendance, appointments, billing, reports, and audit timestamps.
+4. ✅ **Convert user-entered local date/time to an instant on the backend using the user's supplied/stored time-zone identifier** before persistence or comparison. Validate ambiguous or invalid daylight-saving transitions instead of silently changing the time.
+5. ✅ **Keep date-only values date-only** (`DateOnly`/SQL `date`) when they represent a calendar date rather than an instant; never apply a UTC conversion that can shift the calendar day.
+6. ✅ **Define date-range boundaries in the user's local zone**, then convert those boundaries to UTC for querying instant-based columns. Do not calculate “today” using server-local time.
+7. ✅ **Test time-sensitive behavior** with differing client/server zones, UTC-day boundaries, and daylight-saving transitions where applicable.
+8. ❌ **DO NOT use unspecified/implicit timestamps or naive parsing**, and do not rely on `DateTime.Now`, JavaScript string parsing without an offset, or the deployment server's local time for user-facing/business dates.
+
 ### Custom Rules for Entry Form UI
 
 **Entry form UI implementation design:**

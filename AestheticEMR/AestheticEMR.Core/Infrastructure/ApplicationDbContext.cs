@@ -615,6 +615,7 @@ namespace AestheticEMR.Core.Infrastructure
                     .HasColumnType(dateTimeSql)
                     .HasColumnName("tDate");
                 entity.Property(e => e.TTime)
+                    .IsRequired()
                     .HasColumnType(dateTimeSql)
                     .HasColumnName("tTime");
                 entity.Property(e => e.InflammationOfGingiva)

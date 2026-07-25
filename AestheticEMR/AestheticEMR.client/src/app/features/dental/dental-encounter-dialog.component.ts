@@ -64,9 +64,7 @@ export interface DentalEncounterDialogData {
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>{{ isEdit ? 'Edit Dental Info' : 'Add Dental Info' }}</h2>
-      <button mat-icon-button type="button" class="close-btn" (click)="dialogRef.close()" aria-label="Close dialog">
-        <mat-icon>close</mat-icon>
-      </button>
+
     </div>
 
     <mat-dialog-content>
@@ -451,8 +449,9 @@ export interface DentalEncounterDialogData {
     </mat-dialog-content>
 
     <mat-dialog-actions align="end" class="sticky-actions">
-      <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
-      <button mat-raised-button color="primary" type="button" (click)="save()">Save</button>
+      <button mat-raised-button color="primary" type="button" (click)="save()" [disabled]="saving">
+        {{ saving ? 'Saving...' : 'Save' }}
+      </button>
     </mat-dialog-actions>
   `,
   styles: [`
@@ -848,10 +847,20 @@ export class DentalEncounterDialogComponent {
 
   /** Becomes true on first save attempt — enables inline error messages */
   touched = false;
+  saving = false;
   /** Errors shown in the sticky banner above the dialog content */
   inlineErrors: string[] = [];
 
-  chart: DentalChart = { id: 0, pno: '', consultId: '', tDate: this.toLocalDate(new Date()), teethStatus: {}, oralExam: {}, orthodontics: {} };
+  chart: DentalChart = {
+    id: 0,
+    pno: '',
+    consultId: '',
+    tDate: this.toLocalDate(new Date()),
+    tTime: this.toLocalDateTime(new Date()),
+    teethStatus: {},
+    oralExam: {},
+    orthodontics: {}
+  };
   imaging: DentalImaging = { id: 0, pno: '', consultId: '', imagingDate: this.toLocalDate(new Date()) };
   consulting: DentalConsulting = { id: 0, consultId: '', pNo: '', clientCat: 'PRIVATE' };
 
@@ -1143,20 +1152,40 @@ export class DentalEncounterDialogComponent {
     this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
     this.syncLegacyFlagsFromStatusMap();
 
-    const closeWithPayload = () => {
-      this.dialogRef.close({
-        chart: this.withoutDefaults(this.chart),
-        imaging: this.withoutDefaults(this.imaging),
-        consulting: this.withoutDefaults(this.consulting)
+    const saveEncounter = () => {
+      const now = new Date();
+      this.chart.tTime ||= this.toLocalDateTime(now);
+
+      const payload = {
+        chart: this.chart,
+        imaging: this.imaging,
+        consulting: this.consulting,
+        timeZoneId: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+
+      this.saving = true;
+      this.alertService.startLoadingMessage('Saving dental encounter...');
+      this.dentalEndpoint.saveEncounterEndpoint<DentalEncounter>(payload).subscribe({
+        next: saved => {
+          this.saving = false;
+          this.alertService.stopLoadingMessage();
+          this.alertService.showMessage('Success', 'Dental encounter saved.', MessageSeverity.success);
+          this.dialogRef.close(saved);
+        },
+        error: error => {
+          this.saving = false;
+          this.alertService.stopLoadingMessage();
+          this.alertService.showStickyMessage('Save error', 'Unable to save dental encounter. The dialog remains open so your entries are not lost.', MessageSeverity.error, error);
+        }
       });
     };
 
     if (this.selectedImageFiles.length) {
-      this.uploadSelectedImages(0, closeWithPayload);
+      this.uploadSelectedImages(0, saveEncounter);
       return;
     }
 
-    closeWithPayload();
+    saveEncounter();
   }
 
   private uploadSelectedImages(index: number, done: () => void): void {
@@ -1216,6 +1245,15 @@ export class DentalEncounterDialogComponent {
     const mm = `${date.getMonth() + 1}`.padStart(2, '0');
     const dd = `${date.getDate()}`.padStart(2, '0');
     return `${date.getFullYear()}-${mm}-${dd}T00:00:00`;
+  }
+
+  private toLocalDateTime(date: Date): string {
+    const mm = `${date.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${date.getDate()}`.padStart(2, '0');
+    const hours = `${date.getHours()}`.padStart(2, '0');
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    const seconds = `${date.getSeconds()}`.padStart(2, '0');
+    return `${date.getFullYear()}-${mm}-${dd}T${hours}:${minutes}:${seconds}`;
   }
 
   private fromDateInput(value: string, fallbackIso?: string): string {

@@ -279,7 +279,7 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
 
     ref.afterClosed().subscribe((result: DentalEncounter | undefined) => {
       if (!result) return;
-      this.saveEncounter(result);
+      this.load();
     });
   }
 
@@ -301,7 +301,7 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
 
         ref.afterClosed().subscribe((result: DentalEncounter | undefined) => {
           if (!result) return;
-          this.saveEncounter(result);
+          this.load();
         });
       },
       error: error => {

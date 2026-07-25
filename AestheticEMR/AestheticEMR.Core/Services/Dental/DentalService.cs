@@ -111,19 +111,21 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         HDentalTreat chart,
         DentalImaging imaging,
         HConsulting consulting,
-        string currentUserId)
+        string currentUserId,
+        string timeZoneId)
     {
         using var tx = dbContext.Database.BeginTransaction();
 
         var now = DateTime.UtcNow;
+        var localNow = GetLocalNow(timeZoneId, now);
 
         chart.Pno = chart.Pno?.Trim() ?? string.Empty;
         chart.ConsultId = chart.ConsultId?.Trim() ?? string.Empty;
         imaging.Pno = imaging.Pno?.Trim() ?? chart.Pno;
         imaging.ConsultId = imaging.ConsultId?.Trim() ?? chart.ConsultId;
 
-        EnsureChartDateTimes(chart);
-        imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, now);
+        EnsureChartDateTimes(chart, localNow);
+        imaging.ImagingDate = NormalizeSqlDateTime(imaging.ImagingDate, localNow);
 
         if (string.IsNullOrWhiteSpace(chart.Pno) || string.IsNullOrWhiteSpace(chart.ConsultId))
             throw new InvalidOperationException("PNO and ConsultId are required.");
@@ -310,15 +312,33 @@ public class DentalService(ApplicationDbContext dbContext) : IDentalService
         existing.Clrpm1 = chart.Clrpm1; existing.Clrpm2 = chart.Clrpm2;
     }
 
-    private static void EnsureChartDateTimes(HDentalTreat chart)
+    private static void EnsureChartDateTimes(HDentalTreat chart, DateTime? fallback = null)
     {
-        var fallback = DateTime.UtcNow;
-        chart.TDate = NormalizeSqlDateTime(chart.TDate, fallback);
-        // TTime is nullable - don't normalize if null
-        if (chart.TTime.HasValue)
+        var localFallback = fallback ?? DateTime.UtcNow;
+        chart.TDate = NormalizeSqlDateTime(chart.TDate, localFallback);
+        chart.TTime = NormalizeSqlDateTime(chart.TTime, localFallback);
+    }
+
+    private static DateTime GetLocalNow(string timeZoneId, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+            throw new ArgumentException("A valid IANA time-zone identifier is required.", nameof(timeZoneId));
+
+        TimeZoneInfo timeZone;
+        try
         {
-            chart.TTime = NormalizeSqlDateTime(chart.TTime.Value, chart.TDate);
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
         }
+        catch (TimeZoneNotFoundException ex)
+        {
+            throw new ArgumentException($"Unknown time-zone identifier '{timeZoneId}'.", nameof(timeZoneId), ex);
+        }
+        catch (InvalidTimeZoneException ex)
+        {
+            throw new ArgumentException($"Invalid time-zone identifier '{timeZoneId}'.", nameof(timeZoneId), ex);
+        }
+
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc), timeZone);
     }
 
     private static DateTime NormalizeSqlDateTime(DateTime value, DateTime fallback)

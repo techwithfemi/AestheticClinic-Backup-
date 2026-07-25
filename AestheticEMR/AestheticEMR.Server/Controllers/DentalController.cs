@@ -114,7 +114,7 @@ public class DentalController(
 
         try
         {
-            var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId());
+            var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId(), vm.TimeZoneId);
 
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
             savedChartVm.Dtype = ExpandDtypeForDisplay(savedChartVm.Dtype);
@@ -134,6 +134,18 @@ public class DentalController(
             _logger.LogWarning(ex, "Encounter save forbidden for consultId {ConsultId}", chart.ConsultId);
             AddModelError(ex.Message);
             return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid dental encounter date/time input for consultId {ConsultId}", chart.ConsultId);
+            AddModelError(ex.Message);
+            return BadRequest(ModelState);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving dental encounter for consultId {ConsultId}", chart.ConsultId);
+            AddModelError("Unable to save the dental encounter.");
+            return StatusCode(StatusCodes.Status500InternalServerError, ModelState);
         }
     }
 

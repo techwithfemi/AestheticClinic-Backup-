@@ -210,6 +210,10 @@ public class DentalEncounterSaveVM
     public DentalChartVM? Chart { get; set; }
     public DentalImagingVM? Imaging { get; set; }
     public DentalConsultingVM? Consulting { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public required string TimeZoneId { get; set; }
 }
 
 public class DentalEncounterVM
