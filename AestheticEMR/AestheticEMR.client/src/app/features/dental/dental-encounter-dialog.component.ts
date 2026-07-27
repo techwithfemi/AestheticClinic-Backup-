@@ -64,7 +64,9 @@ export interface DentalEncounterDialogData {
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>{{ isEdit ? 'Edit Dental Info' : 'Add Dental Info' }}</h2>
-
+      <button mat-icon-button type="button" (click)="dialogRef.close()" class="close-btn" aria-label="Close dialog">
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
 
     <mat-dialog-content>
@@ -449,6 +451,7 @@ export interface DentalEncounterDialogData {
     </mat-dialog-content>
 
     <mat-dialog-actions align="end" class="sticky-actions">
+      <button mat-button type="button" (click)="dialogRef.close()" [disabled]="saving">Cancel</button>
       <button mat-raised-button color="primary" type="button" (click)="save()" [disabled]="saving">
         {{ saving ? 'Saving...' : 'Save' }}
       </button>

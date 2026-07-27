@@ -196,20 +196,9 @@ export class ServicesComponent {
   readonly todayClinicAttendance = computed(() => {
     const todays = this.attendance().filter(a => this.isToday(a.recDate));
 
-    const clinicMatched = todays.filter(a => {
-      const clinic = (a.clinicType ?? '').toLowerCase();
-      const status = (a.attndStatus ?? '').toLowerCase();
-      return clinic.includes('spa')
-        || clinic.includes('massage')
-        || clinic.includes('facial')
-        || clinic.includes('sauna')
-        || status.includes('spa');
-    });
-
-    const source = clinicMatched.length > 0 ? clinicMatched : todays;
     const unique = new Map<string, Attendance>();
 
-    for (const item of source) {
+    for (const item of todays) {
       const key = `${item.consultId ?? ''}|${item.pNo ?? ''}`;
       if (!unique.has(key)) unique.set(key, item);
     }

@@ -400,6 +400,17 @@ custom instructions for reports module:
 - the excel file shld be in true .xlsx format.
 - as said earlier, use spa services report page as report guide.
 
+-----------------
+
+cat << 'EOF' > .clinerules
+You are a single AI developer running directly in the CLI. 
+You DO NOT have sub-agents or teammate tools (such as team_run_task or team_broadcast).
+To modify files, edit them directly.
+To run commands like 'dotnet ef database update', run them directly using shell commands.
+Never delegate tasks to other agents.
+EOF
+
+------------------------
 
 
 
