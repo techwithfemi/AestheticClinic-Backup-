@@ -541,10 +541,10 @@ interface ProceduresEntryDialogData {
             @if (lastSaveError()) {
               <div class="save-error" data-testid="procedures-save-error">{{ lastSaveError() }}</div>
             }
-            <button mat-stroked-button type="button" (click)="closeDialog()" [disabled]="loadingIndicator">
+            <button mat-stroked-button type="button" (click)="closeDialog()" [disabled]="loadingIndicator()">
               Cancel
             </button>
-            <button mat-raised-button color="primary" type="button" (click)="saveOrUpdate()" [disabled]="loadingIndicator" data-testid="procedures-save-button">
+            <button mat-raised-button color="primary" type="button" (click)="saveOrUpdate()" [disabled]="loadingIndicator()" data-testid="procedures-save-button">
               {{ currentConsultationId() ? 'Update All Tabs' : 'Save All Tabs' }}
             </button>
           </div>
@@ -763,7 +763,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
   private readonly moduleSettings = inject(ModuleSettingsService);
   private readonly authService = inject(AuthService);
 
-  loadingIndicator = false;
+  readonly loadingIndicator = signal(false);
   readonly patients = signal<AestheticPatient[]>([]);
   readonly currentConsultationId = signal<number | null>(null);
   readonly selectedTabIndex = signal(0);
@@ -884,7 +884,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly lastSaveError = signal<string>('');
   readonly selectedVisitPNo = signal('');
   readonly selectedClinic = signal('');
-  readonly consultationDateIso = signal(new Date().toISOString());
+  readonly consultationDateIso = signal(this.toLocalIsoString(new Date()));
   readonly providerEmpId = computed(() => (this.authService.currentUser?.empID || '').trim());
 
   // Safety state
@@ -1404,8 +1404,16 @@ export class ProceduresEntryDialogComponent implements OnInit {
   }
 
   saveOrUpdate(): void {
+    // Defensive: prevent re-entrant clicks while a save is already in flight.
+    if (this.loadingIndicator()) {
+      return;
+    }
+
     this.saveAttempted.set(true);
     this.lastSaveError.set('');
+    // Clear any leftover sticky growl from a previous failed save so the user
+    // can see the new loading overlay instead of an old error covering the dialog.
+    this.alertService.resetStickyMessage();
 
     this.ensureDefaultSafetyValues();
 
@@ -1436,7 +1444,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
     }
 
     const payload = this.buildPayload();
-    this.loadingIndicator = true;
+    this.loadingIndicator.set(true);
     this.alertService.startLoadingMessage(this.currentConsultationId() ? 'Updating procedures...' : 'Saving procedures...');
 
     const consultationRequest = this.currentConsultationId()
@@ -1445,18 +1453,56 @@ export class ProceduresEntryDialogComponent implements OnInit {
 
     consultationRequest.subscribe({
       next: consultation => {
-        this.currentConsultationId.set(consultation.id);
-        this.generateProcedureNote(consultation);
-        this.uploadPendingPhotos(consultation.id);
+        // Wrap synchronous post-success work in try/catch so a throw here can't
+        // strand the Save button in a disabled state.
+        try {
+          this.currentConsultationId.set(consultation.id);
+          this.generateProcedureNote(consultation);
+          this.uploadPendingPhotos(consultation.id);
+        } catch (postError) {
+          this.loadingIndicator.set(false);
+          this.alertService.stopLoadingMessage();
+          const detail = this.extractBackendError(postError, 'Unable to finalise save.');
+          this.lastSaveError.set(detail);
+          this.alertService.showStickyMessage('Save error', detail, MessageSeverity.error, postError);
+        }
       },
       error: error => {
-        this.loadingIndicator = false;
+        this.loadingIndicator.set(false);
         this.alertService.stopLoadingMessage();
         const detail = this.extractBackendError(error, 'Unable to save procedures.');
         this.lastSaveError.set(detail);
         this.alertService.showStickyMessage('Save error', detail, MessageSeverity.error, error);
+      },
+      // Defensive backstop: tear down loading state on completion as well.
+      // Teardown is idempotent so this is safe even if `error` already ran.
+      complete: () => {
+        this.loadingIndicator.set(false);
+        this.alertService.stopLoadingMessage();
       }
     });
+  }
+
+  // Build an ISO-8601 string with the user's local offset (e.g.
+  // "2026-07-27T09:30:00.000+01:00") so the server stores the wall-clock the
+  // user actually sees. Unlike `new Date().toISOString()` (which always emits
+  // "Z" / UTC), this preserves the offset so the backend serializer can round-
+  // trip without drifting by an hour.
+  private toLocalIsoString(d: Date): string {
+    const pad = (n: number) => `${n}`.padStart(2, '0');
+    const y = d.getFullYear();
+    const mo = pad(d.getMonth() + 1);
+    const da = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const ms = `${d.getMilliseconds()}`.padStart(3, '0');
+    const offMin = -d.getTimezoneOffset();
+    const sign = offMin >= 0 ? '+' : '-';
+    const aOff = Math.abs(offMin);
+    const oh = pad(Math.floor(aOff / 60));
+    const om = pad(aOff % 60);
+    return `${y}-${mo}-${da}T${hh}:${mm}:${ss}.${ms}${sign}${oh}:${om}`;
   }
 
   private ensureDefaultSafetyValues(): void {
@@ -1591,17 +1637,17 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
   }
 
   private loadPatients(): void {
-    this.loadingIndicator = true;
+    this.loadingIndicator.set(true);
     this.alertService.startLoadingMessage('Loading patients...');
 
     this.endpoint.getPatientsEndpoint<AestheticPatient[]>().subscribe({
       next: patients => {
         this.patients.set(patients || []);
-        this.loadingIndicator = false;
+        this.loadingIndicator.set(false);
         this.alertService.stopLoadingMessage();
       },
       error: error => {
-        this.loadingIndicator = false;
+        this.loadingIndicator.set(false);
         this.alertService.stopLoadingMessage();
         this.alertService.showStickyMessage('Load error', 'Unable to load patients.', MessageSeverity.error, error);
       }
@@ -1822,7 +1868,7 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
   }
 
   private finishSaveSuccess(failedUploads = 0): void {
-    this.loadingIndicator = false;
+    this.loadingIndicator.set(false);
     this.alertService.stopLoadingMessage();
     const message = failedUploads > 0
       ? `Procedures saved. ${failedUploads} photo upload(s) failed.`

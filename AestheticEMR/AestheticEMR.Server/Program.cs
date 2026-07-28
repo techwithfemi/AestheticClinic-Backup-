@@ -51,6 +51,8 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Security.Claims;
 using AestheticEMR.Server.Services.Reporting;
+using AestheticEMR.Server.Serialization;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 var enableHttpsRedirection = builder.Configuration.GetValue("HttpsRedirection:Enabled", true);
@@ -306,7 +308,14 @@ builder.Services.AddAuthorizationBuilder()
             || context.User.IsInRole("Employees")));
 
 builder.Services.AddCors();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Ensure every DateTime on the wire carries an explicit offset so the
+        // Angular client never has to guess between UTC and local time.
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareDateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareNullableDateTimeConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

@@ -564,7 +564,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 ConsultId = normalizedConsultId,
                 PNo = normalizedPNo,
                 ProcedureType = normalizedProcedureType,
-                SignedDate = DateTime.UtcNow,
+                SignedDate = DateTime.Now,
                 SignedBy = NormalizeOptional(signedBy),
                 WitnessedBy = NormalizeOptional(witnessedBy),
                 SignatureName = normalizedSignatureName,
@@ -668,8 +668,8 @@ namespace AestheticEMR.Core.Services.Aesthetics
             }
 
             consent.DoctorViewedBy = normalizedDoctorViewedBy;
-            consent.DoctorViewedDate = DateTime.UtcNow;
-            consent.UpdatedDate = DateTime.UtcNow;
+            consent.DoctorViewedDate = DateTime.Now;
+            consent.UpdatedDate = DateTime.Now;
             dbContext.SaveChanges();
             return consent;
         }
