@@ -21,6 +21,7 @@ import {
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { ConsentFormEntryDialogComponent } from './consent-form-entry-dialog.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { formatUtcForDisplay, parseUtcDate } from '../../../shared/utils/utc-date.util';
 
 @Component({
   selector: 'app-consent-form-list',
@@ -441,23 +442,6 @@ export class ConsentFormListComponent implements OnInit {
   }
 
   formatSignedDate(value?: string): string {
-    if (!value) return '—';
-
-    let date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      const parts = (value || '').split('T');
-      const datePart = parts[0] || value;
-      const timePart = parts[1] ? parts[1].split('Z')[0] : '';
-      date = new Date(datePart + (timePart ? 'T' + timePart : ''));
-    }
-
-    if (Number.isNaN(date.getTime())) return value;
-
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('en', { month: 'short' });
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${day} ${month} ${year} · ${hours}:${minutes}`;
+    return formatUtcForDisplay(value);
   }
 }

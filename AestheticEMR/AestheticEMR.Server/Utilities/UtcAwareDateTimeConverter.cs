@@ -1,17 +1,8 @@
 // ---------------------------------------
 // Custom System.Text.Json converters for DateTime / DateTime?.
-// Goal: ensure every DateTime on the wire carries an explicit offset so the
-// client (Angular `Date.parse`) never has to guess between UTC and local.
-//
-// Behavior:
-//   Serialize: the value is converted to the server's local timezone and emitted
-//              with a numeric offset (e.g. "2026-07-27T09:30:00+01:00"). This
-//              matches what the user sees on the server clock and on the wall
-//              clock the clinic operates on.
-//   Deserialize: any incoming string with or without offset is converted to the
-//                server's local timezone before being stored. Values lacking an
-//                offset are treated as UTC (the historical convention for any
-//                values that were written before this converter was in place).
+// Goal: Ensure every DateTime preserves explicit UTC offsets on the wire
+// so client applications (e.g. Angular) display signed dates and chart
+// timestamps with 100% accuracy without offset shifts.
 // ---------------------------------------
 
 using System.Globalization;
@@ -30,20 +21,22 @@ namespace AestheticEMR.Server.Serialization
                 return DateTime.MinValue;
             }
 
-            // Parse with offset awareness. DateTimeOffset handles all three forms:
-            //   "...Z"     -> UTC
-            //   "...+HH:MM" -> that offset
-            //   "..." (no offset) -> treated as local (matches ECMAScript); we
-            //                         then reinterpret as UTC for parity with
-            //                         legacy data that was originally UTC.
-            if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto))
+            // Parse with offset awareness.
+            // If the string contains an offset or 'Z', it converts to standard UTC.
+            // If it lacks an offset, AssumeUniversal treats it as UTC (legacy fallback).
+            if (DateTimeOffset.TryParse(
+                raw,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var dto))
             {
-                return dto.LocalDateTime;
+                // Return explicitly as DateTimeKind.Utc to avoid server-local clock shifts
+                return dto.UtcDateTime;
             }
 
             if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt))
             {
-                return DateTime.SpecifyKind(dt, DateTimeKind.Local);
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
             }
 
             return DateTime.MinValue;
@@ -51,14 +44,16 @@ namespace AestheticEMR.Server.Serialization
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            var local = value.Kind switch
+            // Normalize all incoming DateTime kinds to UTC before emitting
+            var utc = value.Kind switch
             {
-                DateTimeKind.Utc => value.ToLocalTime(),
-                DateTimeKind.Local => value,
-                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc).ToLocalTime()
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
             };
 
-            writer.WriteStringValue(local.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz", CultureInfo.InvariantCulture));
+            // Format directly as standard ISO-8601 UTC string ending in "Z"
+            writer.WriteStringValue(utc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture));
         }
     }
 
@@ -79,14 +74,18 @@ namespace AestheticEMR.Server.Serialization
                 return null;
             }
 
-            if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto))
+            if (DateTimeOffset.TryParse(
+                raw,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var dto))
             {
-                return dto.LocalDateTime;
+                return dto.UtcDateTime;
             }
 
             if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt))
             {
-                return DateTime.SpecifyKind(dt, DateTimeKind.Local);
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
             }
 
             return null;

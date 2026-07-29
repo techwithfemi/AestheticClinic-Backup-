@@ -18,8 +18,10 @@ import { ModuleSettingsService } from '../../../services/module-settings.service
 import {
   AestheticConsentTemplate,
   AestheticSignedConsent,
-  SignAestheticConsent
+  SignAestheticConsent,
+  AestheticConsentStatus
 } from '../../../models/aesthetic.model';
+import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { QryhvisitsForToday } from '../../../models/legacy/qryhvisits-for-today.model';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
@@ -295,8 +297,18 @@ export class ConsentFormEntryDialogComponent implements OnInit {
 
   readonly patientAttendanceOptions = computed(() => {
     const patients = this.legacyPatients();
+    const today = new Date();
+    const isSameLocalDay = (raw?: string) => {
+       if (!raw) return false;
+       const d = new Date(raw);
+       return d.getFullYear() === today.getFullYear()
+         && d.getMonth() === today.getMonth()
+         && d.getDate() === today.getDate();
+    };
     return this.todayVisits()
-      .filter(v => !!v.consultId?.trim() && !!v.pNo?.trim())
+      // Only include records that have a consult id, patient number and whose
+      // visit date matches the current local date.
+      .filter(v => !!v.consultId?.trim() && !!v.pNo?.trim() && isSameLocalDay(v.recDate))
       .map(v => {
         const patient = patients.find(p => this.normalizePno(p.pno) === this.normalizePno(v.pNo));
         const patientName = (v.fullname || '').trim()

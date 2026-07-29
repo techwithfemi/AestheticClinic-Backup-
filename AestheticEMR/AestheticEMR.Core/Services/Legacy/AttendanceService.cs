@@ -344,7 +344,9 @@ public class AttendanceService(
 
     private void ApplyDefaults(HRecord record)
     {
-        record.RecDate = record.RecDate == default ? DateTime.Today : record.RecDate;
+        // Ensure RecDate stores date-only (time set to 00:00:00) so the DB view
+        // qryhvisitsForToday which filters by CURDATE() matches the stored value.
+        record.RecDate = record.RecDate == default ? DateTime.Today : record.RecDate.Date;
         record.Htime ??= DateTime.Now;
         record.EntryDate ??= DateTime.Now;
         record.EntryTime ??= DateTime.Now;
