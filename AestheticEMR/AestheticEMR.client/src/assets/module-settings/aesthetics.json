@@ -1,5 +1,6 @@
 {
   "autoFollowUpDays": 14,
+  "applySaveBlockers": true,
   "procedureTypes": [
     "Botox",
     "Neuromodulator",

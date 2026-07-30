@@ -505,6 +505,13 @@ When rendering legacy Crystal Reports from a VB.NET accounting app in a modern .
 
 **Reference file**: LEGACY_CRYSTAL_REPORTS_RENDERING_RULES.md in solution root.
 
+---
+
+## Procedures Entry Validation
+
+- For procedures entry validation, do not require `patientId > 0`; use `PNo` from `AttendanceSummary/header` as the patient identifier for save payload and validation.
+
+At backend, use `PNo` as the patient identifier and reject missing `PNo` with no fallback.
 
 
 

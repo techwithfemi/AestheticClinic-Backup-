@@ -1,4 +1,4 @@
-// ---------------------------------------
+﻿// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -1131,6 +1131,38 @@ namespace AestheticEMR.Core.Infrastructure
             builder.Entity<AestheticPatient>().ToTable("AestheticPatients");
             builder.Entity<AestheticConsultation>().ToTable("AestheticConsultations");
             builder.Entity<AestheticPhoto>().ToTable("AestheticPhotos");
+
+            builder.Entity<AestheticConsultation>(entity =>
+            {
+                entity.Property(e => e.ProcedureType).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Provider).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.ConsultId).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.PNo).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Services).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.ConsentNotes).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.ProcedureDescription).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.RisksAndComplications).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.PostTreatmentInstructions).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.SkinAssessment).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.TreatmentPlan).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.CurrentMedications).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Allergies).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.DeviceSettings).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.AreaTreated).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.DeviceUsed).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Wavelength).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.SpotSize).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Fluence).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.PulseDuration).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.CoolingMethod).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.SkinReaction).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Indication).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.BrandUsed).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.Dilution).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.InjectionMapping).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.LotNumber).HasColumnType("varchar(max)").IsUnicode(false);
+                entity.Property(e => e.FollowUpReview).HasColumnType("varchar(max)").IsUnicode(false);
+            });
 
             builder.Entity<AestheticPatient>()
                 .HasMany(p => p.Consultations)

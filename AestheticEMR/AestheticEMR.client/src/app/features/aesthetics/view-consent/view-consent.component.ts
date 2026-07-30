@@ -36,11 +36,11 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
           <div class="toolbar-grid">
             <mat-form-field appearance="outline">
               <mat-label>Search by Patient / ConsultId / Procedure</mat-label>
-              <input matInput [value]="searchText()" (input)="searchText.set(($any($event.target).value || '').trim())" />
+              <input matInput [value]="searchText()" (input)="onSearchChanged(($any($event.target).value || '').trim())" />
             </mat-form-field>
           </div>
 
-          <table mat-table [dataSource]="filteredConsents()" class="data-table">
+          <table mat-table [dataSource]="pagedConsents()" class="data-table">
             <ng-container matColumnDef="consultId">
               <th mat-header-cell *matHeaderCellDef>ConsultId</th>
               <td mat-cell *matCellDef="let row">{{ row.consultId }}</td>
@@ -71,6 +71,16 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
           </table>
+
+          @if (filteredConsents().length === 0) {
+            <div class="empty-row">No consent records found.</div>
+          } @else {
+            <div class="pager-row">
+              <button mat-stroked-button type="button" (click)="changePage(-1)" [disabled]="pageIndex() <= 0">Prev</button>
+              <span>Page {{ pageIndex() + 1 }} / {{ totalPages() }}</span>
+              <button mat-stroked-button type="button" (click)="changePage(1)" [disabled]="pageIndex() + 1 >= totalPages()">Next</button>
+            </div>
+          }
         </mat-card>
       }
 
@@ -188,6 +198,8 @@ import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
     /* Toolbar / table */
     .toolbar-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
     .data-table { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .empty-row { color: #666; padding: 10px 0; }
+    .pager-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 
     /* Report wrap */
     .report-wrap { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -324,6 +336,8 @@ export class ViewConsentComponent implements OnInit {
   readonly selectedConsent = signal<AestheticSignedConsent | null>(null);
   readonly searchText = signal('');
   readonly displayedColumns = ['consultId', 'patient', 'procedureType', 'signedDate', 'doctorViewed', 'actions'];
+  readonly pageIndex = signal(0);
+  readonly pageSize = 10;
 
   private readonly _embeddedConsent = signal<AestheticSignedConsent | null>(null);
 
@@ -336,10 +350,28 @@ export class ViewConsentComponent implements OnInit {
 
   readonly filteredConsents = computed(() => {
     const term = this.searchText().toLowerCase();
-    if (!term) return this.consents();
-    return this.consents().filter(item =>
-      `${item.consultId} ${item.pNo} ${item.procedureType} ${this.resolvePatientName(item.pNo)}`.toLowerCase().includes(term)
-    );
+    const rows = this.consents();
+
+    if (term) {
+      return rows.filter(item =>
+        `${item.consultId} ${item.pNo} ${item.procedureType} ${this.resolvePatientName(item.pNo)}`.toLowerCase().includes(term)
+      );
+    }
+
+    const todayKey = this.toLocalDateKey(new Date());
+    return rows.filter(item => this.toLocalDateKey(item.signedDate) === todayKey);
+  });
+
+  readonly totalPages = computed(() => {
+    const total = this.filteredConsents().length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  });
+
+  readonly pagedConsents = computed(() => {
+    const rows = this.filteredConsents();
+    const currentIndex = Math.min(this.pageIndex(), Math.max(0, this.totalPages() - 1));
+    const start = currentIndex * this.pageSize;
+    return rows.slice(start, start + this.pageSize);
   });
 
   readonly voidForm = this.fb.nonNullable.group({
@@ -362,12 +394,27 @@ export class ViewConsentComponent implements OnInit {
     });
   }
 
+  onSearchChanged(value: string): void {
+    this.searchText.set(value || '');
+    this.pageIndex.set(0);
+  }
+
+  changePage(step: number): void {
+    const next = this.pageIndex() + step;
+    if (next < 0 || next >= this.totalPages()) {
+      return;
+    }
+
+    this.pageIndex.set(next);
+  }
+
   refresh(): void {
     this.loadingIndicator = true;
     this.alertService.startLoadingMessage('Loading consents...');
     this.endpoint.getSignedConsentsEndpoint<AestheticSignedConsent[]>({ includeVoided: true }).subscribe({
       next: consents => {
         this.consents.set(consents || []);
+        this.pageIndex.set(0);
         this.loadingIndicator = false;
         this.alertService.stopLoadingMessage();
       },
@@ -430,6 +477,22 @@ export class ViewConsentComponent implements OnInit {
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
     const base = (this.configurations.baseUrl || '').replace(/\/$/, '');
     return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  }
+
+  private toLocalDateKey(value?: string | Date): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   resolveProviderName(value?: string): string {

@@ -160,27 +160,23 @@ namespace AestheticEMR.Core.Services.Aesthetics
             consultation.CreatedDate = DateTime.UtcNow;
             consultation.UpdatedDate = DateTime.UtcNow;
 
-            // Resolve PNo and ConsultId
-            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, pNo);
+            var resolvedPNo = (pNo ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(resolvedPNo))
+                throw new InvalidOperationException("Patient number (PNo) is required from the UI.");
+
             var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
 
-            // For Spa: ConsultId and PNo are required; resolve PatientId from HPatients (source of truth)
+            // PatientId is always resolved from PNo (PNo is source of truth)
+            var resolvedPatientId = ResolveAestheticPatientIdFromPNo(resolvedPNo);
+            if (resolvedPatientId <= 0)
+                throw new InvalidOperationException($"No patient record found for PNo '{resolvedPNo}'. Ensure the patient is registered in the system.");
+
+            consultation.PatientId = resolvedPatientId;
+
+            // For Spa: ConsultId is required
             var isSpa = consultation.ProcedureType?.Equals("Spa", StringComparison.OrdinalIgnoreCase) == true;
-            if (isSpa)
-            {
-                if (string.IsNullOrWhiteSpace(resolvedConsultId))
-                    throw new InvalidOperationException("ConsultId is required to save a Spa session. Ensure the patient has attendance recorded for today.");
-
-                if (string.IsNullOrWhiteSpace(resolvedPNo))
-                    throw new InvalidOperationException("Patient number (PNo) is required to save a Spa session.");
-
-                // Resolve PatientId from HPatients — ignore whatever the frontend sent
-                var resolvedPatientId = ResolveAestheticPatientIdFromPNo(resolvedPNo);
-                if (resolvedPatientId <= 0)
-                    throw new InvalidOperationException($"No patient record found for PNo '{resolvedPNo}'. Ensure the patient is registered in the system.");
-
-                consultation.PatientId = resolvedPatientId;
-            }
+            if (isSpa && string.IsNullOrWhiteSpace(resolvedConsultId))
+                throw new InvalidOperationException("ConsultId is required to save a Spa session. Ensure the patient has attendance recorded for today.");
 
             consultation.ConsultId = resolvedConsultId;
             consultation.PNo = resolvedPNo;
@@ -207,28 +203,23 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (!string.Equals(existing.CreatedBy, currentUserId, StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException("Only the author that created this clinical record can update it.");
 
-            // Resolve PNo and ConsultId
-            var resolvedPNo = ResolveLegacyPNo(consultation.PatientId, !string.IsNullOrWhiteSpace(pNo) ? pNo : consultation.PNo ?? existing.PNo);
-            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, !string.IsNullOrWhiteSpace(consultId) ? consultId : consultation.ConsultId ?? existing.ConsultId);
+            var resolvedPNo = (pNo ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(resolvedPNo))
+                throw new InvalidOperationException("Patient number (PNo) is required from the UI.");
 
-            // For Spa: enforce ConsultId/PNo, resolve PatientId from HPatients
+            var resolvedConsultId = ResolveLegacyConsultId(consultation.ConsultationDate, resolvedPNo, consultId);
+
+            // PatientId is always resolved from PNo (PNo is source of truth)
+            var resolvedPatientIdFromPNo = ResolveAestheticPatientIdFromPNo(resolvedPNo);
+            if (resolvedPatientIdFromPNo <= 0)
+                throw new InvalidOperationException($"No patient record found for PNo '{resolvedPNo}'. Ensure the patient is registered in the system.");
+
+            // For Spa: enforce ConsultId and PNo
             var isSpa = (consultation.ProcedureType ?? existing.ProcedureType).Equals("Spa", StringComparison.OrdinalIgnoreCase);
-            if (isSpa)
-            {
-                if (string.IsNullOrWhiteSpace(resolvedConsultId))
-                    throw new InvalidOperationException("ConsultId is required to update a Spa session. Ensure the patient has attendance recorded.");
+            if (isSpa && string.IsNullOrWhiteSpace(resolvedConsultId))
+                throw new InvalidOperationException("ConsultId is required to update a Spa session. Ensure the patient has attendance recorded.");
 
-                if (string.IsNullOrWhiteSpace(resolvedPNo))
-                    throw new InvalidOperationException("Patient number (PNo) is required to update a Spa session.");
-
-                var resolvedPatientId = ResolveAestheticPatientIdFromPNo(resolvedPNo);
-                if (resolvedPatientId > 0)
-                    existing.PatientId = resolvedPatientId;
-            }
-            else
-            {
-                existing.PatientId = consultation.PatientId;
-            }
+            existing.PatientId = resolvedPatientIdFromPNo;
 
             existing.ConsultationDate = consultation.ConsultationDate;
             existing.ProcedureType = consultation.ProcedureType;
@@ -263,7 +254,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.ConsentNotes = consultation.ConsentNotes;
 
             existing.ConsultId = resolvedConsultId ?? existing.ConsultId;
-            existing.PNo = resolvedPNo ?? existing.PNo;
+            existing.PNo = resolvedPNo;
             if (!string.IsNullOrWhiteSpace(services))
                 existing.Services = services;
 
@@ -925,9 +916,23 @@ namespace AestheticEMR.Core.Services.Aesthetics
 
         private void ValidateConsultationSafetyRequirements(AestheticConsultation consultation, string? consultId, string? pNo)
         {
+            if (string.IsNullOrWhiteSpace(pNo))
+            {
+                throw new InvalidOperationException("Patient number (PNo) is required.");
+            }
+
             if (consultation.PatientId <= 0)
             {
-                throw new InvalidOperationException("Patient is required.");
+                var resolvedPatientId = ResolveAestheticPatientIdFromPNo(pNo);
+                if (resolvedPatientId > 0)
+                {
+                    consultation.PatientId = resolvedPatientId;
+                }
+            }
+
+            if (consultation.PatientId <= 0)
+            {
+                throw new InvalidOperationException("No patient record found for the provided PNo.");
             }
 
             if (consultation.ConsultationDate == default)

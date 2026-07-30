@@ -14,7 +14,6 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
     {
         public int Id { get; set; }
 
-        [Range(0, int.MaxValue)]
         public int PatientId { get; set; }
 
         public string? PatientName { get; set; }
@@ -34,6 +33,7 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
         [StringLength(50)]
         public string? ConsultId { get; set; }
 
+        [Required]
         [StringLength(100)]
         public string? PNo { get; set; }
 
@@ -86,7 +86,7 @@ namespace AestheticEMR.Server.ViewModels.Aesthetic
     {
         public AestheticConsultationViewModelValidator()
         {
-            RuleFor(x => x.PatientId).GreaterThanOrEqualTo(0).WithMessage("Invalid patient identifier.");
+            RuleFor(x => x.PNo).NotEmpty().WithMessage("Patient number (PNo) is required.");
             RuleFor(x => x.ProcedureType).NotEmpty().WithMessage("Procedure type is required.");
             RuleFor(x => x.Services).NotEmpty().WithMessage("Services are required.");
             RuleFor(x => x.ConsultationDate)
