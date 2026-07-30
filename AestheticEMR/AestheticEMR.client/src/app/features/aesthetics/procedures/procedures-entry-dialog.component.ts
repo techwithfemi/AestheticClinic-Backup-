@@ -293,6 +293,7 @@ interface ProceduresEntryDialogData {
                 <mat-form-field appearance="outline" class="half">
                   <mat-label>Medications</mat-label>
                   <mat-select formControlName="medications" multiple>
+                    <mat-option value="">None</mat-option>
                     <mat-option value="anticoagulants">Anticoagulants</mat-option>
                     <mat-option value="retinoids">Retinoids</mat-option>
                     <mat-option value="steroids">Steroids</mat-option>
@@ -306,6 +307,7 @@ interface ProceduresEntryDialogData {
                 <mat-form-field appearance="outline" class="half">
                   <mat-label>Allergies</mat-label>
                   <mat-select formControlName="allergySelections" multiple (selectionChange)="onAllergiesChanged()">
+                    <mat-option value="">None</mat-option>
                     <mat-option value="lidocaine">Lidocaine</mat-option>
                     <mat-option value="latex">Latex</mat-option>
                     <mat-option value="antibiotics">Antibiotics</mat-option>
@@ -316,18 +318,11 @@ interface ProceduresEntryDialogData {
                   }
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="full">
-                  <mat-label>Allergies (free text)</mat-label>
-                  <textarea matInput rows="2" formControlName="allergyNotes"></textarea>
-                </mat-form-field>
-
-                <div class="half toggle-row"><span>HSV history</span><mat-slide-toggle formControlName="hsvHistory" (change)="onHsvHistoryChange()"></mat-slide-toggle></div>
-                <div class="half toggle-row"><span>Pregnancy</span><mat-slide-toggle formControlName="pregnancy" (change)="onPregnancyChange()"></mat-slide-toggle></div>
-
                 <mat-form-field appearance="outline" class="half">
                   <mat-label>Fitzpatrick skin type</mat-label>
                   <mat-select formControlName="fitzpatrickSkinType">
-                    @for (skin of [1,2,3,4,5,6]; track skin) {
+                    <mat-option value="">None</mat-option>
+                    @for (skin of [1, 2, 3, 4, 5, 6]; track skin) {
                       <mat-option [value]="skin">Type {{ skin }}</mat-option>
                     }
                   </mat-select>
@@ -336,30 +331,17 @@ interface ProceduresEntryDialogData {
                 <mat-form-field appearance="outline" class="half">
                   <mat-label>Acne severity</mat-label>
                   <mat-select formControlName="acneSeverity">
+                    <mat-option value="">None</mat-option>
                     <mat-option value="mild">Mild</mat-option>
                     <mat-option value="moderate">Moderate</mat-option>
                     <mat-option value="severe">Severe</mat-option>
                   </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="half">
-                  <mat-label>Pigmentation</mat-label>
-                  <mat-select formControlName="pigmentation">
-                    <mat-option value="none">None</mat-option>
-                    <mat-option value="mild">Mild</mat-option>
-                    <mat-option value="moderate">Moderate</mat-option>
-                    <mat-option value="severe">Severe</mat-option>
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="half">
-                  <mat-label>Scarring (type + severity)</mat-label>
-                  <input matInput formControlName="scarring" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="half">
                   <mat-label>Volume loss</mat-label>
                   <mat-select formControlName="volumeLoss">
+                    <mat-option value="">None</mat-option>
                     <mat-option value="mild">Mild</mat-option>
                     <mat-option value="moderate">Moderate</mat-option>
                     <mat-option value="severe">Severe</mat-option>
@@ -2054,271 +2036,6 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;
 
 
 

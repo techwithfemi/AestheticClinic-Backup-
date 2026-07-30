@@ -73,8 +73,8 @@
         { "label": "Company Information", "path": "companies", "icon": "business", "serialNo": 0, "visible": true },
         { "label": "Consent Form", "path": "consent-form", "icon": "fact_check", "serialNo": 0, "visible": true },
         { "label": "Patients Information", "path": "patients", "icon": "badge", "serialNo": 0, "visible": true },
-        { "label": "Patient Search", "path": "search", "icon": "search", "serialNo": 0, "visible": true },
-        { "label": "Recent Charts", "path": "recent", "icon": "history", "serialNo": 0, "visible": true }
+        { "label": "Patient Search", "path": "search", "icon": "search", "serialNo": 0, "visible": false },
+        { "label": "Recent Charts", "path": "recent", "icon": "history", "serialNo": 0, "visible": false }
       ]
     },
     "Inventory": {
