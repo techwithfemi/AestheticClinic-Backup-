@@ -230,7 +230,6 @@ export class ProceduresComponent implements OnInit {
       const allPatients = patients || [];
       const rows = allPatients
         .flatMap(patient => (patient.consultations || []).map(c => ({ ...c, patientId: patient.id })))
-        .filter(c => (c.procedureType || '').toLowerCase() === 'procedures')
         .sort((a, b) => (b.consultationDate || '').localeCompare(a.consultationDate || ''));
 
       this.patients.set(allPatients);

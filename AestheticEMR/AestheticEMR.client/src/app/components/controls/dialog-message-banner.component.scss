@@ -1,0 +1,61 @@
+.dialog-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+}
+
+.dialog-banner.success {
+  background: #e8f5e9;
+  border-color: #81c784;
+  color: #1b5e20;
+}
+
+.dialog-banner.error {
+  background: #ffebee;
+  border-color: #e57373;
+  color: #b71c1c;
+}
+
+.dialog-banner.warning {
+  background: #fff8e1;
+  border-color: #ffb74d;
+  color: #e65100;
+}
+
+.dialog-banner.info {
+  background: #e3f2fd;
+  border-color: #64b5f6;
+  color: #0d47a1;
+}
+
+.banner-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-title {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.banner-message {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.banner-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
