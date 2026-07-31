@@ -35,7 +35,7 @@
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Audit Trail", "path": "audit-trail", "icon": "history", "serialNo": 0, "visible": true },
+        { "label": "Audit Trail", "path": "audit-trail", "icon": "history", "serialNo": 0, "visible": false },
         { "label": "Procedures", "path": "procedures", "icon": "biotech", "serialNo": 0, "visible": true },
         { "label": "View Consent", "path": "view-consent", "icon": "description", "serialNo": 0, "visible": true }
       ]

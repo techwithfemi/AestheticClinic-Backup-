@@ -17,9 +17,15 @@
 }
 
 .dialog-banner.error {
-  background: #ffebee;
-  border-color: #e57373;
-  color: #b71c1c;
+  background: #c62828;
+  border-color: #b71c1c;
+  color: #ffffff;
+}
+
+.dialog-banner.error .banner-close,
+.dialog-banner.error .banner-close mat-icon,
+.dialog-banner.error .banner-icon {
+  color: #ffffff;
 }
 
 .dialog-banner.warning {

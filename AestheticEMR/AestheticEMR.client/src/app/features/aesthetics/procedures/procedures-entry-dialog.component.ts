@@ -868,7 +868,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
   readonly hasHsvHistory = signal(false);
   readonly isFillerSelected = signal(false);
   readonly saveAttempted = signal(false);
-  readonly selectedVisitPNo = signal('');
+  readonly selectedVisitPNo = computed(() => (this.selectedAttendanceSummary()?.pNo || '').trim());
   readonly patientSelectionError = signal('');
   readonly selectedClinic = signal('');
   readonly consultationDateIso = signal(new Date().toISOString());
@@ -1336,7 +1336,6 @@ export class ProceduresEntryDialogComponent implements OnInit {
 
     const selected = this.patientAttendanceOptions().find(x => x.consultId === normalizedConsultId);
     this.form.controls.patientId.setValue(selected?.patientId ?? 0);
-    this.selectedVisitPNo.set(selected?.pNo ?? '');
     this.selectedClinic.set('Aesthetic');
 
     if (normalizedConsultId && !this.selectedVisitPNo().trim()) {
@@ -2115,6 +2114,7 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     return [patient.pSurName, patient.pFirstname].filter(Boolean).join(' ').trim() || (pNo ?? 'Unknown patient');
   }
 }
+
 
 
 
