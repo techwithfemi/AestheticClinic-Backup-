@@ -11,9 +11,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
+import { AccountEndpoint } from '../../../services/account-endpoint.service';
 import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
 import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.component';
+import { User } from '../../../models/user.model';
 
 @Component({
   selector: 'app-procedures',
@@ -44,10 +46,10 @@ import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.compon
           type="text"
           class="search-input"
           [ngModel]="searchText()"
-          (ngModelChange)="searchText.set($event ?? '')"
+          (ngModelChange)="onSearchChanged($event ?? '')"
           placeholder="Search by patient name, PNO, consult ID, provider..." />
 
-        <select class="date-filter" [ngModel]="dateFilter()" (ngModelChange)="dateFilter.set($event)">
+        <select class="date-filter" [ngModel]="dateFilter()" (ngModelChange)="onDateFilterChanged($event)">
           <option value="today">Today</option>
           <option value="all">All dates</option>
         </select>
@@ -57,7 +59,7 @@ import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.compon
         @if (filteredRows().length === 0 && !loadingIndicator) {
           <p class="empty">No procedures records found.</p>
         } @else {
-          <table mat-table [dataSource]="filteredRows()" class="data-table">
+          <table mat-table [dataSource]="pagedRows()" class="data-table">
             <ng-container matColumnDef="patient">
               <th mat-header-cell *matHeaderCellDef>Patient</th>
               <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row) }}</td>
@@ -75,7 +77,12 @@ import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.compon
 
             <ng-container matColumnDef="provider">
               <th mat-header-cell *matHeaderCellDef>Provider</th>
-              <td mat-cell *matCellDef="let row">{{ row.provider || '—' }}</td>
+              <td mat-cell *matCellDef="let row">{{ resolveProviderLabel(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="services">
+              <th mat-header-cell *matHeaderCellDef>Services</th>
+              <td mat-cell *matCellDef="let row" class="truncate">{{ row.services || '—' }}</td>
             </ng-container>
 
             <ng-container matColumnDef="description">
@@ -98,6 +105,12 @@ import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.compon
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
           </table>
+
+          <div class="pager-row">
+            <button mat-stroked-button type="button" (click)="changePage(-1)" [disabled]="currentPageIndex() <= 0">Prev</button>
+            <span>Page {{ currentPageIndex() + 1 }} / {{ totalPages() }}</span>
+            <button mat-stroked-button type="button" (click)="changePage(1)" [disabled]="currentPageIndex() + 1 >= totalPages()">Next</button>
+          </div>
         }
       </mat-card>
     </div>
@@ -112,6 +125,7 @@ import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.compon
     .data-table { width: 100%; }
     .truncate { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .empty { color: #888; text-align: center; padding: 20px; }
+    .pager-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 0 4px; }
   `]
 })
 export class ProceduresComponent implements OnInit {
@@ -120,14 +134,18 @@ export class ProceduresComponent implements OnInit {
   private readonly alertService = inject(AlertService);
   private readonly endpoint = inject(AestheticEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
+  private readonly accountEndpoint = inject(AccountEndpoint);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
   readonly legacyPatients = signal<HPatient[]>([]);
   readonly consultations = signal<AestheticConsultation[]>([]);
+  readonly users = signal<User[]>([]);
   readonly searchText = signal('');
   readonly dateFilter = signal<'today' | 'all'>('today');
-  readonly displayedColumns = ['patient', 'consultId', 'date', 'provider', 'description', 'actions'];
+  readonly currentPageIndex = signal(0);
+  readonly pageSize = 10;
+  readonly displayedColumns = ['patient', 'consultId', 'date', 'provider', 'services', 'description', 'actions'];
 
   readonly filteredRows = computed(() => {
     const term = this.searchText().trim().toLowerCase();
@@ -145,9 +163,20 @@ export class ProceduresComponent implements OnInit {
       const patient = this.resolvePatientLabel(row).toLowerCase();
       const consultId = (row.consultId || '').toLowerCase();
       const pno = (row.pNo || '').toLowerCase();
-      const provider = (row.provider || '').toLowerCase();
-      return patient.includes(term) || consultId.includes(term) || pno.includes(term) || provider.includes(term);
+      const provider = this.resolveProviderLabel(row).toLowerCase();
+      const services = (row.services || '').toLowerCase();
+      return patient.includes(term) || consultId.includes(term) || pno.includes(term) || provider.includes(term) || services.includes(term);
     });
+  });
+
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredRows().length / this.pageSize)));
+
+  readonly pagedRows = computed(() => {
+    const pageIndex = this.currentPageIndex();
+    const maxIndex = Math.max(0, this.totalPages() - 1);
+    const safePageIndex = Math.min(pageIndex, maxIndex);
+    const start = safePageIndex * this.pageSize;
+    return this.filteredRows().slice(start, start + this.pageSize);
   });
 
   ngOnInit(): void {
@@ -199,6 +228,25 @@ export class ProceduresComponent implements OnInit {
     });
   }
 
+  onSearchChanged(value: string): void {
+    this.searchText.set(value || '');
+    this.currentPageIndex.set(0);
+  }
+
+  onDateFilterChanged(value: 'today' | 'all'): void {
+    this.dateFilter.set(value || 'today');
+    this.currentPageIndex.set(0);
+  }
+
+  changePage(step: number): void {
+    const next = this.currentPageIndex() + step;
+    if (next < 0 || next >= this.totalPages()) {
+      return;
+    }
+
+    this.currentPageIndex.set(next);
+  }
+
   resolvePatientLabel(row: AestheticConsultation): string {
     const pno = (row.pNo || '').trim();
 
@@ -206,17 +254,37 @@ export class ProceduresComponent implements OnInit {
     if (aesthetic) {
       const name = `${aesthetic.firstName ?? ''} ${aesthetic.lastName ?? ''}`.trim();
       if (name) {
-        return `${name}${pno ? ` [${pno}]` : ''}`;
+        return name;
       }
     }
 
     const legacy = this.legacyPatients().find(p => (p.pno || '').trim().toLowerCase() === pno.toLowerCase());
     if (legacy) {
       const name = `${legacy.pSurName ?? ''} ${legacy.pFirstname ?? ''}`.trim();
-      return `${name}${pno ? ` [${pno}]` : ''}`;
+      if (name) {
+        return name;
+      }
     }
 
-    return pno ? `[${pno}]` : `Patient #${row.patientId}`;
+    return pno || `Patient #${row.patientId}`;
+  }
+
+  resolveProviderLabel(row: AestheticConsultation): string {
+    const providerKey = (row.provider || '').trim();
+    if (!providerKey) {
+      return '—';
+    }
+
+    const provider = this.users().find(user =>
+      (user.id || '').trim().toLowerCase() === providerKey.toLowerCase()
+      || (user.userName || '').trim().toLowerCase() === providerKey.toLowerCase()
+      || (user.empID || '').trim().toLowerCase() === providerKey.toLowerCase());
+
+    if (!provider) {
+      return providerKey;
+    }
+
+    return provider.fullName || provider.userName || provider.id;
   }
 
   private load(): void {
@@ -225,8 +293,9 @@ export class ProceduresComponent implements OnInit {
 
     Promise.all([
       this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
-      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise()
-    ]).then(([patients, legacyPatients]) => {
+      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise(),
+      this.accountEndpoint.getUsersEndpoint<User[]>().toPromise()
+    ]).then(([patients, legacyPatients, users]) => {
       const allPatients = patients || [];
       const rows = allPatients
         .flatMap(patient => (patient.consultations || []).map(c => ({ ...c, patientId: patient.id })))
@@ -234,7 +303,9 @@ export class ProceduresComponent implements OnInit {
 
       this.patients.set(allPatients);
       this.legacyPatients.set(legacyPatients || []);
+      this.users.set(users || []);
       this.consultations.set(rows);
+      this.currentPageIndex.set(0);
       this.loadingIndicator = false;
       this.alertService.stopLoadingMessage();
     }).catch(error => {
