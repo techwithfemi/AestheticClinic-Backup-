@@ -55,6 +55,24 @@ export class MainLayoutComponent implements OnInit {
   appConfig = inject(AppConfigService);
   private readonly mobileBreakpoint = 992;
 
+  private static readonly sidebarIconPalette: Record<string, string> = {
+    dashboard: '#2563eb',
+    home: '#2563eb',
+    frontdesk: '#0ea5e9',
+    dental: '#14b8a6',
+    aesthetics: '#ec4899',
+    laser: '#f59e0b',
+    spa: '#a855f7',
+    billing: '#10b981',
+    accounting: '#4f46e5',
+    reports: '#0284c7',
+    employees: '#06b6d4',
+    'staff-roster': '#7c3aed',
+    clockin: '#f97316',
+    settings: '#6366f1',
+    admin: '#ef4444'
+  };
+
   menuEntries: { title: string; item: NavigationItem; subGroups?: SubNavGroup[] }[] = [];
 
   get userRoles(): string[] {
@@ -244,6 +262,37 @@ export class MainLayoutComponent implements OnInit {
       .filter(Boolean)
       .map(part => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
+  }
+
+  private normalizeSidebarKey(value: string | undefined): string {
+    return (value || '').trim().toLowerCase();
+  }
+
+  private resolveSidebarColor(primaryKey: string | undefined, fallbackKey?: string): string {
+    const normalizedPrimary = this.normalizeSidebarKey(primaryKey);
+    const normalizedFallback = this.normalizeSidebarKey(fallbackKey);
+
+    if (normalizedPrimary && MainLayoutComponent.sidebarIconPalette[normalizedPrimary]) {
+      return MainLayoutComponent.sidebarIconPalette[normalizedPrimary];
+    }
+
+    if (normalizedFallback && MainLayoutComponent.sidebarIconPalette[normalizedFallback]) {
+      return MainLayoutComponent.sidebarIconPalette[normalizedFallback];
+    }
+
+    return '#546e7a';
+  }
+
+  getMenuIconColor(title: string, route?: string): string {
+    return this.resolveSidebarColor(route, title);
+  }
+
+  getSubItemIconColor(parentTitle: string, parentRoute?: string): string {
+    return this.resolveSidebarColor(parentRoute, parentTitle);
+  }
+
+  getGroupIconColor(groupName: string): string {
+    return this.resolveSidebarColor(groupName, groupName);
   }
 
   // Normalize a sub-item label to Title Case (Pascal Case per word).

@@ -109,29 +109,28 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Actions</th>
           <td mat-cell *matCellDef="let r" class="actions-cell">
-            <button mat-icon-button type="button" color="primary"
+            <button mat-icon-button type="button" class="action-btn preview-btn"
                     matTooltip="Preview / Print receipt"
                     (click)="previewReceipt(r)">
-              <mat-icon>print</mat-icon>
+              <mat-icon class="action-icon">print</mat-icon>
             </button>
 
-            <button mat-icon-button type="button" color="accent"
+            <button mat-icon-button type="button" class="action-btn edit-btn"
                     [disabled]="r.canEdit === false"
                     [matTooltip]="r.canEdit === false
                       ? 'Cannot edit: This receipt belongs to a previous bill for this patient. Edit is only allowed on the latest bill.'
                       : 'Update receipt'"
                     (click)="openEditReceipt(r)">
-              <mat-icon [class.icon-disabled]="r.canEdit === false">edit</mat-icon>
+              <mat-icon class="action-icon" [class.icon-disabled]="r.canEdit === false">edit</mat-icon>
             </button>
 
-            <button mat-icon-button type="button"
-                    [color]="r.canDelete !== false ? 'warn' : ''"
+            <button mat-icon-button type="button" class="action-btn delete-btn"
                     [disabled]="r.canDelete === false"
                     [matTooltip]="r.canDelete === false
                       ? 'Cannot delete: Bill No is still referenced in operational records (attendance, billing, dental or consulting)'
                       : 'Delete receipt'"
                     (click)="deleteReceipt(r)">
-              <mat-icon [class.icon-disabled]="r.canDelete === false">
+              <mat-icon class="action-icon" [class.icon-disabled]="r.canDelete === false">
                 {{ r.canDelete === false ? 'delete_forever' : 'delete' }}
               </mat-icon>
             </button>

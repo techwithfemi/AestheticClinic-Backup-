@@ -121,8 +121,70 @@
   white-space: nowrap;
 
   .icon-disabled {
-    color: rgba(0, 0, 0, 0.26);
+    color: rgba(0, 0, 0, 0.26) !important;
     cursor: not-allowed;
+  }
+}
+
+.actions-cell .action-btn {
+  --mdc-icon-button-state-layer-size: 36px;
+  border-radius: 10px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+
+  .action-icon {
+    transition: color 0.18s ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+
+    .action-icon {
+      color: rgba(0, 0, 0, 0.26) !important;
+    }
+  }
+}
+
+.actions-cell .preview-btn {
+  background-color: rgba(16, 185, 129, 0.14);
+
+  .action-icon {
+    color: #059669;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(16, 185, 129, 0.22);
+  }
+}
+
+.actions-cell .edit-btn {
+  background-color: rgba(59, 130, 246, 0.12);
+
+  .action-icon {
+    color: #2563eb;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+}
+
+.actions-cell .delete-btn {
+  background-color: rgba(239, 68, 68, 0.14);
+
+  .action-icon {
+    color: #dc2626;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(239, 68, 68, 0.22);
   }
 }
 

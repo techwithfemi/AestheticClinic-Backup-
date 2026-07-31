@@ -158,6 +158,41 @@
   flex-shrink: 0;
 }
 
+.subitem-icon {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  font-size: 16px !important;
+  line-height: 16px !important;
+  color: #78909c;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.sub-nav-group-icon {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  color: #1a73e8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sub-nav-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a73e8;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* ── mat-panel-title holds both icon and label ── */
 mat-panel-title.menu-title {
   display: flex !important;
@@ -201,7 +236,7 @@ mat-panel-title.menu-title {
 
   a.mat-mdc-list-item.active-sub-item {
     background-color: #e8f0fe !important;
-    .subitem-icon { color: #1a73e8; }
+    .subitem-icon { color: #1a73e8 !important; }
     .subitem-label { color: #1a73e8; font-weight: 600; }
   }
 }
@@ -234,29 +269,6 @@ mat-panel-title.menu-title {
   }
 }
 
-.subitem-icon {
-  width: 16px !important;
-  min-width: 16px !important;
-  height: 16px !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-  color: #78909c;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
-
-.subitem-label {
-  font-size: 12px;
-  font-weight: 400;
-  color: #455a64;
-  line-height: 16px;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
 /* ── Grouped sub-nav (Reports menu) ── */
 .sub-nav-groups {
   display: flex;
@@ -283,31 +295,6 @@ mat-panel-title.menu-title {
     border-top: none;
     margin-top: 0;
   }
-}
-
-.sub-nav-group-icon {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  font-size: 14px !important;
-  line-height: 14px !important;
-  color: #1a73e8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.sub-nav-group-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #1a73e8;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.sub-nav-list-grouped {
-  padding: 0 0 2px 0 !important;
 }
 
 /* ── Toolbar ── */

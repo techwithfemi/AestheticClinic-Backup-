@@ -62,6 +62,73 @@
   margin-inline: auto;
 }
 
+.actions-cell .action-btn {
+  --mdc-icon-button-state-layer-size: 36px;
+  border-radius: 10px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+
+  .action-icon {
+    transition: color 0.18s ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+  }
+}
+
+.actions-cell .edit-btn {
+  background-color: rgba(59, 130, 246, 0.12);
+
+  .action-icon {
+    color: #2563eb;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+}
+
+.actions-cell .discount-btn {
+  background-color: rgba(249, 115, 22, 0.14);
+
+  .action-icon {
+    color: #ea580c;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(249, 115, 22, 0.22);
+  }
+}
+
+.actions-cell .invoice-btn {
+  background-color: rgba(16, 185, 129, 0.14);
+
+  .action-icon {
+    color: #059669;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(16, 185, 129, 0.22);
+  }
+}
+
+.actions-cell .receipt-btn {
+  background-color: rgba(139, 92, 246, 0.16);
+
+  .action-icon {
+    color: #7c3aed;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(139, 92, 246, 0.24);
+  }
+}
+
 .empty {
   margin-top: 12px;
   color: #6b7280;
