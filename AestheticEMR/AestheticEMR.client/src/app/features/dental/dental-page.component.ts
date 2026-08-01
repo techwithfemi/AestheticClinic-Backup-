@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -66,7 +66,7 @@ import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoi
             <table mat-table [dataSource]="tableDataSource" class="dental-table">
               <!-- Patient Column -->
               <ng-container matColumnDef="patient">
-                <th mat-header-cell *matHeaderCellDef>Patient (PNO)</th>
+                <th mat-header-cell *matHeaderCellDef>Patient</th>
                 <td mat-cell *matCellDef="let row">{{ resolvePatientLabel(row.pno) }}</td>
               </ng-container>
 
@@ -103,14 +103,15 @@ import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoi
                     type="button" 
                     (click)="openBilling(row)" 
                     matTooltip="Create Bill"
-                    color="accent">
+                    class="ui-icon-btn ui-icon-btn--success">
                     <mat-icon>receipt_long</mat-icon>
                   </button>
                   <button 
                     mat-icon-button 
                     type="button" 
                     (click)="openEditDialog(row)" 
-                    matTooltip="Edit Treatment">
+                    matTooltip="Edit Treatment"
+                    class="ui-icon-btn ui-icon-btn--primary">
                     <mat-icon>edit</mat-icon>
                   </button>
                   <button 
@@ -118,7 +119,7 @@ import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoi
                     type="button" 
                     (click)="deleteChart(row.id)" 
                     matTooltip="Delete Record"
-                    color="warn">
+                    class="ui-icon-btn ui-icon-btn--danger">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>
@@ -209,6 +210,7 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
+  private readonly cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   // PRIMARY DATA SOURCE: Treatment records (HDentalTreat / DentalChart)
   readonly dentalCharts = signal<DentalChart[]>([]);
@@ -222,9 +224,9 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
 
   readonly columns = ['patient', 'consultId', 'treatmentDate', 'treatmentTime', 'treatmentType', 'actions'];
   readonly searchText = signal('');
-  readonly totalRecords = signal(0);
   
   tableDataSource = new MatTableDataSource<DentalChart>([]);
+  totalRecords = 0;
 
   ngOnInit(): void {
     this.load();
@@ -261,7 +263,15 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
     }
 
     this.tableDataSource.data = filtered;
-    this.totalRecords.set(filtered.length);
+    this.totalRecords = filtered.length;
+    
+    // Reset paginator to first page when filtering
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
+    
+    // Trigger change detection to update paginator display
+    this.cdr.markForCheck();
   }
 
   openAddDialog(): void {
@@ -288,13 +298,43 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
 
     this.dentalEndpoint.getEncounterEndpoint<DentalEncounter>(row.consultId, row.pno).subscribe({
       next: encounter => {
+        // Build a patient option for the encounter being edited (for previous visits)
+        const p = this.patients().find(x => x.pno === row.pno);
+        const attendance = this.attendance().find(a => a.consultId === row.consultId && a.pNo === row.pno);
+        
+        let patientOptionsForDialog = this.patientOptions();
+        
+        // If this visit is not in today's options (previous visit), add it
+        if (!patientOptionsForDialog.find(opt => opt.consultId === row.consultId && opt.pNo === row.pno) && p) {
+          const fullName = `${p.pSurName ?? 'Unknown'} ${p.pFirstname ?? ''}`.trim();
+          const attendDate = attendance?.recDate ? this.formatAttendDate(attendance.recDate) : '';
+          const retainership = this.retainerships().find(x => x.retainId === attendance?.coyname);
+          const companyName = attendance?.coyname || retainership?.retainName || p.coyName;
+          
+          const previousVisitOption: DentalPatientOption = {
+            pNo: row.pno,
+            consultId: row.consultId,
+            clientCat: attendance?.clientCat,
+            label: `${fullName} ${attendDate} [${row.consultId}]`,
+            fullName,
+            attendDate,
+            photo: p.patPixBase64,
+            dateOfBirth: p.dob,
+            companyName,
+            coyId: attendance?.coyname,
+            clinic: attendance?.clinicType || ''
+          };
+          
+          patientOptionsForDialog = [...patientOptionsForDialog, previousVisitOption];
+        }
+        
         const ref = this.dialog.open(DentalEncounterDialogComponent, {
           width: '98vw',
           maxWidth: '980px',
           disableClose: true,
           data: {
             initialTabIndex,
-            patientOptions: this.patientOptions(),
+            patientOptions: patientOptionsForDialog,
             encounter
           }
         });
@@ -389,7 +429,7 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
 
   resolvePatientLabel(pno: string): string {
     const p = this.patients().find(x => x.pno === pno);
-    return p ? `${p.pSurName} ${p.pFirstname ?? ''} [${pno}]`.trim() : `[${pno}]`;
+    return p ? `${p.pSurName} ${p.pFirstname ?? ''}`.trim() : `[${pno}]`;
   }
 
   private buildPatientOptions(): DentalPatientOption[] {

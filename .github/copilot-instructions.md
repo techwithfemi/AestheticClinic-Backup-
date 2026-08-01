@@ -257,6 +257,17 @@ quickapp.client/src/app/
 
 **Use `attendance-summary.component` as a reusable standalone UI component** and display it in the header sections of all clinical pages; the component is already used in the Add Invoice dialog header, and `BillNo` is the same as `consultID`. **AttendanceSummaryComponent is the sole source of truth for the receipt dialog header, and no extra patient photo lookup from HPatients should be added for that header flow.** However, it is acceptable to load the patient photo from HPatients and supply it to AttendanceSummaryComponent for the receipt dialog attendance header flow.
 
+### Global Icon Styling Rule
+
+**All new icon usage in the Angular UI must use the shared global icon system** unless a feature has a clear special case.
+
+1. ✅ Use the reusable global icon classes for table action icons, page header icons, tab icons, toolbar icons, and sidebar/navigation icons.
+2. ✅ Prefer semantic icon colors and consistent sizing instead of ad-hoc per-component icon styling.
+3. ✅ Use shared button/icon utility classes for icon-only buttons so hover, focus, radius, and disabled states stay consistent.
+4. ✅ Keep icon styling professional, colorful, and visually balanced across the app.
+5. ❌ Do not create new one-off icon color patterns in feature components when the shared global system fits.
+6. ❌ Do not revert to monochrome icon defaults for standard action, navigation, or page-level icons when a shared style is available.
+
 ### Services
 
 **ALL API services MUST extend `EndpointBase`** which provides:

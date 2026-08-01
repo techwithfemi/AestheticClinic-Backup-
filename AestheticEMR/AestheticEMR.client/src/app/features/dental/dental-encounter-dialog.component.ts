@@ -64,8 +64,8 @@ export interface DentalEncounterDialogData {
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>{{ isEdit ? 'Edit Dental Info' : 'Add Dental Info' }}</h2>
-      <button mat-icon-button type="button" (click)="dialogRef.close()" class="close-btn" aria-label="Close dialog">
-        <mat-icon>close</mat-icon>
+      <button mat-icon-button type="button" (click)="dialogRef.close()" class="close-btn ui-icon-btn ui-icon-btn--danger" aria-label="Close dialog">
+        <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
       </button>
     </div>
 
@@ -79,7 +79,7 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon>assignment</mat-icon>
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--primary">assignment</mat-icon>
             <span>History Taking</span>
           </ng-template>
           <div class="tab-body">
@@ -102,7 +102,7 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon>medical_services</mat-icon>
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--success">medical_services</mat-icon>
             <span>Treatment</span>
           </ng-template>
           <div class="tab-body">
@@ -236,7 +236,7 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon>straighten</mat-icon>
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--accent">straighten</mat-icon>
             <span>Orthodontics</span>
           </ng-template>
           <div class="tab-body">
@@ -375,7 +375,7 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon>manage_accounts</mat-icon>
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--warning">manage_accounts</mat-icon>
             <span>Management</span>
           </ng-template>
           <div class="tab-body">
@@ -389,7 +389,7 @@ export interface DentalEncounterDialogData {
 
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon>image</mat-icon>
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--info">image</mat-icon>
             <span>Imaging</span>
           </ng-template>
           <div class="tab-body">
@@ -419,11 +419,11 @@ export interface DentalEncounterDialogData {
                     <div class="image-item">
                       <img [src]="getSanitizedImageUrl(img)" [alt]="'Dental image ' + (i + 1)" class="dental-image" />
                       <div class="image-item-actions">
-                        <button mat-icon-button type="button" (click)="zoomImage(img)" title="Zoom image">
-                          <mat-icon>zoom_in</mat-icon>
+                        <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomImage(img)" title="Zoom image">
+                          <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">zoom_in</mat-icon>
                         </button>
-                        <button mat-icon-button type="button" (click)="removeImageAt(i)" title="Remove image">
-                          <mat-icon>close</mat-icon>
+                        <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removeImageAt(i)" title="Remove image">
+                          <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
                         </button>
                       </div>
                     </div>
@@ -437,8 +437,8 @@ export interface DentalEncounterDialogData {
             @if (zoomImageUrl) {
               <div class="image-zoom-overlay" tabindex="0" (click)="closeZoom()" (keydown.enter)="closeZoom()" (keydown.space)="closeZoom()">
                 <div class="image-zoom-dialog" tabindex="0" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
-                  <button mat-icon-button type="button" class="image-zoom-close" (click)="closeZoom()">
-                    <mat-icon>close</mat-icon>
+                  <button mat-icon-button type="button" class="image-zoom-close ui-icon-btn ui-icon-btn--danger" (click)="closeZoom()">
+                    <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
                   </button>
                   <img [src]="getSanitizedImageUrl(zoomImageUrl)" alt="Dental image zoom" class="image-zoom-img" />
                 </div>
@@ -554,7 +554,6 @@ export interface DentalEncounterDialogData {
       color: #4dd0e1;
     }
     ::ng-deep .mat-mdc-tab .mdc-tab__text-label .mat-icon {
-      color: #7c4dff;
       font-size: 18px;
       width: 18px;
       height: 18px;
@@ -590,8 +589,8 @@ export interface DentalEncounterDialogData {
     .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; width: 100%; }
     .image-item { position: relative; }
     .image-item-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
-    .image-item-actions button { width: 28px; height: 28px; background: rgba(0, 0, 0, 0.55); }
-    .image-item-actions .mat-icon { color: #fff; font-size: 18px; width: 18px; height: 18px; }
+    .image-item-actions button { width: 28px; height: 28px; }
+    .image-item-actions .mat-icon { font-size: 18px; width: 18px; height: 18px; }
     .dental-image { width: 100%; max-height: 180px; object-fit: cover; border-radius: 6px; border: 1px solid #374151; }
 
     .image-zoom-overlay {
@@ -622,12 +621,7 @@ export interface DentalEncounterDialogData {
       border-radius: 6px;
       object-fit: contain;
     }
-    .image-zoom-close {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: rgba(0, 0, 0, 0.45);
-    }
+    .image-zoom-close { position: absolute; top: 6px; right: 6px; }
     .image-zoom-close .mat-icon {
       color: #fff;
     }
