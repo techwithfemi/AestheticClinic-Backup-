@@ -1,16 +1,12 @@
-﻿using AestheticEMR.Core.Infrastructure;
-using AestheticEMR.Core.Models.Employees;
-using AestheticEMR.Core.Models.Legacy;
+﻿using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Services.Employees.Interfaces;
 using DataAccess.DbAccess;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using EmployeeEntity = AestheticEMR.Core.Models.Employees.Employees;
 
 namespace AestheticEMR.Core.Services.Employees;
 
 public class EmployeeService(
-    ApplicationDbContext context,
     ISqlDataAccess db,
     ILogger<EmployeeService> logger) : IEmployeeService
 {
@@ -20,8 +16,18 @@ public class EmployeeService(
 
     public async Task<string> GenerateEmpIdAsync()
     {
-        var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == EmpIdCode);
-        var nextId = (idgen?.Id ?? 0) + 1;
+        const string sql = @"
+SELECT TOP 1 ISNULL(ID, 0) AS Id
+FROM IDgen
+WHERE DestName = @DestName;";
+
+        var row = (await db.LoadDataText<IdGenRow, dynamic>(sql, new { DestName = EmpIdCode }, ConnectionId))
+            .FirstOrDefault();
+
+        if (row == null)
+            throw new InvalidOperationException("Emp No generator has encountered some problems");
+
+        var nextId = row.Id + 1;
         return $"{EmpIdPrefix}{Convert.ToInt64(nextId):D7}";
     }
 
@@ -69,53 +75,36 @@ WHERE LTRIM(RTRIM(EmpID)) = @EmpId;";
 
     public async Task<EmployeeEntity> CreateAsync(EmployeeEntity employee)
     {
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        try
-        {
-            var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == EmpIdCode);
+        var currentId = await GetCurrentGeneratedIdAsync();
+        var nextId = currentId + 1;
 
-            decimal nextId;
-            if (idgen == null)
-            {
-                idgen = new Idgen { DestName = EmpIdCode, Id = 1 };
-                context.HrIdgens.Add(idgen);
-                nextId = 1;
-            }
-            else
-            {
-                nextId = idgen.Id + 1;
-                idgen.Id = nextId;
-            }
+        employee.EmpId = $"{EmpIdPrefix}{Convert.ToInt64(nextId):D7}";
 
-            employee.EmpId = $"{EmpIdPrefix}{Convert.ToInt64(nextId):D7}";
-
-            const string insertSql = @"
+        const string insertSql = @"
 INSERT INTO Employees (EmpID, LastName, FirstName, Designation, DeptID, EmpStatus, Dob, Sex)
 VALUES (@EmpId, @LastName, @FirstName, @Designation, @DeptId, @EmpStatus, @Dob, @Sex);";
 
-            await db.SaveDataText(insertSql, new
-            {
-                EmpId = employee.EmpId,
-                LastName = NormalizeRequired(employee.LastName),
-                FirstName = NormalizeRequired(employee.FirstName),
-                Designation = NormalizeText(employee.Designation),
-                DeptId = NormalizeText(employee.DeptId),
-                EmpStatus = NormalizeText(employee.EmpStatus) ?? "ACTIVE",
-                employee.Dob,
-                Sex = NormalizeText(employee.Sex)
-            }, ConnectionId);
-
-            await context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            logger.LogInformation("Created employee {EmpId}", employee.EmpId);
-            return employee;
-        }
-        catch
+        await db.SaveDataText(insertSql, new
         {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            EmpId = employee.EmpId,
+            LastName = NormalizeRequired(employee.LastName),
+            FirstName = NormalizeRequired(employee.FirstName),
+            Designation = NormalizeText(employee.Designation),
+            DeptId = NormalizeText(employee.DeptId),
+            EmpStatus = NormalizeText(employee.EmpStatus) ?? "ACTIVE",
+            employee.Dob,
+            Sex = NormalizeText(employee.Sex)
+        }, ConnectionId);
+
+        const string updateIdSql = @"
+UPDATE IDgen
+SET ID = @Id
+WHERE DestName = @DestName;";
+
+        await db.SaveDataText(updateIdSql, new { Id = nextId, DestName = EmpIdCode }, ConnectionId);
+
+        logger.LogInformation("Created employee {EmpId}", employee.EmpId);
+        return employee;
     }
 
     public async Task<EmployeeEntity> UpdateAsync(EmployeeEntity employee)
@@ -196,6 +185,22 @@ ORDER BY DeptName;";
         return rows.ToList();
     }
 
+    private async Task<decimal> GetCurrentGeneratedIdAsync()
+    {
+        const string sql = @"
+SELECT TOP 1 ISNULL(ID, 0) AS Id
+FROM IDgen
+WHERE DestName = @DestName;";
+
+        var row = (await db.LoadDataText<IdGenRow, dynamic>(sql, new { DestName = EmpIdCode }, ConnectionId))
+            .FirstOrDefault();
+
+        if (row == null)
+            throw new InvalidOperationException("Emp No generator has encountered some problems");
+
+        return row.Id;
+    }
+
     private static string? NormalizeText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -204,5 +209,10 @@ ORDER BY DeptName;";
     private static string NormalizeRequired(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+
+    private sealed class IdGenRow
+    {
+        public decimal Id { get; init; }
     }
 }

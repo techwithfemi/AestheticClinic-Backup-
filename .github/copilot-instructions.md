@@ -5,7 +5,6 @@
 ## Quick Start
 
 When asking AI to extend QuickApp, include this in your prompt:
-- Reference the AI rules file: ai-rules/AI_RULES.md
 - Follow the exact patterns and conventions documented in this file.
 - Reference UserAccountController, UserRoleController, and UserVMs.cs for real implementation examples.
 
@@ -523,6 +522,10 @@ When rendering legacy Crystal Reports from a VB.NET accounting app in a modern .
 - For procedures entry validation, do not require `patientId > 0`; use `PNo` from `AttendanceSummary/header` as the patient identifier for save payload and validation.
 
 At backend, use `PNo` as the patient identifier and reject missing `PNo` with no fallback.
+
+### Employee Info Page
+
+**CRUD Operations**: Employee-info page CRUD operations must use Dapper with SmartHRConnection, not DefaultConnection.
 
 
 

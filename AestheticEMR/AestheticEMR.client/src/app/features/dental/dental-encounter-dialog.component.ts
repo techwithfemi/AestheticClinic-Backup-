@@ -1,4 +1,4 @@
-import { Component, inject, HostListener, OnDestroy } from '@angular/core';
+import { Component, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
@@ -780,10 +780,6 @@ export interface DentalEncounterDialogData {
       .image-item-actions button { width: 32px; height: 32px; }
       .image-item-actions .mat-icon { font-size: 20px; width: 20px; height: 20px; }
       .image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-      ::ng-deep .mat-mdc-tab-header { overflow-x: auto; }
-      ::ng-deep .mat-mdc-tab .mdc-tab__text-label { font-size: 0.82rem; }
-      .image-actions { flex-direction: column; }
     }
 
     @media (max-width: 480px) {
@@ -860,7 +856,7 @@ export interface DentalEncounterDialogData {
     }
   `]
 })
-export class DentalEncounterDialogComponent implements OnDestroy {
+export class DentalEncounterDialogComponent {
   readonly dialogRef = inject(MatDialogRef<DentalEncounterDialogComponent>);
   readonly data = inject<DentalEncounterDialogData>(MAT_DIALOG_DATA);
   private readonly dentalEndpoint = inject(DentalEndpoint);
@@ -924,60 +920,76 @@ export class DentalEncounterDialogComponent implements OnDestroy {
   sanitizedImageUrls = new Map<string, SafeUrl>();
 
   private scrollableContentRef?: HTMLElement;
-  private keysPressed = new Set<string>();
-  private scrollAnimationId?: number;
+  private isScrolling = false;
 
   @HostListener('keydown', ['$event'])
-  handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      if (!this.scrollableContentRef) {
-        this.scrollableContentRef = document.querySelector('mat-dialog-content') as HTMLElement;
-      }
-
-      if (!this.scrollableContentRef) return;
-
-      // Prevent default scrolling and add key to pressed set
-      event.preventDefault();
-      this.keysPressed.add(event.key);
-
-      // Start smooth scrolling loop if not already running
-      if (!this.scrollAnimationId) {
-        this.startSmoothScroll();
-      }
-    }
-  }
-
-  @HostListener('keyup', ['$event'])
-  handleKeyUp(event: KeyboardEvent): void {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      this.keysPressed.delete(event.key);
-
-      // Stop animation loop if no keys are pressed
-      if (this.keysPressed.size === 0 && this.scrollAnimationId !== undefined) {
-        cancelAnimationFrame(this.scrollAnimationId);
-        this.scrollAnimationId = undefined;
-      }
-    }
-  }
-
-  private startSmoothScroll(): void {
-    if (!this.scrollableContentRef || this.keysPressed.size === 0) {
-      this.scrollAnimationId = undefined;
+  handleKeyboardScroll(event: KeyboardEvent): void {
+    // Only handle arrow keys
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
       return;
     }
 
-    // Scroll amount per frame (60fps = ~2px per frame for smooth motion)
-    const scrollPerFrame = 2;
-
-    if (this.keysPressed.has('ArrowUp')) {
-      this.scrollableContentRef.scrollTop -= scrollPerFrame;
+    // Get the focused element
+    const focusedElement = document.activeElement as HTMLElement;
+    
+    // Skip if focus is on an interactive control (input, select, textarea, button)
+    const interactiveSelectors = ['input', 'select', 'textarea', 'button', '[contenteditable]'];
+    if (focusedElement && interactiveSelectors.some(selector => 
+      focusedElement.matches(selector) || focusedElement.closest(selector)
+    )) {
+      return;
     }
-    if (this.keysPressed.has('ArrowDown')) {
-      this.scrollableContentRef.scrollTop += scrollPerFrame;
+
+    // Skip if focus is on a mat-tab element or mat-select
+    if (focusedElement && (focusedElement.closest('mat-tab') || focusedElement.closest('.mat-mdc-select'))) {
+      return;
     }
 
-    // Continue the animation loop
-    this.scrollAnimationId = requestAnimationFrame(() => this.startSmoothScroll());
+    if (!this.scrollableContentRef) {
+      this.scrollableContentRef = document.querySelector('mat-dialog-content') as HTMLElement;
+    }
+
+    if (!this.scrollableContentRef || this.isScrolling) {
+      return;
+    }
+
+    // Prevent default browser behavior (page scroll, tab navigation, etc.)
+    event.preventDefault();
+    event.stopPropagation();
+
+    const scrollStep = 50; // Pixels to scroll per arrow key press
+    const direction = event.key === 'ArrowUp' ? -1 : 1;
+
+    this.performSmoothScroll(direction * scrollStep);
+  }
+
+  private performSmoothScroll(distance: number): void {
+    if (!this.scrollableContentRef || this.isScrolling) return;
+
+    this.isScrolling = true;
+    const startScrollTop = this.scrollableContentRef.scrollTop;
+    const duration = 200; // milliseconds
+    const startTime = Date.now();
+
+    const easeInOutQuad = (t: number): number => {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    };
+
+    const animateScroll = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeProgress = easeInOutQuad(progress);
+
+      this.scrollableContentRef!.scrollTop = startScrollTop + distance * easeProgress;
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      } else {
+        this.isScrolling = false;
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
   }
 
   get isEdit(): boolean {
@@ -1032,13 +1044,6 @@ export class DentalEncounterDialogComponent implements OnDestroy {
     }
 
     this.applyLegacyFlagsToStatusMap();
-  }
-
-  ngOnDestroy(): void {
-    if (this.scrollAnimationId !== undefined) {
-      cancelAnimationFrame(this.scrollAnimationId);
-      this.scrollAnimationId = undefined;
-    }
   }
 
   isStatusChecked(tooth: string, key: keyof ToothStatus): boolean {
@@ -1439,6 +1444,21 @@ export class DentalEncounterDialogComponent implements OnDestroy {
       .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, unknown>);
 
     return cleaned as Partial<T>;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    const contentElement = document.querySelector('mat-dialog-content') as HTMLElement;
+
+    if (event.key === 'ArrowDown') {
+      // Scroll down
+      event.preventDefault();
+      contentElement.scrollBy({ top: 80, behavior: 'smooth' });
+    } else if (event.key === 'ArrowUp') {
+      // Scroll up
+      event.preventDefault();
+      contentElement.scrollBy({ top: -80, behavior: 'smooth' });
+    }
   }
 }
 
