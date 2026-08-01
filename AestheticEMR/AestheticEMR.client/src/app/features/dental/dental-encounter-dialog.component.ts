@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
@@ -14,6 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { AttendanceSummaryComponent } from '../../components/attendance-summary/attendance-summary.component';
+import { DialogMessageBannerComponent, DialogMessageBannerType } from '../../components/controls/dialog-message-banner.component';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
 import { VwhRecord } from '../../models/legacy/vwh-record.model';
@@ -59,7 +60,8 @@ export interface DentalEncounterDialogData {
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    AttendanceSummaryComponent
+    AttendanceSummaryComponent,
+    DialogMessageBannerComponent
   ],
   template: `
     <div class="dialog-header">
@@ -69,7 +71,15 @@ export interface DentalEncounterDialogData {
       </button>
     </div>
 
-    <mat-dialog-content>
+    <app-dialog-message-banner
+      [(visible)]="dialogBannerVisible"
+      [title]="dialogBannerTitle"
+      [message]="dialogBannerMessage"
+      [type]="dialogBannerType"
+      [autoHideMs]="dialogBannerAutoHideMs">
+    </app-dialog-message-banner>
+
+    <mat-dialog-content #scrollableContent>
       <app-attendance-summary
         [attendance]="selectedAttendanceSummary"
         [photo]="selectedPatientInfo?.photo">
@@ -458,9 +468,47 @@ export interface DentalEncounterDialogData {
     </mat-dialog-actions>
   `,
   styles: [`
-    mat-dialog-content { width: min(1000px, 95vw); max-width: 95vw; overflow-x: hidden; }
+    mat-dialog-content {
+      width: min(1000px, 95vw);
+      max-width: 95vw;
+      max-height: calc(100vh - 220px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 4px;
+    }
+    mat-dialog-content::-webkit-scrollbar { width: 10px; }
+    mat-dialog-content::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.15); border-radius: 10px; }
+    mat-dialog-content::-webkit-scrollbar-thumb { background: rgba(125, 211, 252, 0.65); border-radius: 10px; }
+    mat-dialog-content::-webkit-scrollbar-thumb:hover { background: rgba(125, 211, 252, 0.85); }
+
     .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .close-btn { font-size: 20px; font-weight: 700; line-height: 1; width: 34px; height: 34px; border-radius: 50%; }
+    .close-btn {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid #fecaca;
+      background: #b91c1c;
+      color: #ffffff;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 6px 14px rgba(0, 0, 0, 0.3);
+    }
+    .close-btn:hover { background: #dc2626; }
+    .close-btn:focus-visible {
+      outline: 2px solid #fde68a;
+      outline-offset: 2px;
+    }
+    .close-btn .mat-icon,
+    .close-btn .ui-icon {
+      color: #ffffff;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
     .top-row { margin-bottom: 10px; }
     .full { width: 100%; }
     .tab-body { padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -848,6 +896,12 @@ export class DentalEncounterDialogComponent {
   /** Errors shown in the sticky banner above the dialog content */
   inlineErrors: string[] = [];
 
+  dialogBannerVisible = false;
+  dialogBannerTitle = '';
+  dialogBannerMessage = '';
+  dialogBannerType: DialogMessageBannerType = 'info';
+  dialogBannerAutoHideMs = 5000;
+
   chart: DentalChart = {
     id: 0,
     pno: '',
@@ -868,6 +922,37 @@ export class DentalEncounterDialogComponent {
   selectedImageFiles: File[] = [];
   zoomImageUrl = '';
   sanitizedImageUrls = new Map<string, SafeUrl>();
+
+  private scrollableContentRef?: HTMLElement;
+
+  @HostListener('keydown', ['$event'])
+  handleKeyboardScroll(event: KeyboardEvent): void {
+    if (!this.scrollableContentRef) {
+      this.scrollableContentRef = document.querySelector('mat-dialog-content') as HTMLElement;
+    }
+
+    if (!this.scrollableContentRef) return;
+
+    // Match typical mouse wheel scroll (120 pixels per wheel delta)
+    const scrollAmount = 120;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        event.preventDefault();
+        this.scrollableContentRef.scrollBy({
+          top: -scrollAmount,
+          behavior: 'smooth'
+        });
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.scrollableContentRef.scrollBy({
+          top: scrollAmount,
+          behavior: 'smooth'
+        });
+        break;
+    }
+  }
 
   get isEdit(): boolean {
     return !!this.data.encounter;
@@ -1142,9 +1227,13 @@ export class DentalEncounterDialogComponent {
       } else if (!this.imaging.findings?.trim()) {
         this.selectedTabIndex = 4;
       }
+
+      const validationSummary = this.inlineErrors.map(x => `• ${x}`).join('\n');
+      this.showDialogBanner('Validation', validationSummary, 'warning', 0);
       return;
     }
 
+    this.dialogBannerVisible = false;
     this.chart.tDate = this.fromDateObject(this.chartDateValue, this.chart.tDate);
     this.imaging.imagingDate = this.fromDateInput(this.imagingDate, this.imaging.imagingDate);
     this.syncLegacyFlagsFromStatusMap();
@@ -1172,6 +1261,7 @@ export class DentalEncounterDialogComponent {
         error: error => {
           this.saving = false;
           this.alertService.stopLoadingMessage();
+          this.showDialogBanner('Save Error', 'Unable to save dental encounter. The dialog remains open so your entries are not lost.', 'error', 0);
           this.alertService.showStickyMessage('Save error', 'Unable to save dental encounter. The dialog remains open so your entries are not lost.', MessageSeverity.error, error);
         }
       });
@@ -1218,9 +1308,18 @@ export class DentalEncounterDialogComponent {
         this.uploadSelectedImages(index + 1, done);
       },
       error: error => {
+        this.showDialogBanner('Upload Error', 'Unable to upload one or more dental images.', 'error', 0);
         this.alertService.showStickyMessage('Upload error', 'Unable to upload one or more dental images.', MessageSeverity.error, error);
       }
     });
+  }
+
+  private showDialogBanner(title: string, message: string, type: DialogMessageBannerType, autoHideMs = 5000): void {
+    this.dialogBannerTitle = title;
+    this.dialogBannerMessage = message;
+    this.dialogBannerType = type;
+    this.dialogBannerAutoHideMs = autoHideMs;
+    this.dialogBannerVisible = true;
   }
 
   private toDateInput(value?: string): string {
@@ -1307,6 +1406,21 @@ export class DentalEncounterDialogComponent {
       .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, unknown>);
 
     return cleaned as Partial<T>;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    const contentElement = document.querySelector('mat-dialog-content') as HTMLElement;
+
+    if (event.key === 'ArrowDown') {
+      // Scroll down
+      event.preventDefault();
+      contentElement.scrollBy({ top: 80, behavior: 'smooth' });
+    } else if (event.key === 'ArrowUp') {
+      // Scroll up
+      event.preventDefault();
+      contentElement.scrollBy({ top: -80, behavior: 'smooth' });
+    }
   }
 }
 
