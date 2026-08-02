@@ -772,3 +772,34 @@ table {
 }
 
 /* -------------------------------------------------------------------------- */
+.ui-dialog-close-btn {
+  --mdc-icon-button-state-layer-size: 36px;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 9999px !important;
+  border: 1px solid #fecaca !important;
+  background: #b91c1c !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 6px 14px rgba(0, 0, 0, 0.3) !important;
+  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease !important;
+
+  &:hover,
+  &:focus-visible {
+    background: #dc2626 !important;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fde68a !important;
+    outline-offset: 2px !important;
+  }
+
+  .mat-icon,
+  .ui-icon {
+    color: #ffffff !important;
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+}

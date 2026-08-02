@@ -1,4 +1,4 @@
-import { Component, inject, HostListener } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
@@ -15,6 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { AttendanceSummaryComponent } from '../../components/attendance-summary/attendance-summary.component';
 import { DialogMessageBannerComponent, DialogMessageBannerType } from '../../components/controls/dialog-message-banner.component';
+import { DialogKeyboardScrollDirective } from '../../directives/dialog-keyboard-scroll.directive';
 
 import { DentalChart, DentalConsulting, DentalEncounter, DentalImaging, ToothStatus } from '../../models/dental.model';
 import { VwhRecord } from '../../models/legacy/vwh-record.model';
@@ -61,12 +62,13 @@ export interface DentalEncounterDialogData {
     MatDatepickerModule,
     MatNativeDateModule,
     AttendanceSummaryComponent,
-    DialogMessageBannerComponent
+    DialogMessageBannerComponent,
+    DialogKeyboardScrollDirective
   ],
   template: `
     <div class="dialog-header">
       <h2 mat-dialog-title>{{ isEdit ? 'Edit Dental Info' : 'Add Dental Info' }}</h2>
-      <button mat-icon-button type="button" (click)="dialogRef.close()" class="close-btn ui-icon-btn ui-icon-btn--danger" aria-label="Close dialog">
+      <button mat-icon-button type="button" (click)="dialogRef.close()" class="ui-dialog-close-btn" aria-label="Close dialog">
         <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
       </button>
     </div>
@@ -79,7 +81,7 @@ export interface DentalEncounterDialogData {
       [autoHideMs]="dialogBannerAutoHideMs">
     </app-dialog-message-banner>
 
-    <mat-dialog-content #scrollableContent>
+    <mat-dialog-content #scrollableContent appDialogKeyboardScroll>
       <app-attendance-summary
         [attendance]="selectedAttendanceSummary"
         [photo]="selectedPatientInfo?.photo">
@@ -485,30 +487,6 @@ export interface DentalEncounterDialogData {
     mat-dialog-content::-webkit-scrollbar-thumb:hover { background: rgba(125, 211, 252, 0.85); }
 
     .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .close-btn {
-      font-size: 20px;
-      font-weight: 700;
-      line-height: 1;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid #fecaca;
-      background: #b91c1c;
-      color: #ffffff;
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 6px 14px rgba(0, 0, 0, 0.3);
-    }
-    .close-btn:hover { background: #dc2626; }
-    .close-btn:focus-visible {
-      outline: 2px solid #fde68a;
-      outline-offset: 2px;
-    }
-    .close-btn .mat-icon,
-    .close-btn .ui-icon {
-      color: #ffffff;
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
     .top-row { margin-bottom: 10px; }
     .full { width: 100%; }
     .tab-body { padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -518,8 +496,9 @@ export interface DentalEncounterDialogData {
       position: sticky;
       bottom: 0;
       z-index: 10;
-      background: #0b1220;
-      border-top: 1px solid #334155;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
       margin: 0 -24px -24px;
       padding: 12px 24px;
     }
@@ -918,79 +897,6 @@ export class DentalEncounterDialogComponent {
   selectedImageFiles: File[] = [];
   zoomImageUrl = '';
   sanitizedImageUrls = new Map<string, SafeUrl>();
-
-  private scrollableContentRef?: HTMLElement;
-  private isScrolling = false;
-
-  @HostListener('keydown', ['$event'])
-  handleKeyboardScroll(event: KeyboardEvent): void {
-    // Only handle arrow keys
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
-      return;
-    }
-
-    // Get the focused element
-    const focusedElement = document.activeElement as HTMLElement;
-    
-    // Skip if focus is on an interactive control (input, select, textarea, button)
-    const interactiveSelectors = ['input', 'select', 'textarea', 'button', '[contenteditable]'];
-    if (focusedElement && interactiveSelectors.some(selector => 
-      focusedElement.matches(selector) || focusedElement.closest(selector)
-    )) {
-      return;
-    }
-
-    // Skip if focus is on a mat-tab element or mat-select
-    if (focusedElement && (focusedElement.closest('mat-tab') || focusedElement.closest('.mat-mdc-select'))) {
-      return;
-    }
-
-    if (!this.scrollableContentRef) {
-      this.scrollableContentRef = document.querySelector('mat-dialog-content') as HTMLElement;
-    }
-
-    if (!this.scrollableContentRef || this.isScrolling) {
-      return;
-    }
-
-    // Prevent default browser behavior (page scroll, tab navigation, etc.)
-    event.preventDefault();
-    event.stopPropagation();
-
-    const scrollStep = 50; // Pixels to scroll per arrow key press
-    const direction = event.key === 'ArrowUp' ? -1 : 1;
-
-    this.performSmoothScroll(direction * scrollStep);
-  }
-
-  private performSmoothScroll(distance: number): void {
-    if (!this.scrollableContentRef || this.isScrolling) return;
-
-    this.isScrolling = true;
-    const startScrollTop = this.scrollableContentRef.scrollTop;
-    const duration = 200; // milliseconds
-    const startTime = Date.now();
-
-    const easeInOutQuad = (t: number): number => {
-      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    };
-
-    const animateScroll = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeProgress = easeInOutQuad(progress);
-
-      this.scrollableContentRef!.scrollTop = startScrollTop + distance * easeProgress;
-
-      if (progress < 1) {
-        requestAnimationFrame(animateScroll);
-      } else {
-        this.isScrolling = false;
-      }
-    };
-
-    requestAnimationFrame(animateScroll);
-  }
 
   get isEdit(): boolean {
     return !!this.data.encounter;
@@ -1444,21 +1350,6 @@ export class DentalEncounterDialogComponent {
       .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {} as Record<string, unknown>);
 
     return cleaned as Partial<T>;
-  }
-
-  @HostListener('document:keydown', ['$event'])
-  handleKeyboardEvent(event: KeyboardEvent): void {
-    const contentElement = document.querySelector('mat-dialog-content') as HTMLElement;
-
-    if (event.key === 'ArrowDown') {
-      // Scroll down
-      event.preventDefault();
-      contentElement.scrollBy({ top: 80, behavior: 'smooth' });
-    } else if (event.key === 'ArrowUp') {
-      // Scroll up
-      event.preventDefault();
-      contentElement.scrollBy({ top: -80, behavior: 'smooth' });
-    }
   }
 }
 

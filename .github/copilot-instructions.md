@@ -247,8 +247,9 @@ quickapp.client/src/app/
 8. ✅ **Cache data in `rowsCache`** for filtering/searching
 9. ✅ **Handle errors** in subscribe error callback
 10. ✅ **For main pages include page header with fadeInOut animation**. See `products.component.html` for the standard pattern.
-11. ❌ **DO NOT use constructor injection** - use `inject()` function
-12. ❌ **DO NOT make HTTP calls directly** - use endpoint services
+11. ✅ **For scrollable dialog pages, use the shared `appDialogKeyboardScroll` directive on `mat-dialog-content`** so the vertical scrollbar responds to `ArrowUp` and `ArrowDown` keys.
+12. ❌ **DO NOT use constructor injection** - use `inject()` function
+13. ❌ **DO NOT make HTTP calls directly** - use endpoint services
 
 **Admin user registration (create user):** There is no public self-service register route. Creating a user is done from **Settings → Users** via `UsersManagementComponent`, which opens `UserInfoComponent` with `isGeneralEditor` and `isNewUser`. The form posts to `POST /api/account/users` with `UserEdit` (including `roles: string[]`, `newPassword`, and profile fields). The **Role assignment** section uses `ng-select` with multiple selection; users who can assign roles need the `assignRoles` permission. Backend reference: `UserAccountController.Register` and `UserEditVM.Roles` in `UserVMs.cs`.
 
@@ -264,8 +265,9 @@ quickapp.client/src/app/
 2. ✅ Prefer semantic icon colors and consistent sizing instead of ad-hoc per-component icon styling.
 3. ✅ Use shared button/icon utility classes for icon-only buttons so hover, focus, radius, and disabled states stay consistent.
 4. ✅ Keep icon styling professional, colorful, and visually balanced across the app.
-5. ❌ Do not create new one-off icon color patterns in feature components when the shared global system fits.
-6. ❌ Do not revert to monochrome icon defaults for standard action, navigation, or page-level icons when a shared style is available.
+5. ✅ For dialog top-right close (X) buttons, use the shared `.ui-dialog-close-btn` class instead of redefining per-component close button styles.
+6. ❌ Do not create new one-off icon color patterns in feature components when the shared global system fits.
+7. ❌ Do not revert to monochrome icon defaults for standard action, navigation, or page-level icons when a shared style is available.
 
 ### Services
 
@@ -379,7 +381,7 @@ quickapp.client/src/app/
 **Multi-Clinic Data Isolation (HConsulting):**
 - **Each clinic must have its own entry** in the `HConsulting` table (e.g., dental clinic, aesthetics clinic, etc.)
 - **Each consultation is identified by `consultID`** and belongs to a specific clinic
-- **Clinic pages can ONLY update their own records** - filter queries by the clinic identifier and consultation ID
+- **Clinic pages can ONLY update their own records** - filter queries to the clinic identifier and consultation ID
 - **DO NOT allow cross-clinic access** - enforce clinic isolation at the service/controller level
 - **All HConsulting CRUD operations MUST validate** that the current clinic owns the record before allowing read/write
 - ✅ **Reference**: Filter HConsulting queries using clinic context from `GetCurrentUserId()` or clinic claim in JWT token
@@ -526,6 +528,24 @@ At backend, use `PNo` as the patient identifier and reject missing `PNo` with no
 ### Employee Info Page
 
 **CRUD Operations**: Employee-info page CRUD operations must use Dapper with SmartHRConnection, not DefaultConnection.
+
+### UTC DateTime Display Rule (Global)
+
+When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/`Z`), frontend UI must use the shared UTC-safe formatter pattern to prevent local timezone shifts (for example +1 hour in DST regions):
+
+1. ✅ Use shared helpers from `src/app/shared/utils/utc-date.util.ts`:
+   - `parseUtcDate`
+   - `formatUtcForDisplay`
+   - `formatUtcDateForDisplay`
+   - `formatUtcDateDashForDisplay`
+   - `formatUtcTimeForDisplay`
+2. ✅ Prefer reusable pipe `src/app/pipes/utc-display.pipe.ts` in templates:
+   - `{{ value | utcDisplay:'datetime' }}`
+   - `{{ value | utcDisplay:'date' }}`
+   - `{{ value | utcDisplay:'dateDash' }}`
+   - `{{ value | utcDisplay:'time' }}`
+3. ✅ Treat timezone-less DateTime strings as UTC (legacy fallback), matching server converter behavior.
+4. ❌ Do not use Angular `date` pipe directly for server UTC DateTime fields where timezone shift would alter displayed business time.
 
 
 

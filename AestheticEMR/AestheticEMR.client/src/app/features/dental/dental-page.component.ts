@@ -22,6 +22,8 @@ import { QryhvisitsForToday } from '../../models/legacy/qryhvisits-for-today.mod
 import { DentalChart, DentalEncounter } from '../../models/dental.model';
 import { DentalEncounterDialogComponent, DentalPatientOption } from './dental-encounter-dialog.component';
 import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoice-dialog.component';
+import { UtcDisplayPipe } from '../../pipes/utc-display.pipe';
+import { parseUtcDate } from '../../shared/utils/utc-date.util';
 
 @Component({
   selector: 'app-dental-page',
@@ -34,7 +36,8 @@ import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoi
     MatTableModule,
     MatIconModule,
     MatPaginatorModule,
-    MatTooltipModule
+    MatTooltipModule,
+    UtcDisplayPipe
   ],
   template: `
     <div class="dental-page">
@@ -79,13 +82,13 @@ import { BillingInvoiceDialogComponent } from '../billing/invoices/billing-invoi
               <!-- Treatment Date Column -->
               <ng-container matColumnDef="treatmentDate">
                 <th mat-header-cell *matHeaderCellDef>Treatment Date</th>
-                <td mat-cell *matCellDef="let row">{{ row.tDate | date:'dd-MMM-yyyy' }}</td>
+                <td mat-cell *matCellDef="let row">{{ row.tDate | utcDisplay:'dateDash' }}</td>
               </ng-container>
 
               <!-- Treatment Time Column -->
               <ng-container matColumnDef="treatmentTime">
                 <th mat-header-cell *matHeaderCellDef>Treatment Time</th>
-                <td mat-cell *matCellDef="let row">{{ row.tTime | date:'HH:mm' }}</td>
+                <td mat-cell *matCellDef="let row">{{ row.tTime | utcDisplay:'time' }}</td>
               </ng-container>
 
               <!-- Treatment Type Column -->
@@ -241,7 +244,8 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
     this.filterData();
   }
 
-  onPageChange(_event: PageEvent): void {
+  onPageChange(event: PageEvent): void {
+    void event;
     // MatTableDataSource handles pagination automatically
   }
 
@@ -480,8 +484,19 @@ export class DentalPageComponent implements OnInit, AfterViewInit {
       return false;
     }
 
-    const recordDate = new Date(value);
+    const recordDate = parseUtcDate(value);
+    if (!recordDate) {
+      return false;
+    }
+
     const today = new Date();
+    const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(value);
+
+    if (hasTimezone) {
+      return recordDate.getUTCFullYear() === today.getUTCFullYear()
+        && recordDate.getUTCMonth() === today.getUTCMonth()
+        && recordDate.getUTCDate() === today.getUTCDate();
+    }
 
     return recordDate.toDateString() === today.toDateString();
   }

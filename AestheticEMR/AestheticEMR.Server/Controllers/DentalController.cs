@@ -1,6 +1,8 @@
 using System.Text.Json;
+using AestheticEMR.Core.Models.Aesthetic;
 using AestheticEMR.Core.Models.Dental;
 using AestheticEMR.Core.Models.Legacy;
+using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Dental.Interfaces;
 using AestheticEMR.Server.ViewModels.Dental;
 using AutoMapper;
@@ -16,6 +18,7 @@ public class DentalController(
     ILogger<DentalController> logger,
     IMapper mapper,
     IDentalService dentalService,
+    IAuditService auditService,
     IWebHostEnvironment environment) : BaseApiController(logger, mapper)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -51,7 +54,7 @@ public class DentalController(
 
     [HttpPost("encounter")]
     [ProducesResponseType(typeof(DentalEncounterVM), StatusCodes.Status200OK)]
-    public IActionResult SaveEncounter([FromBody] DentalEncounterSaveVM vm)
+    public async Task<IActionResult> SaveEncounter([FromBody] DentalEncounterSaveVM vm)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -115,6 +118,22 @@ public class DentalController(
         try
         {
             var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId(), vm.TimeZoneId);
+
+            await auditService.LogEventAsync(new AuditLog
+            {
+                TranCode = string.IsNullOrWhiteSpace(saved.Chart.ConsultId) ? "GENERAL" : saved.Chart.ConsultId,
+                EventType = chart.Id > 0 ? "Update" : "Create",
+                Summary = "Dental encounter saved",
+                Details = $"Dental encounter saved for ConsultId '{saved.Chart.ConsultId}' and PNo '{saved.Chart.Pno}'.",
+                Severity = "Info",
+                EntityType = nameof(HDentalTreat),
+                EntityId = (int?)saved.Chart.Id,
+                UserId = GetCurrentUserId(),
+                PerformedBy = GetCurrentUserId(),
+                SourceIp = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Tags = "#dental #encounter #save",
+                Status = "Logged"
+            });
 
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
             savedChartVm.Dtype = ExpandDtypeForDisplay(savedChartVm.Dtype);
