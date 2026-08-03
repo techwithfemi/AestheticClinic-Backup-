@@ -13,10 +13,13 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Appointment } from '../../models/legacy/appointment.model';
 import { Attendance } from '../../models/legacy/attendance.model';
 import { HPatient } from '../../models/legacy/h-patient.model';
+import { HRetainership } from '../../models/legacy/h-retainership.model';
 import { fadeInOut } from '../../services/animations';
 import { AppointmentEndpoint } from '../../services/appointment-endpoint.service';
 import { AttendanceEndpoint } from '../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../services/h-patient-endpoint.service';
+import { HRetainershipEndpoint } from '../../services/h-retainership-endpoint.service';
+import { UtcDisplayPipe } from '../../pipes/utc-display.pipe';
 import { StatisticsDemoComponent } from '../controls/statistics-demo.component';
 
 @Component({
@@ -29,13 +32,15 @@ import { StatisticsDemoComponent } from '../controls/statistics-demo.component';
     StatisticsDemoComponent,
     MatTableModule,
     MatToolbarModule,
-    TranslateModule
+    TranslateModule,
+    UtcDisplayPipe
   ]
 })
 export class HomeComponent implements OnInit {
   private readonly appointmentEndpoint = inject(AppointmentEndpoint);
   private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
+  private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
 
   appointmentsToday: Appointment[] = [];
   attendanceToday: Attendance[] = [];
@@ -45,8 +50,10 @@ export class HomeComponent implements OnInit {
   readonly attendanceColumns: string[] = ['date', 'consultId', 'patient', 'company', 'clinic', 'purpose'];
   readonly patientRegistrationColumns: string[] = ['patientNo', 'name', 'registrationDate', 'phone', 'email'];
   private patientsByNo = new Map<string, HPatient>();
+  private companiesByRetainId = new Map<string, string>();
 
   ngOnInit(): void {
+    this.loadRetainerships();
     this.loadPatients();
     this.loadAppointmentsToday();
     this.loadAttendanceToday();
@@ -64,6 +71,15 @@ export class HomeComponent implements OnInit {
     }
 
     return this.getPatientName(patient);
+  }
+
+  getCompanyNameByRetainId(retainId?: string): string {
+    if (!retainId) {
+      return 'N/A';
+    }
+
+    const companyName = this.companiesByRetainId.get(retainId);
+    return companyName || retainId;
   }
 
   private loadPatients(): void {
@@ -121,6 +137,20 @@ export class HomeComponent implements OnInit {
         },
         error: () => {
           this.patientRegistrationsToday = [];
+        }
+      });
+  }
+
+  private loadRetainerships(): void {
+    this.retainershipEndpoint.getHRetainershipsEndpoint<HRetainership[]>()
+      .subscribe({
+        next: retainerships => {
+          this.companiesByRetainId = new Map(retainerships
+            .filter(r => !!r.retainId)
+            .map(r => [r.retainId, r.retainName || r.retainId]));
+        },
+        error: () => {
+          this.companiesByRetainId = new Map<string, string>();
         }
       });
   }

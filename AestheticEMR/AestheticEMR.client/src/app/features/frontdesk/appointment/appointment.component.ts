@@ -8,23 +8,27 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 import { Appointment } from '../../../models/legacy/appointment.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
+import { Employee } from '../../../models/employee.model';
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { fadeInOut } from '../../../services/animations';
 import { AppointmentEndpoint } from '../../../services/appointment-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
+import { EmployeeEndpoint } from '../../../services/employee-endpoint.service';
+import { UtcDisplayPipe } from '../../../pipes/utc-display.pipe';
 
 @Component({
   selector: 'app-appointment',
   templateUrl: './appointment.component.html',
   styleUrl: './appointment.component.scss',
   animations: [fadeInOut],
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule]
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule, UtcDisplayPipe]
 })
 export class AppointmentComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly alertService = inject(AlertService);
   private readonly appointmentEndpoint = inject(AppointmentEndpoint);
   private readonly patientEndpoint = inject(HPatientEndpoint);
+  private readonly employeeEndpoint = inject(EmployeeEndpoint);
   private readonly modalService = inject(NgbModal);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -35,6 +39,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
   appointmentsCache: Appointment[] = [];
   filteredAppointments: Appointment[] = [];
   patients: HPatient[] = [];
+  employees: Employee[] = [];
   clinicTypes: string[] = [];
   loadingIndicator = false;
   isEditing = false;
@@ -58,6 +63,7 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadPatients();
+    this.loadEmployees();
     this.loadClinicTypes();
     this.loadData();
 
@@ -169,6 +175,18 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
         },
         error: () => {
           this.clinicTypes = [];
+        }
+      });
+  }
+
+  loadEmployees(): void {
+    this.employeeEndpoint.getEmployeesEndpoint<Employee[]>()
+      .subscribe({
+        next: employees => {
+          this.employees = [...employees].sort((a, b) => this.getEmployeeName(a).localeCompare(this.getEmployeeName(b)));
+        },
+        error: () => {
+          this.employees = [];
         }
       });
   }
@@ -365,6 +383,15 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
     return patient ? this.getPatientName(patient) : pno;
   }
 
+  getEmployeeNameByEmpID(empID?: string): string {
+    if (!empID) {
+      return '';
+    }
+
+    const employee = this.employees.find(item => item.empId === empID);
+    return employee ? this.getEmployeeName(employee) : empID;
+  }
+
   private applyFilters(): void {
     const term = this.searchText.trim().toLowerCase();
     let records = [...this.appointmentsCache];
@@ -421,6 +448,10 @@ export class AppointmentComponent implements OnInit, AfterViewInit {
 
   private getPatientName(patient: HPatient): string {
     return `${patient.pSurName ?? ''} ${patient.pFirstname ?? ''}`.trim() || (patient.pno ?? '');
+  }
+
+  private getEmployeeName(employee: Employee): string {
+    return `${employee.lastName ?? ''} ${employee.firstName ?? ''}`.trim() || (employee.empId ?? '');
   }
 
   private getTodayInputValue(): string {

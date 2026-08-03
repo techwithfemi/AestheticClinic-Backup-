@@ -28,7 +28,7 @@
           <th>Appointment Time</th>
           <th>Clinic Type</th>
           <th>Remarks</th>
-          <th>Emp ID</th>
+          <th>Emp Name</th>
           <th class="actions">Actions</th>
         </tr>
       </thead>
@@ -38,11 +38,11 @@
             <div class="table-title">{{ getPatientNameByNo(appointment.pno) }}</div>
             <small class="text-muted">{{ appointment.pno }}</small>
           </td>
-          <td>{{ appointment.apptDate | date: 'mediumDate' }}</td>
-          <td>{{ appointment.apptTime | date: 'shortTime' }}</td>
+          <td>{{ appointment.apptDate | utcDisplay:'date' }}</td>
+          <td>{{ appointment.apptTime | utcDisplay:'time' }}</td>
           <td>{{ appointment.clinicType }}</td>
           <td>{{ appointment.remarks || 'N/A' }}</td>
-          <td>{{ appointment.empID || 'N/A' }}</td>
+          <td>{{ getEmployeeNameByEmpID(appointment.empID) || 'N/A' }}</td>
           <td class="actions">
             <button type="button" class="btn btn-sm btn-outline-primary" [attr.data-appointment-id]="appointment.id ?? null" (click)="openEdit(appointmentDialog, appointment)">Edit</button>
             <button type="button" class="btn btn-sm btn-outline-danger" [attr.data-appointment-id]="appointment.id ?? null" (click)="deleteAppointment(appointment)">Delete</button>
