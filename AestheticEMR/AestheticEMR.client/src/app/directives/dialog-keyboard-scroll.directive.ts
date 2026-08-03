@@ -7,9 +7,6 @@ import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 export class DialogKeyboardScrollDirective {
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  private isScrolling = false;
-  private keyboardScrollAnimationFrame?: number;
-  private targetScrollTop = 0;
   private lastKeyboardScrollTime = 0;
   private lastKeyboardScrollDirection: -1 | 0 | 1 = 0;
   private keyboardScrollStep = 0;
@@ -60,36 +57,14 @@ export class DialogKeyboardScrollDirective {
     this.lastKeyboardScrollTime = now;
     this.lastKeyboardScrollDirection = direction;
 
-    this.performSmoothScroll(direction * this.keyboardScrollStep);
+    this.performStepScroll(direction * this.keyboardScrollStep);
   }
 
-  private performSmoothScroll(distance: number): void {
+  private performStepScroll(distance: number): void {
     const contentElement = this.elementRef.nativeElement;
     const maxScrollTop = Math.max(0, contentElement.scrollHeight - contentElement.clientHeight);
-    const currentTarget = this.isScrolling ? this.targetScrollTop : contentElement.scrollTop;
-    this.targetScrollTop = Math.min(maxScrollTop, Math.max(0, currentTarget + distance));
-
-    if (this.isScrolling) {
-      return;
-    }
-
-    this.isScrolling = true;
-
-    const animateScroll = () => {
-      const delta = this.targetScrollTop - contentElement.scrollTop;
-
-      if (Math.abs(delta) <= 1) {
-        contentElement.scrollTop = this.targetScrollTop;
-        this.isScrolling = false;
-        this.keyboardScrollAnimationFrame = undefined;
-        return;
-      }
-
-      contentElement.scrollTop += delta * 0.28;
-      this.keyboardScrollAnimationFrame = requestAnimationFrame(animateScroll);
-    };
-
-    this.keyboardScrollAnimationFrame = requestAnimationFrame(animateScroll);
+    const next = Math.min(maxScrollTop, Math.max(0, contentElement.scrollTop + distance));
+    contentElement.scrollTop = next;
   }
 
   private getOwnerDialog(element: HTMLElement): HTMLElement | null {

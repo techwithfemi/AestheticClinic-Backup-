@@ -89,7 +89,11 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 auditLog.TranCode = "GENERAL";
             }
 
-            auditLog.EventDateTime = DateTime.UtcNow;
+            if (auditLog.EventDateTime == default)
+            {
+                auditLog.EventDateTime = DateTime.UtcNow;
+            }
+
             _dbContext.AuditLogs.Add(auditLog);
             await _dbContext.SaveChangesAsync();
         }

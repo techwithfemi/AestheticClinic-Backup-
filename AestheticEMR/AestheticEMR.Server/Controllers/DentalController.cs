@@ -119,6 +119,8 @@ public class DentalController(
         {
             var saved = dentalService.SaveEncounter(chart, imaging, consulting, GetCurrentUserId(), vm.TimeZoneId);
 
+            var auditEventDateTime = ResolveAuditEventDateTime(vm.TimeZoneId);
+
             await auditService.LogEventAsync(new AuditLog
             {
                 TranCode = string.IsNullOrWhiteSpace(saved.Chart.ConsultId) ? "GENERAL" : saved.Chart.ConsultId,
@@ -132,7 +134,8 @@ public class DentalController(
                 PerformedBy = GetCurrentUserId(),
                 SourceIp = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Tags = "#dental #encounter #save",
-                Status = "Logged"
+                Status = "Logged",
+                EventDateTime = auditEventDateTime
             });
 
             var savedChartVm = _mapper.Map<DentalChartVM>(saved.Chart);
@@ -417,6 +420,28 @@ public class DentalController(
         }
 
         return CreatedAtAction(nameof(GetImagingById), new { id = entity.Id }, _mapper.Map<DentalImagingVM>(entity));
+    }
+
+    private static DateTime ResolveAuditEventDateTime(string? timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            return DateTime.UtcNow;
+        }
+
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return DateTime.UtcNow;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return DateTime.UtcNow;
+        }
     }
 
     private string SaveUploadedDentalFile(IFormFile file)
