@@ -432,10 +432,10 @@ export class CreateRosterDialogComponent implements OnInit {
 
       for (const shift of shifts) {
         const item = {
-          key: `${dateStr}|${shift.sno}`,
+          key: `${dateStr}|${shift.sNo}`,
           date: dateStr,
           label: `${dateLabel}  ${shift.shiftName} [${shift.evalTo}]  ${dayName}`,
-          shiftId: shift.sno,
+          shiftId: shift.sNo,
           shiftName: shift.shiftName,
           shiftAbbrv: shift.evalTo,
           dayName,
@@ -626,7 +626,6 @@ export class CreateRosterDialogComponent implements OnInit {
     const deptName = group.deptName?.trim();
 
     const selectedItems = this.listItems().filter(i => i.selected);
-    const unselectedItems = this.listItems().filter(i => !i.selected);
 
     const selectedByDate = new Map<string, number>();
     for (const item of selectedItems) {
@@ -648,19 +647,26 @@ export class CreateRosterDialogComponent implements OnInit {
     const selectedDays = selectedItems
       .map(i => ({
         date: i.date,
-        shiftId: i.shiftId,
+        shiftId: Number(i.shiftId),
         rosterGrpShiftID: 0,
         shiftAbbrv: i.shiftAbbrv.trim(),
         shiftName: i.shiftName.trim()
-      }));
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-    const unselectedDays = unselectedItems
-      .map(i => ({
-        date: i.date,
-        shiftId: i.shiftId,
+    const selectedDates = new Set(selectedDays.map(i => i.date));
+    const totalDays = new Date(this.selectedYear, this.selectedMonth, 0).getDate();
+    const unselectedDays = Array.from({ length: totalDays }, (_, idx) => {
+      const date = this.formatDate(new Date(this.selectedYear, this.selectedMonth - 1, idx + 1));
+      return date;
+    })
+      .filter(date => !selectedDates.has(date))
+      .map(date => ({
+        date,
+        shiftId: 0,
         rosterGrpShiftID: 0,
-        shiftAbbrv: i.shiftAbbrv.trim(),
-        shiftName: i.shiftName.trim()
+        shiftAbbrv: '',
+        shiftName: 'PLS_ENTER_SHIFT'
       }));
 
     if (selectedDays.length === 0) {

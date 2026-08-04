@@ -252,21 +252,30 @@ VALUES
                     }, transaction);
             }
 
-            // VB6: InsertBlankShifts — insert unselected days with placeholder shift data
-            // Extract from frontend instead of calculating unselected dates
-            var unselectedDays = request.UnselectedDays ?? [];
-            foreach (var day in unselectedDays.OrderBy(x => x.Date))
-            {
-                var isOffDuty = day.ShiftId.ToString().Equals(offDutyShiftId, StringComparison.OrdinalIgnoreCase)
-                    || day.ShiftId.ToString().Equals(leaveShiftId, StringComparison.OrdinalIgnoreCase);
+            // VB6: InsertBlankShifts — derive blank dates from full month minus selected dates,
+            // then insert one placeholder row per date.
+            var selectedDateSet = request.SelectedDays
+                .Select(x => x.Date)
+                .ToHashSet();
 
+            var blankDates = new List<DateOnly>();
+            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
+            {
+                if (!selectedDateSet.Contains(date))
+                {
+                    blankDates.Add(date);
+                }
+            }
+
+            foreach (var date in blankDates)
+            {
                 await connection.ExecuteAsync(@"
 DELETE FROM Roster
 WHERE RosterDate = @RosterDate
   AND EmpID = @EmpID;",
                     new
                     {
-                        RosterDate = day.Date.ToDateTime(TimeOnly.MinValue),
+                        RosterDate = date.ToDateTime(TimeOnly.MinValue),
                         EmpID = targetEmpId
                     }, transaction);
 
@@ -277,16 +286,16 @@ VALUES
 (@RosterGrpShiftID, @EmpID, @ShiftID, @GroupID, @IsOffDuty, @ShiftAbbrv, @ShiftName, @GroupName, @DeptID, @RosterDate);",
                     new
                     {
-                        RosterGrpShiftID = day.RosterGrpShiftID,
+                        RosterGrpShiftID = 0,
                         EmpID = targetEmpId,
-                        ShiftID = day.ShiftId,
+                        ShiftID = 0,
                         GroupID = rosterGroupId,
-                        IsOffDuty = isOffDuty ? 1 : 0,
-                        ShiftAbbrv = day.ShiftAbbrv,
-                        ShiftName = day.ShiftName,
+                        IsOffDuty = 1,
+                        ShiftAbbrv = (string?)null,
+                        ShiftName = "PLS_ENTER_SHIFT",
                         GroupName = groupName,
                         DeptID = deptId,
-                        RosterDate = day.Date.ToDateTime(TimeOnly.MinValue)
+                        RosterDate = date.ToDateTime(TimeOnly.MinValue)
                     }, transaction);
             }
 

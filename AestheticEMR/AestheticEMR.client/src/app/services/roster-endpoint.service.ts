@@ -18,7 +18,7 @@ export interface RosterStaffLookup {
 }
 
 export interface RosterShiftLookup {
-  sno: number;
+  sNo: number;
   shiftName: string;
   evalTo: string;
   deptId?: string;
