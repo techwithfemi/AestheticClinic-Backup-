@@ -547,8 +547,33 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
 3. ✅ Treat timezone-less DateTime strings as UTC (legacy fallback), matching server converter behavior.
 4. ❌ Do not use Angular `date` pipe directly for server UTC DateTime fields where timezone shift would alter displayed business time.
 
+### Auditrail ID Handling
 
+- In this workspace, `Auditrail.ID` is an identity column; inserts into `Auditrail` should not provide ID values.
+- For typical CRUD write operations, map `Auditrail` columns as follows:
+  - `UserAction`: payload in a JSON object, (use viewModel property names as keys not model property names)
+  - `ActionDate`: date only in local user/server time (`DateTime.Now.Date`)
+  - `ActionTime`: full timestamp in local user/server time (`DateTime.Now`) so stored value matches user-facing local time
+  - `Remarks`: type of CRUD operation, for example `deleted record with priKey/id/sno: xxxx`
+  - `TranCode`: `consultID`, `BillNo`, or `pNo` depending on the page/module transaction key
+  - `Src`: the page/module where the payload is coming from
+  - `AuditCat`: the module name where the payload originates, for example `frontDesk` or `billing`
 
+### Backend Dual Audit Logging Rule (Write Operations)
+
+- For backend CRUD write operations (insert, update, delete), write to hospital DB `Auditrail` as the primary audit destination.
+- Logging to hospital `AppAuditLogs` through `ApplicationDbContext` is secondary and should be treated as backup only.
+- Use a boolean configuration setting to control whether secondary `AppAuditLogs` logging is enabled.
+- The `Auditrail` write path must use Dapper/DataAccess wrapper with connection id `DefaultConnection`.
+- `Auditrail.TranCode` must follow page/module context transaction key:
+  - Attendance: `consultID`
+  - Billing module pages: `billNo`
+  - Patient info pages: `pNo`
+  - Use the relevant context transaction key for other pages similarly.
+- `Auditrail.ID` is identity; never provide `ID` in insert payload.
+
+**ALL Dapper calls MUST go through `ISqlDataAccess`** — inject and use `LoadData`, `LoadDataText`, `SaveData`, or `SaveDataText`. This is mandatory so that `AuditedSqlDataAccess` (the registered decorator) can intercept every write and commit the audit trail.
+11. ❌ **NEVER create `SqlConnection` / `IDbConnection` directly in a service** — doing so bypasses `AuditedSqlDataAccess` and silently drops the audit trail. `DepartmentService` was a historical violation of this rule and has been corrected.
 
 
 

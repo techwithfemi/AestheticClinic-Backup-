@@ -1,3 +1,4 @@
+using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Employees;
 using AestheticEMR.Core.Services.Employees.Interfaces;
 using Dapper;
@@ -10,9 +11,12 @@ namespace AestheticEMR.Core.Services.Employees;
 
 public class DepartmentService(
     IConfiguration configuration,
-    ILogger<DepartmentService> logger) : IDepartmentService
+    ILogger<DepartmentService> logger,
+    IHospitalAuditWriter auditWriter) : IDepartmentService
 {
     private const string ConnectionName = "smartHRConnection";
+    private const string AuditSrc = "EmpDepartments";
+    private const string AuditCat = "employees";
 
     // Legacy format: zero-padded 2 chars (e.g. "01", "10", "99").
     private const int MaxDepartmentId = 99;
@@ -116,6 +120,16 @@ VALUES (@DeptId, @DeptName, @DeptAddress, @Location);";
 
             await transaction.CommitAsync();
             logger.LogInformation("Created department {DeptId}", department.DeptId);
+
+            await auditWriter.WriteAsync(department.DeptId, "Create", AuditSrc, AuditCat,
+                new Dictionary<string, object?>
+                {
+                    ["deptId"] = department.DeptId,
+                    ["deptName"] = department.DeptName,
+                    ["deptAddress"] = department.DeptAddress,
+                    ["location"] = department.Location
+                });
+
             return department;
         }
         catch
@@ -151,6 +165,16 @@ WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
 
         var refreshed = await GetByIdAsync(normalizedId);
         logger.LogInformation("Updated department {DeptId}", normalizedId);
+
+        await auditWriter.WriteAsync(normalizedId, "Update", AuditSrc, AuditCat,
+            new Dictionary<string, object?>
+            {
+                ["deptId"] = normalizedId,
+                ["deptName"] = department.DeptName,
+                ["deptAddress"] = department.DeptAddress,
+                ["location"] = department.Location
+            });
+
         return refreshed ?? department;
     }
 
@@ -169,7 +193,15 @@ WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
 
         var affected = await connection.ExecuteAsync(sql, new { DeptId = normalizedId });
         if (affected > 0)
+        {
             logger.LogInformation("Deleted department {DeptId}", normalizedId);
+
+            await auditWriter.WriteAsync(normalizedId, "Delete", AuditSrc, AuditCat,
+                new Dictionary<string, object?>
+                {
+                    ["deptId"] = normalizedId
+                });
+        }
 
         return affected > 0;
     }

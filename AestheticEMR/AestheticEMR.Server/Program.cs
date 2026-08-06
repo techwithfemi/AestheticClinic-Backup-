@@ -8,6 +8,7 @@ using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Account;
 using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Account;
+using DataAccess.DbAccess;
 using AestheticEMR.Core.Services.Accounting;
 using AestheticEMR.Core.Services.Accounting.Interfaces;
 using AestheticEMR.Core.Services.Aesthetics;
@@ -18,7 +19,6 @@ using AestheticEMR.Core.Services.Employees.Interfaces;
 using AestheticEMR.Core.Services.Legacy;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Core.Services.Shop;
-using DataAccess.DbAccess;
 using DataAccess.Services;
 using AestheticEMR.Server.Authorization;
 using AestheticEMR.Server.Authorization.Requirements;
@@ -108,11 +108,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
 {
     options.UseSqlServer(connectionString, b => b.MigrationsAssembly(migrationsAssembly));
     options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
     options.UseOpenIddict();
+    options.AddInterceptors(serviceProvider.GetRequiredService<HospitalAuditTrailInterceptor>());
 });
 
 builder.Services.AddDbContext<AccountingDbContext>(options =>
@@ -130,9 +131,10 @@ builder.Services.AddScoped<IShiftDetailService, ShiftDetailService>();
 builder.Services.AddScoped<IRosterGroupService, RosterGroupService>();
 
 // Cross-DB Dapper channel. Pass "Default" or "AccountingConnection" as connectionId.
-builder.Services.AddSingleton<ISqlDataAccess, SqlDataAccess>();
-builder.Services.AddScoped(typeof(IServicesData<>), typeof(ServicesData<>));
-
+builder.Services.AddSingleton<SqlDataAccess>();
+builder.Services.AddScoped<ISqlDataAccess, AuditedSqlDataAccess>();
+builder.Services.AddScoped<HospitalAuditTrailInterceptor>();
+builder.Services.AddScoped<IHospitalAuditWriter, HospitalAuditWriter>();
 // Accounting module - journal entries (AccountingConnection via Dapper)
 builder.Services.AddScoped<IJournalEntryService, JournalEntryService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();

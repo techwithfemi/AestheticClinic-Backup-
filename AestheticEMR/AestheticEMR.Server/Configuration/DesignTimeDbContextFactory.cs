@@ -32,7 +32,7 @@ namespace AestheticEMR.Server.Configuration
             builder.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
             builder.UseOpenIddict();
 
-            return new ApplicationDbContext(builder.Options, SystemUserIdAccessor.GetNewAccessor());
+            return new ApplicationDbContext(builder.Options, SystemUserIdAccessor.GetNewAccessor(), configuration);
         }
     }
 }

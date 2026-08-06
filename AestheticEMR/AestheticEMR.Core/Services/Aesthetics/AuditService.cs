@@ -1,6 +1,7 @@
-using AestheticEMR.Core.Infrastructure;
+﻿using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Aesthetic;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -76,13 +77,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
         Task PurgeOldEntriesAsync(int retentionDays = 365);
     }
 
-    public class AuditService(ApplicationDbContext dbContext) : IAuditService
+    public class AuditService(ApplicationDbContext dbContext, IConfiguration configuration) : IAuditService
     {
         private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly bool _enableSecondaryAppAuditLogs = configuration.GetValue("AuditLoggingConfig:EnableSecondaryAppAuditLogs", false);
 
         public async Task LogEventAsync(AuditLog auditLog)
         {
-            if (auditLog == null) return;
+            if (!_enableSecondaryAppAuditLogs || auditLog == null) return;
 
             if (string.IsNullOrWhiteSpace(auditLog.TranCode))
             {
@@ -245,3 +247,5 @@ namespace AestheticEMR.Core.Services.Aesthetics
         }
     }
 }
+
+

@@ -24,14 +24,29 @@ public class DesignationService(
     private const int MaxDesignationId = 99;
     private const string IdFormat = "00";
 
+    private async Task<int> GetMaxExistingDesignationIdAsync()
+    {
+        var query = "SELECT desID FROM Designation WHERE desID IS NOT NULL AND desID <> ''";
+        var existingIds = await db.LoadDataText<string, dynamic>(query, new { }, ConnectionId);
+
+        return existingIds
+            .Select(s => int.TryParse(s, out var n) ? n : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
     public async Task<string> GenerateDesignationIdAsync()
     {
-        // Use EF for IDgen read since it's in the same database
         var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == DesIdCode);
-        var nextId = (idgen?.Id ?? 0) + 1;
+        var maxExisting = await GetMaxExistingDesignationIdAsync();
+
+        var lastUsed = Math.Max((int)(idgen?.Id ?? 0), maxExisting);
+        var nextId = lastUsed + 1;
+
         if (nextId > MaxDesignationId)
             throw new InvalidOperationException(
                 $"Designation id limit reached ({MaxDesignationId}). Cannot generate a new designation.");
+
         return nextId.ToString(IdFormat);
     }
 
@@ -68,39 +83,28 @@ public class DesignationService(
         try
         {
             var idgen = await context.HrIdgens.FirstOrDefaultAsync(x => x.DestName == DesIdCode);
+            var maxExisting = await GetMaxExistingDesignationIdAsync();
 
-            decimal nextId;
+            var lastUsed = Math.Max((int)(idgen?.Id ?? 0), maxExisting);
+            var nextIdInt = lastUsed + 1;
+
+            if (nextIdInt > MaxDesignationId)
+                throw new InvalidOperationException(
+                    $"Designation id limit reached ({MaxDesignationId}). Cannot generate a new designation.");
+
+            var nextId = (decimal)nextIdInt;
+
             if (idgen == null)
             {
-                // First-ever designation: seed the counter from whatever the table already
-                // holds so we don't collide with legacy rows (or with the seed VB.NET data).
-                var query = "SELECT desID FROM Designation WHERE desID IS NOT NULL AND desID <> ''";
-                var existingIds = await db.LoadDataText<string, dynamic>(query, new { }, ConnectionId);
-
-                var maxExisting = existingIds
-                    .Select(s => int.TryParse(s, out var n) ? n : 0)
-                    .DefaultIfEmpty(0)
-                    .Max();
-
-                nextId = maxExisting + 1;
-                if (nextId > MaxDesignationId)
-                    throw new InvalidOperationException(
-                        $"Designation id limit reached ({MaxDesignationId}). Cannot generate a new designation.");
-
                 idgen = new Idgen { DestName = DesIdCode, Id = nextId };
                 context.HrIdgens.Add(idgen);
                 logger.LogInformation(
-                    "Seeded IDgen for {Code} at id={Id} (derived from existing rows)",
+                    "Seeded IDgen for {Code} at id={Id} (reconciled with existing rows)",
                     DesIdCode, nextId);
             }
             else
             {
-                nextId = idgen.Id + 1;
-                if (nextId > MaxDesignationId)
-                    throw new InvalidOperationException(
-                        $"Designation id limit reached ({MaxDesignationId}). Cannot generate a new designation.");
                 idgen.Id = nextId;
-                // idgen is already tracked from the query above; no Update() needed.
             }
 
             // Always overwrite any client-supplied id — server is the source of truth.

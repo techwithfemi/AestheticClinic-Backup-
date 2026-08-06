@@ -16,8 +16,14 @@ namespace AestheticEMR.Server.Configuration
         public AppointmentNotificationConfig? AppointmentNotificationConfig { get; set; }
         public AttendanceNotificationConfig? AttendanceNotificationConfig { get; set; }
         public LogRetentionConfig? LogRetentionConfig { get; set; }
+        public AuditLoggingConfig? AuditLoggingConfig { get; set; }
         public LegacyReportServiceConfig? LegacyReportService { get; set; }
         public string? ClientBaseUrl { get; set; }
+    }
+
+    public class AuditLoggingConfig
+    {
+        public bool EnableSecondaryAppAuditLogs { get; set; } = false;
     }
 
     public class LegacyReportServiceConfig

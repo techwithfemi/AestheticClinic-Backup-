@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Data;
 using System.Linq;
@@ -29,13 +30,15 @@ namespace AestheticEMR.Core.Infrastructure
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
     {
         private readonly IUserIdAccessor _userIdAccessor;
+        private readonly bool _enableSecondaryAppAuditLogs;
         private bool _isAddingAutomaticAuditLogs;
         private bool? _isAuditLogTableAvailable;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IUserIdAccessor userIdAccessor)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IUserIdAccessor userIdAccessor, IConfiguration configuration)
             : base(options)
         {
             _userIdAccessor = userIdAccessor;
+            _enableSecondaryAppAuditLogs = configuration.GetValue("AuditLoggingConfig:EnableSecondaryAppAuditLogs", false);
         }
 
         public DbSet<ProductTariff> ProductTariffs { get; set; }
@@ -1873,7 +1876,7 @@ namespace AestheticEMR.Core.Infrastructure
 
         private void AddAutomaticAuditLogs()
         {
-            if (_isAddingAutomaticAuditLogs)
+            if (_isAddingAutomaticAuditLogs || !_enableSecondaryAppAuditLogs)
             {
                 return;
             }
@@ -2085,6 +2088,8 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
+
 
 
 
