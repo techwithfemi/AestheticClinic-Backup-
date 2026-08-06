@@ -24,8 +24,8 @@ public sealed class AuditedSqlDataAccess(
     private const string AuditConnectionId = "DefaultConnection";
 
     private const string InsertAuditSql =
-        "INSERT INTO Auditrail (TranCode, UserName, UserAction, ActionDate, ActionTime, Remarks, Src, AuditCat) " +
-        "VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
+        "INSERT INTO Auditrail (TranCode, UserName, UserAction, OriginalAction, ActionDate, ActionTime, Remarks, Src, AuditCat) " +
+        "VALUES (@TranCode, @UserName, @UserAction, @OriginalAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
 
     // ── Read-only pass-throughs ───────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ public sealed class AuditedSqlDataAccess(
             var eventType = ResolveEventType(operation, isStoredProcedure);
             var src = Truncate(ResolveOperationName(operation, isStoredProcedure), 150);
 
-            // UserAction: JSON payload using input labels as keys
+            // UserAction: JSON payload using parameter values
             var payload = BuildPayloadJson(parameters);
             var userAction = Truncate(payload, 5000);
 
@@ -86,11 +86,15 @@ public sealed class AuditedSqlDataAccess(
             // AuditCat: module derived from SP name convention (e.g. InsertEmpDesig → employees)
             var auditCat = Truncate(ResolveAuditCat(operation, connectionId), 1000);
 
+            // Note: AuditedSqlDataAccess does not capture OriginalAction (before values) 
+            // because it audits AFTER the write. Services with explicit before/after data
+            // should use IHospitalAuditWriter.WriteAsync() with originalPayload parameter instead.
             await inner.SaveDataText(InsertAuditSql, new
             {
                 TranCode = tranCode,
                 UserName = userName,
                 UserAction = userAction,
+                OriginalAction = (string?)null,
                 ActionDate = localToday,
                 ActionTime = localNow,
                 Remarks = Truncate(remarks, 8000),

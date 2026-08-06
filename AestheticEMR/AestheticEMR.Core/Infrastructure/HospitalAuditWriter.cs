@@ -16,11 +16,12 @@ public sealed class HospitalAuditWriter(
     private const string AuditConnectionId = "DefaultConnection";
 
     private const string InsertSql =
-        "INSERT INTO Auditrail (TranCode, UserName, UserAction, ActionDate, ActionTime, Remarks, Src, AuditCat) " +
-        "VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
+        "INSERT INTO Auditrail (TranCode, UserName, UserAction, OriginalAction, ActionDate, ActionTime, Remarks, Src, AuditCat) " +
+        "VALUES (@TranCode, @UserName, @UserAction, @OriginalAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
 
     public async Task WriteAsync(string tranCode, string eventType, string src, string auditCat,
-        IReadOnlyDictionary<string, object?> payload)
+        IReadOnlyDictionary<string, object?> payload,
+        IReadOnlyDictionary<string, object?>? originalPayload = null)
     {
         try
         {
@@ -29,8 +30,13 @@ public sealed class HospitalAuditWriter(
             var userName = Truncate(userIdAccessor.GetCurrentUserId() ?? "SYSTEM", 50);
             var tc = Truncate(string.IsNullOrWhiteSpace(tranCode) ? "GENERAL" : tranCode, 50);
 
-            // UserAction: JSON object with human-readable label keys
+            // UserAction: JSON object with new values
             var userAction = Truncate(JsonSerializer.Serialize(payload), 5000);
+            
+            // OriginalAction: JSON object with old values (for Update operations)
+            var originalAction = originalPayload != null 
+                ? Truncate(JsonSerializer.Serialize(originalPayload), 5000) 
+                : null;
 
             // Remarks: type of CRUD operation
             var remarks = eventType switch
@@ -46,6 +52,7 @@ public sealed class HospitalAuditWriter(
                 TranCode = tc,
                 UserName = userName,
                 UserAction = userAction,
+                OriginalAction = originalAction,
                 ActionDate = localToday,
                 ActionTime = localNow,
                 Remarks = Truncate(remarks, 8000),

@@ -121,14 +121,16 @@ VALUES (@DeptId, @DeptName, @DeptAddress, @Location);";
             await transaction.CommitAsync();
             logger.LogInformation("Created department {DeptId}", department.DeptId);
 
+            // CREATE: OriginalAction is NULL (record didn't exist before)
             await auditWriter.WriteAsync(department.DeptId, "Create", AuditSrc, AuditCat,
-                new Dictionary<string, object?>
+                payload: new Dictionary<string, object?>
                 {
                     ["deptId"] = department.DeptId,
                     ["deptName"] = department.DeptName,
                     ["deptAddress"] = department.DeptAddress,
                     ["location"] = department.Location
                 });
+            // originalPayload defaults to null
 
             return department;
         }
@@ -145,6 +147,11 @@ VALUES (@DeptId, @DeptName, @DeptAddress, @Location);";
             ?? throw new KeyNotFoundException("Department id is required.");
 
         await using var connection = await OpenConnectionAsync();
+        
+        // Capture ORIGINAL values BEFORE update
+        var originalDepartment = await GetByIdAsync(normalizedId)
+            ?? throw new KeyNotFoundException($"Department {normalizedId} not found.");
+
         const string updateSql = @"
 UPDATE EmpDepartments
 SET DeptName = @DeptName,
@@ -166,13 +173,21 @@ WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
         var refreshed = await GetByIdAsync(normalizedId);
         logger.LogInformation("Updated department {DeptId}", normalizedId);
 
+        // UPDATE: Capture BOTH old and new values for compliance
         await auditWriter.WriteAsync(normalizedId, "Update", AuditSrc, AuditCat,
-            new Dictionary<string, object?>
+            payload: new Dictionary<string, object?>
             {
                 ["deptId"] = normalizedId,
                 ["deptName"] = department.DeptName,
                 ["deptAddress"] = department.DeptAddress,
                 ["location"] = department.Location
+            },
+            originalPayload: new Dictionary<string, object?>
+            {
+                ["deptId"] = originalDepartment.DeptId,
+                ["deptName"] = originalDepartment.DeptName,
+                ["deptAddress"] = originalDepartment.DeptAddress,
+                ["location"] = originalDepartment.Location
             });
 
         return refreshed ?? department;
@@ -188,6 +203,10 @@ WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
             throw new InvalidOperationException(
                 $"Department '{normalizedId}' is currently assigned to one or more employees and cannot be deleted.");
 
+        // DELETE: Capture FULL record BEFORE deletion (only place data is preserved)
+        var deletedDepartment = await GetByIdAsync(normalizedId)
+            ?? throw new KeyNotFoundException($"Department {normalizedId} not found.");
+
         await using var connection = await OpenConnectionAsync();
         const string sql = @"DELETE FROM EmpDepartments WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
 
@@ -196,10 +215,18 @@ WHERE LTRIM(RTRIM(DeptID)) = @DeptId;";
         {
             logger.LogInformation("Deleted department {DeptId}", normalizedId);
 
+            // Store full deleted record in OriginalAction for recovery/compliance
             await auditWriter.WriteAsync(normalizedId, "Delete", AuditSrc, AuditCat,
-                new Dictionary<string, object?>
+                payload: new Dictionary<string, object?>
                 {
                     ["deptId"] = normalizedId
+                },
+                originalPayload: new Dictionary<string, object?>
+                {
+                    ["deptId"] = deletedDepartment.DeptId,
+                    ["deptName"] = deletedDepartment.DeptName,
+                    ["deptAddress"] = deletedDepartment.DeptAddress,
+                    ["location"] = deletedDepartment.Location
                 });
         }
 
