@@ -56,7 +56,7 @@ public sealed class HospitalAuditWriter(
                 ActionDate = localToday,
                 ActionTime = localNow,
                 Remarks = Truncate(remarks, 8000),
-                Src = Truncate(src, 150),
+                Src = Truncate(src, 1000),
                 AuditCat = Truncate(auditCat, 1000)
             }, AuditConnectionId);
         }

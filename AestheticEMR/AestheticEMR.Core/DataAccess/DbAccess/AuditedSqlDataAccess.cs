@@ -1,8 +1,10 @@
+using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Services.Account;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +21,7 @@ namespace DataAccess.DbAccess;
 public sealed class AuditedSqlDataAccess(
     SqlDataAccess inner,
     IUserIdAccessor userIdAccessor,
+    AuditRequestContext auditRequestContext,
     ILogger<AuditedSqlDataAccess> logger) : ISqlDataAccess
 {
     private const string AuditConnectionId = "DefaultConnection";
@@ -67,7 +70,7 @@ public sealed class AuditedSqlDataAccess(
             var userName = Truncate(userIdAccessor.GetCurrentUserId() ?? "SYSTEM", 50);
             var tranCode = Truncate(ExtractTranCode(parameters), 50);
             var eventType = ResolveEventType(operation, isStoredProcedure);
-            var src = Truncate(ResolveOperationName(operation, isStoredProcedure), 150);
+            var src = Truncate(BuildSourceMetadata(operation, connectionId, isStoredProcedure), 1000);
 
             // UserAction: JSON payload using parameter values
             var payload = BuildPayloadJson(parameters);
@@ -145,22 +148,19 @@ public sealed class AuditedSqlDataAccess(
     }
 
     /// <summary>
-    /// Derives AuditCat from SP name or connectionId (e.g. InsertEmpDesig → employees, smartHRConnection → employees).
+    /// Derives AuditCat from the business module of the write operation.
     /// </summary>
     private static string ResolveAuditCat(string operation, string connectionId)
     {
         var lower = operation.ToLowerInvariant();
 
-        if (lower.Contains("desig")) return "employees";
-        if (lower.Contains("dept") || lower.Contains("department")) return "employees";
-        if (lower.Contains("emp") || lower.Contains("employee")) return "employees";
-        if (lower.Contains("roster") || lower.Contains("shift")) return "employees";
-        if (lower.Contains("tran") || lower.Contains("journal") || lower.Contains("income") || lower.Contains("expense")) return "accounting";
-        if (lower.Contains("consult")) return "frontDesk";
-        if (lower.Contains("bill") || lower.Contains("payment") || lower.Contains("receipt")) return "billing";
-        if (lower.Contains("patient")) return "frontDesk";
+        if (lower.Contains("bill") || lower.Contains("payment") || lower.Contains("receipt") || lower.Contains("invoice")) return "billing";
+        if (lower.Contains("dental") || lower.Contains("tooth") || lower.Contains("odont") || lower.Contains("imaging")) return "dental";
+        if (lower.Contains("consult") || lower.Contains("patient") || lower.Contains("record") || lower.Contains("retainership") || lower.Contains("referal") || lower.Contains("appointment")) return "frontDesk";
+        if (lower.Contains("desig") || lower.Contains("dept") || lower.Contains("department") || lower.Contains("emp") || lower.Contains("employee") || lower.Contains("roster") || lower.Contains("shift")) return "employees";
+        if (lower.Contains("aesthetic")) return "aesthetics";
+        if (lower.Contains("tran") || lower.Contains("journal") || lower.Contains("income") || lower.Contains("expense") || lower.Contains("account")) return "accounting";
 
-        // Fall back to connectionId hint
         var conn = connectionId.ToLowerInvariant();
         if (conn.Contains("smart") || conn.Contains("hr")) return "employees";
         if (conn.Contains("account") || conn.Contains("acct")) return "accounting";
@@ -246,5 +246,30 @@ public sealed class AuditedSqlDataAccess(
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private string BuildSourceMetadata(string operation, string connectionId, bool isStoredProcedure)
+    {
+        var metadata = new Dictionary<string, object?>
+        {
+            ["operation"] = ResolveOperationName(operation, isStoredProcedure),
+            ["connectionId"] = connectionId,
+            ["requestPath"] = auditRequestContext.GetRequestPath(),
+            ["deviceName"] = auditRequestContext.GetDeviceName(),
+            ["ipAddress"] = auditRequestContext.GetIpAddress(),
+            ["userAgent"] = auditRequestContext.GetUserAgent(),
+            ["city"] = auditRequestContext.GetCity(),
+            ["country"] = auditRequestContext.GetCountry(),
+            ["coordinates"] = auditRequestContext.GetCoordinates(),
+            ["module"] = ResolveAuditCat(operation, connectionId)
+        };
+
+        var filtered = metadata
+            .Where(x => x.Value is not null && !string.IsNullOrWhiteSpace(x.Value.ToString()))
+            .ToDictionary(x => x.Key, x => x.Value);
+
+        return filtered.Count == 0
+            ? ResolveOperationName(operation, isStoredProcedure)
+            : JsonSerializer.Serialize(filtered);
     }
 }

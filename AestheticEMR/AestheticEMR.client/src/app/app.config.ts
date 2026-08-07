@@ -20,6 +20,7 @@ import { LowerCaseUrlSerializer } from './services/lowercase-url-serializer.serv
 import { TranslateLanguageLoader } from './services/app-translation.service';
 import { AppConfigService } from './services/app-config.service';
 import { GlobalLoadingInterceptor } from './services/global-loading.interceptor';
+import { RequestMetadataInterceptor } from './services/request-metadata.interceptor';
 
 const APP_DATE_FORMATS = {
   parse: {
@@ -56,6 +57,7 @@ export const appConfig: ApplicationConfig = {
       deps: [AppConfigService],
       multi: true
     },
+    { provide: HTTP_INTERCEPTORS, useClass: RequestMetadataInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: GlobalLoadingInterceptor, multi: true }
   ]
 };

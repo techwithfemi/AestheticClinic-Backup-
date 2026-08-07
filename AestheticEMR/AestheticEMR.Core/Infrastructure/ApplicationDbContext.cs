@@ -1,4 +1,4 @@
-﻿// ---------------------------------------
+// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -1986,7 +1986,8 @@ namespace AestheticEMR.Core.Infrastructure
             var clrType = entry.Metadata.ClrType;
             var entityNamespace = clrType.Namespace ?? string.Empty;
 
-            if (entityNamespace.StartsWith("AestheticEMR.Core.Models.Legacy", StringComparison.Ordinal))
+            if (entityNamespace.StartsWith("OpenIddict", StringComparison.Ordinal)
+                || entityNamespace.StartsWith("Microsoft.AspNetCore.Identity", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -2088,6 +2089,7 @@ namespace AestheticEMR.Core.Infrastructure
         }
     }
 }
+
 
 
 

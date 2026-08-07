@@ -15,7 +15,10 @@ using System.Threading.Tasks;
 
 namespace AestheticEMR.Core.Infrastructure;
 
-public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, IUserIdAccessor userIdAccessor) : SaveChangesInterceptor
+public sealed class HospitalAuditTrailInterceptor(
+    ISqlDataAccess sqlDataAccess,
+    IUserIdAccessor userIdAccessor,
+    AuditRequestContext auditRequestContext) : SaveChangesInterceptor
 {
     private const string DefaultConnectionId = "DefaultConnection";
     private static readonly ConcurrentDictionary<Guid, List<HospitalAuditEntry>> PendingEntries = new();
@@ -23,7 +26,6 @@ public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, 
     // Namespaces and table-name prefixes that must never be audited
     private static readonly string[] ExcludedNamespacePrefixes =
     [
-        "AestheticEMR.Core.Models.Legacy",
         "OpenIddict",
         "Microsoft.AspNetCore.Identity",
     ];
@@ -75,6 +77,17 @@ public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, 
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
+    private sealed record HospitalAuditEntry(
+        string TranCode,
+        string UserName,
+        string UserAction,
+        string? OriginalAction,
+        DateTime ActionDate,
+        DateTime ActionTime,
+        string? Remarks,
+        string? Src,
+        string? AuditCat);
+
     private void CaptureEntries(DbContext? context)
     {
         if (context is null || !IsAuditTrailTableAvailable(context))
@@ -104,12 +117,15 @@ public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, 
                 var entityType = entry.Metadata.ClrType.Name;
                 var priKey = ResolveEntityId(entry)?.ToString() ?? "unknown";
 
-                // UserAction: JSON payload with input labels as keys (rule: use input labels, not model names)
-                var payload = BuildPayloadJson(entry, eventType);
-                if (string.IsNullOrWhiteSpace(payload))
+                // UserAction: JSON payload with current values (ViewModel property names as keys)
+                var userAction = BuildUserActionJson(entry, eventType);
+                if (string.IsNullOrWhiteSpace(userAction) && eventType != "Delete")
                 {
                     return null;
                 }
+
+                // OriginalAction: JSON payload with original values (for update/delete) or null (for create)
+                var originalAction = BuildOriginalActionJson(entry, eventType);
 
                 // Remarks: type of CRUD operation
                 var remarks = eventType switch
@@ -123,17 +139,18 @@ public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, 
                 // AuditCat: module name derived from entity namespace
                 var auditCat = ResolveAuditCat(entry);
 
-                // Src: entity/page name where the payload originates
-                var src = entityType;
+                // Src: request/device/location metadata showing where the CRUD originates
+                var src = BuildSourceMetadata(entry, eventType);
 
                 return new HospitalAuditEntry(
                     TranCode: SafeTrim(ResolveTranCode(entry), 50) ?? "GENERAL",
                     UserName: currentUser,
-                    UserAction: SafeTrim(payload, 5000) ?? payload,
+                    UserAction: SafeTrim(userAction, 5000) ?? userAction,
+                    OriginalAction: SafeTrim(originalAction, 5000),
                     ActionDate: localToday,
                     ActionTime: localNow,
                     Remarks: SafeTrim(remarks, 8000),
-                    Src: SafeTrim(src, 150),
+                    Src: SafeTrim(src, 1000),
                     AuditCat: SafeTrim(auditCat, 1000));
             })
             .Where(x => x is not null)
@@ -159,8 +176,8 @@ public sealed class HospitalAuditTrailInterceptor(ISqlDataAccess sqlDataAccess, 
         }
 
         const string insertSql = @"
-INSERT INTO Auditrail (TranCode, UserName, UserAction, ActionDate, ActionTime, Remarks, Src, AuditCat)
-VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
+INSERT INTO Auditrail (TranCode, UserName, UserAction, OriginalAction, ActionDate, ActionTime, Remarks, Src, AuditCat)
+VALUES (@TranCode, @UserName, @UserAction, @OriginalAction, @ActionDate, @ActionTime, @Remarks, @Src, @AuditCat);";
 
         foreach (var entry in entries)
         {
@@ -171,6 +188,7 @@ VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @
                 entry.TranCode,
                 entry.UserName,
                 entry.UserAction,
+                entry.OriginalAction,
                 entry.ActionDate,
                 entry.ActionTime,
                 entry.Remarks,
@@ -288,10 +306,10 @@ VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @
     }
 
     /// <summary>
-    /// Builds a JSON object where keys are human-readable input labels (not model property names).
-    /// For updates, only changed fields are included showing old → new.
+    /// Builds UserAction JSON: current values for Create, only changed fields for Update, minimal key info for Delete.
+    /// Uses property names (ViewModel names) as keys, not human-readable labels.
     /// </summary>
-    private static string BuildPayloadJson(EntityEntry entry, string eventType)
+    private static string BuildUserActionJson(EntityEntry entry, string eventType)
     {
         var properties = entry.Properties.Where(p =>
             !p.Metadata.IsPrimaryKey()
@@ -307,17 +325,28 @@ VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @
         {
             case "Create":
                 foreach (var p in properties.Where(p => p.CurrentValue != null))
-                    dict[ToLabel(p.Metadata.Name)] = p.CurrentValue;
-                break;
-
-            case "Delete":
-                foreach (var p in properties.Where(p => p.OriginalValue != null))
-                    dict[ToLabel(p.Metadata.Name)] = p.OriginalValue;
+                    dict[p.Metadata.Name] = p.CurrentValue;
                 break;
 
             case "Update":
                 foreach (var p in properties.Where(p => p.IsModified && !Equals(p.OriginalValue, p.CurrentValue)))
-                    dict[ToLabel(p.Metadata.Name)] = $"{p.OriginalValue} → {p.CurrentValue}";
+                    dict[p.Metadata.Name] = p.CurrentValue;
+                break;
+
+            case "Delete":
+                var primaryKey = entry.Metadata.FindPrimaryKey();
+                if (primaryKey is not null)
+                {
+                    foreach (var keyProperty in primaryKey.Properties)
+                    {
+                        var keyEntry = entry.Property(keyProperty.Name);
+                        var keyValue = keyEntry.OriginalValue ?? keyEntry.CurrentValue;
+                        if (keyValue is not null)
+                        {
+                            dict[keyProperty.Name] = keyValue;
+                        }
+                    }
+                }
                 break;
         }
 
@@ -327,44 +356,119 @@ VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @
     }
 
     /// <summary>
-    /// Converts a PascalCase/camelCase property name to a readable label
-    /// e.g. "desName" → "des name", "PatientNo" → "patient no"
+    /// Builds OriginalAction JSON: old values for Update/Delete, null for Create.
+    /// Uses property names (ViewModel names) as keys.
     /// </summary>
-    private static string ToLabel(string propertyName)
+    private static string? BuildOriginalActionJson(EntityEntry entry, string eventType)
     {
-        if (string.IsNullOrEmpty(propertyName)) return propertyName;
+        if (eventType == "Create")
+            return null;
 
-        var sb = new System.Text.StringBuilder();
-        for (var i = 0; i < propertyName.Length; i++)
+        var properties = entry.Properties.Where(p =>
+            !p.Metadata.IsPrimaryKey()
+            && p.Metadata.Name != "CreatedBy"
+            && p.Metadata.Name != "CreatedDate"
+            && p.Metadata.Name != "UpdatedBy"
+            && p.Metadata.Name != "UpdatedDate"
+            && p.Metadata.ClrType != typeof(byte[]));
+
+        var dict = new Dictionary<string, object?>();
+
+        switch (eventType)
         {
-            var c = propertyName[i];
-            if (i > 0 && char.IsUpper(c))
-                sb.Append(' ');
-            sb.Append(char.ToLowerInvariant(c));
+            case "Update":
+                // For update, include only changed fields with their old values
+                foreach (var p in properties.Where(p => p.IsModified && !Equals(p.OriginalValue, p.CurrentValue)))
+                    dict[p.Metadata.Name] = p.OriginalValue;
+                break;
+
+            case "Delete":
+                // For delete, include all original values (full deleted record for recovery)
+                foreach (var p in properties.Where(p => p.OriginalValue != null))
+                    dict[p.Metadata.Name] = p.OriginalValue;
+                break;
         }
-        return sb.ToString();
+
+        if (dict.Count == 0) return null;
+
+        return JsonSerializer.Serialize(dict);
     }
 
     /// <summary>
-    /// Derives module/AuditCat from entity namespace segment.
-    /// e.g. AestheticEMR.Core.Models.Employees → employees
-    ///      AestheticEMR.Core.Models.Aesthetic  → aesthetics
+    /// Removed: ToLabel() method is no longer used. Property names are serialized as-is.
+    /// This ensures clean JSON keys like "desName" instead of "des name".
+    /// </summary>
+
+    /// <summary>
+    /// Derives module/AuditCat from the business area where the CRUD happened.
     /// </summary>
     private static string ResolveAuditCat(EntityEntry entry)
     {
-        var ns = entry.Metadata.ClrType.Namespace ?? string.Empty;
+        var entityName = entry.Metadata.ClrType.Name;
+        var tableName = entry.Metadata.GetTableName() ?? entityName;
+        var clinic = GetPropertyValue(entry, "Clinic")?.ToLowerInvariant();
+        var source = $"{entityName} {tableName}".ToLowerInvariant();
 
-        // Try to extract the last meaningful segment after "Models."
+        if (!string.IsNullOrWhiteSpace(clinic))
+        {
+            if (clinic.Contains("dental")) return "dental";
+            if (clinic.Contains("bill")) return "billing";
+            if (clinic.Contains("front") || clinic.Contains("record") || clinic.Contains("consult")) return "frontDesk";
+        }
+
+        if (source.Contains("billing") || source.Contains("billaccum") || source.Contains("payment") || source.Contains("receipt"))
+            return "billing";
+
+        if (source.Contains("dental") || source.Contains("tooth") || source.Contains("odont") || source.Contains("imaging"))
+            return "dental";
+
+        if (source.Contains("patient") || source.Contains("consult") || source.Contains("record") || source.Contains("retainership") || source.Contains("referal") || source.Contains("appointment"))
+            return "frontDesk";
+
+        if (source.Contains("employee") || source.Contains("designation") || source.Contains("department") || source.Contains("roster") || source.Contains("shift"))
+            return "employees";
+
+        if (source.Contains("aesthetic"))
+            return "aesthetics";
+
+        if (source.Contains("journal") || source.Contains("tranxaction") || source.Contains("expense") || source.Contains("income") || source.Contains("account"))
+            return "accounting";
+
+        var ns = entry.Metadata.ClrType.Namespace ?? string.Empty;
         const string modelsMarker = ".Models.";
         var idx = ns.IndexOf(modelsMarker, StringComparison.OrdinalIgnoreCase);
         if (idx >= 0)
         {
             var segment = ns[(idx + modelsMarker.Length)..];
             var dotIdx = segment.IndexOf('.');
-            return (dotIdx > 0 ? segment[..dotIdx] : segment).ToLowerInvariant();
+            var namespaceSegment = (dotIdx > 0 ? segment[..dotIdx] : segment).ToLowerInvariant();
+
+            return namespaceSegment switch
+            {
+                "legacy" => "frontDesk",
+                "dental" => "dental",
+                "aesthetic" => "aesthetics",
+                "employees" => "employees",
+                "accounting" => "accounting",
+                _ => namespaceSegment
+            };
         }
 
-        return entry.Metadata.ClrType.Name.ToLowerInvariant();
+        return "general";
+    }
+
+    private static string? GetPropertyValue(EntityEntry entry, string propertyName)
+    {
+        var property = entry.Properties.FirstOrDefault(p =>
+            string.Equals(p.Metadata.Name, propertyName, StringComparison.OrdinalIgnoreCase));
+
+        if (property is null)
+        {
+            return null;
+        }
+
+        var rawValue = entry.State == EntityState.Deleted ? property.OriginalValue : property.CurrentValue;
+        return rawValue?.ToString()?.Trim();
     }
 
     private static string? SafeTrim(string? value, int maxLength)
@@ -378,13 +482,40 @@ VALUES (@TranCode, @UserName, @UserAction, @ActionDate, @ActionTime, @Remarks, @
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
-    private sealed record HospitalAuditEntry(
-        string TranCode,
-        string UserName,
-        string UserAction,
-        DateTime ActionDate,
-        DateTime ActionTime,
-        string? Remarks,
-        string? Src,
-        string? AuditCat);
+    private string BuildSourceMetadata(EntityEntry entry, string eventType)
+    {
+        var metadata = new Dictionary<string, object?>
+        {
+            ["eventType"] = eventType,
+            ["entityName"] = entry.Metadata.ClrType.Name,
+            ["tableName"] = entry.Metadata.GetTableName(),
+            ["requestPath"] = auditRequestContext.GetRequestPath(),
+            ["deviceName"] = auditRequestContext.GetDeviceName(),
+            ["ipAddress"] = auditRequestContext.GetIpAddress(),
+            ["userAgent"] = auditRequestContext.GetUserAgent(),
+            ["city"] = auditRequestContext.GetCity(),
+            ["country"] = auditRequestContext.GetCountry(),
+            ["coordinates"] = auditRequestContext.GetCoordinates()
+        };
+
+        var clinic = GetPropertyValue(entry, "Clinic");
+        if (!string.IsNullOrWhiteSpace(clinic))
+        {
+            metadata["clinic"] = clinic;
+        }
+
+        var routeModule = ResolveAuditCat(entry);
+        if (!string.IsNullOrWhiteSpace(routeModule))
+        {
+            metadata["module"] = routeModule;
+        }
+
+        var filtered = metadata
+            .Where(x => x.Value is not null && !string.IsNullOrWhiteSpace(x.Value.ToString()))
+            .ToDictionary(x => x.Key, x => x.Value);
+
+        return filtered.Count == 0
+            ? entry.Metadata.ClrType.Name
+            : JsonSerializer.Serialize(filtered);
+    }
 }
