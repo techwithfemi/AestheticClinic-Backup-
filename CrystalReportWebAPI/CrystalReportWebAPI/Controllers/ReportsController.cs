@@ -461,6 +461,104 @@ select distinct * from vwRosterForRptCrosstab2 where deptID=@DeptID and mth=@Mth
             }
         }
 
+        [Route("Admin/AuditTrail")]
+        [HttpGet]
+        [ClientCacheWithEtag(60)]
+        public async Task<HttpResponseMessage> AdminAuditTrail(DateTime fromDate, DateTime toDate, string filterType = "ALL", string filterValue = null, string filterDisplayText = null, string tranCode = null)
+        {
+            const string reportPath = "~/Reports";
+            const string reportFileName = "rptAudiTrail.rpt";
+            var exportFilename = $"rptAudiTrail-{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.pdf";
+
+            var normalizedFilterType = string.IsNullOrWhiteSpace(filterType) ? "ALL" : filterType.Trim().ToUpperInvariant();
+            if (normalizedFilterType != "ALL" && normalizedFilterType != "MODULE" && normalizedFilterType != "USER")
+            {
+                throw new ArgumentException("Invalid filter type.", nameof(filterType));
+            }
+
+            var conStr = ResolveConnectionStringFromRequest(Request);
+
+            string sql;
+            object parameters;
+
+            if (!string.IsNullOrWhiteSpace(tranCode))
+            {
+                sql = @"
+select distinct *
+from vwAudiTrail
+where TranCode = @TranCode
+order by ID, module asc";
+                parameters = new
+                {
+                    TranCode = tranCode.Trim()
+                };
+            }
+            else
+            {
+                switch (normalizedFilterType)
+                {
+                    case "MODULE":
+                        sql = @"
+select distinct *
+from vwAudiTrail
+where module = @FilterValue
+  and [date] between @FromDate and @ToDate
+order by [date] desc, module asc";
+                        parameters = new
+                        {
+                            FilterValue = (filterValue ?? string.Empty).Trim(),
+                            FromDate = fromDate.Date,
+                            ToDate = toDate.Date
+                        };
+                        break;
+
+                    case "USER":
+                        sql = @"
+select distinct *
+from vwAudiTrail
+where username = @FilterValue
+  and [date] between @FromDate and @ToDate
+order by [date] desc, fullname asc";
+                        parameters = new
+                        {
+                            FilterValue = (filterValue ?? string.Empty).Trim(),
+                            FromDate = fromDate.Date,
+                            ToDate = toDate.Date
+                        };
+                        break;
+
+                    default:
+                        sql = @"
+select distinct *
+from vwAudiTrail
+where [date] between @FromDate and @ToDate
+order by [date] desc";
+                        parameters = new
+                        {
+                            FromDate = fromDate.Date,
+                            ToDate = toDate.Date
+                        };
+                        break;
+                }
+            }
+
+            try
+            {
+                var ds = await DapperReportData.ExecuteDataSetAsync(conStr, sql, parameters, 240);
+                var header = BuildAuditTrailHeader(normalizedFilterType, filterDisplayText, fromDate.Date, toDate.Date, tranCode);
+                var textObjects = new Dictionary<string, string>
+                {
+                    ["Text10"] = header
+                };
+
+                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, null, textObjects);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message, ex);
+            }
+        }
+
         private static string ResolveConnectionStringFromRequest(HttpRequestMessage request)
         {
             const string headerName = "X-Db-Connection";
@@ -477,6 +575,24 @@ select distinct * from vwRosterForRptCrosstab2 where deptID=@DeptID and mth=@Mth
             }
 
             return connectionString;
+        }
+
+        private static string BuildAuditTrailHeader(string filterType, string filterDisplayText, DateTime fromDate, DateTime toDate, string tranCode)
+        {
+            if (!string.IsNullOrWhiteSpace(tranCode))
+            {
+                return $"AudiTrail for Transaction: {tranCode.Trim()}";
+            }
+
+            switch (filterType)
+            {
+                case "MODULE":
+                    return $"AudiTrail for: {filterDisplayText?.Trim()} Module Between {fromDate:d} And {toDate:d}";
+                case "USER":
+                    return $"AudiTrail for User: {filterDisplayText?.Trim()} Between {fromDate:d} And {toDate:d}";
+                default:
+                    return $"AudiTrail for:  Between {fromDate:d} And {toDate:d}";
+            }
         }
 
         private static string BuildGeneralLedgerHeader(string displayName, string period, DateTime reportDate, bool isClose)

@@ -47,6 +47,30 @@ export interface AccountingReportDefaults {
   coyID: string;
 }
 
+export interface AdminAuditReportUserLookup {
+  userName: string;
+  fullName: string;
+  displayText: string;
+}
+
+export interface AdminAuditReportModuleLookup {
+  name: string;
+}
+
+export interface AdminAuditReportRow {
+  id: number;
+  date: string;
+  time: string;
+  userAction: string;
+  originalAction?: string | null;
+  remarks?: string | null;
+  src?: string | null;
+  employee?: string | null;
+  userName: string;
+  tranCode: string;
+  module?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -419,6 +443,35 @@ export class AestheticEndpoint extends EndpointBase {
     }).pipe(
       catchError(error => this.handleError(error, () => this.getStaffRosterReportEndpoint(params)))
     ) as Observable<Blob>;
+  }
+
+  getAuditReportRowsEndpoint(params: { fromDate: string; toDate: string; filterType: string; filterValue?: string; searchTerm?: string }): Observable<AdminAuditReportRow[]> {
+    const query = new URLSearchParams({
+      fromDate: params.fromDate,
+      toDate: params.toDate,
+      filterType: params.filterType
+    });
+
+    if (params.filterValue) {
+      query.set('filterValue', params.filterValue);
+    }
+
+    if (params.searchTerm) {
+      query.set('searchTerm', params.searchTerm);
+    }
+
+    return this.http.get<AdminAuditReportRow[]>(`${this.auditUrl}/report/rows?${query.toString()}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAuditReportRowsEndpoint(params))));
+  }
+
+  getAuditReportUsersEndpoint(): Observable<AdminAuditReportUserLookup[]> {
+    return this.http.get<AdminAuditReportUserLookup[]>(`${this.auditUrl}/report/users`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAuditReportUsersEndpoint())));
+  }
+
+  getAuditReportModulesEndpoint(): Observable<AdminAuditReportModuleLookup[]> {
+    return this.http.get<AdminAuditReportModuleLookup[]>(`${this.auditUrl}/report/modules`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAuditReportModulesEndpoint())));
   }
 
   private get jsonHeadersWithoutAuth(): { headers: HttpHeaders | Record<string, string | string[]> } {

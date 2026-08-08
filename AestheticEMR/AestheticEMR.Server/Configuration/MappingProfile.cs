@@ -14,6 +14,7 @@ using AestheticEMR.Core.Models.Shop;
 using AestheticEMR.Core.Services.Account;
 using AestheticEMR.Core.Services.Accounting.Models;
 using AestheticEMR.Core.Services.Legacy.Models;
+using AestheticEMR.Core.Services.Audit;
 using AestheticEMR.Server.ViewModels.Account;
 using AestheticEMR.Server.ViewModels.Accounting;
 using AestheticEMR.Server.ViewModels.Aesthetic;
@@ -21,6 +22,7 @@ using AestheticEMR.Server.ViewModels.Dental;
 using AestheticEMR.Server.ViewModels.Employees;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AestheticEMR.Server.ViewModels.Shop;
+using AestheticEMR.Server.ViewModels.Audit;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using EmployeeEntity = AestheticEMR.Core.Models.Employees.Employees;
@@ -399,6 +401,13 @@ namespace AestheticEMR.Server.Configuration
             CreateMap<AccountingReportPeriodLookup, AccountingReportPeriodVM>();
             CreateMap<AccountingLedgerLookup, AccountingLedgerLookupVM>();
             CreateMap<AccountingAccountLookup, AccountingAccountLookupVM>();
+
+            CreateMap<AdminAuditReportUserLookup, AdminAuditReportUserLookupVM>();
+            CreateMap<AdminAuditReportModuleLookup, AdminAuditReportModuleLookupVM>();
+            CreateMap<AdminAuditReportRow, AdminAuditReportRowVM>();
+
+            CreateMap<AestheticEMR.Core.Models.Shop.Customer, CustomerVM>()
+                .ReverseMap();
         }
 
         private static string StripBase64Prefix(string base64)

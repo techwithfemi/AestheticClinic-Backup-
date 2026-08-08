@@ -1,5 +1,218 @@
-<div class="reports-container">
-  <h2>Admin Audit Report</h2>
-  <p>Admin Audit Report component - Coming Soon</p>
+<div class="audit-report-page" [@fadeInOut]>
+  <div class="page-header">
+    <div>
+      <h2>{{ 'reports.adminAudit.title' | translate }}</h2>
+      <p class="subtitle">{{ 'reports.adminAudit.subtitle' | translate }}</p>
+    </div>
+  </div>
+
+  <mat-card class="filter-card">
+    <div class="filter-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'reports.adminAudit.fromDate' | translate }}</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="dateFrom" (ngModelChange)="onDateChanged()">
+        <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'reports.adminAudit.toDate' | translate }}</mat-label>
+        <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo" (ngModelChange)="onDateChanged()">
+        <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'reports.adminAudit.searchLabel' | translate }}</mat-label>
+        <input matInput [(ngModel)]="searchTranCode" (ngModelChange)="onSearchChanged()" [placeholder]="'reports.adminAudit.searchPlaceholder' | translate">
+      </mat-form-field>
+    </div>
+
+    <mat-radio-group class="filter-type-group" [(ngModel)]="filterType" (ngModelChange)="onFilterTypeChanged()">
+      <mat-radio-button value="ALL">{{ 'reports.adminAudit.filterAll' | translate }}</mat-radio-button>
+      <mat-radio-button value="MODULE">{{ 'reports.adminAudit.filterByModule' | translate }}</mat-radio-button>
+      <mat-radio-button value="USER">{{ 'reports.adminAudit.filterByUser' | translate }}</mat-radio-button>
+    </mat-radio-group>
+
+    @if (filterType === 'MODULE') {
+      <div class="select-row">
+        <label class="select-label">{{ 'reports.adminAudit.module' | translate }}</label>
+        <ng-select
+          [items]="moduleOptions()"
+          bindLabel="name"
+          bindValue="name"
+          [(ngModel)]="selectedModuleName"
+          (change)="onModuleChanged()"
+          [searchable]="true"
+          [clearable]="true"
+          [placeholder]="'reports.adminAudit.modulePlaceholder' | translate">
+        </ng-select>
+      </div>
+    }
+
+    @if (filterType === 'USER') {
+      <div class="select-row">
+        <label class="select-label">{{ 'reports.adminAudit.user' | translate }}</label>
+        <ng-select
+          [items]="userOptions()"
+          bindLabel="displayText"
+          bindValue="userName"
+          [(ngModel)]="selectedUserName"
+          (change)="onUserChanged()"
+          [searchable]="true"
+          [clearable]="true"
+          [placeholder]="'reports.adminAudit.userPlaceholder' | translate">
+        </ng-select>
+      </div>
+    }
+  </mat-card>
+
+  <mat-card class="table-card">
+    @if (loadingIndicator) {
+      <div class="empty-state">
+        <mat-icon>autorenew</mat-icon>
+        <h3>{{ 'reports.adminAudit.loading' | translate }}</h3>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="empty-state">
+        <mat-icon>assignment</mat-icon>
+        <h3>{{ 'reports.adminAudit.noRecordsTitle' | translate }}</h3>
+        <p>{{ 'reports.adminAudit.noRecordsMessage' | translate }}</p>
+      </div>
+    } @else {
+      <div class="table-header-bar">
+        <span class="record-count">
+          {{ 'reports.adminAudit.recordCount' | translate:{ shown: pagedRows().length, total: rows().length } }}
+        </span>
+      </div>
+
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="pagedRows()" class="audit-table">
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.date' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.date | utcDisplay:'dateDash' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="time">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.time' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.time | utcDisplay:'time' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="userAction">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.userAction' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="action-cell">
+              @if (row.userActionDisplay.isJson) {
+                <div class="json-field">
+                  <div class="json-pairs">
+                    @for (pair of row.userActionDisplay.pairs; track pair.key) {
+                      <div class="json-pair">
+                        <span class="json-key">{{ pair.key }}</span>
+                        <span class="json-value" [title]="pair.value">{{ pair.value }}</span>
+                      </div>
+                    }
+                  </div>
+                  @if (row.userActionDisplay.hiddenCount > 0) {
+                    <div class="json-more">+{{ row.userActionDisplay.hiddenCount }}</div>
+                  }
+                  <details class="json-details">
+                    <summary>&#123; &#125;</summary>
+                    <pre>{{ row.userActionDisplay.pretty }}</pre>
+                  </details>
+                </div>
+              } @else {
+                <div class="json-plain">{{ row.userActionDisplay.raw || '&#8212;' }}</div>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="originalAction">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.originalAction' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="action-cell">
+              @if (row.originalActionDisplay.isJson) {
+                <div class="json-field">
+                  <div class="json-pairs">
+                    @for (pair of row.originalActionDisplay.pairs; track pair.key) {
+                      <div class="json-pair">
+                        <span class="json-key">{{ pair.key }}</span>
+                        <span class="json-value" [title]="pair.value">{{ pair.value }}</span>
+                      </div>
+                    }
+                  </div>
+                  @if (row.originalActionDisplay.hiddenCount > 0) {
+                    <div class="json-more">+{{ row.originalActionDisplay.hiddenCount }}</div>
+                  }
+                  <details class="json-details">
+                    <summary>&#123; &#125;</summary>
+                    <pre>{{ row.originalActionDisplay.pretty }}</pre>
+                  </details>
+                </div>
+              } @else {
+                <div class="json-plain">{{ row.originalActionDisplay.raw || '&#8212;' }}</div>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="remarks">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.remarks' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.remarks || '&#8212;' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="src">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.src' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="action-cell">
+              @if (row.srcDisplay.isJson) {
+                <div class="json-field">
+                  <div class="json-pairs">
+                    @for (pair of row.srcDisplay.pairs; track pair.key) {
+                      <div class="json-pair">
+                        <span class="json-key">{{ pair.key }}</span>
+                        <span class="json-value" [title]="pair.value">{{ pair.value }}</span>
+                      </div>
+                    }
+                  </div>
+                  @if (row.srcDisplay.hiddenCount > 0) {
+                    <div class="json-more">+{{ row.srcDisplay.hiddenCount }}</div>
+                  }
+                  <details class="json-details">
+                    <summary>&#123; &#125;</summary>
+                    <pre>{{ row.srcDisplay.pretty }}</pre>
+                  </details>
+                </div>
+              } @else {
+                <div class="json-plain">{{ row.srcDisplay.raw || '&#8212;' }}</div>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="employee">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.employee' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.employee || '&#8212;' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="tranCode">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.tranCode' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.tranCode || '&#8212;' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="module">
+            <th mat-header-cell *matHeaderCellDef>{{ 'reports.adminAudit.columns.module' | translate }}</th>
+            <td mat-cell *matCellDef="let row">{{ row.module || '&#8212;' }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [length]="rows().length"
+        [pageSize]="pageSize"
+        [pageIndex]="currentPage()"
+        [pageSizeOptions]="[10]"
+        [hidePageSize]="true"
+        (page)="onPageChanged($event)">
+      </mat-paginator>
+    }
+  </mat-card>
 </div>
 

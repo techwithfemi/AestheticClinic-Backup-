@@ -333,7 +333,7 @@
                   "management":  {
                                      "Search":  "Buscar usuario...",
                                      "NewUser":  "Nuevo Usuario",
-                                     "Edit":  "Editar",
+                                     "Edit":  "Eliminar",
                                      "Delete":  "Eliminar",
                                      "EditUser":  "Editar Usuario \"{{name}}\"",
                                      "Title":  "TÃƒÆ’Ã‚Â­tulo",
@@ -626,5 +626,38 @@
                          "staffGroup":  "Staff Group",
                          "shifts":  "Shifts",
                          "placeholder":  "This section is under construction."
-                     }
+                     },
+    "reports": {
+        "adminAudit": {
+            "title": "Admin Audit Report",
+            "subtitle": "Review audit trail records by period, module, user, or transaction code.",
+            "fromDate": "Activities Between",
+            "toDate": "And",
+            "searchLabel": "Search (Tran Code / Module / Employee / Action / Remarks / Source)",
+            "searchPlaceholder": "Enter any search text",
+            "filterAll": "All",
+            "filterByModule": "By Module",
+            "filterByUser": "By User",
+            "module": "Module",
+            "modulePlaceholder": "Select module",
+            "user": "User",
+            "userPlaceholder": "Select user",
+            "showDetails": "Show Details",
+            "loading": "Loading audit report...",
+            "noRecordsTitle": "No Records Found",
+            "noRecordsMessage": "No audit records match the selected filters.",
+            "recordCount": "Showing {{shown}} of {{total}} records",
+            "columns": {
+                "actionDate": "Date",
+                "actionTime": "Time",
+                "tranCode": "Tran Code",
+                "userName": "User Name",
+                "fullName": "Full Name",
+                "module": "Module",
+                "src": "Source",
+                "remarks": "Remarks",
+                "userAction": "User Action"
+            }
+        }
+    }
 }
