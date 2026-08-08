@@ -575,6 +575,15 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
 **ALL Dapper calls MUST go through `ISqlDataAccess`** — inject and use `LoadData`, `LoadDataText`, `SaveData`, or `SaveDataText`. This is mandatory so that `AuditedSqlDataAccess` (the registered decorator) can intercept every write and commit the audit trail.
 11. ❌ **NEVER create `SqlConnection` / `IDbConnection` directly in a service** — doing so bypasses `AuditedSqlDataAccess` and silently drops the audit trail. `DepartmentService` was a historical violation of this rule and has been corrected.
 
+### VB6/VB.NET Codebase Rules
+
+For VB6/VB.NET codebase entry form/report pages:
+- Follow existing codebase behavior unless explicitly specified otherwise.
+- Always use Dapper via the DataAccess wrapper (not EF Core).
+- Use `DefaultConnection` for hospital EMR DB, `SmartHRConnection` for SmartHR DB, and `accountingConnection` for Accounting DB.
+- Ignore legacy VB6/VB.NET auditrail calls and use the backend audit trail logging system.
+- Use Angular Material table/grid for reporting instead of legacy Crystal Reports.
+
 
 
 
