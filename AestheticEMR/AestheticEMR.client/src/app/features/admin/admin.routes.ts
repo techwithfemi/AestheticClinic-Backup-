@@ -21,11 +21,5 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./consent-templates/consent-templates.component')
       .then(m => m.ConsentTemplatesComponent),
     title: 'Consent Templates'
-  },
-  {
-    path: 'audit',
-    loadComponent: () => import('../aesthetics/audit-trail/audit-trail.component')
-      .then(m => m.AuditTrailComponent),
-    title: 'Audit Logs'
   }
 ];

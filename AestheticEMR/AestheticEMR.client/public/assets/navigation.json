@@ -25,7 +25,6 @@
       "route": "admin",
       "icon": "admin_panel_settings",
       "subItems": [
-        { "label": "Audit Logs", "path": "audit", "icon": "history_edu", "serialNo": 0, "visible": true },
         { "label": "Consent Templates", "path": "consent-templates", "icon": "article", "serialNo": 0, "visible": true },
         { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings", "serialNo": 0, "visible": true },
         { "label": "User Management", "path": "users", "icon": "group", "serialNo": 0, "visible": true }
@@ -35,7 +34,6 @@
       "route": "aesthetics",
       "icon": "face",
       "subItems": [
-        { "label": "Audit Trail", "path": "audit-trail", "icon": "history", "serialNo": 0, "visible": false },
         { "label": "Procedures", "path": "procedures", "icon": "biotech", "serialNo": 0, "visible": true },
         { "label": "View Consent", "path": "view-consent", "icon": "description", "serialNo": 0, "visible": true }
       ]
