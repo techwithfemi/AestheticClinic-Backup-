@@ -579,6 +579,10 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
 
 - For the admin audit report, the grid's single source of truth must be `vwAudiTrail` using the explicit provided SELECT/view columns, with ID and UserName hidden in the UI.
 
+### Dropdown Placeholder Rule
+
+- For dropdowns, default selected value should be the explicit first option text (for example '--Select Account--'), with '(ALL)' if present, as the next explicit option; do not use empty-string defaults.
+
 
 
 

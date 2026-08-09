@@ -1,16 +1,16 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { AccountingJournalReportBaseComponent } from './accounting-journal-report-base.component';
 
 @Component({
   selector: 'app-accounting-incomes-report',
   standalone: true,
-  imports: [CommonModule],
+  imports: [AccountingJournalReportBaseComponent],
   template: `
-    <div class="reports-container">
-      <h2>Accounting Incomes Report</h2>
-      <p>Accounting incomes report - Coming Soon</p>
-    </div>
-  `,
-  styles: [`.reports-container { padding: 20px; } @media (max-width: 992px) { .reports-container { padding: 16px; } } @media (max-width: 575.98px) { .reports-container { padding: 12px; } }`]
+    <app-accounting-journal-report-base
+      reportType="income"
+      title="Accounting Incomes Report"
+      subtitle="Journal lines filtered by Income accounts">
+    </app-accounting-journal-report-base>
+  `
 })
 export class AccountingIncomesReportComponent {}
