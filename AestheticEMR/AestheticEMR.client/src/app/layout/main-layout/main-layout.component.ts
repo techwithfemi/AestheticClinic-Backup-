@@ -28,6 +28,8 @@ interface SubNavItem {
 interface NavigationItem {
   route?: string;
   icon?: string;
+  serialNo?: number;
+  visible?: boolean;
   subItems?: SubNavItem[];
 }
 
@@ -35,6 +37,17 @@ interface SubNavGroup {
   name: string;
   icon: string;
   items: SubNavItem[];
+}
+
+interface MenuEntry {
+  title: string;
+  item: NavigationItem;
+  subGroups?: SubNavGroup[];
+}
+
+interface MenuSection {
+  key: 'top' | 'dynamic' | 'bottom';
+  entries: MenuEntry[];
 }
 
 @Component({
@@ -73,7 +86,8 @@ export class MainLayoutComponent implements OnInit {
     admin: '#ef4444'
   };
 
-  menuEntries: { title: string; item: NavigationItem; subGroups?: SubNavGroup[] }[] = [];
+  menuEntries: MenuEntry[] = [];
+  menuSections: MenuSection[] = [];
 
   get userRoles(): string[] {
     return this.authService.currentUser?.roles || [];
@@ -340,39 +354,60 @@ export class MainLayoutComponent implements OnInit {
         this.profileUser = user;
       });
 
-    this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Reports?: Record<string, NavigationItem>; Settings?: Record<string, NavigationItem> }>('assets/navigation.json')
+    this.http.get<{ Static_Top?: Record<string, NavigationItem>; Dynamic_Roles?: Record<string, NavigationItem>; Static_Bottom?: Record<string, NavigationItem> }>('assets/navigation.json')
       .subscribe(json => {
         // Canonical navigation lives at public/assets/navigation.json (served at /assets/navigation.json).
-        const top = Object.entries(json.Static_Top || {})
-          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }));
+        const top = this.sortMenuEntries(
+          Object.entries(json.Static_Top || {})
+            .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
+            .filter(entry => entry.item.visible !== false)
+        );
 
-        const dynamic = Object.entries(json.Dynamic_Roles || {})
-          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
-          .filter(entry => this.canAccessDynamicSection(entry.title) && (entry.item.subItems?.length || 0) > 0);
+        const dynamic = this.sortMenuEntries(
+          Object.entries(json.Dynamic_Roles || {})
+            .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
+            .filter(entry => entry.item.visible !== false && this.canAccessDynamicSection(entry.title) && (entry.item.subItems?.length || 0) > 0)
+        );
 
-        const reports = Object.entries(json.Reports || {})
-          .map(([title, item]) => {
-            // Normalize labels to Title (Pascal) Case so the sidebar always renders consistently.
-            const normalized: SubNavItem[] = (item.subItems || []).map(s => ({
-              ...s,
-              label: this.toTitleCaseLabel(s.label || '')
-            }));
-            const filtered = this.filterReportSubItems(normalized);
-            const subGroups = this.groupReportSubItems(filtered);
-            // Flat subItems is kept for active-route matching on link activation.
-            return {
-              title,
-              item: { ...item, subItems: filtered },
-              subGroups: subGroups.length > 1 ? subGroups : undefined
-            };
-          })
-          .filter(entry => (entry.item.subItems?.length || 0) > 0);
+        const bottom = this.sortMenuEntries(
+          Object.entries(json.Static_Bottom || {})
+            .map(([title, item]) => {
+              if (title === 'Reports') {
+                const normalized: SubNavItem[] = (item.subItems || []).map(s => ({
+                  ...s,
+                  label: this.toTitleCaseLabel(s.label || '')
+                }));
+                const filtered = this.filterReportSubItems(normalized);
+                const subGroups = this.groupReportSubItems(filtered);
+                return {
+                  title,
+                  item: { ...item, subItems: filtered },
+                  subGroups: subGroups.length > 1 ? subGroups : undefined
+                };
+              }
 
-        const bottom = Object.entries(json.Settings || {})
-          .map(([title, item]) => ({ title, item: { ...item, subItems: this.processSubItems(item.subItems || []) } }))
-          .filter(entry => (entry.item.subItems?.length || 0) > 0);
+              return {
+                title,
+                item: { ...item, subItems: this.processSubItems(item.subItems || []) }
+              };
+            })
+            .filter(entry => entry.item.visible !== false)
+            .filter(entry => {
+              if (entry.title === 'Admin') {
+                return this.canAccessDynamicSection(entry.title) && (entry.item.subItems?.length || 0) > 0;
+              }
 
-        this.menuEntries = [...top, ...dynamic, ...reports, ...bottom];
+              return (entry.item.subItems?.length || 0) > 0;
+            })
+        );
+
+        this.menuEntries = [...top, ...dynamic, ...bottom];
+        const sections: MenuSection[] = [
+          { key: 'top', entries: top },
+          { key: 'dynamic', entries: dynamic },
+          { key: 'bottom', entries: bottom }
+        ];
+        this.menuSections = sections.filter(section => section.entries.length > 0);
       });
   }
 
@@ -406,5 +441,14 @@ export class MainLayoutComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.authService.redirectLogoutUser();
+  }
+
+  private sortMenuEntries<T extends MenuEntry>(entries: T[]): T[] {
+    return entries.slice().sort((a, b) => {
+      const sa = typeof a.item.serialNo === 'number' ? a.item.serialNo : 0;
+      const sb = typeof b.item.serialNo === 'number' ? b.item.serialNo : 0;
+      if (sa !== sb) return sa - sb;
+      return a.title.localeCompare(b.title);
+    });
   }
 }

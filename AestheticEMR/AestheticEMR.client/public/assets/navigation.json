@@ -3,6 +3,8 @@
     "Dashboard": {
       "route": "dashboard",
       "icon": "dashboard",
+      "serialNo": 0,
+      "visible": true,
       "subItems": []
     }
   },
@@ -10,6 +12,8 @@
     "Accounting": {
       "route": "accounting",
       "icon": "account_balance",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree", "serialNo": 0, "visible": true },
         { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront", "serialNo": 0, "visible": true },
@@ -20,18 +24,11 @@
         { "label": "Purchases", "path": "purchases", "icon": "shopping_cart", "serialNo": 0, "visible": true }
       ]
     },
-    "Admin": {
-      "route": "admin",
-      "icon": "admin_panel_settings",
-      "subItems": [
-        { "label": "Consent Templates", "path": "consent-templates", "icon": "article", "serialNo": 0, "visible": true },
-        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings", "serialNo": 0, "visible": true },
-        { "label": "User Management", "path": "users", "icon": "group", "serialNo": 0, "visible": true }
-      ]
-    },
     "Aesthetics": {
       "route": "aesthetics",
       "icon": "face",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Procedures", "path": "procedures", "icon": "biotech", "serialNo": 0, "visible": true },
         { "label": "View Consent", "path": "view-consent", "icon": "description", "serialNo": 0, "visible": true }
@@ -40,6 +37,8 @@
     "Billing": {
       "route": "billing",
       "icon": "payments",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Invoices", "path": "invoices", "icon": "receipt_long", "serialNo": 0, "visible": true },
         { "label": "Receipts", "path": "receipts", "icon": "receipt", "serialNo": 0, "visible": true }
@@ -48,6 +47,8 @@
     "Dental": {
       "route": "dental",
       "icon": "medical_services",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Clinical Session", "path": "clinical-session", "icon": "medical_information", "serialNo": 0, "visible": true }
       ]
@@ -55,6 +56,8 @@
     "Employees": {
       "route": "employees",
       "icon": "badge",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Department", "path": "department", "icon": "groups", "serialNo": 0, "visible": true },
         { "label": "Designation", "path": "designation", "icon": "workspace_premium", "serialNo": 0, "visible": true },
@@ -64,6 +67,8 @@
     "Frontdesk": {
       "route": "frontdesk",
       "icon": "folder_shared",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Appointments", "path": "appointments", "icon": "event", "serialNo": 0, "visible": true },
         { "label": "Attendance", "path": "attendance", "icon": "checklist", "serialNo": 0, "visible": true },
@@ -77,6 +82,8 @@
     "Inventory": {
       "route": "inventory",
       "icon": "inventory",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Product Category", "path": "product-categories", "icon": "category", "serialNo": 0, "visible": true },
         { "label": "Products", "path": "products", "icon": "inventory", "serialNo": 0, "visible": true }
@@ -85,11 +92,15 @@
     "Management": {
       "route": "management",
       "icon": "manage_accounts",
+      "serialNo": 0,
+      "visible": true,
       "subItems": []
     },
     "StaffRoster": {
       "route": "staff-roster",
       "icon": "event_available",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Create Roster", "path": "create-roster", "icon": "event_note", "serialNo": 0, "visible": true },
         { "label": "Shifts Details", "path": "shift-details", "icon": "schedule_send", "serialNo": 0, "visible": true },
@@ -100,6 +111,8 @@
     "Spa": {
       "route": "spa",
       "icon": "spa",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Spa session", "path": "services", "icon": "list_alt", "serialNo": 0, "visible": true }
       ]
@@ -107,6 +120,8 @@
     "Tariff": {
       "route": "tariff",
       "icon": "request_quote",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Drug", "path": "stock", "icon": "inventory_2", "serialNo": 0, "visible": true },
         { "label": "Investigation", "path": "investigations", "icon": "science", "serialNo": 0, "visible": true },
@@ -115,10 +130,12 @@
       ]
     }
   },
-  "Reports": {
+  "Static_Bottom": {
     "Reports": {
       "route": "reports",
       "icon": "analytics",
+      "serialNo": 0,
+      "visible": true,
       "subItems": [
         { "label": "Aesthetics Consultations Report", "path": "aesthetics-consultations-report", "icon": "forum", "serialNo": 0, "visible": true },
         { "label": "Aesthetics Consent Report", "path": "aesthetics-consent-report", "icon": "description", "serialNo": 0, "visible": true },
@@ -151,12 +168,23 @@
         { "label": "Spa Therapists Report", "path": "spa-therapists-report", "icon": "self_improvement", "serialNo": 0, "visible": true },
         { "label": "Staff Roster Report", "path": "staff-roster-report", "icon": "event_available", "serialNo": 0, "visible": true }
       ]
-    }
-  },
-  "Settings": {
+    },
+    "Admin": {
+      "route": "admin",
+      "icon": "admin_panel_settings",
+      "serialNo": 30,
+      "visible": true,
+      "subItems": [
+        { "label": "Consent Templates", "path": "consent-templates", "icon": "article", "serialNo": 0, "visible": true },
+        { "label": "Role Management", "path": "roles", "icon": "admin_panel_settings", "serialNo": 0, "visible": true },
+        { "label": "User Management", "path": "users", "icon": "group", "serialNo": 0, "visible": true }
+      ]
+    },
     "Settings": {
       "route": "settings",
       "icon": "settings",
+      "serialNo": 20,
+      "visible": true,
       "subItems": [
         { "label": "My Profile", "fragment": "profile", "icon": "person", "serialNo": 0, "visible": true },
         { "label": "Preferences", "fragment": "preferences", "icon": "tune", "serialNo": 0, "visible": true }

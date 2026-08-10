@@ -72,6 +72,16 @@
   padding: 8px 0 !important;
 }
 
+.sidebar-section {
+  display: block;
+}
+
+.sidebar-section-divider {
+  height: 1px;
+  margin: 10px 16px;
+  background: linear-gradient(90deg, rgba(203, 213, 225, 0), rgba(203, 213, 225, 0.95), rgba(203, 213, 225, 0));
+}
+
 /* ── Parent nav items (plain links, no subitems) ── */
 :host ::ng-deep a.mat-mdc-list-item {
   height: 40px !important;

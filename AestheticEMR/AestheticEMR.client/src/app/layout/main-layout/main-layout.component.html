@@ -11,60 +11,66 @@
     </div>
 
     <mat-nav-list>
-      <ng-container *ngFor="let item of menuEntries">
-        <mat-expansion-panel *ngIf="item.item.subItems && item.item.subItems.length > 0" class="mat-elevation-z0">
-          <mat-expansion-panel-header>
-            <mat-panel-title class="menu-title">
-              <mat-icon class="menu-icon" [style.color]="getMenuIconColor(item.title, item.item.route)">{{ item.item.icon }}</mat-icon>
-              <span *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
-            </mat-panel-title>
-          </mat-expansion-panel-header>
+      <ng-container *ngFor="let section of menuSections; let isLastSection = last">
+        <div class="sidebar-section">
+          <ng-container *ngFor="let item of section.entries">
+            <mat-expansion-panel *ngIf="item.item.subItems && item.item.subItems.length > 0" class="mat-elevation-z0">
+              <mat-expansion-panel-header>
+                <mat-panel-title class="menu-title">
+                  <mat-icon class="menu-icon" [style.color]="getMenuIconColor(item.title, item.item.route)">{{ item.item.icon }}</mat-icon>
+                  <span *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
 
-          <ng-container *ngIf="item.subGroups && item.subGroups.length > 0; else flatSubList">
-            <div class="sub-nav-groups" *ngIf="!isSidebarCollapsed">
-              <div class="sub-nav-group" *ngFor="let group of item.subGroups">
-                <div class="sub-nav-group-header">
-                  <mat-icon class="sub-nav-group-icon" [style.color]="getGroupIconColor(group.name)">{{ group.icon }}</mat-icon>
-                  <span class="sub-nav-group-label" [style.color]="getGroupIconColor(group.name)">{{ group.name }}</span>
+              <ng-container *ngIf="item.subGroups && item.subGroups.length > 0; else flatSubList">
+                <div class="sub-nav-groups" *ngIf="!isSidebarCollapsed">
+                  <div class="sub-nav-group" *ngFor="let group of item.subGroups">
+                    <div class="sub-nav-group-header">
+                      <mat-icon class="sub-nav-group-icon" [style.color]="getGroupIconColor(group.name)">{{ group.icon }}</mat-icon>
+                      <span class="sub-nav-group-label" [style.color]="getGroupIconColor(group.name)">{{ group.name }}</span>
+                    </div>
+                    <mat-nav-list class="sub-nav-list sub-nav-list-grouped">
+                      <a mat-list-item *ngFor="let sub of group.items"
+                         [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
+                         [fragment]="sub.fragment || undefined"
+                         routerLinkActive="active-sub-item"
+                         (click)="closeSidenavOnMobile()"
+                         title="{{ sub.label }}">
+                        <mat-icon class="subitem-icon" [style.color]="getSubItemIconColor(group.name, item.item.route)">{{ sub.icon || 'chevron_right' }}</mat-icon>
+                        <span class="subitem-label">{{ sub.label }}</span>
+                      </a>
+                    </mat-nav-list>
+                  </div>
                 </div>
-                <mat-nav-list class="sub-nav-list sub-nav-list-grouped">
-                  <a mat-list-item *ngFor="let sub of group.items"
+              </ng-container>
+              <ng-template #flatSubList>
+                <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
+                  <a mat-list-item *ngFor="let sub of item.item.subItems"
                      [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
                      [fragment]="sub.fragment || undefined"
                      routerLinkActive="active-sub-item"
                      (click)="closeSidenavOnMobile()"
                      title="{{ sub.label }}">
-                    <mat-icon class="subitem-icon" [style.color]="getSubItemIconColor(group.name, item.item.route)">{{ sub.icon || 'chevron_right' }}</mat-icon>
+                    <mat-icon class="subitem-icon" [style.color]="getSubItemIconColor(item.title, item.item.route)">{{ sub.icon || 'chevron_right' }}</mat-icon>
                     <span class="subitem-label">{{ sub.label }}</span>
                   </a>
                 </mat-nav-list>
-              </div>
-            </div>
-          </ng-container>
-          <ng-template #flatSubList>
-            <mat-nav-list class="sub-nav-list" *ngIf="!isSidebarCollapsed">
-              <a mat-list-item *ngFor="let sub of item.item.subItems"
-                 [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
-                 [fragment]="sub.fragment || undefined"
-                 routerLinkActive="active-sub-item"
-                 (click)="closeSidenavOnMobile()"
-                 title="{{ sub.label }}">
-                <mat-icon class="subitem-icon" [style.color]="getSubItemIconColor(item.title, item.item.route)">{{ sub.icon || 'chevron_right' }}</mat-icon>
-                <span class="subitem-label">{{ sub.label }}</span>
-              </a>
-            </mat-nav-list>
-          </ng-template>
-        </mat-expansion-panel>
+              </ng-template>
+            </mat-expansion-panel>
 
-        <ng-container *ngIf="!item.item.subItems || item.item.subItems.length === 0">
-          <a mat-list-item [routerLink]="[item.item.route]"
-             routerLinkActive="active-root-item"
-             (click)="closeSidenavOnMobile()"
-             title="{{ item.title }}">
-            <mat-icon matListItemIcon class="menu-icon" [style.color]="getMenuIconColor(item.title, item.item.route)">{{ item.item.icon }}</mat-icon>
-            <span matListItemTitle class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
-          </a>
-        </ng-container>
+            <ng-container *ngIf="!item.item.subItems || item.item.subItems.length === 0">
+              <a mat-list-item [routerLink]="[item.item.route]"
+                 routerLinkActive="active-root-item"
+                 (click)="closeSidenavOnMobile()"
+                 title="{{ item.title }}">
+                <mat-icon matListItemIcon class="menu-icon" [style.color]="getMenuIconColor(item.title, item.item.route)">{{ item.item.icon }}</mat-icon>
+                <span matListItemTitle class="menu-title" *ngIf="!isSidebarCollapsed">{{ item.title }}</span>
+              </a>
+            </ng-container>
+          </ng-container>
+        </div>
+
+        <div class="sidebar-section-divider" *ngIf="!isLastSection && !isSidebarCollapsed"></div>
       </ng-container>
     </mat-nav-list>
   </mat-sidenav>
