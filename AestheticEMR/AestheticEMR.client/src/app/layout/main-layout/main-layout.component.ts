@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../services/auth.service';
@@ -88,6 +88,7 @@ export class MainLayoutComponent implements OnInit {
 
   menuEntries: MenuEntry[] = [];
   menuSections: MenuSection[] = [];
+  readonly expandedReportGroups = signal<Record<string, boolean>>({});
 
   get userRoles(): string[] {
     return this.authService.currentUser?.roles || [];
@@ -313,6 +314,29 @@ export class MainLayoutComponent implements OnInit {
     return this.resolveSidebarColor(groupName, groupName);
   }
 
+  isReportGroupExpanded(groupName: string): boolean {
+    const state = this.expandedReportGroups();
+    return state[groupName] !== false;
+  }
+
+  toggleReportGroup(groupName: string): void {
+    this.expandedReportGroups.update(state => ({
+      ...state,
+      [groupName]: !(state[groupName] !== false)
+    }));
+  }
+
+  private syncExpandedReportGroups(groups: SubNavGroup[]): void {
+    const groupState = this.expandedReportGroups();
+    const nextState: Record<string, boolean> = {};
+
+    for (const group of groups || []) {
+      nextState[group.name] = groupState[group.name] === true;
+    }
+
+    this.expandedReportGroups.set(nextState);
+  }
+
   // Normalize a sub-item label to Title Case (Pascal Case per word).
   // Keeps existing acronyms (e.g. "PDF", "URL") when fully uppercase, and
   // lowercases the rest of each word before re-capitalizing the first letter.
@@ -379,6 +403,7 @@ export class MainLayoutComponent implements OnInit {
                 }));
                 const filtered = this.filterReportSubItems(normalized);
                 const subGroups = this.groupReportSubItems(filtered);
+                this.syncExpandedReportGroups(subGroups);
                 return {
                   title,
                   item: { ...item, subItems: filtered },

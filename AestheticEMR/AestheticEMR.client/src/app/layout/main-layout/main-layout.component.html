@@ -25,11 +25,18 @@
               <ng-container *ngIf="item.subGroups && item.subGroups.length > 0; else flatSubList">
                 <div class="sub-nav-groups" *ngIf="!isSidebarCollapsed">
                   <div class="sub-nav-group" *ngFor="let group of item.subGroups">
-                    <div class="sub-nav-group-header">
-                      <mat-icon class="sub-nav-group-icon" [style.color]="getGroupIconColor(group.name)">{{ group.icon }}</mat-icon>
-                      <span class="sub-nav-group-label" [style.color]="getGroupIconColor(group.name)">{{ group.name }}</span>
-                    </div>
-                    <mat-nav-list class="sub-nav-list sub-nav-list-grouped">
+                    <button type="button"
+                            class="sub-nav-group-header sub-nav-group-toggle"
+                            [class.expanded]="isReportGroupExpanded(group.name)"
+                            (click)="toggleReportGroup(group.name)">
+                      <div class="sub-nav-group-header-main">
+                        <mat-icon class="sub-nav-group-icon" [style.color]="getGroupIconColor(group.name)">{{ group.icon }}</mat-icon>
+                        <span class="sub-nav-group-label" [style.color]="getGroupIconColor(group.name)">{{ group.name }}</span>
+                      </div>
+                      <mat-icon class="sub-nav-group-chevron">expand_more</mat-icon>
+                    </button>
+                    <mat-nav-list class="sub-nav-list sub-nav-list-grouped"
+                                  *ngIf="isReportGroupExpanded(group.name)">
                       <a mat-list-item *ngFor="let sub of group.items"
                          [routerLink]="sub.path ? [item.item.route, sub.path] : [item.item.route]"
                          [fragment]="sub.fragment || undefined"

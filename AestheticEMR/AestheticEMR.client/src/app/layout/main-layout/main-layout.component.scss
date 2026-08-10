@@ -291,10 +291,29 @@ mat-panel-title.menu-title {
   flex-direction: column;
 }
 
+.sub-nav-group-toggle {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+  }
+}
+
 .sub-nav-group-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 12px 4px 44px;
   margin-top: 4px;
   border-top: 1px solid #eef1f4;
@@ -305,6 +324,45 @@ mat-panel-title.menu-title {
     border-top: none;
     margin-top: 0;
   }
+}
+
+.sub-nav-group-header-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sub-nav-group-chevron {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  font-size: 16px !important;
+  line-height: 16px !important;
+  color: #78909c;
+  transition: transform 0.2s ease;
+}
+
+.sub-nav-group-toggle.expanded .sub-nav-group-chevron {
+  transform: rotate(180deg);
+}
+
+.sub-nav-list-grouped {
+  margin-top: 0;
+  padding-bottom: 4px !important;
+}
+
+:host ::ng-deep .sub-nav-list-grouped a.mat-mdc-list-item {
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+}
+
+.sub-nav-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a73e8;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* ── Toolbar ── */
