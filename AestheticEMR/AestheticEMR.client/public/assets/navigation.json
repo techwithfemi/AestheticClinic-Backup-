@@ -11,7 +11,6 @@
       "route": "accounting",
       "icon": "account_balance",
       "subItems": [
-        { "label": "Accounting Reports", "path": "reports", "icon": "analytics", "serialNo": 0, "visible": true },
         { "label": "Chart of Accounts", "path": "chart-of-accounts", "icon": "account_tree", "serialNo": 0, "visible": true },
         { "label": "Creditors (Suppliers)", "path": "creditors", "icon": "storefront", "serialNo": 0, "visible": true },
         { "label": "Debtors (Customers)", "path": "debtors", "icon": "groups", "serialNo": 0, "visible": true },
@@ -130,7 +129,7 @@
         { "label": "Accounting Incomes Report", "path": "accounting-incomes-report", "icon": "attach_money", "serialNo": 0, "visible": true },
         { "label": "Accounting Journal Entries Report", "path": "accounting-journal-entries-report", "icon": "receipt_long", "serialNo": 0, "visible": true },
         { "label": "Accounting Summary Report", "path": "accounting-reports", "icon": "analytics", "serialNo": 0, "visible": true },
-        { "label": "Admin Audit Report", "path": "admin-audit-report", "icon": "rule", "serialNo": 0, "visible": true },
+        { "label": "Audit Trail", "path": "audit-trail", "group": "audit", "icon": "rule", "serialNo": 0, "visible": true },
         { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user", "serialNo": 0, "visible": false },
         { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group", "serialNo": 0, "visible": false },
         { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long", "serialNo": 0, "visible": true },

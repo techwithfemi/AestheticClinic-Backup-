@@ -178,16 +178,19 @@ export class MainLayoutComponent implements OnInit {
 
     const roleFiltered = (subItems || []).filter(sub => {
       if (sub.visible === false) return false;
-      const reportPrefix = (sub.path || '').split('-')[0].toLowerCase();
-      if (!reportPrefix) {
+
+      const pathPrefix = (sub.path || '').split('-')[0].toLowerCase();
+      const accessKey = ((sub.group || pathPrefix || '').toLowerCase() === 'audit') ? 'admin' : pathPrefix;
+
+      if (!accessKey) {
         return false;
       }
 
-      if (reportPrefix === 'aesthetics') {
+      if (accessKey === 'aesthetics') {
         return allowedRoles.has('aesthetics') || allowedRoles.has('laser');
       }
 
-      return allowedRoles.has(reportPrefix) || allowedRoles.has(reportPrefix.endsWith('s') ? reportPrefix.slice(0, -1) : `${reportPrefix}s`);
+      return allowedRoles.has(accessKey) || allowedRoles.has(accessKey.endsWith('s') ? accessKey.slice(0, -1) : `${accessKey}s`);
     });
 
     return this.processSubItems(roleFiltered);
@@ -199,6 +202,7 @@ export class MainLayoutComponent implements OnInit {
   private static readonly reportGroupMeta: Record<string, { name: string; icon: string; order: number }> = {
     aesthetics: { name: 'Aesthetics', icon: 'face', order: 10 },
     accounting: { name: 'Accounting', icon: 'account_balance', order: 20 },
+    audit: { name: 'Audit', icon: 'rule', order: 25 },
     admin: { name: 'Admin', icon: 'admin_panel_settings', order: 30 },
     billing: { name: 'Billing', icon: 'payments', order: 40 },
     dental: { name: 'Dental', icon: 'medical_services', order: 50 },

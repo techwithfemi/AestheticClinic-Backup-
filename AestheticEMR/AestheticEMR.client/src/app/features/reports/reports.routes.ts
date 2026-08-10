@@ -147,6 +147,11 @@ export const reportsRoutes: Routes = [
       .then(m => m.AdminAuditReportComponent)
   },
   {
+    path: 'audit-trail',
+    loadComponent: () => import('./admin/admin-audit-report.component')
+      .then(m => m.AdminAuditReportComponent)
+  },
+  {
     path: 'admin-compliance-report',
     loadComponent: () => import('./admin/admin-compliance-report.component')
       .then(m => m.AdminComplianceReportComponent)
