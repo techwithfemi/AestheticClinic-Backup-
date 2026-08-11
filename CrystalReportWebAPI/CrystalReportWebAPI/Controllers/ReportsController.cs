@@ -2,7 +2,9 @@
 using Dapper;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -80,7 +82,7 @@ where Period = @Period and CoyID = @CoyID", new
         [Route("Accounting/GeneralLedger")]
         [HttpGet]
         [ClientCacheWithEtag(60)]
-        public async Task<HttpResponseMessage> GeneralLedger(string coyID, string period, string ledgerCode, string accountNo, string companyName = null, string ledgerDisplayText = null, string accountDisplayText = null)
+        public async Task<HttpResponseMessage> GeneralLedger(string coyID, string period, string ledgerCode, string accountNo, string companyName = null, string ledgerDisplayText = null, string accountDisplayText = null, string xDbConnection = null)
         {
             if (string.IsNullOrWhiteSpace(coyID)) throw new ArgumentNullException(nameof(coyID));
             if (string.IsNullOrWhiteSpace(period)) throw new ArgumentNullException(nameof(period));
@@ -93,14 +95,23 @@ where Period = @Period and CoyID = @CoyID", new
 
             try
             {
-                var conStr = ResolveConnectionStringFromRequest(Request);
+                var normalizedLedgerCode = ledgerCode.Trim();
+                var normalizedAccountNo = accountNo.Trim();
+
+                var conStr = ResolveConnectionStringFromRequest(Request, xDbConnection);
+                var reportLedgerCode = await ResolveGeneralLedgerReportCodeAsync(conStr, normalizedLedgerCode);
+
+                Trace.WriteLine($"[Reports.GeneralLedger] Request CoyID={coyID?.Trim()}, Period={period?.Trim()}, LedgerCode={normalizedLedgerCode}, ResolvedLedgerCode={reportLedgerCode}, AccountNo={normalizedAccountNo}");
+
                 var ds = await DapperReportData.ExecuteDataSetAsync(conStr, "getGL", new
                 {
                     CoyID = coyID.Trim(),
                     Period = period.Trim(),
-                    LedgerCode = ledgerCode.Trim(),
-                    AccountNo = accountNo.Trim()
+                    LedgerCode = reportLedgerCode,
+                    AccountNo = normalizedAccountNo
                 }, 240);
+
+                Trace.WriteLine($"[Reports.GeneralLedger] getGL rows={GetRowCount(ds)}");
 
                 var meta = await DapperReportData.ExecuteDataSetAsync(conStr, @"
 select top 1
@@ -131,11 +142,123 @@ where Period = @Period and CoyID = @CoyID", new
 
                 var displayText = BuildGeneralLedgerDisplayText(ledgerCode, accountNo, ledgerDisplayText, accountDisplayText);
                 var header = BuildGeneralLedgerHeader(displayText, period, reportDate, isClose);
-                return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
+
+                try
+                {
+                    return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, ds, header, companyName);
+                }
+                catch (Exception renderEx) when (!string.Equals(reportLedgerCode, "GL", StringComparison.OrdinalIgnoreCase))
+                {
+                    Trace.WriteLine($"[Reports.GeneralLedger] PrimaryRenderFailed LedgerCode={normalizedLedgerCode}, ResolvedLedgerCode={reportLedgerCode}, AccountNo={normalizedAccountNo}, Error={renderEx.Message}");
+                    var fallbackDs = await BuildGeneralLedgerFallbackDataSetAsync(conStr, coyID.Trim(), period.Trim(), reportLedgerCode, normalizedAccountNo);
+                    Trace.WriteLine($"[Reports.GeneralLedger] FallbackUsed=true LedgerCode={normalizedLedgerCode} ResolvedLedgerCode={reportLedgerCode} AccountNo={normalizedAccountNo} fallbackRows={GetRowCount(fallbackDs)}");
+                    return CrystalReport.RenderReport(reportPath, reportFileName, exportFilename, fallbackDs, header, companyName);
+                }
             }
             catch (Exception ex)
             {
                 throw new Exception(ex.Message, ex);
+            }
+        }
+
+        private static async Task<string> ResolveGeneralLedgerReportCodeAsync(string conStr, string ledgerCodeOrName)
+        {
+            var sql = @"
+select top 1
+    LTRIM(RTRIM(LedgerCode)) as LedgerCode,
+    LTRIM(RTRIM(Ledger)) as Ledger,
+    LTRIM(RTRIM(LedgerCodeVal)) as LedgerCodeVal
+from dbo.ledgerCategory
+where LTRIM(RTRIM(LedgerCode)) = @Input
+   or LTRIM(RTRIM(Ledger)) = @Input
+order by Serial;";
+
+            var ds = await DapperReportData.ExecuteDataSetAsync(conStr, sql, new { Input = ledgerCodeOrName?.Trim() ?? string.Empty }, 120);
+            if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                var mapped = (row.Table.Columns.Contains("LedgerCodeVal") ? row["LedgerCodeVal"]?.ToString() : null)?.Trim();
+                if (!string.IsNullOrWhiteSpace(mapped))
+                {
+                    return mapped;
+                }
+
+                var code = (row.Table.Columns.Contains("LedgerCode") ? row["LedgerCode"]?.ToString() : null)?.Trim();
+                if (!string.IsNullOrWhiteSpace(code))
+                {
+                    return code;
+                }
+            }
+
+            return ledgerCodeOrName?.Trim() ?? string.Empty;
+        }
+
+        private static bool IsInvalidGroupCondition(Exception ex)
+        {
+            var message = ex?.ToString() ?? string.Empty;
+            return message.IndexOf("Invalid group condition", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static Task<DataSet> BuildGeneralLedgerFallbackDataSetAsync(string conStr, string coyID, string period, string ledgerCode, string accountNo)
+        {
+            var isAll = string.Equals(accountNo, "(ALL)", StringComparison.OrdinalIgnoreCase);
+
+            if (string.Equals(ledgerCode, "GL", StringComparison.OrdinalIgnoreCase))
+            {
+                var sql = @"
+select *
+from dbo.vwGL
+where CoyID = @CoyID
+  and Period = @Period
+  and (@IsAll = 1 or AccountNo = @AccountNo)
+order by SNoCOA, AccountNo;";
+
+                return DapperReportData.ExecuteDataSetAsync(conStr, sql, new
+                {
+                    CoyID = coyID,
+                    Period = period,
+                    IsAll = isAll ? 1 : 0,
+                    AccountNo = accountNo
+                }, 240);
+            }
+
+            if (string.Equals(ledgerCode, "PL", StringComparison.OrdinalIgnoreCase))
+            {
+                var sql = @"
+select *
+from dbo.vwGLforRptPL
+where CoyID = @CoyID
+  and Period = @Period
+  and (@IsAll = 1 or AccountNo = @AccountNo)
+order by SNoCOA, AccountNo;";
+
+                return DapperReportData.ExecuteDataSetAsync(conStr, sql, new
+                {
+                    CoyID = coyID,
+                    Period = period,
+                    IsAll = isAll ? 1 : 0,
+                    AccountNo = accountNo
+                }, 240);
+            }
+
+            {
+                var sql = @"
+select *
+from dbo.vwGLforRpt
+where CoyID = @CoyID
+  and Period = @Period
+  and LedgerCode = @LedgerCode
+  and (@IsAll = 1 or AccountNo = @AccountNo)
+order by SNoCOA, AccountNo;";
+
+                return DapperReportData.ExecuteDataSetAsync(conStr, sql, new
+                {
+                    CoyID = coyID,
+                    Period = period,
+                    LedgerCode = ledgerCode,
+                    IsAll = isAll ? 1 : 0,
+                    AccountNo = accountNo
+                }, 240);
             }
         }
 
@@ -559,22 +682,76 @@ order by [date] desc";
             }
         }
 
-        private static string ResolveConnectionStringFromRequest(HttpRequestMessage request)
+        private static string ResolveConnectionStringFromRequest(HttpRequestMessage request, string queryConnectionId = null)
         {
             const string headerName = "X-Db-Connection";
 
-            if (!request.Headers.TryGetValues(headerName, out var values))
+            string connectionRef = null;
+
+            if (!string.IsNullOrWhiteSpace(queryConnectionId))
             {
-                throw new InvalidOperationException($"Missing required header '{headerName}'.");
+                connectionRef = queryConnectionId.Trim();
+            }
+            else if (request.Headers.TryGetValues(headerName, out var values))
+            {
+                connectionRef = values.FirstOrDefault()?.Trim();
             }
 
-            var connectionString = values.FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(connectionString))
+            if (string.IsNullOrWhiteSpace(connectionRef))
             {
-                throw new InvalidOperationException($"Header '{headerName}' is empty.");
+                throw new InvalidOperationException($"Missing required connection id. Provide query 'xDbConnection' or header '{headerName}'.");
             }
 
-            return connectionString;
+            var resolved = ResolveConnectionStringById(connectionRef);
+            if (!string.IsNullOrWhiteSpace(resolved))
+            {
+                return resolved;
+            }
+
+            // Backward compatibility for callers that still send the raw connection string.
+            if (LooksLikeConnectionString(connectionRef))
+            {
+                return connectionRef;
+            }
+
+            throw new InvalidOperationException($"Connection id '{connectionRef}' was not found in <connectionStrings>.");
+        }
+
+        private static string ResolveConnectionStringById(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                return null;
+            }
+
+            var direct = ConfigurationManager.ConnectionStrings[connectionId]?.ConnectionString;
+            if (!string.IsNullOrWhiteSpace(direct))
+            {
+                return direct;
+            }
+
+            // Legacy alias support for this API project.
+            if (string.Equals(connectionId, "AccountingConnection", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(connectionId, "accountingConnection", StringComparison.OrdinalIgnoreCase))
+            {
+                var legacy = ConfigurationManager.ConnectionStrings["ConnStrSMS"]?.ConnectionString;
+                if (!string.IsNullOrWhiteSpace(legacy))
+                {
+                    return legacy;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool LooksLikeConnectionString(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return value.Contains("=") && value.Contains(";");
         }
 
         private static string BuildAuditTrailHeader(string filterType, string filterDisplayText, DateTime fromDate, DateTime toDate, string tranCode)
@@ -662,6 +839,16 @@ order by [date] desc";
                 default:
                     return null;
             }
+        }
+
+        private static int GetRowCount(DataSet ds)
+        {
+            if (ds == null || ds.Tables.Count == 0 || ds.Tables[0] == null)
+            {
+                return 0;
+            }
+
+            return ds.Tables[0].Rows.Count;
         }
     }
 }

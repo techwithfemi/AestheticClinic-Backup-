@@ -128,15 +128,50 @@ namespace CrystalReportWebAPI.Utilities
 
         public static async Task<DataSet> ExecuteDataSetAsync(string connectionString, string command, object parameters, int commandTimeout = 240)
         {
-            var commandType = IsSqlText(command) ? "text" : "sproc";
-            var rows = await ServiceData.GetAll(command, commandType, parameters, connectionString, commandTimeout);
-            return ToDataSet(rows);
+            var commandType = IsSqlText(command) ? CommandType.Text : CommandType.StoredProcedure;
+
+            using (var connection = new SqlConnection(connectionString))
+            using (var sqlCommand = new SqlCommand(command, connection))
+            {
+                sqlCommand.CommandType = commandType;
+                sqlCommand.CommandTimeout = commandTimeout;
+                AddParameters(sqlCommand, parameters);
+
+                var ds = new DataSet();
+                using (var adapter = new SqlDataAdapter(sqlCommand))
+                {
+                    adapter.MissingSchemaAction = MissingSchemaAction.AddWithKey;
+                    await connection.OpenAsync();
+                    adapter.Fill(ds);
+                }
+
+                if (ds.Tables.Count == 0)
+                {
+                    ds.Tables.Add(new DataTable());
+                }
+
+                return ds;
+            }
         }
 
         public static Task<DataSet> ExecuteDataSetAsync(SqlConnection connection, string command, object parameters, int commandTimeout = 240)
         {
             if (connection == null) throw new ArgumentNullException("connection");
             return ExecuteDataSetAsync(connection.ConnectionString, command, parameters, commandTimeout);
+        }
+
+        private static void AddParameters(SqlCommand sqlCommand, object parameters)
+        {
+            if (parameters == null)
+            {
+                return;
+            }
+
+            foreach (var prop in parameters.GetType().GetProperties())
+            {
+                var value = prop.GetValue(parameters, null) ?? DBNull.Value;
+                sqlCommand.Parameters.AddWithValue($"@{prop.Name}", value);
+            }
         }
 
         private static bool IsSqlText(string command)
