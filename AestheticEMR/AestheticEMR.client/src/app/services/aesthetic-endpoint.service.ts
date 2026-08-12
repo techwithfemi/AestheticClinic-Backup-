@@ -71,6 +71,21 @@ export interface AdminAuditReportRow {
   module?: string | null;
 }
 
+export interface AdminUsersReportRow {
+  jobTitle: string;
+  fullName: string;
+  configuration?: string | null;
+  isEnabled: boolean;
+  userName: string;
+  email?: string | null;
+  phoneNumber?: string | null;
+  emailConfirmed: boolean;
+  phoneNumberConfirmed: boolean;
+  twoFactorEnabled: boolean;
+  createdDate: string;
+  updatedDate: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -86,6 +101,11 @@ export class AestheticEndpoint extends EndpointBase {
   private get consultationsUrl() { return `${this.baseUrl}/consultations`; }
   private get photosUrl() { return `${this.baseUrl}/photos`; }
   private get botoxConsultationsUrl() { return `${this.consultationsUrl}/botox`; }
+
+  getAdminUsersReportEndpoint<T = AdminUsersReportRow[]>(): Observable<T> {
+    return this.http.get<T>(`${this.auditUrl}/users-report`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getAdminUsersReportEndpoint<T>())));
+  }
 
   getAccountingReportDefaultsEndpoint(): Observable<AccountingReportDefaults> {
     return this.http.get<AccountingReportDefaults>(`${this.accountingReportsUrl}/defaults`, this.requestHeaders).pipe(

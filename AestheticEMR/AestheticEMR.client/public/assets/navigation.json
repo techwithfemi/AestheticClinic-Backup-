@@ -148,7 +148,7 @@
         { "label": "Accounting Summary Report", "path": "accounting-reports", "icon": "analytics", "serialNo": 0, "visible": true },
         { "label": "Audit Trail", "path": "audit-trail", "group": "audit", "icon": "rule", "serialNo": 0, "visible": true },
         { "label": "Admin Compliance Report", "path": "admin-compliance-report", "icon": "verified_user", "serialNo": 0, "visible": false },
-        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group", "serialNo": 0, "visible": false },
+        { "label": "Admin Users Report", "path": "admin-users-report", "icon": "group", "serialNo": 0, "visible": true },
         { "label": "Billing Receipt Report", "path": "billing-receipt-report", "icon": "receipt_long", "serialNo": 0, "visible": true },
         { "label": "Billing Revenue Report", "path": "billing-revenue-report", "icon": "paid", "serialNo": 0, "visible": true },
         { "label": "Clock In Report", "path": "clockin-report", "icon": "schedule", "serialNo": 0, "visible": true },

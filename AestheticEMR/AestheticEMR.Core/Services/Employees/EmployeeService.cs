@@ -13,6 +13,7 @@ public class EmployeeService(
     private const string EmpIdCode = "Employee";
     private const string EmpIdPrefix = "HR-";
     private const string ConnectionId = "smartHRConnection";
+    private const string ReportConnectionId = "DefaultConnection";
 
     public async Task<string> GenerateEmpIdAsync()
     {
@@ -64,7 +65,7 @@ SELECT
 FROM qryEmployees
 ORDER BY Fullname;";
 
-        var rows = await db.LoadDataText<QryEmployees, dynamic>(sql, new { }, ConnectionId);
+        var rows = await db.LoadDataText<QryEmployees, dynamic>(sql, new { }, ReportConnectionId);
         return rows.ToList();
     }
 

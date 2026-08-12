@@ -692,6 +692,44 @@
                                                           "phone":  "Phone",
                                                           "age":  "Age"
                                                       }
-                                      }
+                                      },
+                    "adminUsers":  {
+                                       "title":  "Admin Users Report",
+                                       "subtitle":  "Review enabled users, contact details, and account metadata from AspNetUsers.",
+                                       "exportTo":  "Export to",
+                                       "exportExcel":  "Excel",
+                                       "exportCsv":  "CSV",
+                                       "exportPdf":  "PDF",
+                                       "refresh":  "Refresh",
+                                       "print":  "Print Report",
+                                       "searchLabel":  "Search users",
+                                       "searchPlaceholder":  "Search by name, username, email, phone, or job title",
+                                       "statusLabel":  "Status",
+                                       "statusPlaceholder":  "Select status",
+                                       "runReport":  "Run Report",
+                                       "clear":  "Clear",
+                                       "loading":  "Loading admin users report...",
+                                       "noRecordsTitle":  "No Records Found",
+                                       "noRecordsMessage":  "No admin users match the selected filters.",
+                                       "recordCount":  "Showing {{shown}} of {{total}} records",
+                                       "enabled":  "Enabled",
+                                       "disabled":  "Disabled",
+                                       "kpis":  {
+                                                    "totalUsers":  "Total Users",
+                                                    "enabledUsers":  "Enabled Users",
+                                                    "disabledUsers":  "Disabled Users",
+                                                    "twoFactorUsers":  "Two-Factor Users"
+                                                },
+                                       "columns":  {
+                                                       "userName":  "User Name",
+                                                       "fullName":  "Full Name",
+                                                       "jobTitle":  "Job Title",
+                                                       "email":  "Email",
+                                                       "phoneNumber":  "Phone Number",
+                                                       "isEnabled":  "Enabled",
+                                                       "createdDate":  "Created Date",
+                                                       "updatedDate":  "Updated Date"
+                                                   }
+                                   }
                 }
 }

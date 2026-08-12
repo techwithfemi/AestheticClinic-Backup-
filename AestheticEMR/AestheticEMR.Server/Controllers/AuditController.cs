@@ -5,6 +5,7 @@ using AestheticEMR.Server.Authorization;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.ViewModels.Audit;
 using AutoMapper;
+using DataAccess.DbAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +17,8 @@ public class AuditController(
     ILogger<AuditController> logger,
     IMapper mapper,
     IAuditService auditService,
-    IAdminAuditReportLookupService adminAuditReportLookupService)
+    IAdminAuditReportLookupService adminAuditReportLookupService,
+    ISqlDataAccess sqlDataAccess)
     : BaseApiController(logger, mapper)
 {
     [HttpGet("report/users")]
@@ -87,6 +89,41 @@ public class AuditController(
         {
             _logger.LogError(ex, "Error retrieving admin audit report rows");
             AddModelError("Unable to retrieve admin audit report rows");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("users-report")]
+    [Authorize(AuthPolicies.ViewAuditLogsPolicy)]
+    [ProducesResponseType(typeof(IEnumerable<AdminUsersReportRowVM>), 200)]
+    public async Task<IActionResult> GetAdminUsersReport(CancellationToken ct)
+    {
+        try
+        {
+            const string sql = @"
+SELECT
+    LTRIM(RTRIM(ISNULL(JobTitle, ''))) AS JobTitle,
+    LTRIM(RTRIM(ISNULL(FullName, ''))) AS FullName,
+    NULLIF(LTRIM(RTRIM(ISNULL([Configuration], ''))), '') AS [Configuration],
+    CAST(ISNULL(IsEnabled, 0) AS bit) AS IsEnabled,
+    LTRIM(RTRIM(ISNULL(UserName, ''))) AS UserName,
+    NULLIF(LTRIM(RTRIM(ISNULL(Email, ''))), '') AS Email,
+    NULLIF(LTRIM(RTRIM(ISNULL(PhoneNumber, ''))), '') AS PhoneNumber,
+    CAST(ISNULL(EmailConfirmed, 0) AS bit) AS EmailConfirmed,
+    CAST(ISNULL(PhoneNumberConfirmed, 0) AS bit) AS PhoneNumberConfirmed,
+    CAST(ISNULL(TwoFactorEnabled, 0) AS bit) AS TwoFactorEnabled,
+    CreatedDate,
+    UpdatedDate
+FROM AspNetUsers
+ORDER BY LTRIM(RTRIM(ISNULL(FullName, UserName))), LTRIM(RTRIM(ISNULL(UserName, '')));";
+
+            var rows = await sqlDataAccess.LoadDataText<AdminUsersReportRowVM, object>(sql, new { }, "DefaultConnection");
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving admin users report");
+            AddModelError("Unable to retrieve admin users report");
             return BadRequest(ModelState);
         }
     }
