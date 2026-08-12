@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { EndpointBase } from './endpoint-base.service';
 import { ConfigurationService } from './configuration.service';
-import { Employee, Designation, EmpDepartment } from '../models/employee.model';
+import { Employee, EmployeeReportRow, Designation, EmpDepartment } from '../models/employee.model';
 
 @Injectable({ providedIn: 'root' })
 export class EmployeeEndpoint extends EndpointBase {
@@ -22,6 +22,12 @@ export class EmployeeEndpoint extends EndpointBase {
   getEmployeesEndpoint<T = Employee[]>(): Observable<T> {
     return this.http.get<T>(this.baseUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getEmployeesEndpoint<T>()))
+    );
+  }
+
+  getEmployeeReportRowsEndpoint<T = EmployeeReportRow[]>(): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}/report`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getEmployeeReportRowsEndpoint<T>()))
     );
   }
 

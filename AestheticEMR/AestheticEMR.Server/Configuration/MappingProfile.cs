@@ -287,6 +287,8 @@ namespace AestheticEMR.Server.Configuration
                 .ForMember(d => d.DesignationName, map => map.Ignore())
                 .ForMember(d => d.DeptName, map => map.Ignore());
 
+            CreateMap<QryEmployees, EmployeeReportRowVM>();
+
             CreateMap<EmployeeVM, EmployeeEntity>()
                 .ForMember(d => d.EmpStatus, map => map.MapFrom(s => s.Active ? "ACTIVE" : "INACTIVE"))
                 // Employees entity column is named "Designation" (legacy), VM uses DesignationId.

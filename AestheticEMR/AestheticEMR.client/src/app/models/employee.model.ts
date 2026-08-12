@@ -12,6 +12,16 @@ export interface Employee {
   empStatusCode?: string;
 }
 
+export interface EmployeeReportRow {
+  empId: string;
+  fullname?: string;
+  dept?: string;
+  designation?: string;
+  phone?: string;
+  dob?: string | null;
+  age?: number | null;
+}
+
 export interface Designation {
   designationId: string;
   designationName?: string;

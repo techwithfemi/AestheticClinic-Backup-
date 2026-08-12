@@ -7,6 +7,7 @@ public interface IEmployeeService
 {
     Task<string> GenerateEmpIdAsync();
     Task<IEnumerable<EmployeeEntity>> GetAllAsync();
+    Task<IEnumerable<QryEmployees>> GetReportRowsAsync();
     Task<EmployeeEntity?> GetByIdAsync(string empId);
     Task<EmployeeEntity> CreateAsync(EmployeeEntity employee);
     Task<EmployeeEntity> UpdateAsync(EmployeeEntity employee);

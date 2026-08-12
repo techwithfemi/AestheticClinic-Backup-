@@ -31,6 +31,17 @@ public class EmployeeVM
     public string? EmpStatusCode { get; set; }
 }
 
+public class EmployeeReportRowVM
+{
+    public required string EmpId { get; set; }
+    public string? Fullname { get; set; }
+    public string? Dept { get; set; }
+    public string? Designation { get; set; }
+    public string? Phone { get; set; }
+    public DateTime? Dob { get; set; }
+    public int? Age { get; set; }
+}
+
 public class DesignationVM
 {
     /// <summary>

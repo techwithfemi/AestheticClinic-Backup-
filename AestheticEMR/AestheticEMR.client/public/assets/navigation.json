@@ -155,7 +155,7 @@
         { "label": "Dental Cases Report", "path": "dental-cases-report", "icon": "folder_open", "serialNo": 0, "visible": true },
         { "label": "Dental Imaging Report", "path": "dental-imaging-report", "icon": "image", "serialNo": 0, "visible": true },
         { "label": "Dental Treatments Report", "path": "dental-treatments-report", "icon": "medical_services", "serialNo": 0, "visible": true },
-        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups", "serialNo": 0, "visible": true },
+        { "label": "Employees Department Report", "path": "employees-department-report", "icon": "groups", "serialNo": 0, "visible": false },
         { "label": "Employees Info Report", "path": "employees-info-report", "icon": "badge", "serialNo": 0, "visible": true },
         { "label": "Frontdesk Appointments Report", "path": "frontdesk-appointments-report", "icon": "event", "serialNo": 0, "visible": true },
         { "label": "Frontdesk Daily Report", "path": "frontdesk-daily-report", "icon": "today", "serialNo": 0, "visible": true },

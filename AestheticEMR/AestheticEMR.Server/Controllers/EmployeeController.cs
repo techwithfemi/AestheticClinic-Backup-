@@ -41,6 +41,14 @@ public class EmployeeController(
         return Ok(_mapper.Map<IEnumerable<EmpDepartmentVM>>(departments));
     }
 
+    [HttpGet("report")]
+    [ProducesResponseType(typeof(IEnumerable<EmployeeReportRowVM>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetReportRows()
+    {
+        var rows = await employeeService.GetReportRowsAsync();
+        return Ok(_mapper.Map<IEnumerable<EmployeeReportRowVM>>(rows));
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EmployeeVM>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()

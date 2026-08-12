@@ -50,6 +50,24 @@ ORDER BY LastName, FirstName;";
         return rows.ToList();
     }
 
+    public async Task<IEnumerable<QryEmployees>> GetReportRowsAsync()
+    {
+        const string sql = @"
+SELECT
+    LTRIM(RTRIM(EmpNo)) AS EmpId,
+    NULLIF(LTRIM(RTRIM(ISNULL(Fullname, ''))), '') AS Fullname,
+    NULLIF(LTRIM(RTRIM(ISNULL(Dept, ''))), '') AS Dept,
+    NULLIF(LTRIM(RTRIM(ISNULL(Designation, ''))), '') AS Designation,
+    NULLIF(LTRIM(RTRIM(ISNULL(Phone, ''))), '') AS Phone,
+    DOB,
+    EmpAge as Age
+FROM qryEmployees
+ORDER BY Fullname;";
+
+        var rows = await db.LoadDataText<QryEmployees, dynamic>(sql, new { }, ConnectionId);
+        return rows.ToList();
+    }
+
     public async Task<EmployeeEntity?> GetByIdAsync(string empId)
     {
         var normalizedId = NormalizeText(empId);
