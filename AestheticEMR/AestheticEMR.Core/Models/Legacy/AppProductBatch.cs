@@ -40,9 +40,6 @@ public partial class AppProductBatch
 
     public DateTime CreatedDate { get; set; }
 
-    [InverseProperty("ProductBatch")]
-    public virtual ICollection<AppProcedureProductUsage> AppProcedureProductUsages { get; set; } = new List<AppProcedureProductUsage>();
-
     [ForeignKey("ProductId")]
     [InverseProperty("AppProductBatches")]
     public virtual AppProduct Product { get; set; } = null!;

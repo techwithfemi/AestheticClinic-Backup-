@@ -271,6 +271,10 @@ In CrystalReportWebAPI, connection ids like DefaultConnection are provided by th
 
 In CrystalReportWebAPI, Serilog should use Web.config connection id DefaultConnection instead of SerilogConnection.
 
+### File Management
+
+When asked to delete duplicate files in `Models/Legacy`, avoid modifying other files unless explicitly requested.
+
 
 
 

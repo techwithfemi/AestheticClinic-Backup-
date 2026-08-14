@@ -60,9 +60,6 @@ public partial class AppProduct
     public virtual ICollection<AppOrderDetail> AppOrderDetails { get; set; } = new List<AppOrderDetail>();
 
     [InverseProperty("Product")]
-    public virtual ICollection<AppProcedureProductUsage> AppProcedureProductUsages { get; set; } = new List<AppProcedureProductUsage>();
-
-    [InverseProperty("Product")]
     public virtual ICollection<AppProductBatch> AppProductBatches { get; set; } = new List<AppProductBatch>();
 
     [InverseProperty("Product")]
