@@ -724,21 +724,10 @@ order by [date] desc";
                 return null;
             }
 
-            var direct = ConfigurationManager.ConnectionStrings[connectionId]?.ConnectionString;
+            var direct = ConnectionStringResolver.ResolveById(connectionId);
             if (!string.IsNullOrWhiteSpace(direct))
             {
                 return direct;
-            }
-
-            // Legacy alias support for this API project.
-            if (string.Equals(connectionId, "AccountingConnection", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(connectionId, "accountingConnection", StringComparison.OrdinalIgnoreCase))
-            {
-                var legacy = ConfigurationManager.ConnectionStrings["ConnStrSMS"]?.ConnectionString;
-                if (!string.IsNullOrWhiteSpace(legacy))
-                {
-                    return legacy;
-                }
             }
 
             return null;

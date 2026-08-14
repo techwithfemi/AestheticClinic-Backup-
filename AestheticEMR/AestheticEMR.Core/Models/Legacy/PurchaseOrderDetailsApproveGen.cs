@@ -1,0 +1,31 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+
+namespace AestheticEMR.Core;
+
+[Keyless]
+[Table("PurchaseOrderDetailsApproveGen")]
+public partial class PurchaseOrderDetailsApproveGen
+{
+    public long SNO { get; set; }
+
+    public long SnoPO { get; set; }
+
+    [StringLength(50)]
+    public string POID { get; set; } = null!;
+
+    [StringLength(50)]
+    public string? ItemID { get; set; }
+
+    [StringLength(50)]
+    public string? Category { get; set; }
+
+    public double? QtyApprv { get; set; }
+
+    public double? UnitPrice { get; set; }
+
+    public bool? AttendedTo { get; set; }
+}

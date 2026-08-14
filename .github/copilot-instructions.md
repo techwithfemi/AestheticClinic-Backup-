@@ -263,6 +263,14 @@ Use `billing-receipt-report.component` as the baseline UI pattern for all report
 24. ✅ During search, table/grid results must remain constrained to the active date range selected in the date pickers.
 25. ✅ When `Run Report` is clicked, table/grid results must remain constrained to the active date range selected in the date pickers.
 
+### Connection Management
+
+In CrystalReportWebAPI, connection ids like DefaultConnection are provided by the calling project/request and should not be read from this API project's Web.config. 
+
+### Logging Configuration
+
+In CrystalReportWebAPI, Serilog should use Web.config connection id DefaultConnection instead of SerilogConnection.
+
 
 
 
