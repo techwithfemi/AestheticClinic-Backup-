@@ -1,11 +1,11 @@
-import { Component, ViewChild, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSelect, MatSelectModule } from '@angular/material/select';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -76,21 +76,6 @@ export interface SpaDialogResult {
         </app-attendance-summary>
 
         <form [formGroup]="form">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Search Patient</mat-label>
-            <input matInput [value]="patientSearchText" (input)="onPatientSearchChange($event)" placeholder="Type patient name / ConsultID" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Select Patient</mat-label>
-            <mat-select #patientSelect formControlName="patientKey" required>
-              <mat-option value="">Select Patient</mat-option>
-              @for (p of filteredPatientOptions; track p.label) {
-                <mat-option [value]="getPatientKey(p)">{{ p.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Session Date</mat-label>
             <input matInput [matDatepicker]="consultDatePicker" formControlName="consultationDate" />
@@ -174,9 +159,6 @@ export interface SpaDialogResult {
             <mat-slide-toggle formControlName="informationAccepted" color="primary">Information Accepted</mat-slide-toggle>
           </div>
         </form>
-
-        <!-- Services Section removed - using textarea instead -->
-
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
@@ -202,21 +184,12 @@ export class SpaDialogComponent {
   private billingEndpoint = inject(BillingEndpoint);
   dialogRef = inject(MatDialogRef<SpaDialogComponent>);
 
-  @ViewChild('patientSelect') patientSelect?: MatSelect;
-
-  patientSearchText = '';
   serviceTypes: string[] = [];
   patientOptions: SpaPatientOption[] = [];
   selectedAttendanceSummary?: VwhRecord;
 
-  get filteredPatientOptions(): SpaPatientOption[] {
-    const searchTerm = this.patientSearchText.toLowerCase();
-    return this.patientOptions.filter(option => option.label.toLowerCase().includes(searchTerm));
-  }
-
   form = this.fb.nonNullable.group({
     id: [0],
-    patientKey: ['', Validators.required],
     consultationDate: [new Date()],
     indication: ['', Validators.required],
     brandUsed: [''],
@@ -235,7 +208,7 @@ export class SpaDialogComponent {
     currentMedications: ['']
   });
 
-  private _data = inject<{ isEdit: boolean; consultation?: AestheticConsultation; patientOptions: SpaPatientOption[] }>(MAT_DIALOG_DATA);
+  private _data = inject<{ isEdit: boolean; consultation?: AestheticConsultation; patientOptions: SpaPatientOption[]; selectedPatient?: SpaPatientOption }>(MAT_DIALOG_DATA);
   get data() { return this._data; }
 
   constructor() {
@@ -244,11 +217,9 @@ export class SpaDialogComponent {
 
     if (this.data.isEdit && this.data.consultation) {
       const c = this.data.consultation;
-      const selectedOption = this.patientOptions.find(x => c.consultId && x.consultId === c.consultId);
 
       this.form.patchValue({
         id: c.id,
-        patientKey: selectedOption ? this.getPatientKey(selectedOption) : '',
         consultationDate: this.toDate(c.consultationDate) ?? new Date(),
         indication: c.indication ?? '',
         brandUsed: c.brandUsed ?? '',
@@ -267,36 +238,16 @@ export class SpaDialogComponent {
         currentMedications: c.currentMedications ?? ''
       });
 
-      this.patientSearchText = selectedOption?.label ?? '';
-
-      if (selectedOption?.consultId) {
-        this.loadAttendanceSummary(selectedOption.consultId);
+      const consultIdFromGridRow = c.consultId?.trim();
+      if (consultIdFromGridRow) {
+        this.loadAttendanceSummary(consultIdFromGridRow);
       }
+      return;
     }
 
-    this.form.controls.patientKey.valueChanges.subscribe(key => {
-      const selectedPatient = this.findPatientByKey(key);
-      const consultId = selectedPatient?.consultId?.trim();
-
-      if (consultId) {
-        this.loadAttendanceSummary(consultId);
-      } else {
-        this.selectedAttendanceSummary = undefined;
-      }
-    });
-  }
-
-  onPatientSearchChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value ?? '';
-    this.patientSearchText = value;
-
-    const matches = this.filteredPatientOptions;
-    if (matches.length === 1) {
-      this.form.controls.patientKey.setValue(this.getPatientKey(matches[0]));
-    }
-
-    if (matches.length > 0) {
-      queueMicrotask(() => this.patientSelect?.open());
+    const consultIdFromPatientDropdown = this.data.selectedPatient?.consultId?.trim();
+    if (consultIdFromPatientDropdown) {
+      this.loadAttendanceSummary(consultIdFromPatientDropdown);
     }
   }
 
@@ -305,16 +256,17 @@ export class SpaDialogComponent {
       return;
     }
 
-    const value = this.form.getRawValue();
-    const selectedPatient = this.findPatientByKey(value.patientKey);
+    const selectedPatient = this.getSelectedPatient();
     if (!selectedPatient) {
       return;
     }
 
+    const value = this.form.getRawValue();
+    const editConsultId = this.data.isEdit ? this.data.consultation?.consultId?.trim() : undefined;
     const consultation: AestheticConsultation = {
       id: value.id,
       patientId: selectedPatient.patientId,
-      consultId: selectedPatient.consultId || undefined,
+      consultId: editConsultId || selectedPatient.consultId || undefined,
       pNo: selectedPatient.pNo || undefined,
       consultationDate: this.toIsoDate(value.consultationDate) ?? this.toIsoDate(new Date()) ?? '',
       procedureType: 'Spa',
@@ -378,12 +330,14 @@ export class SpaDialogComponent {
     });
   }
 
-  getPatientKey(patient: SpaPatientOption): string {
-    return patient.consultId ?? '';
-  }
+  private getSelectedPatient(): SpaPatientOption | undefined {
+    if (this.data.isEdit) {
+      const consultId = this.data.consultation?.consultId?.trim();
+      return this.patientOptions.find(x => x.consultId === consultId)
+        ?? this.data.selectedPatient;
+    }
 
-  private findPatientByKey(key: string): SpaPatientOption | undefined {
-    return this.patientOptions.find(x => this.getPatientKey(x) === key);
+    return this.data.selectedPatient;
   }
 
   private toDate(value?: string): Date | null {
@@ -406,41 +360,5 @@ export class SpaDialogComponent {
     }
 
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
-
-  get selectedPatientInfo(): SpaPatientOption | undefined {
-    const key = this.form.controls.patientKey.value;
-    return this.findPatientByKey(key);
-  }
-
-  get selectedPatientFullName(): string {
-    const selected = this.selectedPatientInfo;
-    if (!selected) {
-      return '—';
-    }
-
-    const resolved = selected.fullName ?? `${selected.firstName} ${selected.lastName}`.trim();
-    return resolved || '—';
-  }
-
-  get selectedPatientAge(): number | null {
-    const dob = this.selectedPatientInfo?.dateOfBirth;
-    if (!dob) {
-      return null;
-    }
-
-    const date = new Date(dob);
-    if (Number.isNaN(date.getTime())) {
-      return null;
-    }
-
-    const today = new Date();
-    let age = today.getFullYear() - date.getFullYear();
-    const monthDiff = today.getMonth() - date.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
-      age--;
-    }
-
-    return age >= 0 ? age : null;
   }
 }

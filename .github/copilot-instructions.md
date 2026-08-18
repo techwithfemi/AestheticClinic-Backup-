@@ -275,11 +275,6 @@ In CrystalReportWebAPI, Serilog should use Web.config connection id DefaultConne
 
 When asked to delete duplicate files in `Models/Legacy`, avoid modifying other files unless explicitly requested.
 
+### SPA Dialog Header Info
 
-
-
-
-
-
-
-
+For SPA dialog header info, use `attendance-summary` as the single source of truth backed by `vwhRecords` fetched by `ConsultId`: in edit mode, use `ConsultId` from the selected grid row; in add/new mode, use `ConsultId` from patient dropdown; do not use fallback sources. For SPA services in edit mode, ensure `ConsultId` comes from the selected grid row's `ConsultId` column, not dropdown-derived patient context.

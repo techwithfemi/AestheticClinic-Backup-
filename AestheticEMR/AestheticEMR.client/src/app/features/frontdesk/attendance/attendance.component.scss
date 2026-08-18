@@ -101,6 +101,31 @@
   vertical-align: middle;
 }
 
+.actions .action-btn {
+  border-radius: 10px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+  }
+}
+
+.actions .add-bill-btn {
+  background-color: rgba(16, 185, 129, 0.14);
+  border-color: transparent;
+
+  .action-icon {
+    color: #059669;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba(16, 185, 129, 0.22);
+    border-color: transparent;
+  }
+}
+
 .modal-body {
   overflow-x: hidden;
 }

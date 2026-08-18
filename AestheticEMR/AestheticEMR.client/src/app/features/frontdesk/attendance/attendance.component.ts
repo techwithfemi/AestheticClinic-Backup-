@@ -5,6 +5,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { MatDialog } from '@angular/material/dialog';
 
 import { Attendance } from '../../../models/legacy/attendance.model';
 import { HPatient } from '../../../models/legacy/h-patient.model';
@@ -14,6 +15,7 @@ import { fadeInOut } from '../../../services/animations';
 import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { HRetainershipEndpoint } from '../../../services/h-retainership-endpoint.service';
+import { BillingInvoiceDialogComponent, BillingInvoiceDialogData } from '../../billing/invoices/billing-invoice-dialog.component';
 
 @Component({
   selector: 'app-attendance',
@@ -29,6 +31,7 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
   private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly retainershipEndpoint = inject(HRetainershipEndpoint);
   private readonly modalService = inject(NgbModal);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -396,6 +399,36 @@ export class AttendanceComponent implements OnInit, AfterViewInit {
             }
           });
       });
+  }
+
+  openAddBill(attendance: Attendance): void {
+    const consultId = (attendance.consultId ?? '').trim();
+    const pNo = (attendance.pNo ?? '').trim();
+
+    if (!consultId || !pNo) {
+      this.alertService.showStickyMessage('Validation Error', 'Cannot add bill: missing ConsultID or Patient No.', MessageSeverity.error);
+      return;
+    }
+
+    const data: BillingInvoiceDialogData = {
+      mode: 'create',
+      consultId,
+      billNo: consultId,
+      pNo,
+      coyID: attendance.coyname ?? undefined,
+      clientID: attendance.coyname ?? undefined
+    };
+
+    this.dialog.open(BillingInvoiceDialogComponent, {
+      width: '1200px',
+      maxWidth: '1200px',
+      disableClose: true,
+      data
+    }).afterClosed().subscribe((changed: boolean) => {
+      if (changed) {
+        this.loadData();
+      }
+    });
   }
 
   getPatientLabel(patient: HPatient): string {

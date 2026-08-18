@@ -9,6 +9,8 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AlertService, DialogType, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
@@ -34,7 +36,9 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
     MatIconModule,
     MatPaginatorModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatSelectModule,
+    MatTooltipModule
   ],
   template: `
     <div class="spa-page">
@@ -43,22 +47,41 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
           <h2>Spa Service Menu</h2>
           <p class="subtitle">Massage, facials, body scrub and sauna session capture.</p>
         </div>
-        <button mat-raised-button color="primary" (click)="openAddDialog()">
-          <mat-icon>add</mat-icon>
-          Add Spa Session
-        </button>
       </div>
 
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search by patient name</mat-label>
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Type to filter..." />
-        @if (searchText()) {
-          <button mat-icon-button matSuffix type="button" (click)="searchText.set('')" aria-label="Clear">
-            <mat-icon>close</mat-icon>
+      <div class="page-toolbar">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search by patient name or Consult ID</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Type patient name or Consult ID..." />
+          @if (searchText()) {
+            <button mat-icon-button matSuffix type="button" (click)="searchText.set('')" aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="patient-picker">
+          <mat-label>Select Patient</mat-label>
+          <mat-select [ngModel]="selectedAddPatientKey()" (ngModelChange)="selectedAddPatientKey.set($event)">
+            <mat-option value="">Select Patient</mat-option>
+            @for (patient of addPatientOptions(); track patient.consultId) {
+              <mat-option [value]="patient.consultId">{{ patient.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <span
+          class="add-button-wrap"
+          [matTooltip]="selectedAddPatient() ? '' : 'Select a patient before adding a spa session'"
+          [matTooltipDisabled]="!!selectedAddPatient()"
+          matTooltipPosition="above">
+          <button mat-raised-button color="primary" type="button" (click)="openAddDialog()" [disabled]="!selectedAddPatient()">
+            <mat-icon>add</mat-icon>
+            Add Spa Session
           </button>
-        }
-      </mat-form-field>
+        </span>
+      </div>
 
       <mat-card class="table-card">
         <table mat-table [dataSource]="dataSource" class="data-table">
@@ -129,10 +152,14 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
   `,
   styles: [`
     .spa-page { padding: 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
+    .page-header { margin-bottom: 12px; }
     .page-header h2 { margin: 0; font-size: 1.6rem; }
     .subtitle { color: #888; margin: 4px 0 0; font-size: 0.9rem; }
-    .search-field { width: 100%; margin-bottom: 8px; }
+    .page-toolbar { display: grid; grid-template-columns: minmax(260px, 1.3fr) minmax(260px, 1fr) auto; gap: 12px; align-items: start; margin-bottom: 8px; }
+    .search-field { width: 100%; }
+    .patient-picker { width: 100%; min-width: 0; }
+    .add-button-wrap { display: inline-flex; align-self: start; }
+    .add-button-wrap button { min-height: 56px; white-space: nowrap; }
     .table-card { padding: 0; overflow: hidden; }
     .data-table { width: 100%; }
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -151,8 +178,9 @@ import { BillingInvoiceDialogComponent } from '../../billing/invoices/billing-in
 
     @media (max-width: 992px) {
       .spa-page { padding: 16px; }
-      .page-header { flex-direction: column; align-items: stretch; }
-      .page-header button { width: 100%; min-height: 44px; }
+      .page-toolbar { grid-template-columns: 1fr; }
+      .add-button-wrap { display: flex; }
+      .add-button-wrap button { width: 100%; min-height: 44px; }
     }
 
     @media (max-width: 575.98px) {
@@ -175,6 +203,7 @@ export class ServicesComponent {
   readonly attendance = signal<Attendance[]>([]);
   readonly retainerships = signal<HRetainership[]>([]);
   readonly searchText = signal('');
+  readonly selectedAddPatientKey = signal('');
   readonly displayedColumns = ['patient', 'date', 'service', 'consultId', 'services', 'focus', 'notes', 'actions'];
   readonly dataSource = new MatTableDataSource<AestheticConsultation>([]);
 
@@ -204,6 +233,13 @@ export class ServicesComponent {
     }
 
     return Array.from(unique.values());
+  });
+
+  readonly addPatientOptions = computed(() => this.getTodayAttendancePatientOptions());
+
+  readonly selectedAddPatient = computed(() => {
+    const selectedKey = this.selectedAddPatientKey().trim();
+    return this.addPatientOptions().find(x => x.consultId === selectedKey);
   });
 
   constructor() {
@@ -239,10 +275,16 @@ export class ServicesComponent {
   }
 
   openAddDialog(): void {
-    const options = this.getTodayAttendancePatientOptions();
+    const selectedPatient = this.selectedAddPatient();
+    if (!selectedPatient) {
+      this.alertService.showMessage('Patient required', 'Select a patient before adding a spa session.', MessageSeverity.warn);
+      return;
+    }
+
+    const options = this.addPatientOptions();
 
     const dialogRef = this.dialog.open(SpaDialogComponent, {
-      data: { isEdit: false, patientOptions: options },
+      data: { isEdit: false, patientOptions: options, selectedPatient },
       width: '95vw',
       maxWidth: '640px',
       disableClose: true
@@ -255,10 +297,11 @@ export class ServicesComponent {
   }
 
   openEditDialog(consultation: AestheticConsultation): void {
-    const options = this.getTodayAttendancePatientOptions();
+    const options = this.addPatientOptions();
+    const selectedPatient = this.getEditSelectedPatient(consultation);
 
     const dialogRef = this.dialog.open(SpaDialogComponent, {
-      data: { isEdit: true, consultation, patientOptions: options },
+      data: { isEdit: true, consultation, patientOptions: options, selectedPatient },
       width: '95vw',
       maxWidth: '640px',
       disableClose: true
@@ -321,12 +364,15 @@ export class ServicesComponent {
   }
 
   private resolvePatientLabel(row: AestheticConsultation): string {
+    const consultId = row.consultId?.trim() || '';
+
     if (row.patientName?.trim()) {
       const patient = this.patients().find(x => x.id === row.patientId);
-      return `${row.patientName} ${patient?.pno || ''}`;
+      return `${row.patientName} ${patient?.pno || ''} ${consultId}`.trim();
     }
+
     const p = this.patients().find(x => x.id === row.patientId);
-    return p ? `${p.firstName} ${p.lastName} ${p.pno || ''}` : `Patient #${row.patientId}`;
+    return p ? `${p.firstName} ${p.lastName} ${p.pno || ''} ${consultId}`.trim() : `Patient #${row.patientId} ${consultId}`.trim();
   }
 
   private async saveConsultation(result: SpaDialogResult): Promise<void> {
@@ -435,6 +481,48 @@ export class ServicesComponent {
     const message = (error as { error?: { message?: string }; message?: string })?.error?.message
       || (error as { message?: string })?.message;
     return message || 'Operation failed.';
+  }
+
+  private getEditSelectedPatient(consultation: AestheticConsultation): SpaPatientOption {
+    const consultId = consultation.consultId?.trim() ?? '';
+    const matchedOption = this.addPatientOptions().find(x => x.consultId === consultId);
+    if (matchedOption) {
+      return matchedOption;
+    }
+
+    const matchedPatient = this.patients().find(x => x.id === consultation.patientId);
+    const matchedLegacy = this.legacyPatients().find(x => x.pno === consultation.pNo)
+      ?? this.legacyPatients().find(x => (matchedPatient?.pno ?? '') && x.pno === matchedPatient?.pno);
+
+    const patientName = consultation.patientName?.trim()
+      || `${matchedPatient?.firstName ?? ''} ${matchedPatient?.lastName ?? ''}`.trim()
+      || `${matchedLegacy?.pFirstname ?? ''} ${matchedLegacy?.pSurName ?? ''}`.trim()
+      || 'Unknown Patient';
+
+    const nameParts = patientName.split(/\s+/).filter(Boolean);
+    const firstName = matchedPatient?.firstName?.trim()
+      || matchedLegacy?.pFirstname?.trim()
+      || nameParts[0]
+      || 'Unknown';
+    const lastName = matchedPatient?.lastName?.trim()
+      || matchedLegacy?.pSurName?.trim()
+      || nameParts.slice(1).join(' ')
+      || 'Patient';
+    const pNo = consultation.pNo?.trim() || matchedPatient?.pno?.trim() || matchedLegacy?.pno?.trim() || '';
+
+    return {
+      patientId: consultation.patientId || matchedPatient?.id || 0,
+      consultId,
+      pNo,
+      firstName,
+      lastName,
+      fullName: patientName,
+      label: consultId ? `${patientName} [${consultId}]` : patientName,
+      photo: matchedLegacy?.patPixBase64,
+      dateOfBirth: matchedPatient?.dateOfBirth ?? matchedLegacy?.dob,
+      company: this.getCompanyDisplayName(matchedLegacy),
+      phoneNumber: matchedPatient?.phoneNumber ?? matchedLegacy?.pPhoneNo
+    };
   }
 }
 
