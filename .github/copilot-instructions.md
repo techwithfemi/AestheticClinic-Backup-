@@ -260,12 +260,13 @@ quickapp.client/src/app/
 **All new icon usage in the Angular UI must use the shared global icon system** unless a feature has a clear special case.
 
 1. ✅ Use the reusable global icon classes for table action icons, page header icons, tab icons, toolbar icons, and sidebar/navigation icons.
-2. ✅ Prefer semantic icon colors and consistent sizing instead of ad-hoc per-component icon styling.
-3. ✅ Use shared button/icon utility classes for icon-only buttons so hover, focus, radius, and disabled states stay consistent.
-4. ✅ Keep icon styling professional, colorful, and visually balanced across the app.
-5. ✅ For dialog top-right close (X) buttons, use the shared `.ui-dialog-close-btn` class instead of redefining per-component close button styles.
-6. ❌ Do not create new one-off icon color patterns in feature components when the shared global system fits.
-7. ❌ Do not revert to monochrome icon defaults for standard action, navigation, or page-level icons when a shared style is available.
+2. ✅ For Angular Material tabs, render tab icons through `ng-template mat-tab-label` so the icon and text share the global icon styling system.
+3. ✅ Prefer semantic icon colors and consistent sizing instead of ad-hoc per-component icon styling.
+4. ✅ Use shared button/icon utility classes for icon-only buttons so hover, focus, radius, and disabled states stay consistent.
+5. ✅ Keep icon styling professional, colorful, and visually balanced across the app.
+6. ✅ For dialog top-right close (X) buttons, use the shared `.ui-dialog-close-btn` class instead of redefining per-component close button styles.
+7. ❌ Do not create new one-off icon color patterns in feature components when the shared global system fits.
+8. ❌ Do not revert to monochrome icon defaults for standard action, navigation, or page-level icons when a shared style is available.
 
 ### Services
 

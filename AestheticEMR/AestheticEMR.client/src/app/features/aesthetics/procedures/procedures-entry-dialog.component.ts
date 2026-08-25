@@ -88,8 +88,8 @@ interface ProceduresEntryDialogData {
     <div class="procedures-page">
       <div class="dialog-header">
         <h2>{{ currentConsultationId() ? 'Edit Procedure Entry' : 'Add Procedure Entry' }}</h2>
-        <button mat-icon-button type="button" class="close-btn" (click)="closeDialog()" aria-label="Close dialog">
-          <mat-icon>close</mat-icon>
+        <button mat-icon-button type="button" class="ui-dialog-close-btn" (click)="closeDialog()" aria-label="Close dialog">
+          <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
         </button>
       </div>
 
@@ -119,7 +119,7 @@ interface ProceduresEntryDialogData {
         @switch (alert.type) {
           @case ('hard-stop') {
             <div class="alert alert-danger hard-stop-alert">
-              <mat-icon>do_not_disturb</mat-icon>
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">do_not_disturb</mat-icon>
               <div class="alert-content">
                 <strong>⚠️ HARD STOP: {{ alert.title }}</strong>
                 <p>{{ alert.message }}</p>
@@ -131,7 +131,7 @@ interface ProceduresEntryDialogData {
           }
           @case ('allergy') {
             <div class="alert alert-danger allergy-alert">
-              <mat-icon>no_meals</mat-icon>
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">no_meals</mat-icon>
               <div class="alert-content">
                 <strong>🚫 ALLERGY DETECTED: {{ alert.title }}</strong>
                 <p>{{ alert.message }}</p>
@@ -140,10 +140,10 @@ interface ProceduresEntryDialogData {
           }
           @case ('duplicate') {
             <div class="alert alert-warning duplicate-alert">
-              <button mat-icon-button type="button" class="alert-close-btn" (click)="dismissSafetyAlert(alert)" aria-label="Close duplicate treatment alert">
-                <mat-icon>close</mat-icon>
+              <button mat-icon-button type="button" class="alert-close-btn ui-icon-btn ui-icon-btn--danger" (click)="dismissSafetyAlert(alert)" aria-label="Close duplicate treatment alert">
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
               </button>
-              <mat-icon>warning</mat-icon>
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--warning">warning</mat-icon>
               <div class="alert-content">
                 <strong>⚠️ DUPLICATE TREATMENT: {{ alert.title }}</strong>
                 <p>{{ alert.message }}</p>
@@ -155,7 +155,7 @@ interface ProceduresEntryDialogData {
           }
           @case ('warning') {
             <div class="alert alert-info">
-              <mat-icon>info</mat-icon>
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--info">info</mat-icon>
               <div class="alert-content">
                 <strong>ℹ️ {{ alert.title }}</strong>
                 <p>{{ alert.message }}</p>
@@ -170,7 +170,7 @@ interface ProceduresEntryDialogData {
         <div class="emergency-bar">
           <mat-progress-bar mode="indeterminate" color="warn"></mat-progress-bar>
           <div class="emergency-content">
-            <mat-icon class="pulse-icon">emergency</mat-icon>
+            <mat-icon class="pulse-icon ui-icon ui-icon--sm ui-icon--inverse">emergency</mat-icon>
             <span><strong>Active Complication(s) Reported</strong> - Emergency protocols available below</span>
             <button mat-raised-button color="warn" (click)="scrollToEmergencyProtocols()">
               View Emergency Protocols
@@ -182,7 +182,11 @@ interface ProceduresEntryDialogData {
       <mat-card>
         <form [formGroup]="form" class="form-shell">
           <mat-tab-group [selectedIndex]="selectedTabIndex()">
-            <mat-tab label="Consent">
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--primary">assignment</mat-icon>
+                <span>Consent</span>
+              </ng-template>
               <div class="tab-body consent-tab">
                 <div class="consent-grid full">
                   <mat-form-field appearance="outline" class="patient-field">
@@ -258,7 +262,11 @@ interface ProceduresEntryDialogData {
               </div>
             </mat-tab>
 
-            <mat-tab label="Consultation">
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--success">medical_services</mat-icon>
+                <span>Consultation</span>
+              </ng-template>
               <div class="tab-body" [formGroup]="consultationGroup">
                 <mat-form-field appearance="outline" class="full">
                   <mat-label>Chief Complaint</mat-label>
@@ -351,11 +359,15 @@ interface ProceduresEntryDialogData {
               </div>
             </mat-tab>
 
-            <mat-tab label="Neuromodulator" [disabled]="isNeuromodulatorDisabled()">
+            <mat-tab [disabled]="isNeuromodulatorDisabled()">
+              <ng-template mat-tab-label>
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--accent">spa</mat-icon>
+                <span>Neuromodulator</span>
+              </ng-template>
               <div class="tab-body" [formGroup]="neuromodulatorGroup">
                 @if (isNeuromodulatorDisabled()) {
                   <div class="disabled-notice">
-                    <mat-icon>block</mat-icon>
+                    <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">block</mat-icon>
                     <span>Neuromodulator procedures are contraindicated during pregnancy.</span>
                   </div>
                 }
@@ -408,26 +420,30 @@ interface ProceduresEntryDialogData {
                     <input #nPhoto type="file" accept="image/*" (change)="onPhotoSelected('neuromodulator', nPhoto.files, nPhase.value || 'Before', nTag.value || 'frontal')" style="display:none" />
                   </div>
                   <div class="photo-grid">
-                    @for (img of tabPhotos().neuromodulator; track $index) {
-                      <div class="photo-card">
-                        <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
-                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
-                        <div class="photo-actions">
-                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
-                          <button mat-icon-button type="button" (click)="removePhoto('neuromodulator', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                      @for (img of tabPhotos().neuromodulator; track $index) {
+                        <div class="photo-card">
+                          <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
+                          <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                          <div class="photo-actions">
+                            <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                            <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('neuromodulator', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
+                          </div>
                         </div>
-                      </div>
-                    }
-                  </div>
+                      }
+                    </div>
                 </div>
               </div>
             </mat-tab>
 
-            <mat-tab label="Dermal Filler" [disabled]="isDermalFillerDisabled()">
+            <mat-tab [disabled]="isDermalFillerDisabled()">
+              <ng-template mat-tab-label>
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--warning">face_retouching_natural</mat-icon>
+                <span>Dermal Filler</span>
+              </ng-template>
               <div class="tab-body" [formGroup]="dermalFillerGroup">
                 @if (isDermalFillerDisabled()) {
                   <div class="disabled-notice">
-                    <mat-icon>block</mat-icon>
+                    <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">block</mat-icon>
                     <span>Dermal filler procedures are contraindicated during pregnancy.</span>
                   </div>
                 }
@@ -456,8 +472,8 @@ interface ProceduresEntryDialogData {
                         <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
                         <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
                         <div class="photo-actions">
-                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
-                          <button mat-icon-button type="button" (click)="removePhoto('dermalFiller', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('dermalFiller', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
                         </div>
                       </div>
                     }
@@ -466,11 +482,15 @@ interface ProceduresEntryDialogData {
               </div>
             </mat-tab>
 
-            <mat-tab label="Laser" [disabled]="isLaserDisabled()">
+            <mat-tab [disabled]="isLaserDisabled()">
+              <ng-template mat-tab-label>
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--info">flash_on</mat-icon>
+                <span>Laser</span>
+              </ng-template>
               <div class="tab-body" [formGroup]="laserGroup">
                 @if (isLaserDisabled()) {
                   <div class="disabled-notice">
-                    <mat-icon>block</mat-icon>
+                    <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">block</mat-icon>
                     <span>Laser procedures are contraindicated during pregnancy.</span>
                   </div>
                 }
@@ -498,8 +518,8 @@ interface ProceduresEntryDialogData {
                         <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
                         <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
                         <div class="photo-actions">
-                          <button mat-icon-button type="button" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon>zoom_in</mat-icon></button>
-                          <button mat-icon-button type="button" (click)="removePhoto('laser', $index)" matTooltip="Remove" color="warn"><mat-icon>close</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('laser', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
                         </div>
                       </div>
                     }
@@ -549,7 +569,7 @@ interface ProceduresEntryDialogData {
             </mat-card-header>
             <mat-card-content>
               <div class="protocol-section">
-                <h4><mat-icon>local_hospital</mat-icon> Vascular Occlusion (Filler)</h4>
+                <h4><mat-icon class="ui-icon ui-icon--sm ui-icon--primary">local_hospital</mat-icon> Vascular Occlusion (Filler)</h4>
                 <ul>
                   <li><strong>Stop injection immediately</strong></li>
                   <li>Massage area gently for 15 minutes</li>
@@ -560,7 +580,7 @@ interface ProceduresEntryDialogData {
                 </ul>
               </div>
               <div class="protocol-section">
-                <h4><mat-icon>local_hospital</mat-icon> Ptosis or Brow Droop (Botox)</h4>
+                <h4><mat-icon class="ui-icon ui-icon--sm ui-icon--primary">local_hospital</mat-icon> Ptosis or Brow Droop (Botox)</h4>
                 <ul>
                   <li>Patient education: takes 2–4 weeks for partial resolution</li>
                   <li>Avoid strong brow movements for 7 days</li>
@@ -570,7 +590,7 @@ interface ProceduresEntryDialogData {
                 </ul>
               </div>
               <div class="protocol-section">
-                <h4><mat-icon>local_hospital</mat-icon> Allergic Reaction or Anaphylaxis</h4>
+                <h4><mat-icon class="ui-icon ui-icon--sm ui-icon--primary">local_hospital</mat-icon> Allergic Reaction or Anaphylaxis</h4>
                 <ul>
                   <li>Stop procedure immediately</li>
                   <li>Position patient upright (or supine if needed)</li>
@@ -581,7 +601,7 @@ interface ProceduresEntryDialogData {
                 </ul>
               </div>
               <div class="protocol-section">
-                <h4><mat-icon>local_hospital</mat-icon> Post-Laser Complications</h4>
+                <h4><mat-icon class="ui-icon ui-icon--sm ui-icon--primary">local_hospital</mat-icon> Post-Laser Complications</h4>
                 <ul>
                   <li>Excessive erythema/swelling: Cool compress, NSAIDs, corticosteroid cream if authorized</li>
                   <li>Hyperpigmentation: Recommend SPF 50+, avoid sun, consider depigmenting agents</li>
@@ -607,10 +627,10 @@ interface ProceduresEntryDialogData {
       }
 
       @if (zoomedPhotoUrl()) {
-        <div class="photo-lightbox" (click)="zoomedPhotoUrl.set(null)">
-          <img [src]="zoomedPhotoUrl()!" alt="zoomed photo" (click)="$event.stopPropagation()" />
-          <button mat-icon-button type="button" class="lightbox-close" (click)="zoomedPhotoUrl.set(null)" matTooltip="Close">
-            <mat-icon>close</mat-icon>
+        <div class="photo-lightbox" tabindex="0" role="button" (click)="zoomedPhotoUrl.set(null)" (keydown.enter)="zoomedPhotoUrl.set(null)" (keydown.space)="zoomedPhotoUrl.set(null)">
+          <img [src]="zoomedPhotoUrl()!" alt="zoomed photo" />
+          <button mat-icon-button type="button" class="lightbox-close ui-icon-btn ui-icon-btn--danger" (click)="zoomedPhotoUrl.set(null)" matTooltip="Close">
+            <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
           </button>
         </div>
       }
@@ -621,8 +641,6 @@ interface ProceduresEntryDialogData {
     .procedures-page { padding: 20px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
     .dialog-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0; }
     .dialog-header h2 { margin: 0; font-size: 1.25rem; }
-    .close-btn { color: #999; }
-    .close-btn:hover { color: #333; }
 
     .page-header { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
     .page-header > div { flex: 1; }
@@ -641,7 +659,7 @@ interface ProceduresEntryDialogData {
     .allergy-alert { border-left: 6px solid #e74c3c; font-weight: 600; animation: pulse 1.5s infinite; }
     .duplicate-alert { border-left: 6px solid #ff9800; position: relative; }
     .duplicate-alert .alert-content { padding-right: 34px; }
-    .alert-close-btn { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; color: #856404; }
+    .alert-close-btn { position: absolute; top: 4px; right: 4px; }
 
     .emergency-bar { background: #ff6b6b; color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
     .emergency-content { display: flex; align-items: center; gap: 12px; flex: 1; }
@@ -708,12 +726,11 @@ interface ProceduresEntryDialogData {
     .photo-card img { display: block; width: 100%; height: 140px; object-fit: cover; }
     .photo-badge { font-size: 11px; font-weight: 600; padding: 4px 8px; background: rgba(0,0,0,0.55); color: #fff; position: absolute; top: 0; left: 0; right: 0; }
     .photo-actions { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; background: rgba(0,0,0,0.45); padding: 2px 4px; }
-    .photo-actions button { color: #fff; width: 32px; height: 32px; line-height: 32px; }
-    .photo-actions button mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+    .photo-actions .ui-icon-btn { width: 32px; height: 32px; min-width: 32px; }
 
     .photo-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; }
     .photo-lightbox img { max-width: 90vw; max-height: 88vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 32px rgba(0,0,0,0.6); }
-    .lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; background: rgba(0,0,0,0.5); }
+    .lightbox-close { position: absolute; top: 16px; right: 16px; }
 
     @media (max-width: 575.98px) {
       .procedures-page { padding: 10px; }
@@ -2054,19 +2071,23 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     const e = error as { error?: unknown; message?: string } | null;
     if (!e) return '';
 
-    const payload = e.error as any;
+    const payload = e.error;
     if (typeof payload === 'string') {
       return payload.trim();
     }
 
     if (payload && typeof payload === 'object') {
-      if (typeof payload.message === 'string' && payload.message.trim()) {
-        return payload.message.trim();
+      const payloadObject = payload as Record<string, unknown>;
+
+      if (typeof payloadObject['message'] === 'string' && payloadObject['message'].trim()) {
+        return payloadObject['message'].trim();
       }
 
-      if (payload.errors && typeof payload.errors === 'object') {
-        const firstKey = Object.keys(payload.errors)[0];
-        const firstArr = firstKey ? payload.errors[firstKey] : null;
+      const errors = payloadObject['errors'];
+      if (errors && typeof errors === 'object') {
+        const errorsObject = errors as Record<string, unknown>;
+        const firstKey = Object.keys(errorsObject)[0];
+        const firstArr = firstKey ? errorsObject[firstKey] : null;
         if (Array.isArray(firstArr) && firstArr.length > 0) {
           const msg = `${firstArr[0]}`.trim();
           if (msg) return msg;

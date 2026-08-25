@@ -299,7 +299,7 @@ export class ConsentDialogComponent implements OnInit {
     this.attendance.set(null);
     this.loadingAttendance.set(true);
 
-    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(visit.consultId).subscribe({
+    this.attendanceEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(visit.consultId).subscribe({
       next: record => {
         this.attendance.set(record || null);
         this.loadingAttendance.set(false);

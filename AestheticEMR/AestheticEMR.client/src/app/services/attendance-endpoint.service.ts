@@ -63,6 +63,12 @@ export class AttendanceEndpoint extends EndpointBase {
     );
   }
 
+  getVwhRecordSummaryEndpoint<T>(consultId: string): Observable<T> {
+    return this.http.get<T>(`${this.attendanceUrl}/vwh-record/${encodeURIComponent(consultId)}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getVwhRecordSummaryEndpoint<T>(consultId)))
+    );
+  }
+
   getConsultingNotesEndpoint(consultId: string): Observable<string> {
     const encodedConsultId = encodeURIComponent((consultId ?? '').trim());
     return this.http.get(`${this.attendanceUrl}/${encodedConsultId}/consulting-notes`, {

@@ -64,7 +64,7 @@ import { parseUtcDate } from '../../../shared/utils/utc-date.util';
         </mat-form-field>
 
         <button mat-raised-button color="primary" type="button" (click)="openAddDialog()">
-          <mat-icon>add</mat-icon>
+          <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">add</mat-icon>
           Add / New
         </button>
       </div>
@@ -107,14 +107,14 @@ import { parseUtcDate } from '../../../shared/utils/utc-date.util';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let row">
-                <button mat-icon-button type="button" (click)="openAddBillDialog(row)" title="Add Bill">
-                  <mat-icon>receipt_long</mat-icon>
+                <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--success" (click)="openAddBillDialog(row)" title="Add Bill">
+                  <mat-icon class="ui-icon ui-icon--sm">receipt_long</mat-icon>
                 </button>
-                <button mat-icon-button type="button" (click)="openViewDialog(row)" title="View">
-                  <mat-icon>visibility</mat-icon>
+                <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="openViewDialog(row)" title="View">
+                  <mat-icon class="ui-icon ui-icon--sm">visibility</mat-icon>
                 </button>
-                <button mat-icon-button type="button" (click)="openEditDialog(row)" title="Edit">
-                  <mat-icon>edit</mat-icon>
+                <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--primary" (click)="openEditDialog(row)" title="Edit">
+                  <mat-icon class="ui-icon ui-icon--sm">edit</mat-icon>
                 </button>
               </td>
             </ng-container>

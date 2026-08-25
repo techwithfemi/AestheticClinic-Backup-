@@ -17,6 +17,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { BillingEndpoint, SaveReceiptRequest, UpdateReceiptRequest } from '../../../services/billing-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AuthService } from '../../../services/auth.service';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
@@ -88,6 +89,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<ReceiptEntryDialogComponent>);
   private readonly fb = inject(FormBuilder);
   private readonly billingEndpoint = inject(BillingEndpoint);
+  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
   private readonly alertService = inject(AlertService);
   private readonly authService = inject(AuthService);
   private readonly moduleSettings = inject(ModuleSettingsService);
@@ -205,7 +207,7 @@ export class ReceiptEntryDialogComponent implements OnInit {
       return;
     }
 
-    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(resolvedConsultId).subscribe({
+    this.attendanceEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(resolvedConsultId).subscribe({
       next: summary => {
         this.attendanceSummary = summary ?? undefined;
       },

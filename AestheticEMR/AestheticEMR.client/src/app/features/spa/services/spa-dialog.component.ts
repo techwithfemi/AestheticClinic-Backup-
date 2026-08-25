@@ -16,6 +16,7 @@ import { AestheticConsultation } from '../../../models/aesthetic.model';
 import { AttendanceSummaryComponent } from '../../../components/attendance-summary/attendance-summary.component';
 import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { BillingEndpoint } from '../../../services/billing-endpoint.service';
+import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
 
 interface SpaStaticLists {
   serviceTypes?: string[];
@@ -182,6 +183,7 @@ export class SpaDialogComponent {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
   private billingEndpoint = inject(BillingEndpoint);
+  private attendanceEndpoint = inject(AttendanceEndpoint);
   dialogRef = inject(MatDialogRef<SpaDialogComponent>);
 
   serviceTypes: string[] = [];
@@ -320,7 +322,7 @@ export class SpaDialogComponent {
   }
 
   private loadAttendanceSummary(consultId: string): void {
-    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(consultId).subscribe({
+    this.attendanceEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(consultId).subscribe({
       next: summary => {
         this.selectedAttendanceSummary = summary;
       },

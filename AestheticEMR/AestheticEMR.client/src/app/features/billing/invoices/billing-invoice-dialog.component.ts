@@ -544,7 +544,7 @@ export class BillingInvoiceDialogComponent implements OnInit {
       return;
     }
 
-    this.billingEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(resolvedConsultId).subscribe({
+    this.attendanceEndpoint.getVwhRecordSummaryEndpoint<VwhRecord>(resolvedConsultId).subscribe({
       next: summary => {
         this.attendanceSummaryRecord = summary ?? undefined;
 

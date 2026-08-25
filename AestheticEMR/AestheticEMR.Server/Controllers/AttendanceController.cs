@@ -3,11 +3,13 @@ using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Core.Services.Legacy.Interfaces;
 using AestheticEMR.Server.Configuration;
+using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Server.Services;
 using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace AestheticEMR.Server.Controllers;
@@ -19,7 +21,8 @@ public class AttendanceController(
     IMapper mapper,
     IAttendanceService attendanceService,
     IAuditService auditService,
-    IOptions<AppSettings> appSettings)
+    IOptions<AppSettings> appSettings,
+    ApplicationDbContext context)
     : BaseApiController(logger, mapper)
 {
     private readonly bool _enableAttendanceSms = appSettings.Value.AttendanceNotificationConfig?.EnableSms ?? true;
@@ -258,6 +261,60 @@ public class AttendanceController(
         {
             _logger.LogError(ex, "Error deleting attendance record {Id}", id);
             AddModelError("Unable to delete attendance record");
+            return BadRequest(ModelState);
+        }
+    }
+
+    [HttpGet("vwh-record/{consultId}")]
+    [ProducesResponseType(typeof(VwhRecordSummaryVM), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetVwhRecordSummary(string consultId)
+    {
+        try
+        {
+            var normalizedConsultId = consultId?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedConsultId))
+                return NotFound(consultId);
+
+            var record = await context.VwhRecords
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ConsultId == normalizedConsultId);
+
+            if (record is null)
+                return NotFound(consultId);
+
+            string? patientPhoto = null;
+            if (!string.IsNullOrWhiteSpace(record.PNo))
+            {
+                var patient = await context.HPatients
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Pno == record.PNo);
+
+                if (patient?.PatPix != null && patient.PatPix.Length > 0)
+                    patientPhoto = $"data:image/jpeg;base64,{Convert.ToBase64String(patient.PatPix)}";
+            }
+
+            return Ok(new VwhRecordSummaryVM
+            {
+                ConsultId = record.ConsultId,
+                PNo = record.PNo,
+                ClientCat = record.ClientCat,
+                ClinicType = record.ClinicType,
+                Coyname = record.Coyname,
+                RetainName = record.RetainName,
+                Fullname = record.Fullname,
+                Dob = record.Dob,
+                Age = record.Age,
+                PhoneNo = record.PhoneNo,
+                RetainCode = record.RetainCode,
+                RetainId = record.RetainId,
+                PatientPhotoBase64 = patientPhoto
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving VwhRecord summary for {ConsultId}", consultId);
+            AddModelError("Unable to retrieve attendance summary");
             return BadRequest(ModelState);
         }
     }
