@@ -12,16 +12,25 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { AlertService, MessageSeverity } from '../../../services/alert.service';
 import { AestheticEndpoint } from '../../../services/aesthetic-endpoint.service';
-import { AttendanceEndpoint } from '../../../services/attendance-endpoint.service';
-import { HPatientEndpoint } from '../../../services/h-patient-endpoint.service';
 import { AccountEndpoint } from '../../../services/account-endpoint.service';
-import { AestheticConsultation, AestheticPatient } from '../../../models/aesthetic.model';
-import { HPatient } from '../../../models/legacy/h-patient.model';
-import { QryhvisitsForToday } from '../../../models/legacy/qryhvisits-for-today.model';
+import { AestheticConsultation } from '../../../models/aesthetic.model';
+import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { ProceduresEntryDialogComponent } from './procedures-entry-dialog.component';
 import { BillingInvoiceDialogComponent, BillingInvoiceDialogData } from '../../billing/invoices/billing-invoice-dialog.component';
 import { User } from '../../../models/user.model';
 import { parseUtcDate } from '../../../shared/utils/utc-date.util';
+
+interface ProcedureGridRow {
+  record: VwhRecord;
+  consultation?: AestheticConsultation;
+  consultId: string;
+  pNo: string;
+  patientName: string;
+  consultationDate?: string;
+  provider?: string;
+  services?: string;
+  procedureDescription?: string;
+}
 
 @Component({
   selector: 'app-procedures',
@@ -161,15 +170,11 @@ export class ProceduresComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly alertService = inject(AlertService);
   private readonly endpoint = inject(AestheticEndpoint);
-  private readonly attendanceEndpoint = inject(AttendanceEndpoint);
-  private readonly patientEndpoint = inject(HPatientEndpoint);
   private readonly accountEndpoint = inject(AccountEndpoint);
 
   loadingIndicator = false;
-  readonly patients = signal<AestheticPatient[]>([]);
-  readonly legacyPatients = signal<HPatient[]>([]);
-  readonly todayVisits = signal<QryhvisitsForToday[]>([]);
-  readonly consultations = signal<AestheticConsultation[]>([]);
+  readonly vwhRecords = signal<VwhRecord[]>([]);
+  readonly rows = signal<ProcedureGridRow[]>([]);
   readonly users = signal<User[]>([]);
   readonly searchText = signal('');
   readonly currentPageIndex = signal(0);
@@ -178,33 +183,26 @@ export class ProceduresComponent implements OnInit {
   readonly displayedColumns = ['patient', 'consultId', 'date', 'provider', 'services', 'description', 'actions'];
 
   readonly patientAttendanceOptions = computed(() => {
-    const patients = this.patients();
-
-    return this.todayVisits()
-      .filter(visit => !!visit.consultId?.trim() && !!visit.pNo?.trim())
-      .map(visit => {
-        const patientName = (visit.fullname || '').trim() || this.resolveAttendancePatientName(visit.pNo, patients);
-        const visitDate = this.formatVisitDate(visit.recDate);
-
-        return {
-          trackKey: `${visit.consultId}-${visit.pNo}`,
-          consultId: visit.consultId,
-          pNo: visit.pNo,
-          label: `${patientName} ${visitDate ? `(${visitDate}) ` : ''}[${visit.consultId}]`
-        };
-      })
+    return this.vwhRecords()
+      .filter(record => !!record.consultId?.trim() && !!record.pNo?.trim() && this.isToday(record.recDate))
+      .map(record => ({
+        trackKey: `${record.consultId}-${record.pNo}`,
+        consultId: record.consultId,
+        pNo: record.pNo,
+        label: `${(record.fullname || 'Patient').trim()} ${record.recDate ? `(${this.formatVisitDate(record.recDate)}) ` : ''}[${record.consultId}]`
+      }))
       .sort((a, b) => a.label.localeCompare(b.label));
   });
 
   readonly filteredRows = computed(() => {
     const term = this.searchText().trim().toLowerCase();
-    const todayRows = this.consultations().filter(row => this.isToday(row.consultationDate));
+    const todayRows = this.rows().filter(row => this.isToday(row.consultationDate));
 
     if (!term) {
       return todayRows;
     }
 
-    return this.consultations().filter(row => {
+    return this.rows().filter(row => {
       const patient = this.resolvePatientLabel(row).toLowerCase();
       const consultId = (row.consultId || '').toLowerCase();
       const pno = (row.pNo || '').toLowerCase();
@@ -257,14 +255,19 @@ export class ProceduresComponent implements OnInit {
     });
   }
 
-  openEditDialog(consultation: AestheticConsultation): void {
+  openEditDialog(row: ProcedureGridRow): void {
+    if (!row.consultation) {
+      this.alertService.showStickyMessage('Validation error', 'Selected procedures row is missing its consultation record.', MessageSeverity.warn);
+      return;
+    }
+
     const initialTab = (this.route.snapshot.data?.['initialTab'] || '').toString();
 
     const ref = this.dialog.open(ProceduresEntryDialogComponent, {
       width: '98vw',
       maxWidth: '1100px',
       disableClose: true,
-      data: { initialTab, consultation }
+      data: { initialTab, consultation: row.consultation }
     });
 
     ref.afterClosed().subscribe(saved => {
@@ -274,27 +277,31 @@ export class ProceduresComponent implements OnInit {
     });
   }
 
-  openViewDialog(consultation: AestheticConsultation): void {
+  openViewDialog(row: ProcedureGridRow): void {
+    if (!row.consultation) {
+      return;
+    }
+
     const initialTab = (this.route.snapshot.data?.['initialTab'] || '').toString();
 
     this.dialog.open(ProceduresEntryDialogComponent, {
       width: '98vw',
       maxWidth: '1100px',
       disableClose: true,
-      data: { initialTab, consultation }
+      data: { initialTab, consultation: row.consultation }
     });
   }
 
-  openAddBillDialog(consultation: AestheticConsultation): void {
-    const consultId = (consultation.consultId || '').trim();
-    const pNo = (consultation.pNo || '').trim();
+  openAddBillDialog(row: ProcedureGridRow): void {
+    const consultId = row.consultId.trim();
+    const pNo = row.pNo.trim();
 
-    if (!consultId || !pNo) {
-      this.alertService.showStickyMessage('Validation error', 'Consult ID and patient number are required before adding a bill.', MessageSeverity.warn);
+    if (!consultId || !pNo || !row.consultation) {
+      this.alertService.showStickyMessage('Validation error', 'Consult ID and matching consultation are required before adding a bill.', MessageSeverity.warn);
       return;
     }
 
-    const dialogData = this.buildBillingDialogData(consultation, consultId, pNo);
+    const dialogData = this.buildBillingDialogData(row);
 
     this.dialog.open(BillingInvoiceDialogComponent, {
       width: '1200px',
@@ -324,29 +331,11 @@ export class ProceduresComponent implements OnInit {
     this.currentPageIndex.set(next);
   }
 
-  resolvePatientLabel(row: AestheticConsultation): string {
-    const pno = (row.pNo || '').trim();
-
-    const aesthetic = this.patients().find(p => p.id === row.patientId);
-    if (aesthetic) {
-      const name = `${aesthetic.firstName ?? ''} ${aesthetic.lastName ?? ''}`.trim();
-      if (name) {
-        return name;
-      }
-    }
-
-    const legacy = this.legacyPatients().find(p => (p.pno || '').trim().toLowerCase() === pno.toLowerCase());
-    if (legacy) {
-      const name = `${legacy.pSurName ?? ''} ${legacy.pFirstname ?? ''}`.trim();
-      if (name) {
-        return name;
-      }
-    }
-
-    return pno || `Patient #${row.patientId}`;
+  resolvePatientLabel(row: ProcedureGridRow): string {
+    return row.patientName || row.record.fullname || row.pNo || 'Patient';
   }
 
-  resolveProviderLabel(row: AestheticConsultation): string {
+  resolveProviderLabel(row: ProcedureGridRow): string {
     const providerKey = (row.provider || '').trim();
     if (!providerKey) {
       return '—';
@@ -364,45 +353,18 @@ export class ProceduresComponent implements OnInit {
     return provider.fullName || provider.userName || provider.id;
   }
 
-  private buildBillingDialogData(consultation: AestheticConsultation, consultId: string, pNo: string): BillingInvoiceDialogData {
-    const visit = this.todayVisits().find(item => (item.consultId || '').trim().toLowerCase() === consultId.toLowerCase());
-    const legacyPatient = this.legacyPatients().find(item => (item.pno || '').trim().toLowerCase() === pNo.toLowerCase());
-    const coyID = (visit?.coyName || legacyPatient?.coyName || '').trim();
+  private buildBillingDialogData(row: ProcedureGridRow): BillingInvoiceDialogData {
+    const coyID = (row.record.coyname || row.record.retainName || '').trim();
 
     return {
       mode: 'create',
-      consultId,
-      billNo: consultId,
-      pNo,
+      consultId: row.consultId,
+      billNo: row.consultId,
+      pNo: row.pNo,
       coyID,
       company: coyID,
       clientID: coyID
     };
-  }
-
-  private resolveAttendancePatientName(pNo?: string, patients: AestheticPatient[] = this.patients()): string {
-    const normalizedPno = (pNo || '').trim().toLowerCase();
-    if (!normalizedPno) {
-      return 'Patient';
-    }
-
-    const patient = patients.find(item => (item.pno || '').trim().toLowerCase() === normalizedPno);
-    if (patient) {
-      const name = `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim();
-      if (name) {
-        return name;
-      }
-    }
-
-    const legacy = this.legacyPatients().find(item => (item.pno || '').trim().toLowerCase() === normalizedPno);
-    if (legacy) {
-      const name = `${legacy.pSurName ?? ''} ${legacy.pFirstname ?? ''}`.trim();
-      if (name) {
-        return name;
-      }
-    }
-
-    return pNo || 'Patient';
   }
 
   private formatVisitDate(value?: string): string {
@@ -423,27 +385,54 @@ export class ProceduresComponent implements OnInit {
     this.alertService.startLoadingMessage('Loading procedures records...');
 
     Promise.all([
-      this.endpoint.getPatientsEndpoint<AestheticPatient[]>().toPromise(),
-      this.patientEndpoint.getHPatientsEndpoint<HPatient[]>().toPromise(),
-      this.accountEndpoint.getUsersEndpoint<User[]>().toPromise(),
-      this.attendanceEndpoint.getTodayVisitsEndpoint<QryhvisitsForToday[]>().toPromise()
-    ]).then(([patients, legacyPatients, users, todayVisits]) => {
-      const allPatients = patients || [];
-      const rows = allPatients
-        .flatMap(patient => (patient.consultations || []).map(c => ({ ...c, patientId: patient.id })))
-        .sort((a, b) => (b.consultationDate || '').localeCompare(a.consultationDate || ''));
+      this.endpoint.getVwhRecordsEndpoint<VwhRecord[]>().toPromise(),
+      this.endpoint.getConsultationsEndpoint<AestheticConsultation[]>().toPromise(),
+      this.accountEndpoint.getUsersEndpoint<User[]>().toPromise()
+    ]).then(([records, consultations, users]) => {
+      const allRecords = (records || []).filter(record => !!(record.consultId || '').trim());
+      const consultationMap = new Map<string, AestheticConsultation>();
 
-      this.patients.set(allPatients);
-      this.legacyPatients.set(legacyPatients || []);
+      (consultations || []).forEach(consultation => {
+        const key = (consultation.consultId || '').trim().toLowerCase();
+        if (key) {
+          consultationMap.set(key, consultation);
+        }
+      });
+
+      const rows = allRecords
+        .map(record => {
+          const consultKey = (record.consultId || '').trim().toLowerCase();
+          const consultation = consultationMap.get(consultKey);
+          if (!consultation) {
+            return null;
+          }
+
+          return {
+            record,
+            consultation,
+            consultId: (record.consultId || '').trim(),
+            pNo: (record.pNo || '').trim(),
+            patientName: (record.fullname || consultation.patientName || 'Patient').trim(),
+            consultationDate: consultation.consultationDate || record.recDate,
+            provider: consultation.provider || record.empId || '',
+            services: consultation.services || record.remarks || '',
+            procedureDescription: consultation.procedureDescription || record.diagnosis || record.remarks || ''
+          } as ProcedureGridRow;
+        })
+        .filter((row): row is ProcedureGridRow => !!row)
+        .sort((a, b) => (b.consultationDate || '').localeCompare(a.consultationDate || '') || b.consultId.localeCompare(a.consultId));
+
+      this.vwhRecords.set(allRecords);
       this.users.set(users || []);
-      this.todayVisits.set(todayVisits || []);
-      this.consultations.set(rows);
+      this.rows.set(rows);
+      this.selectedVisitConsultId.set(rows[0]?.consultId || '');
       this.currentPageIndex.set(0);
       this.loadingIndicator = false;
       this.alertService.stopLoadingMessage();
     }).catch(error => {
       this.loadingIndicator = false;
-      this.todayVisits.set([]);
+      this.vwhRecords.set([]);
+      this.rows.set([]);
       this.alertService.stopLoadingMessage();
       this.alertService.showStickyMessage('Load error', 'Unable to load procedures records.', MessageSeverity.error, error);
     });

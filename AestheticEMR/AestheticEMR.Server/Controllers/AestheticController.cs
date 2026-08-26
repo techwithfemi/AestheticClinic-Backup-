@@ -4,11 +4,13 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
+using AestheticEMR.Core.Models.Legacy;
 using AestheticEMR.Core.Services;
 using AestheticEMR.Core.Services.Aesthetics;
 using AestheticEMR.Server.Configuration;
 using AestheticEMR.Server.Services.Email;
 using AestheticEMR.Server.ViewModels.Aesthetic;
+using AestheticEMR.Server.ViewModels.Legacy;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -85,6 +87,22 @@ namespace AestheticEMR.Server.Controllers
         {
             var patients = _aestheticService.GetPatients();
             return Ok(_mapper.Map<IEnumerable<AestheticPatientVM>>(patients));
+        }
+
+        [HttpGet("vwh-records")]
+        [ProducesResponseType(typeof(IEnumerable<VwhRecordSummaryVM>), StatusCodes.Status200OK)]
+        public IActionResult GetVwhRecords()
+        {
+            var records = _aestheticService.GetVwhRecords();
+            return Ok(_mapper.Map<IEnumerable<VwhRecordSummaryVM>>(records));
+        }
+
+        [HttpGet("consultations")]
+        [ProducesResponseType(typeof(IEnumerable<AestheticConsultationVM>), StatusCodes.Status200OK)]
+        public IActionResult GetConsultations()
+        {
+            var consultations = _aestheticService.GetConsultations();
+            return Ok(_mapper.Map<IEnumerable<AestheticConsultationVM>>(consultations));
         }
 
         [HttpGet("patients/{id}")]
@@ -265,7 +283,7 @@ namespace AestheticEMR.Server.Controllers
             try
             {
                 var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-                consultation.Provider = GetCurrentUserEmpId() ?? GetCurrentUserId();
+                consultation.Provider = GetCurrentUserId();
                 var created = _aestheticService.AddConsultation(consultation, consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
                 return CreatedAtAction(nameof(GetConsultation), new { consultationId = created.Id }, _mapper.Map<AestheticConsultationVM>(created));
             }
@@ -296,7 +314,7 @@ namespace AestheticEMR.Server.Controllers
             try
             {
                 var consultation = _mapper.Map<Core.Models.Aesthetic.AestheticConsultation>(consultationVM);
-                consultation.Provider = GetCurrentUserEmpId() ?? GetCurrentUserId();
+                consultation.Provider = GetCurrentUserId();
                 var updated = _aestheticService.UpdateConsultation(consultation, GetCurrentUserId(), consultationVM.ConsultId, consultationVM.PNo, consultationVM.Services);
                 return Ok(_mapper.Map<AestheticConsultationVM>(updated));
             }

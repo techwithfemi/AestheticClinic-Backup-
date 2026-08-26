@@ -5,12 +5,15 @@
 // ---------------------------------------
 
 using AestheticEMR.Core.Models.Aesthetic;
+using AestheticEMR.Core.Models.Legacy;
 
 namespace AestheticEMR.Core.Services.Aesthetics
 {
     public interface IAestheticService
     {
         IEnumerable<AestheticPatient> GetPatients();
+        IEnumerable<VwhRecord> GetVwhRecords();
+        IEnumerable<AestheticConsultation> GetConsultations();
         AestheticPatient? GetPatientById(int id);
         AestheticPatient AddPatient(AestheticPatient patient);
         AestheticPatient UpdatePatient(AestheticPatient patient);

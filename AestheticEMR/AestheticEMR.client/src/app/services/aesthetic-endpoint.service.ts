@@ -101,6 +101,7 @@ export class AestheticEndpoint extends EndpointBase {
   private get consultationsUrl() { return `${this.baseUrl}/consultations`; }
   private get photosUrl() { return `${this.baseUrl}/photos`; }
   private get botoxConsultationsUrl() { return `${this.consultationsUrl}/botox`; }
+  private get vwhRecordsUrl() { return `${this.baseUrl}/vwh-records`; }
 
   getAdminUsersReportEndpoint<T = AdminUsersReportRow[]>(): Observable<T> {
     return this.http.get<T>(`${this.auditUrl}/users-report`, this.requestHeaders).pipe(
@@ -221,6 +222,16 @@ export class AestheticEndpoint extends EndpointBase {
   getPatientsEndpoint<T>(): Observable<T> {
     return this.http.get<T>(this.patientsUrl, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getPatientsEndpoint<T>())));
+  }
+
+  getVwhRecordsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(this.vwhRecordsUrl, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getVwhRecordsEndpoint<T>())));
+  }
+
+  getConsultationsEndpoint<T>(): Observable<T> {
+    return this.http.get<T>(this.consultationsUrl, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getConsultationsEndpoint<T>())));
   }
 
   getPatientConsultationsEndpoint<T>(patientId: number): Observable<T> {

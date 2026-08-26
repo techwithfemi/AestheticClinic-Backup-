@@ -28,6 +28,7 @@ import { VwhRecord } from '../../../models/legacy/vwh-record.model';
 import { QryhvisitsForToday } from '../../../models/legacy/qryhvisits-for-today.model';
 import { ModuleSettingsService } from '../../../services/module-settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { ConfigurationService } from '../../../services/configuration.service';
 import { formatUtcForDisplay } from '../../../shared/utils/utc-date.util';
 import { DialogMessageBannerComponent, DialogMessageBannerType } from '../../../components/controls/dialog-message-banner.component';
 
@@ -42,6 +43,7 @@ interface TabPhotoItem {
   phase: PhotoPhase;
   tag: StandardTag;
   url?: string;
+  previewUrl?: string;
   file?: File;
 }
 
@@ -423,9 +425,9 @@ interface ProceduresEntryDialogData {
                       @for (img of tabPhotos().neuromodulator; track $index) {
                         <div class="photo-card">
                           <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
-                          <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                          <img [src]="img.previewUrl || img.url || ''" [alt]="img.phase + ' ' + img.tag" />
                           <div class="photo-actions">
-                            <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                            <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || img.previewUrl || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
                             <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('neuromodulator', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
                           </div>
                         </div>
@@ -470,9 +472,9 @@ interface ProceduresEntryDialogData {
                     @for (img of tabPhotos().dermalFiller; track $index) {
                       <div class="photo-card">
                         <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
-                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                        <img [src]="img.previewUrl || img.url || ''" [alt]="img.phase + ' ' + img.tag" />
                         <div class="photo-actions">
-                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || img.previewUrl || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
                           <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('dermalFiller', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
                         </div>
                       </div>
@@ -516,9 +518,9 @@ interface ProceduresEntryDialogData {
                     @for (img of tabPhotos().laser; track $index) {
                       <div class="photo-card">
                         <div class="photo-badge">{{ img.phase }} · {{ img.tag }}</div>
-                        <img [src]="img.url || ''" [alt]="img.phase + ' ' + img.tag" />
+                        <img [src]="img.previewUrl || img.url || ''" [alt]="img.phase + ' ' + img.tag" />
                         <div class="photo-actions">
-                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
+                          <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--info" (click)="zoomPhoto(img.url || img.previewUrl || '')" matTooltip="Zoom"><mat-icon class="ui-icon ui-icon--sm">zoom_in</mat-icon></button>
                           <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removePhoto('laser', $index)" matTooltip="Remove"><mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon></button>
                         </div>
                       </div>
@@ -754,6 +756,7 @@ export class ProceduresEntryDialogComponent implements OnInit {
   private readonly data = inject<ProceduresEntryDialogData>(MAT_DIALOG_DATA);
   private readonly moduleSettings = inject(ModuleSettingsService);
   private readonly authService = inject(AuthService);
+  private readonly configurations = inject(ConfigurationService);
 
   loadingIndicator = false;
   readonly patients = signal<AestheticPatient[]>([]);
@@ -1463,9 +1466,11 @@ export class ProceduresEntryDialogComponent implements OnInit {
     const safePhase: PhotoPhase = phase === 'After' ? 'After' : 'Before';
     const safeTag: StandardTag = this.toStandardTag(tag);
 
+    const objectUrl = URL.createObjectURL(file);
+
     this.tabPhotos.update(current => ({
       ...current,
-      [tab]: [...current[tab], { file, fileName: file.name, phase: safePhase, tag: safeTag, url: URL.createObjectURL(file) }]
+      [tab]: [...current[tab], { file, fileName: file.name, phase: safePhase, tag: safeTag, url: objectUrl, previewUrl: objectUrl }]
     }));
   }
 
@@ -1936,13 +1941,17 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
       const tab = this.toPhotoTab(tabRaw);
       if (!tab) continue;
 
+      const fullUrl = this.resolveImageUrl(photo.url);
+      const thumbnailUrl = this.resolveImageUrl(photo.thumbnailUrl || photo.url);
+
       mapped[tab].push({
         id: photo.id,
         consultationId: photo.consultationId,
         fileName: photo.fileName || 'photo',
         phase: phaseRaw === 'After' ? 'After' : 'Before',
         tag: this.toStandardTag(tagRaw),
-        url: photo.url
+        url: fullUrl,
+        previewUrl: thumbnailUrl
       });
     }
 
@@ -1955,6 +1964,17 @@ Follow-up (After): ${this.tabPhotos().neuromodulator.filter(x => x.phase === 'Af
     }
 
     return null;
+  }
+
+  private resolveImageUrl(url?: string): string {
+    if (!url) return '';
+    if (/^(data:|blob:|https?:\/\/)/i.test(url)) {
+      return url;
+    }
+
+    const baseUrl = (this.configurations.baseUrl || '').replace(/\/$/, '');
+    const relativeUrl = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${relativeUrl}`;
   }
 
   private toStandardTag(raw: string): StandardTag {

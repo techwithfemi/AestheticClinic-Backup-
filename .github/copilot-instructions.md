@@ -582,6 +582,7 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
 
 - For dropdowns, default selected value should be the explicit first option text (for example '--Select Account--'), with '(ALL)' if present, as the next explicit option; do not use empty-string defaults.
 
+### Aesthetic Service Table Usage
 
 
 ### Report UI Pattern Baseline (Applies to ALL Reports)

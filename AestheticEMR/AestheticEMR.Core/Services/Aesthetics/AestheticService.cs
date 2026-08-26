@@ -6,6 +6,7 @@
 
 using AestheticEMR.Core.Infrastructure;
 using AestheticEMR.Core.Models.Aesthetic;
+using AestheticEMR.Core.Models.Legacy;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -23,6 +24,18 @@ namespace AestheticEMR.Core.Services.Aesthetics
             .AsSingleQuery()
             .OrderBy(p => p.LastName)
             .ThenBy(p => p.FirstName)
+            .ToList();
+
+        public IEnumerable<VwhRecord> GetVwhRecords() => dbContext.VwhRecords
+            .AsNoTracking()
+            .OrderByDescending(x => x.RecDate)
+            .ThenBy(x => x.ConsultId)
+            .ToList();
+
+        public IEnumerable<AestheticConsultation> GetConsultations() => dbContext.AestheticConsultations
+            .Include(c => c.Photos)
+            .AsSingleQuery()
+            .OrderByDescending(c => c.ConsultationDate)
             .ToList();
 
         public AestheticPatient? GetPatientById(int id) => dbContext.AestheticPatients
@@ -1156,12 +1169,14 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (string.IsNullOrWhiteSpace(resolvedConsultId) || string.IsNullOrWhiteSpace(resolvedPNo))
                 return;
 
+            var treatedByEmpId = ResolveEmpIdForLegacyConsulting(consultation.Provider);
             var clinicFromHeader = ResolveClinicFromHeader(resolvedConsultId);
 
             var existing = dbContext.HConsultings.FirstOrDefault(x => x.ConsultId == resolvedConsultId);
             if (existing != null)
             {
                 existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
+                existing.TreatedBy = treatedByEmpId;
                 if (!string.IsNullOrWhiteSpace(clinicFromHeader))
                 {
                     existing.Clinic = clinicFromHeader;
@@ -1181,7 +1196,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 CDate = consultation.ConsultationDate == default ? now : consultation.ConsultationDate,
                 CTime = now,
                 Services = services,
-                TreatedBy = string.IsNullOrWhiteSpace(consultation.Provider) ? "SYSTEM" : consultation.Provider,
+                TreatedBy = treatedByEmpId,
                 ClientCat = "PRIVATE",
                 Clinic = clinicFromHeader,
                 Remarks = clinicFromHeader,
@@ -1200,6 +1215,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
             if (string.IsNullOrWhiteSpace(resolvedConsultId))
                 return;
 
+            var treatedByEmpId = ResolveEmpIdForLegacyConsulting(consultation.Provider);
             var clinicFromHeader = ResolveClinicFromHeader(resolvedConsultId);
 
             // Resolve target row id first, then update by id (where id = xxx)
@@ -1218,8 +1234,7 @@ namespace AestheticEMR.Core.Services.Aesthetics
                 return;
 
             existing.Services = MergeServices(existing.Services, services, consultation.ProcedureType);
-            if (!string.IsNullOrWhiteSpace(consultation.Provider))
-                existing.TreatedBy = consultation.Provider;
+            existing.TreatedBy = treatedByEmpId;
             if (!string.IsNullOrWhiteSpace(clinicFromHeader))
             {
                 existing.Clinic = clinicFromHeader;
@@ -1228,6 +1243,22 @@ namespace AestheticEMR.Core.Services.Aesthetics
             existing.EditDate = DateTime.UtcNow;
             existing.EditTime = DateTime.UtcNow;
             dbContext.SaveChanges();
+        }
+
+        private string ResolveEmpIdForLegacyConsulting(string? providerUserId)
+        {
+            if (string.IsNullOrWhiteSpace(providerUserId))
+                throw new InvalidOperationException("Provider user ID is required to resolve EmpID for hConsulting.treatedBy.");
+
+            var empId = dbContext.Users
+                .Where(x => x.Id == providerUserId)
+                .Select(x => x.EmpID)
+                .FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(empId))
+                throw new InvalidOperationException($"EmpID is required for user '{providerUserId}' when saving hConsulting.treatedBy.");
+
+            return empId.Trim();
         }
 
         private string? ResolveClinicFromHeader(string consultId)
