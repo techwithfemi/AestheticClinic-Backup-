@@ -1,0 +1,17 @@
+<div class="modal-header app-dialog-header">
+  <div class="app-dialog-header__title-wrap">
+    <div class="app-dialog-header__title-icon">
+      <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">{{ icon }}</mat-icon>
+    </div>
+    <h5 class="modal-title mb-0">{{ title }}</h5>
+  </div>
+
+  <button
+    mat-icon-button
+    type="button"
+    class="ui-dialog-close-btn app-dialog-header__close"
+    (click)="onClose()"
+    [attr.aria-label]="closeAriaLabel">
+    <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
+  </button>
+</div>

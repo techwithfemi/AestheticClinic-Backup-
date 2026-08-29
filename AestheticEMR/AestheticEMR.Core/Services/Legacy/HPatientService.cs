@@ -9,9 +9,126 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
 {
     public async Task<IEnumerable<HPatient>> GetAllAsync()
     {
-        return await context.HPatients
-            .OrderBy(x => x.PSurName)
-            .ThenBy(x => x.PFirstname)
+        return await context.Vwhpatients
+            .AsNoTracking()
+            .OrderBy(x => x.Surname)
+            .ThenBy(x => x.Firstname)
+            .Select(x => new HPatient
+            {
+                Pno = x.Pno,
+                OldPno = x.OldPno,
+                PSurName = x.Surname,
+                PFirstname = x.Firstname,
+                Title = x.Title,
+                Sex = x.Sex,
+                Mstatus = x.Mstatus,
+                Dob = x.Dob,
+                Occupation = x.Occupation,
+                HomeAddress = x.HomeAddress,
+                OfficeAddress = x.OfficeAddress,
+                PPhoneNo = x.PhoneNo,
+                Email = x.Email,
+                EmpNo = x.EmpNo,
+                Branch = x.Branch,
+                NextofKin = x.NextofKin,
+                KinAddress = x.KinAddress,
+                RelationToKin = x.RelationToKin,
+                PCatId = x.PatCat,
+                CoyType = x.CoyType,
+                CoyName = x.CoyName,
+                ClientName = x.Client,
+                ClientCatId = x.BillingCat,
+                PolicyType = x.PolicyType,
+                Nokphone = x.Nokphone,
+                Status = x.Status,
+                RegDate = x.RegDate,
+                LastAttndDate = x.LastAttndDate,
+                LastClinicVisited = x.LastClinicVisited,
+                LastPurpose = x.Purpose,
+                LastConsultId = x.LastConsultId,
+                LatestBillNo = x.LatestBillNo,
+                LastDoctorSeen = x.LastDoctorSeen,
+                LastConDate = x.LastConDate,
+                Debt = x.Debt,
+                DebtBf = x.Debt,
+                UserName = x.UserName,
+                EntryDate = x.EntryDate,
+                NewReg = x.NewReg,
+                CardType = x.CardType,
+                ExpiryDate = x.ExpiryDate,
+                Expired = x.Expired,
+                HmoRef = x.HmoRef,
+                CoyClass = x.CoyClass,
+                Principal = x.Principal,
+                PastMedHist = x.PastMedHist,
+                Area = x.Area,
+                Maturity = x.Maturity,
+                AdmissionDaysLimit = x.AdmissionDaysLimit,
+                CumNoOfAdmissionDaysPerAnnum = x.CumNoOfAdmissionDaysPerAnnum
+            })
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<HPatient>> GetByRegDateAsync(DateTime regDate)
+    {
+        return await context.Vwhpatients
+            .AsNoTracking()
+            .Where(x => x.RegDate.HasValue && x.RegDate.Value.Date == regDate.Date)
+            .OrderBy(x => x.Surname)
+            .ThenBy(x => x.Firstname)
+            .Select(x => new HPatient
+            {
+                Pno = x.Pno,
+                OldPno = x.OldPno,
+                PSurName = x.Surname,
+                PFirstname = x.Firstname,
+                Title = x.Title,
+                Sex = x.Sex,
+                Mstatus = x.Mstatus,
+                Dob = x.Dob,
+                Occupation = x.Occupation,
+                HomeAddress = x.HomeAddress,
+                OfficeAddress = x.OfficeAddress,
+                PPhoneNo = x.PhoneNo,
+                Email = x.Email,
+                EmpNo = x.EmpNo,
+                Branch = x.Branch,
+                NextofKin = x.NextofKin,
+                KinAddress = x.KinAddress,
+                RelationToKin = x.RelationToKin,
+                PCatId = x.PatCat,
+                CoyType = x.CoyType,
+                CoyName = x.CoyName,
+                ClientName = x.Client,
+                ClientCatId = x.BillingCat,
+                PolicyType = x.PolicyType,
+                Nokphone = x.Nokphone,
+                Status = x.Status,
+                RegDate = x.RegDate,
+                LastAttndDate = x.LastAttndDate,
+                LastClinicVisited = x.LastClinicVisited,
+                LastPurpose = x.Purpose,
+                LastConsultId = x.LastConsultId,
+                LatestBillNo = x.LatestBillNo,
+                LastDoctorSeen = x.LastDoctorSeen,
+                LastConDate = x.LastConDate,
+                Debt = x.Debt,
+                DebtBf = x.Debt,
+                UserName = x.UserName,
+                EntryDate = x.EntryDate,
+                NewReg = x.NewReg,
+                CardType = x.CardType,
+                ExpiryDate = x.ExpiryDate,
+                Expired = x.Expired,
+                HmoRef = x.HmoRef,
+                CoyClass = x.CoyClass,
+                Principal = x.Principal,
+                PastMedHist = x.PastMedHist,
+                Area = x.Area,
+                Maturity = x.Maturity,
+                AdmissionDaysLimit = x.AdmissionDaysLimit,
+                CumNoOfAdmissionDaysPerAnnum = x.CumNoOfAdmissionDaysPerAnnum
+            })
             .ToListAsync();
     }
 
@@ -45,6 +162,16 @@ public class HPatientService(ApplicationDbContext context) : IHPatientService
                 patient.PatPix = existing.PatPix;
             }
         }
+
+        var entry = context.Entry(patient);
+        if (entry.State == EntityState.Detached)
+        {
+            context.HPatients.Attach(patient);
+            entry = context.Entry(patient);
+        }
+
+        entry.State = EntityState.Modified;
+        entry.Property(x => x.Sno).IsModified = false;
 
         await context.SaveChangesAsync();
         return patient;

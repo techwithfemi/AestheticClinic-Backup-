@@ -431,6 +431,8 @@ Accurate dates and times are safety-critical. Every UI and backend workflow MUST
 - Material table/grid should have page size = 10.
 - use @ng-select/ng-select as select dropdown with searchable 
 - The dialog can only be explicitly closed using the close (X) icon or cancel button.
+- Use the global reusable `app-dialog-header` component for dialog headers; pass title/icon as inputs instead of duplicating custom header markup.
+- Dialog header visual theme must be server-driven from `appsettings.json` (`DialogHeaderThemeConfig`) via `/api/ui-settings/dialog-header-theme`; do not hardcode header theme colors in feature components.
 - The entry form UI must be responsive (for mobile, tablet, and desktop devices).
 
 So in short: separate “entry form UI” from “records/list page UI” and reuse the same dialog for new/edit across modules

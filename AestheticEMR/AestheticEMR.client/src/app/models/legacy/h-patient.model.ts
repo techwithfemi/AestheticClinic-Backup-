@@ -19,7 +19,8 @@ export interface HPatient {
   relationToKin?: string;
   pCatId?: string;
   coyType?: string;
-  coyName?: string; // Company
+  coyName?: string; // Company code
+  clientName?: string; // Company name/client
   clientCatId?: string;
   cardType?: string;
   policyType?: string;

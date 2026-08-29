@@ -19,6 +19,7 @@ import { AppTitleService } from './services/app-title.service';
 import { LowerCaseUrlSerializer } from './services/lowercase-url-serializer.service';
 import { TranslateLanguageLoader } from './services/app-translation.service';
 import { AppConfigService } from './services/app-config.service';
+import { DialogHeaderThemeService } from './services/dialog-header-theme.service';
 import { GlobalLoadingInterceptor } from './services/global-loading.interceptor';
 import { RequestMetadataInterceptor } from './services/request-metadata.interceptor';
 
@@ -55,6 +56,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: (appConfig: AppConfigService) => () => appConfig.init(),
       deps: [AppConfigService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (dialogHeaderTheme: DialogHeaderThemeService) => () => dialogHeaderTheme.init(),
+      deps: [DialogHeaderThemeService],
       multi: true
     },
     { provide: HTTP_INTERCEPTORS, useClass: RequestMetadataInterceptor, multi: true },

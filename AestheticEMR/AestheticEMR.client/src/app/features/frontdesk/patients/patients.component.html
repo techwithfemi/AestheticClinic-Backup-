@@ -1,126 +1,188 @@
 <div [@fadeInOut] class="patients-page">
   <div class="page-header">
     <h2>Patients Information</h2>
-    <button type="button" class="btn btn-primary" (click)="openCreate(patientDialog)">Add Patient</button>
+    <button mat-raised-button color="primary" type="button" (click)="openCreate(patientDialog)">
+      <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">person_add</mat-icon>
+      Add Patient
+    </button>
   </div>
 
   <div class="search-row">
-    <input
-      type="text"
-      class="form-control"
-      [(ngModel)]="searchText"
-      (input)="onSearch()"
-      placeholder="Search by patient no, name, phone, or email" />
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search patients</mat-label>
+      <mat-icon matPrefix class="ui-icon ui-icon--sm ui-icon--muted">search</mat-icon>
+      <input
+        matInput
+        [ngModel]="searchText()"
+        (ngModelChange)="onSearchChanged($event)"
+        placeholder="Patient no, name, company, phone, or email (use *** for all records)" />
+    </mat-form-field>
   </div>
 
   <ng-template #patientDialog>
-    <div class="modal-header">
-      <h5 class="modal-title">{{ isEditing ? 'Edit Patient' : 'New Patient' }}</h5>
-      <button type="button" class="btn-close" (click)="cancelForm()"></button>
-    </div>
+    <app-dialog-header
+      [title]="'Patient Information'"
+      [icon]="'assignment_ind'"
+      [closeAriaLabel]="'Close patient dialog'"
+      (closeClicked)="cancelForm()">
+    </app-dialog-header>
 
-    <div class="modal-body">
+    <div class="modal-body patient-dialog-body">
       <form [formGroup]="patientForm" (ngSubmit)="savePatient()" class="patient-form">
-        <div class="grid">
-          <div>
-            <label>Surname *</label>
-            <input type="text" class="form-control" formControlName="pSurName" />
-          </div>
-          <div>
-            <label>Firstname</label>
-            <input type="text" class="form-control" formControlName="pFirstname" />
-          </div>
-          <div>
-            <label>Sex</label>
-            <select class="form-control" formControlName="sex">
-              <option value="">-- Select Sex --</option>
-              <option *ngFor="let item of sexOptions" [value]="item">{{ item }}</option>
-            </select>
-          </div>
-          <div>
-            <label>Marital Status</label>
-            <select class="form-control" formControlName="mstatus">
-              <option value="">-- Select Marital Status --</option>
-              <option *ngFor="let item of maritalStatuses" [value]="item">{{ item }}</option>
-            </select>
-          </div>
-          <div>
-            <label>Company Name</label>
-            <select class="form-control" formControlName="coyName">
-              <option value="">-- Select Company Name --</option>
-              <option *ngFor="let company of filteredCompanies" [value]="company.retainId">
-                {{ company.retainName }} [{{ company.retainId }}]
-              </option>
-            </select>
-          </div>
-          <div>
-            <label>Patient Category</label>
-            <select class="form-control" formControlName="clientCatId">
-              <option value="">-- Select Patient Category --</option>
-              <option *ngFor="let item of patCatOptions" [value]="item">{{ item }}</option>
-            </select>
-          </div>
-          <div>
-            <label>HMO No</label>
-            <input type="text" class="form-control" formControlName="empNo" />
-          </div>
-          <div>
-            <label>Phone</label>
-            <input type="text" class="form-control" formControlName="pPhoneNo" />
-          </div>
-          <div>
-            <label>Email</label>
-            <input type="email" class="form-control" formControlName="email" />
-          </div>
-          <div>
-            <label>Next of Kin</label>
-            <input type="text" class="form-control" formControlName="nextofKin" />
-          </div>
-          <div>
-            <label>NOK Phone</label>
-            <input type="text" class="form-control" formControlName="nokphone" />
-          </div>
-          <div>
-            <label>Date of Birth</label>
-            <input type="date" class="form-control" formControlName="dob" />
-          </div>
-          <div>
-            <label>Policy Type</label>
-            <input type="text" class="form-control" formControlName="policyType" />
-          </div>
-          <div>
-            <label>Registration Date</label>
-            <input type="date" class="form-control" formControlName="regDate" />
-          </div>
-        </div>
-
-        <!-- Patient Photo (optional) -->
-        <div class="photo-section mt-3">
-          <label class="form-label fw-semibold">Patient Photo <span class="text-muted fw-normal">(optional)</span></label>
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <div class="photo-preview-wrap">
-              <img
-                *ngIf="photoPreview"
-                [src]="photoPreview"
-                alt="Patient photo"
-                class="photo-preview rounded border" />
-              <div *ngIf="!photoPreview" class="photo-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
-                No Photo
+        <div class="patient-form-shell">
+          <div class="patient-form-section">
+            <div class="grid">
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('pSurName', 'required')">
+                  <mat-label>Surname *</mat-label>
+                  <input matInput type="text" formControlName="pSurName" />
+                  <mat-error *ngIf="hasControlError('pSurName', 'required')">Surname is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('pFirstname', 'required')">
+                  <mat-label>Firstname *</mat-label>
+                  <input matInput type="text" formControlName="pFirstname" />
+                  <mat-error *ngIf="hasControlError('pFirstname', 'required')">Firstname is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('sex', 'required')">
+                  <mat-label>Sex *</mat-label>
+                  <mat-select formControlName="sex">
+                    <mat-option value="">-- Select Sex --</mat-option>
+                    <mat-option *ngFor="let item of sexOptions" [value]="item">{{ item }}</mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="hasControlError('sex', 'required')">Sex is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control">
+                  <mat-label>Marital Status</mat-label>
+                  <mat-select formControlName="mstatus">
+                    <mat-option value="">-- Select Marital Status --</mat-option>
+                    <mat-option *ngFor="let item of maritalStatuses" [value]="item">{{ item }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('coyName', 'required')">
+                  <mat-label>Company Name *</mat-label>
+                  <mat-select formControlName="coyName">
+                    <mat-option value="">-- Select Company Name --</mat-option>
+                    <mat-option *ngFor="let company of filteredCompanies" [value]="company.retainId">
+                      {{ company.retainName }} [{{ company.retainId }}]
+                    </mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="hasControlError('coyName', 'required')">Company Name is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('clientCatId', 'required')">
+                  <mat-label>Patient Category *</mat-label>
+                  <mat-select formControlName="clientCatId">
+                    <mat-option value="">-- Select Patient Category --</mat-option>
+                    <mat-option *ngFor="let item of patCatOptions()" [value]="item">{{ item }}</mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="hasControlError('clientCatId', 'required')">Patient Category is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control">
+                  <mat-label>HMO No</mat-label>
+                  <input matInput type="text" formControlName="empNo" />
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('pPhoneNo', 'required')">
+                  <mat-label>Phone *</mat-label>
+                  <input matInput type="text" formControlName="pPhoneNo" />
+                  <mat-error *ngIf="hasControlError('pPhoneNo', 'required')">Phone is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control">
+                  <mat-label>Email</mat-label>
+                  <input matInput type="email" formControlName="email" />
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('nextofKin', 'required')">
+                  <mat-label>Next of Kin *</mat-label>
+                  <input matInput type="text" formControlName="nextofKin" />
+                  <mat-error *ngIf="hasControlError('nextofKin', 'required')">Next of Kin is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('nokphone', 'required')">
+                  <mat-label>NOK Phone *</mat-label>
+                  <input matInput type="text" formControlName="nokphone" />
+                  <mat-error *ngIf="hasControlError('nokphone', 'required')">NOK Phone is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control" [class.required-error-field]="hasControlError('dob', 'required')">
+                  <mat-label>Date of Birth *</mat-label>
+                  <input matInput type="date" formControlName="dob" />
+                  <mat-error *ngIf="hasControlError('dob', 'required')">Date of Birth is required.</mat-error>
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control">
+                  <mat-label>Policy Type</mat-label>
+                  <input matInput type="text" formControlName="policyType" />
+                </mat-form-field>
+              </div>
+              <div class="field-group">
+                <mat-form-field appearance="outline" class="field-control">
+                  <mat-label>Registration Date</mat-label>
+                  <input matInput type="date" formControlName="regDate" />
+                </mat-form-field>
               </div>
             </div>
-            <div class="d-flex flex-column gap-2">
-              <label class="btn btn-outline-primary btn-sm mb-0" style="cursor:pointer;">
-                {{ photoPreview ? 'Change Photo' : 'Upload Photo' }}
-                <input type="file" accept="image/*" class="d-none" (change)="onPhotoSelected($event)" />
-              </label>
-              <button *ngIf="photoPreview" type="button" class="btn btn-outline-danger btn-sm" (click)="removePhoto()">Remove Photo</button>
+          </div>
+
+          <div class="photo-section photo-section-card">
+            <div class="patient-section-title">
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--primary">photo_camera</mat-icon>
+              <span>Patient Photo</span>
+              <span class="photo-optional-label">(optional)</span>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <div class="photo-preview-wrap">
+                <img
+                  *ngIf="photoPreview()"
+                  [src]="photoPreview()!"
+                  alt="Patient photo"
+                  class="photo-preview rounded border" />
+                <div *ngIf="!photoPreview()" class="photo-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
+                  No Photo
+                </div>
+              </div>
+              <div class="d-flex flex-column gap-2">
+                <label class="mat-mdc-outlined-button mat-primary photo-upload-label" style="cursor:pointer;">
+                  <mat-icon class="ui-icon ui-icon--sm ui-icon--primary">{{ photoPreview() ? 'image' : 'upload' }}</mat-icon>
+                  {{ photoPreview() ? 'Change Photo' : 'Upload Photo' }}
+                  <input type="file" accept="image/*" class="d-none" (change)="onPhotoSelected($event)" />
+                </label>
+                <button *ngIf="photoPreview()" mat-stroked-button color="warn" type="button" (click)="removePhoto()">
+                  <mat-icon class="ui-icon ui-icon--sm ui-icon--danger">delete</mat-icon>
+                  Remove Photo
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn btn-success" [disabled]="loadingIndicator">Save</button>
-          <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+          <div class="form-actions patient-dialog-actions">
+            <button mat-raised-button color="primary" type="submit" [disabled]="loadingIndicator()">
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">save</mat-icon>
+              Save
+            </button>
+            <button mat-stroked-button type="button" (click)="cancelForm()">
+              <mat-icon class="ui-icon ui-icon--sm ui-icon--muted">close</mat-icon>
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -128,78 +190,90 @@
 
   <!-- Photo lightbox modal -->
   <ng-template #photoDialog let-modal>
-    <div class="modal-header py-2">
+    <div class="modal-header py-2 photo-viewer-header">
       <h6 class="modal-title mb-0">
-        {{ viewingPhotoPatient?.pSurName }} {{ viewingPhotoPatient?.pFirstname }} — Photo
+        {{ viewingPhotoPatient()?.pSurName }} {{ viewingPhotoPatient()?.pFirstname }} — Photo
       </h6>
-      <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+      <button mat-icon-button type="button" class="ui-dialog-close-btn photo-viewer-close" (click)="modal.dismiss()" aria-label="Close photo">
+        <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse">close</mat-icon>
+      </button>
     </div>
     <div class="modal-body text-center p-3">
-      <img [src]="getPhotoSrc(viewingPhotoPatient!)" alt="Patient photo" class="patient-photo-full rounded" />
+      <img [src]="getPhotoSrc(viewingPhotoPatient()!)" alt="Patient photo" class="patient-photo-full rounded" />
     </div>
   </ng-template>
 
   <div class="table-responsive">
-    <table class="table table-striped table-hover">
+    <table class="table table-striped table-hover patients-table">
       <thead>
         <tr>
-          <th class="d-none">Patient No</th>
-          <th>Name</th>
+          <th><button mat-button type="button" class="sort-btn" (click)="setSort('name')">Name <mat-icon class="ui-icon ui-icon--xs ui-icon--muted">{{ getSortIcon('name') }}</mat-icon></button></th>
+          <th>Client</th>
+          <th>Sex</th>
+          <th class="text-end debt-col"><button mat-button type="button" class="sort-btn sort-btn--right" (click)="setSort('debt')">Debt <mat-icon class="ui-icon ui-icon--xs ui-icon--muted">{{ getSortIcon('debt') }}</mat-icon></button></th>
+          <th class="d-none">CoyName</th>
           <th>Date of Birth</th>
-          <th>Registration Date</th>
+          <th>Age</th>
           <th>Phone</th>
-          <th>Email</th>
-          <th class="actions">Actions</th>
+          <th class="actions actions-col actions-col--header">Actions</th>
+          <th>PNo</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let patient of pagedPatients" [attr.data-pno]="patient.pno">
-          <td class="d-none">
-            <input type="hidden" [value]="patient.pno" />
-          </td>
+        <tr *ngFor="let patient of pagedPatients()" [attr.data-pno]="patient.pno">
           <td>{{ patient.pSurName }} {{ patient.pFirstname }}</td>
+          <td>{{ patient.clientName }}</td>
+          <td>{{ patient.sex || '—' }}</td>
+          <td class="text-end">{{ patient.debtBf ?? 0 | number:'1.2-2' }}</td>
+          <td class="d-none">{{ patient.coyName || '—' }}</td>
           <td>{{ patient.dob ? (patient.dob | date: 'yyyy-MM-dd') : '—' }}</td>
-          <td>{{ patient.regDate ? (patient.regDate | date: 'yyyy-MM-dd') : '—' }}</td>
+          <td>{{ calculateAge(patient.dob) }}</td>
           <td>{{ patient.pPhoneNo }}</td>
-          <td>{{ patient.email }}</td>
-          <td class="actions">
-            <!-- Photo thumbnail — only shown when patient has a photo -->
-            <button
-              *ngIf="patient.patPixBase64"
-              type="button"
-              class="btn btn-sm btn-outline-secondary icon-btn photo-thumb-btn"
-              (click)="viewPhoto(photoDialog, patient)"
-              title="View Photo"
-              aria-label="View patient photo">
-              <img [src]="getPhotoSrc(patient)" alt="" class="grid-photo-thumb" />
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-primary icon-btn" (click)="openEdit(patientDialog, patient)" title="Edit" aria-label="Edit patient">
-              <span class="material-icons action-icon" aria-hidden="true">edit</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-danger icon-btn" (click)="deletePatient(patient)" title="Delete" aria-label="Delete patient">
-              <span class="material-icons action-icon" aria-hidden="true">delete</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary icon-btn" (click)="openAttendanceForPatient(patient)" title="Attend" aria-label="Open attendance for patient">
-              <span class="material-icons action-icon" aria-hidden="true">fact_check</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary icon-btn" (click)="openAppointmentForPatient(patient)" title="Appointment" aria-label="Open appointment for patient">
-              <span class="material-icons action-icon" aria-hidden="true">event</span>
-            </button>
+          <td class="actions actions-col">
+            <div class="actions-cell">
+              <!-- Photo thumbnail with placeholder when photo is unavailable -->
+              <button
+                mat-icon-button
+                type="button"
+                class="ui-icon-btn ui-icon-btn--info photo-thumb-btn"
+                (click)="viewPhoto(photoDialog, patient)"
+                [title]="hasPatientPhoto(patient) ? 'View Photo' : 'Load/View Photo'"
+                aria-label="View patient photo">
+                <img *ngIf="hasPatientPhoto(patient)" [src]="getPhotoSrc(patient)" alt="" class="grid-photo-thumb" />
+                <div *ngIf="!hasPatientPhoto(patient)" class="grid-photo-thumb-placeholder" aria-hidden="true">
+                  <span class="thumb-placeholder-head"></span>
+                  <span class="thumb-placeholder-body"></span>
+                </div>
+              </button>
+              <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--primary" (click)="openEdit(patientDialog, patient)" title="Edit" aria-label="Edit patient">
+                <mat-icon class="ui-icon ui-icon--sm" aria-hidden="true">edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="deletePatient(patient)" title="Delete" aria-label="Delete patient">
+                <mat-icon class="ui-icon ui-icon--sm ui-icon--inverse" aria-hidden="true">delete</mat-icon>
+              </button>
+              <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--success" (click)="openAttendanceForPatient(patient)" title="Attend" aria-label="Open attendance for patient">
+                <mat-icon class="ui-icon ui-icon--sm" aria-hidden="true">fact_check</mat-icon>
+              </button>
+              <button mat-icon-button type="button" class="ui-icon-btn ui-icon-btn--accent" (click)="openAppointmentForPatient(patient)" title="Appointment" aria-label="Open appointment for patient">
+                <mat-icon class="ui-icon ui-icon--sm" aria-hidden="true">event</mat-icon>
+              </button>
+            </div>
           </td>
+          <td>{{ patient.pno || '—' }}</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="filteredPatients.length > 0">
+  <div class="d-flex justify-content-between align-items-center mt-2" *ngIf="filteredPatients().length > 0">
     <small class="text-muted">
-      Showing {{ (currentPage - 1) * pageSize + 1 }}-
-      {{ (currentPage * pageSize) < filteredPatients.length ? (currentPage * pageSize) : filteredPatients.length }} of {{ filteredPatients.length }}
+      Showing {{ (currentPage() - 1) * pageSize + 1 }}-
+      {{ (currentPage() * pageSize) < filteredPatients().length ? (currentPage() * pageSize) : filteredPatients().length }} of {{ filteredPatients().length }}
     </small>
     <div class="btn-group" role="group" aria-label="Patient pagination">
-      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">Previous</button>
-      <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Page {{ currentPage }} / {{ totalPages }}</button>
-      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">Next</button>
+      <button mat-stroked-button type="button" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">Previous</button>
+      <button mat-stroked-button type="button" disabled>Page {{ currentPage() }} / {{ totalPages() }}</button>
+      <button mat-stroked-button type="button" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages()">Next</button>
     </div>
   </div>
 </div>

@@ -19,6 +19,12 @@ export class HPatientEndpoint extends EndpointBase {
     );
   }
 
+  getHPatientsByRegDateEndpoint<T>(regDate: string): Observable<T> {
+    return this.http.get<T>(`${this.patientsUrl}/by-reg-date/${regDate}`, this.requestHeaders).pipe(
+      catchError(error => this.handleError(error, () => this.getHPatientsByRegDateEndpoint<T>(regDate)))
+    );
+  }
+
   getHPatientByIdEndpoint<T>(id: string): Observable<T> {
     return this.http.get<T>(`${this.patientsUrl}/${id}`, this.requestHeaders).pipe(
       catchError(error => this.handleError(error, () => this.getHPatientByIdEndpoint<T>(id)))

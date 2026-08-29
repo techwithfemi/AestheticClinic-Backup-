@@ -1,3 +1,5 @@
+# Copilot Instructions
+
 **Reference this file in your AI prompts when extending QuickApp.**
 
 ## Quick Start
@@ -430,9 +432,14 @@ When introducing new configuration keys, also update the base `appsettings.json`
 - When a patient is selected, it should display the AttendanceSummary component (patient attendance summary) in the header section of the dialog page.
 - If the add/edit dialog page has tabs, keep patient header/summary and tabbed form inside the dialog, not the main page.
 - Use Angular Material/material icons instead of Bootstrap.
+- For entry form text/date/email inputs, use Angular Material `mat-form-field` + `matInput` (and `mat-select` for Material dropdowns where applicable).
+- Labels for entry form inputs must be inline/floating labels (watermark style initially, then float to the top border on focus/value).
+- Required-field validation must render inline error text directly below the affected input after save/submit attempt, and invalid required fields must show a red border/error state.
 - Material table/grid should have page size = 10.
 - use @ng-select/ng-select as select dropdown with searchable, ensuring simple, professional, transparent styling for dropdown controls in UI forms.
 - The dialog can only be explicitly closed using the close (X) icon or cancel button.
+- Use the global reusable `app-dialog-header` component for dialog headers; pass title/icon as inputs instead of duplicating custom header markup.
+- Dialog header visual theme must be server-driven from `appsettings.json` (`DialogHeaderThemeConfig`) via `/api/ui-settings/dialog-header-theme`; do not hardcode header theme colors in feature components.
 - The entry form UI must be responsive (for mobile, tablet, and desktop devices).
 
 ### Date Format for Expenses
@@ -542,7 +549,7 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
    - `{{ value | utcDisplay:'datetime' }}`
    - `{{ value | utcDisplay:'date' }}`
    - `{{ value | utcDisplay:'dateDash' }}`
-   - `{{ value | utcDisplay:'time' }}`
+   - `{{ value | utcDisplay:'time'}`
 3. ✅ Treat timezone-less DateTime strings as UTC (legacy fallback), matching server converter behavior.
 4. ❌ Do not use Angular `date` pipe directly for server UTC DateTime fields where timezone shift would alter displayed business time.
 
@@ -584,7 +591,6 @@ When backend DateTime values are serialized by `UtcAwareDateTimeConverter` (UTC/
 
 ### Aesthetic Service Table Usage
 
-
 ### Report UI Pattern Baseline (Applies to ALL Reports)
 
 Use `billing-receipt-report.component` as the baseline UI pattern for all report pages in this workspace.
@@ -615,7 +621,6 @@ Use `billing-receipt-report.component` as the baseline UI pattern for all report
 24. ✅ During search, table/grid results must remain constrained to the active date range selected in the date pickers.
 25. ✅ When `Run Report` is clicked, table/grid results must remain constrained to the active date range selected in the date pickers.
 
-
 ### Connection Management
 
 In CrystalReportWebAPI, connection ids like DefaultConnection are provided by the calling project/request and should not be read from this API project's Web.config. 
@@ -631,5 +636,18 @@ When asked to delete duplicate files in `Models/Legacy`, avoid modifying other f
 ### SPA Dialog Header Info
 
 For SPA dialog header info, use `attendance-summary` as the single source of truth backed by `vwhRecords` fetched by `ConsultId`: in edit mode, use `ConsultId` from the selected grid row; in add/new mode, use `ConsultId` from patient dropdown; do not use fallback sources. For SPA services in edit mode, ensure `ConsultId` comes from the selected grid row's `ConsultId` column, not dropdown-derived patient context.
+
+### Patients Grid
+
+- For Patients grid, Client column must be sourced directly from vwhpatients API data and not inferred or looked up.
+
+### Patients Component
+
+- For `patients.component`, default dataset must be filtered by `regDate` for today's registrations from `vwhPatients` as source of truth, independent of search-empty state.
+- **Use debounced search behavior** in `patients.component` for search input handling.
+
+### EMR Patient Grid Data
+
+- For EMR patient grid data, do not use local cache copies; always fetch fresh records from the database via API and apply `regDate` default filtering on page load.
 
 

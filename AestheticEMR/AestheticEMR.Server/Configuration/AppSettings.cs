@@ -18,7 +18,23 @@ namespace AestheticEMR.Server.Configuration
         public LogRetentionConfig? LogRetentionConfig { get; set; }
         public AuditLoggingConfig? AuditLoggingConfig { get; set; }
         public LegacyReportServiceConfig? LegacyReportService { get; set; }
+        public DialogHeaderThemeConfig DialogHeaderThemeConfig { get; set; } = new();
         public string? ClientBaseUrl { get; set; }
+    }
+
+    public class DialogHeaderThemeConfig
+    {
+        public string GradientStart { get; set; } = "#0b1f5e";
+        public string GradientMid { get; set; } = "#12357f";
+        public string GradientEnd { get; set; } = "#1d4ed8";
+        public string AccentStart { get; set; } = "#14b8a6";
+        public string AccentMid { get; set; } = "#f59e0b";
+        public string AccentEnd { get; set; } = "#2dd4bf";
+        public string TitleColor { get; set; } = "#f8fafc";
+        public string CloseBackground { get; set; } = "rgba(11, 31, 94, 0.45)";
+        public string CloseBorder { get; set; } = "rgba(255, 255, 255, 0.22)";
+        public string CloseHoverBackground { get; set; } = "rgba(29, 78, 216, 0.55)";
+        public string CloseHoverBorder { get; set; } = "rgba(255, 255, 255, 0.38)";
     }
 
     public class AuditLoggingConfig

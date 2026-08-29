@@ -29,6 +29,23 @@ public class HPatientController(ILogger<HPatientController> logger, IMapper mapp
         }
     }
 
+    [HttpGet("by-reg-date/{regDate:datetime}")]
+    [ProducesResponseType(typeof(IEnumerable<HPatientVM>), 200)]
+    public async Task<IActionResult> GetByRegDate(DateTime regDate)
+    {
+        try
+        {
+            var patients = await patientService.GetByRegDateAsync(regDate);
+            return Ok(_mapper.Map<IEnumerable<HPatientVM>>(patients));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving patients by reg date {RegDate}", regDate);
+            AddModelError("Unable to retrieve patients");
+            return BadRequest(ModelState);
+        }
+    }
+
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(HPatientVM), 200)]
     [ProducesResponseType(404)]

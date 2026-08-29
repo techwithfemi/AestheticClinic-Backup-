@@ -67,6 +67,9 @@ public class HPatientVM
     [StringLength(7)]
     public string? CoyName { get; set; }
 
+    [StringLength(255)]
+    public string? ClientName { get; set; }
+
     [StringLength(100)]
     public string? ClientCatId { get; set; }
 
