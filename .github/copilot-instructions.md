@@ -650,4 +650,13 @@ For SPA dialog header info, use `attendance-summary` as the single source of tru
 
 - For EMR patient grid data, do not use local cache copies; always fetch fresh records from the database via API and apply `regDate` default filtering on page load.
 
+### Copilot Instruction Change Control
+
+- Do not delete or edit any existing rule/line in this file without prior user notice.
+- You may add new rules to this file when requested.
+- If you recommend deleting or editing any rule/line, record the exact rule/line and the reason in `rules_for_delete.txt` in this same folder (`.github`) for manual user action.
+- For frontend UI or backend features that are already working perfectly, notify the user before deleting the working feature.
+- Frontend UI or backend features may be updated for improvement or performance, but provide the reason for each update.
+- These change-control rules also apply to DbContext files: do not delete/edit existing lines without prior notice; log recommended delete/update lines with reasons in `.github/rules_for_delete.txt`; user will manually apply changes or explicitly ask Copilot to proceed.
+
 

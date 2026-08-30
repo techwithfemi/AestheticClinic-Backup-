@@ -1,0 +1,10 @@
+# Rules Recommended for Delete/Update
+
+Use this file to log proposed changes to `.github/copilot-instructions.md`.
+
+Format:
+- Rule/Line: <exact text or section>
+- Proposed Action: <Delete|Update>
+- Reason: <why this change is needed>
+- Date: <yyyy-mm-dd>
+
